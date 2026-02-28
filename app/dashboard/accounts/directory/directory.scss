@@ -1,0 +1,244 @@
+.directoryPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+  flex: 1;
+  min-height: 0;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.breadcrumb span {
+  color: #6b7280;
+}
+
+.directoryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.directoryHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Search – same as users */
+.directorySearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+}
+
+.searchIcon {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+  color: #111827;
+}
+
+.directoryMessage {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.directoryError {
+  color: #dc2626;
+}
+
+/* Table – same structure as users (div-based grid) */
+.directoryTable {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.directoryRow {
+  display: grid;
+  grid-template-columns: 120px 80px 1.2fr 1.2fr 1fr 1.4fr 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  font-size: 13px;
+}
+
+.directoryRowHeader {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.directoryContactPrimary {
+  display: block;
+  font-weight: 600;
+  color: #111827;
+}
+
+.directoryContactSecondary {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #eef2f7;
+  color: #6b7280;
+}
+
+.badgeActive {
+  background: rgba(2, 149, 90, 0.12);
+  color: #02955a;
+}
+
+/* Row actions menu */
+.directoryMenuWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.directoryMenuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.directoryMenuTrigger:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+.directoryMenuDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 120px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.directoryMenuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  color: #374151;
+}
+
+.directoryMenuItem:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.directoryMenuItemDanger {
+  color: #dc2626;
+}
+
+.directoryMenuItemDanger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* Modal form */
+.directoryForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.directoryFormError {
+  font-size: 12px;
+  color: #dc2626;
+  margin-bottom: 8px;
+}
+
+.directoryFieldError {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.input,
+.select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0 12px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .directoryHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .directoryRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}

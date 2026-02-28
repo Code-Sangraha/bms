@@ -1,0 +1,202 @@
+.analyticsPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.breadcrumb .separator {
+  color: #9ca3af;
+}
+
+.breadcrumb span:last-child {
+  color: #6b7280;
+}
+
+.analyticsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analyticsHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.analyticsToolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.analyticsOutletSelect {
+  height: 40px;
+  min-width: 160px;
+  padding: 0 32px 0 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  background: #ffffff;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.analyticsLastSync {
+  font-size: 13px;
+  font-weight: 500;
+  color: #02955a;
+}
+
+.analyticsCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.analyticsCard {
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.analyticsCardTotal {
+  background: #fef3e2;
+  border-color: rgba(251, 146, 60, 0.2);
+}
+
+.analyticsCardPresent {
+  background: #ecfdf5;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.analyticsCardLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.analyticsCardValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.analyticsCardSub {
+  font-size: 13px;
+  font-weight: 500;
+  color: #02955a;
+  margin-top: 6px;
+}
+
+.analyticsTableSection {
+  margin-top: 8px;
+}
+
+.analyticsTableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.analyticsTableWrap {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.analyticsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.analyticsTable th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.analyticsTable td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: #374151;
+}
+
+.analyticsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.analyticsPill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analyticsPillPresent {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.analyticsPillAbsent {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.analyticsRowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.analyticsRowAction:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #374151;
+}

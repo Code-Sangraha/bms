@@ -1,0 +1,124 @@
+.createRolePage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.breadcrumb span {
+  color: #6b7280;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.createRoleHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.createRoleCard {
+  max-width: 420px;
+  padding: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.createRoleForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.createRoleFormError {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.createRoleFieldError {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0 12px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #02955a;
+}
+
+.createRoleActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.buttonPrimary {
+  border-color: #02955a;
+  background: #02955a;
+  color: #ffffff;
+}
+
+.cancelLink {
+  font-size: 13px;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.cancelLink:hover {
+  color: #111827;
+  text-decoration: underline;
+}

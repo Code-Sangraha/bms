@@ -1,0 +1,339 @@
+.dualPricingPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+  flex: 1;
+  min-height: 0;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.breadcrumb span {
+  color: #6b7280;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.dualPricingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dualPricingHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dualPricingSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+}
+
+.searchIcon {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+  color: #111827;
+}
+
+.dualPricingMessage {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.dualPricingError {
+  color: #dc2626;
+}
+
+.dualPricingUpgradeBtn {
+  min-width: 120px;
+}
+
+.dualPricingCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.dualPricingCardMessage {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: #6b7280;
+  padding: 24px 0;
+}
+
+.dualPricingCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dualPricingCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 0;
+}
+
+.dualPricingCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.dualPricingCardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dualPricingCardIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dualPricingCardIconBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+.dualPricingCardBody {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dualPricingCardRow {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+}
+
+.dualPricingCardLabel {
+  color: #6b7280;
+}
+
+.dualPricingCardValue {
+  font-weight: 500;
+  color: #111827;
+}
+
+.dualPricingCardFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.dualPricingCardMetric {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.dualPricingCardMetricDivider {
+  width: 1px;
+  height: 14px;
+  background: rgba(30, 64, 175, 0.3);
+  flex-shrink: 0;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #eef2f7;
+  color: #6b7280;
+}
+
+.badgeActive {
+  background: rgba(2, 149, 90, 0.12);
+  color: #02955a;
+}
+
+.button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.buttonPrimary {
+  border-color: #02955a;
+  background: #02955a;
+  color: #ffffff;
+}
+
+.modalButton {
+  width: 100%;
+}
+
+.label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.input,
+.select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0 12px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.dualPricingAddForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dualPricingFormError {
+  font-size: 12px;
+  color: #dc2626;
+  margin-bottom: 8px;
+}
+
+.dualPricingFieldError {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dualPricingMenuWrap {
+  position: relative;
+}
+
+.dualPricingMenuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dualPricingMenuTrigger:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+.dualPricingMenuDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 120px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.dualPricingMenuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  color: #374151;
+}
+
+.dualPricingMenuItem:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.dualPricingMenuItemDanger {
+  color: #dc2626;
+}
+
+.dualPricingMenuItemDanger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+@media (max-width: 900px) {
+  .dualPricingHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dualPricingCardGrid {
+    grid-template-columns: 1fr;
+  }
+}
