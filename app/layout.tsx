@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen bg-zinc-50 font-sans dark:bg-black">
+        <div className="min-h-screen bg-zinc-50 font-sans">
           <QueryProvider>
             <LayoutWrapper>{children}</LayoutWrapper>
           </QueryProvider>

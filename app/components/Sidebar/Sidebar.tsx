@@ -33,6 +33,10 @@ const sidebarConfig = {
             title: "Dashboard",
             items: [
               { label: "Overview", href: "/dashboard" },
+              { label: "Outlets", href: "/dashboard/settings/outlet" },
+              { label: "Users", href: "/dashboard/settings/users" },
+              { label: "Departments", href: "/dashboard/settings/departments" },
+              { label: "Roles", href: "/dashboard/accounts/roles" },  
               // { label: "Analytics", href: "/dashboard/analytics" },
               // { label: "Reports", href: "/dashboard/reports" },
             ] as MenuItem[],
