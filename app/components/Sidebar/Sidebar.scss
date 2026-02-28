@@ -2,7 +2,7 @@ $mobile-breakpoint: 768px;
 
 .sidebarWrapper {
   display: flex;
-  min-height: 100vh;
+  // min-height: 100vh;
 
   @media (max-width: $mobile-breakpoint) {
     position: absolute;

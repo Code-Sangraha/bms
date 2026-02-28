@@ -23,7 +23,7 @@ export default function LayoutWrapper({
       <ToastProvider>
         <div className="flex min-h-screen w-full overflow-x-hidden">
           <Sidebar />
-          <main className="flex h-screen min-w-0 flex-1 flex-col items-center overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 pb-20 dark:bg-black sm:items-start md:px-8 md:pb-[7px]">
+          <main className="mainScroll flex min-h-0 min-w-0 flex-1 flex-col items-center overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 dark:bg-black sm:items-start md:px-8 md:pb-[7px] pb-[calc(64px+env(safe-area-inset-bottom,0px)+2rem)]">
             {children}
           </main>
         </div>
