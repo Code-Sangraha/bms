@@ -5,8 +5,13 @@ import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { getTokenFromAuthResponse, getUserFromAuthResponse, login as loginApi } from "@/handlers/auth";
-import { setAuthToken } from "@/lib/auth/token";
+import {
+  getRefreshTokenFromAuthResponse,
+  getTokenFromAuthResponse,
+  getUserFromAuthResponse,
+  login as loginApi,
+} from "@/handlers/auth";
+import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { setStoredUser } from "@/lib/auth/user";
 import { loginSchema, type LoginFormValues } from "@/schema/auth";
 
@@ -30,6 +35,8 @@ export default function LoginPage() {
         const token = getTokenFromAuthResponse(result.data);
         if (token) {
           setAuthToken(token);
+          const refreshToken = getRefreshTokenFromAuthResponse(result.data);
+          if (refreshToken) setRefreshToken(refreshToken);
           const user = getUserFromAuthResponse(result.data);
           if (user != null && typeof user === "object") {
             setStoredUser({ outletId: user.outletId ?? null });

@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api/client";
 import { AUTH_ROUTES } from "@/lib/api/routes";
+import { getRefreshToken } from "@/lib/auth/token";
 
 const DEFAULT_ROLE_ID = "4e01f811-3fb2-4a1c-a237-4ee46ef982d5";
 
@@ -17,6 +18,7 @@ export type AuthResponseData = {
   success?: boolean;
   message?: string;
   accessToken?: string;
+  refreshToken?: string;
   token?: string;
   user?: {
     id?: string;
@@ -54,6 +56,12 @@ export function getTokenFromAuthResponse(response: LoginResponse | RegisterRespo
   return (data as AuthResponseData).accessToken ?? (data as AuthResponseData).token;
 }
 
+/** Get refresh token from login API response. */
+export function getRefreshTokenFromAuthResponse(response: LoginResponse): string | undefined {
+  const data = response.data ?? response;
+  return (data as AuthResponseData).refreshToken;
+}
+
 /** Get user from login/register API response for storing outletId (Manager/Staff). */
 export function getUserFromAuthResponse(response: LoginResponse | RegisterResponse): AuthResponseData["user"] {
   const data = response.data ?? response;
@@ -83,4 +91,43 @@ export async function logout() {
   return apiRequest<{ success?: boolean; message?: string }>(AUTH_ROUTES.LOGOUT, {
     method: "POST",
   });
+}
+
+export type RefreshResponse = {
+  success?: boolean;
+  data?: { accessToken?: string; refreshToken?: string };
+  [key: string]: unknown;
+};
+
+/** Call refresh endpoint to get new access (and optionally refresh) token. Does not use apiRequest to avoid 401 retry loop. */
+export async function refreshTokens(): Promise<
+  { ok: true; accessToken: string; refreshToken?: string } | { ok: false; error: string }
+> {
+  const baseUrl =
+    typeof window !== "undefined"
+      ? (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
+      : (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  if (!baseUrl) return { ok: false, error: "API URL not configured" };
+
+  const refreshToken = typeof window !== "undefined" ? getRefreshToken() : null;
+  if (!refreshToken) return { ok: false, error: "No refresh token" };
+
+  const res = await fetch(`${baseUrl}${AUTH_ROUTES.REFRESH}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+    credentials: "include",
+  });
+  const data = (await res.json().catch(() => ({}))) as RefreshResponse;
+  if (!res.ok) {
+    const msg = (data as { message?: string }).message ?? "Refresh failed";
+    return { ok: false, error: typeof msg === "string" ? msg : "Refresh failed" };
+  }
+  const accessToken = data.data?.accessToken;
+  if (!accessToken) return { ok: false, error: "No access token in refresh response" };
+  return {
+    ok: true,
+    accessToken,
+    refreshToken: data.data?.refreshToken,
+  };
 }
