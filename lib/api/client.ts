@@ -31,7 +31,7 @@ export async function apiRequest<T>(
   };
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { ...options, headers, credentials: "include" });
     const data = await res.json().catch(() => ({})) as T & ApiError;
 
     if (!res.ok) {
