@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useMemo, useRef, useState } from "react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
@@ -65,7 +65,7 @@ function getProductNames(tx: SaleTransaction): string {
 }
 
 export default function TransactionPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
@@ -82,7 +82,7 @@ export default function TransactionPage() {
     queryFn: async () => {
       const result = await getSales();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -94,7 +94,7 @@ export default function TransactionPage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;

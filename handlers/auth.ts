@@ -103,10 +103,7 @@ export type RefreshResponse = {
 export async function refreshTokens(): Promise<
   { ok: true; accessToken: string; refreshToken?: string } | { ok: false; error: string }
 > {
-  const baseUrl =
-    typeof window !== "undefined"
-      ? (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
-      : (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  const baseUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
   if (!baseUrl) return { ok: false, error: "API URL not configured" };
 
   const refreshToken = typeof window !== "undefined" ? getRefreshToken() : null;

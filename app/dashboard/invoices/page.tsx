@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   getDashboardSales,
@@ -17,7 +17,7 @@ const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
 export default function InvoicesAnalyticsPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
 
@@ -26,7 +26,7 @@ export default function InvoicesAnalyticsPage() {
     queryFn: async () => {
       const result = await getDashboardSales();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;

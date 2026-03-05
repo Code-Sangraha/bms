@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
@@ -45,7 +45,7 @@ function getUnitPrice(
 }
 
 export default function PointOfSalePage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
   const [customerName, setCustomerName] = useState("");
@@ -64,7 +64,7 @@ export default function PointOfSalePage() {
     queryFn: async () => {
       const result = await getProducts();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -85,7 +85,7 @@ export default function PointOfSalePage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -109,7 +109,7 @@ export default function PointOfSalePage() {
     queryFn: async () => {
       const result = await getDualPricings();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -121,7 +121,7 @@ export default function PointOfSalePage() {
     queryFn: async () => {
       const result = await getCustomerTypes();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -190,9 +190,9 @@ export default function PointOfSalePage() {
         setCustomerName("");
         setCustomerContact("");
         setError(null);
-        router.push("/dashboard/invoices/transaction");
+        navigate("/dashboard/invoices/transaction");
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else {
           setError(result.error);
           showToast(result.error, "error");

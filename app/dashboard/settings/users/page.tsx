@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -31,7 +31,7 @@ const defaultFormValues: CreateUserFormValues = {
 
 
 export default function UsersPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +47,7 @@ export default function UsersPage() {
     queryFn: async () => {
       const result = await getUsers();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -59,7 +59,7 @@ export default function UsersPage() {
     queryFn: async () => {
       const result = await getRoles();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -89,7 +89,7 @@ export default function UsersPage() {
         queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       } else {
         if (result.status === 401) {
-          router.push("/login");
+          navigate("/login");
           return;
         }
         setError("root", { message: result.error });

@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import {
   getDashboardSales,
   type DashboardSalesData,
@@ -21,14 +20,14 @@ const STATIC_ATTENDANCE_PREVIEW = [
 ];
 
 export default function DashboardPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
     queryFn: async () => {
       const result = await getDashboardSales();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -57,7 +56,7 @@ export default function DashboardPage() {
       <div className="dashboardSection dashboardSectionSales">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">Sales & Billing</h2>
-          <Link href="/dashboard/invoices" className="dashboardSectionLink">
+          <Link to="/dashboard/invoices" className="dashboardSectionLink">
             View full analytics →
           </Link>
         </div>
@@ -160,7 +159,7 @@ export default function DashboardPage() {
       <div className="dashboardSection dashboardSectionAttendance">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">Attendance</h2>
-          <Link href="/dashboard/accounts/analytics" className="dashboardSectionLink">
+          <Link to="/dashboard/accounts/analytics" className="dashboardSectionLink">
             View full analytics →
           </Link>
         </div>

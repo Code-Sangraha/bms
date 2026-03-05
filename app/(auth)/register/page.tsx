@@ -2,15 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { getTokenFromAuthResponse, register as registerApi } from "@/handlers/auth";
 import { setAuthToken } from "@/lib/auth/token";
 import { registerSchema, type RegisterFormValues } from "@/schema/auth";
+import "../auth.scss";
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const {
     register: registerField,
     handleSubmit,
@@ -41,9 +41,9 @@ export default function RegisterPage() {
         const token = getTokenFromAuthResponse(result.data);
         if (token) {
           setAuthToken(token);
-          router.push("/dashboard");
+          navigate("/dashboard");
         } else {
-          router.push("/login");
+          navigate("/login");
         }
       } else {
         setError("root", { message: result.error });
@@ -62,6 +62,7 @@ export default function RegisterPage() {
   const errorMessage = errors.root?.message;
 
   return (
+    <div className="authLayout">
     <div className="authCard">
       <div className="authHeader">
         <h1 className="authTitle">Create account</h1>
@@ -155,10 +156,11 @@ export default function RegisterPage() {
 
       <p className="authFooter">
         Already have an account?{" "}
-        <Link href="/login" className="authLink">
+        <Link to="/login" className="authLink">
           Sign in
         </Link>
       </p>
+    </div>
     </div>
   );
 }

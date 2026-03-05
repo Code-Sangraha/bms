@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -38,7 +38,7 @@ function toFormValues(ct: CustomerType): CreateCustomerTypeFormValues {
 }
 
 export default function CustomerTypesPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function CustomerTypesPage() {
     queryFn: async () => {
       const result = await getCustomerTypes();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -105,7 +105,7 @@ export default function CustomerTypesPage() {
         setIsModalOpen(false);
         queryClient.invalidateQueries({ queryKey: CUSTOMER_TYPES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else addForm.setError("root", { message: result.error });
       }
     },
@@ -129,7 +129,7 @@ export default function CustomerTypesPage() {
         setEditingItem(null);
         queryClient.invalidateQueries({ queryKey: CUSTOMER_TYPES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else editForm.setError("root", { message: result.error });
       }
     },
@@ -147,7 +147,7 @@ export default function CustomerTypesPage() {
         setItemToDelete(null);
         queryClient.invalidateQueries({ queryKey: CUSTOMER_TYPES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });

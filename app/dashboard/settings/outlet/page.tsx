@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -32,7 +32,7 @@ const defaultAddFormValues: CreateOutletFormValues = {
 };
 
 export default function OutletPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const [selectedOutletId, setSelectedOutletId] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function OutletPage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -63,7 +63,7 @@ export default function OutletPage() {
     queryFn: async () => {
       const result = await getUsers();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -124,7 +124,7 @@ export default function OutletPage() {
         setOutletToDelete(null);
         queryClient.invalidateQueries({ queryKey: OUTLETS_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });
@@ -149,7 +149,7 @@ export default function OutletPage() {
         queryClient.invalidateQueries({ queryKey: OUTLETS_QUERY_KEY });
       } else {
         if (result.status === 401) {
-          router.push("/login");
+          navigate("/login");
           return;
         }
         setError("root", { message: result.error });

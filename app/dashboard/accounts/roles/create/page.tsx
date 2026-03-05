@@ -2,8 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -17,15 +16,15 @@ const defaultValues: CreateRoleFormValues = {
 };
 
 export default function CreateRolePage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
 
   useEffect(() => {
     if (canCreate === false) {
-      router.replace("/dashboard/accounts/roles");
+      navigate("/dashboard/accounts/roles", { replace: true });
     }
-  }, [canCreate, router]);
+  }, [canCreate, navigate]);
   const {
     register,
     handleSubmit,
@@ -42,10 +41,10 @@ export default function CreateRolePage() {
     onSuccess: (result) => {
       if (result.ok) {
         queryClient.invalidateQueries({ queryKey: ROLES_QUERY_KEY });
-        router.push("/dashboard/accounts/roles");
+        navigate("/dashboard/accounts/roles");
       } else {
         if (result.status === 401) {
-          router.push("/login");
+          navigate("/login");
           return;
         }
         setError("root", { message: result.error });
@@ -112,7 +111,7 @@ export default function CreateRolePage() {
             >
               {loading ? "Creating…" : "Create role"}
             </button>
-            <Link href="/dashboard/accounts/roles" className="cancelLink">
+            <Link to="/dashboard/accounts/roles" className="cancelLink">
               Cancel
             </Link>
           </div>

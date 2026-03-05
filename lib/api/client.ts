@@ -4,9 +4,9 @@ import { clearStoredUser } from "@/lib/auth/user";
 
 const getBaseUrl = (): string => {
   if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL ?? "";
+    return import.meta.env.VITE_API_URL ?? "";
   }
-  return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
+  return import.meta.env.VITE_API_URL ?? "";
 };
 
 export type ApiError = {

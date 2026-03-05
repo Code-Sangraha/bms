@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
@@ -17,7 +17,7 @@ const PRODUCTS_QUERY_KEY = ["products"];
 type ActionType = "restock" | "deduct";
 
 export default function ProcessedProductPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [actionModal, setActionModal] = useState<{
@@ -32,7 +32,7 @@ export default function ProcessedProductPage() {
     queryFn: async () => {
       const result = await getProducts();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;

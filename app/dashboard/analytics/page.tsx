@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { getDashboardSales, type DashboardSalesResponse } from "@/handlers/sale";
 import "./analytics.scss";
 
@@ -21,7 +21,7 @@ function formatValue(v: unknown): string {
 }
 
 export default function DashboardAnalyticsPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const {
     data: dashboardData,
     isLoading,
@@ -32,7 +32,7 @@ export default function DashboardAnalyticsPage() {
     queryFn: async () => {
       const result = await getDashboardSales();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getEmployees } from "@/handlers/employee";
 import { clockIn as clockInApi, clockOut as clockOutApi } from "@/handlers/attendance";
@@ -17,7 +17,7 @@ function formatElapsed(seconds: number) {
 }
 
 export default function ClockInOutPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -28,7 +28,7 @@ export default function ClockInOutPage() {
     queryFn: async () => {
       const result = await getEmployees();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -43,7 +43,7 @@ export default function ClockInOutPage() {
         setElapsedSeconds(0);
         setClockError(null);
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else setClockError(result.error);
       }
     },
@@ -57,7 +57,7 @@ export default function ClockInOutPage() {
         setIsClockedIn(false);
         setClockError(null);
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else setClockError(result.error);
       }
     },

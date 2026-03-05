@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
 import { FiUsers } from "react-icons/fi";
@@ -125,7 +124,7 @@ const sidebarConfig = {
 };
 
 export default function Sidebar() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { canCreate } = usePermissions();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const allItems = useMemo(
@@ -146,7 +145,7 @@ export default function Sidebar() {
     clearAuthToken();
     clearStoredUser();
     setActiveMenuId(null);
-    router.push("/login");
+    navigate("/login");
   };
 
   return (
@@ -215,7 +214,7 @@ export default function Sidebar() {
           {activeMenu?.items
             .filter((entry) => (entry.permission === "create" ? canCreate : true))
             .map((entry) => (
-              <Link key={entry.href} className="drawerItem" href={entry.href}>
+              <Link key={entry.href} className="drawerItem" to={entry.href}>
                 {entry.label}
               </Link>
             ))}

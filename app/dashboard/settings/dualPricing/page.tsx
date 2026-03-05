@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -58,7 +58,7 @@ function resolveName(
 }
 
 export default function DualPricingPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,7 +76,7 @@ export default function DualPricingPage() {
     queryFn: async () => {
       const result = await getDualPricings();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -88,7 +88,7 @@ export default function DualPricingPage() {
     queryFn: async () => {
       const result = await getProducts();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -100,7 +100,7 @@ export default function DualPricingPage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -133,7 +133,7 @@ export default function DualPricingPage() {
         setIsModalOpen(false);
         queryClient.invalidateQueries({ queryKey: DUAL_PRICING_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else addForm.setError("root", { message: result.error });
       }
     },
@@ -157,7 +157,7 @@ export default function DualPricingPage() {
         setEditingItem(null);
         queryClient.invalidateQueries({ queryKey: DUAL_PRICING_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else editForm.setError("root", { message: result.error });
       }
     },
@@ -175,7 +175,7 @@ export default function DualPricingPage() {
         setItemToDelete(null);
         queryClient.invalidateQueries({ queryKey: DUAL_PRICING_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });

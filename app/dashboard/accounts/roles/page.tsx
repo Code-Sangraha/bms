@@ -2,8 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -31,7 +30,7 @@ function toFormValues(r: Role): CreateRoleFormValues {
 const ROLES_QUERY_KEY = ["roles"];
 
 export default function RolesPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -50,7 +49,7 @@ export default function RolesPage() {
     queryFn: async () => {
       const result = await getRoles();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -95,7 +94,7 @@ export default function RolesPage() {
           );
         });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else editForm.setError("root", { message: result.error });
       }
     },
@@ -113,7 +112,7 @@ export default function RolesPage() {
         setRoleToDelete(null);
         queryClient.invalidateQueries({ queryKey: ROLES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });

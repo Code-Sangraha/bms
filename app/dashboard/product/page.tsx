@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import Pagination from "../../components/Pagination/Pagination";
@@ -37,7 +37,7 @@ const defaultAddFormValues: CreateProductFormValues = {
 };
 
 export default function ProductPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -55,7 +55,7 @@ export default function ProductPage() {
     queryFn: async () => {
       const result = await getProducts();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -139,7 +139,7 @@ export default function ProductPage() {
         setProductToDelete(null);
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });
@@ -175,7 +175,7 @@ export default function ProductPage() {
           );
         });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });
@@ -202,7 +202,7 @@ export default function ProductPage() {
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
         if (result.status === 401) {
-          router.push("/login");
+          navigate("/login");
           return;
         }
         setError("root", { message: result.error });

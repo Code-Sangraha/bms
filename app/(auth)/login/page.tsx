@@ -2,8 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import {
   getRefreshTokenFromAuthResponse,
@@ -14,9 +13,10 @@ import {
 import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { setStoredUser } from "@/lib/auth/user";
 import { loginSchema, type LoginFormValues } from "@/schema/auth";
+import "../auth.scss";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const {
     register: registerField,
     handleSubmit,
@@ -41,7 +41,7 @@ export default function LoginPage() {
           if (user != null && typeof user === "object") {
             setStoredUser({ outletId: user.outletId ?? null });
           }
-          router.push("/dashboard");
+          navigate("/dashboard");
         } else {
           setError("root", { message: "No token received. Please try again." });
         }
@@ -61,6 +61,7 @@ export default function LoginPage() {
   const loading = isSubmitting || mutation.isPending;
 
   return (
+    <div className="authLayout">
     <div className="authCard">
       <div className="authHeader">
         <h1 className="authTitle">Sign in</h1>
@@ -112,10 +113,11 @@ export default function LoginPage() {
 
       <p className="authFooter">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="authLink">
+        <Link to="/register" className="authLink">
           Register
         </Link>
       </p>
+    </div>
     </div>
   );
 }

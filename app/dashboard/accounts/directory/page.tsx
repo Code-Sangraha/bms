@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -50,7 +50,7 @@ function resolveName(
 }
 
 export default function DirectoryPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,7 +69,7 @@ export default function DirectoryPage() {
     queryFn: async () => {
       const result = await getEmployees();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -81,7 +81,7 @@ export default function DirectoryPage() {
     queryFn: async () => {
       const result = await getDepartments();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -93,7 +93,7 @@ export default function DirectoryPage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -105,7 +105,7 @@ export default function DirectoryPage() {
     queryFn: async () => {
       const result = await getRoles();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -197,7 +197,7 @@ export default function DirectoryPage() {
         setIsModalOpen(false);
         queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         else setError("root", { message: result.error });
       }
     },

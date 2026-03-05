@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import Pagination from "@/app/components/Pagination/Pagination";
@@ -31,7 +31,7 @@ const defaultAddFormValues: CreateProductTypeFormValues = {
 };
 
 export default function ProductTypePage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<
     string | null
@@ -52,7 +52,7 @@ export default function ProductTypePage() {
     queryFn: async () => {
       const result = await getProductTypes();
       if (!result.ok) {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
@@ -114,7 +114,7 @@ export default function ProductTypePage() {
         setProductTypeToDelete(null);
         queryClient.invalidateQueries({ queryKey: PRODUCT_TYPES_QUERY_KEY });
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });
@@ -152,7 +152,7 @@ export default function ProductTypePage() {
           }
         );
       } else {
-        if (result.status === 401) router.push("/login");
+        if (result.status === 401) navigate("/login");
       }
     },
   });
@@ -177,7 +177,7 @@ export default function ProductTypePage() {
         });
       } else {
         if (result.status === 401) {
-          router.push("/login");
+          navigate("/login");
           return;
         }
         setError("root", { message: result.error });
