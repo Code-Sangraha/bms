@@ -3,20 +3,72 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
-import { FiUsers } from "react-icons/fi";
 import { IoBagHandleOutline } from "react-icons/io5";
 import { LuReceiptText, LuUserCog } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
+import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
 /** Menu link; permission "create" means link is shown only when user can create. */
+type TranslationKey =
+  | "dashboard"
+  | "overview"
+  | "outlets"
+  | "users"
+  | "departments"
+  | "roles"
+  | "salesBilling"
+  | "analytics"
+  | "pointOfSale"
+  | "transactions"
+  | "customerTypes"
+  | "product"
+  | "products"
+  | "productType"
+  | "pricelist"
+  | "live"
+  | "processed"
+  | "attendance"
+  | "clockInOut"
+  | "directory"
+  | "settings"
+  | "logout"
+  | "closeMenu";
+
 type MenuItem = {
-  label: string;
+  labelKey: TranslationKey;
   href: string;
   permission?: "create";
+};
+
+const sidebarLabelMap: Record<TranslationKey, string> = {
+  dashboard: "Dashboard",
+  overview: "Overview",
+  outlets: "Outlets",
+  users: "Users",
+  departments: "Departments",
+  roles: "Roles",
+  salesBilling: "Sales & Billing",
+  analytics: "Analytics",
+  pointOfSale: "Point of Sale",
+  transactions: "Transactions",
+  customerTypes: "Customer Types",
+  product: "Product",
+  products: "Products",
+  productType: "Product Type",
+  pricelist: "Pricelist",
+  live: "Live",
+  processed: "Processed",
+  attendance: "Attendance",
+  clockInOut: "Clock In/Out",
+  directory: "Directory",
+  settings: "Settings",
+  logout: "Logout",
+  closeMenu: "Close menu",
 };
 
 const sidebarConfig = {
@@ -29,13 +81,13 @@ const sidebarConfig = {
           href: "#",
           icon: <TbLayoutDashboard size={20} />,
           menu: {
-            title: "Dashboard",
+            titleKey: "dashboard" as const,
             items: [
-              { label: "Overview", href: "/dashboard" },
-              { label: "Outlets", href: "/dashboard/settings/outlet" },
-              { label: "Users", href: "/dashboard/settings/users" },
-              { label: "Departments", href: "/dashboard/settings/departments" },
-              { label: "Roles", href: "/dashboard/accounts/roles" },  
+              { labelKey: "overview", href: "/dashboard" },
+              { labelKey: "outlets", href: "/dashboard/settings/outlet" },
+              { labelKey: "users", href: "/dashboard/settings/users" },
+              { labelKey: "departments", href: "/dashboard/settings/departments" },
+              { labelKey: "roles", href: "/dashboard/accounts/roles" },
               // { label: "Analytics", href: "/dashboard/analytics" },
               // { label: "Reports", href: "/dashboard/reports" },
             ] as MenuItem[],
@@ -46,12 +98,12 @@ const sidebarConfig = {
           href: "#",
           icon: <LuReceiptText size={20} />,
           menu: {
-            title: "Sales & Billing",
+            titleKey: "salesBilling" as const,
             items: [
-              { label: "Analytics", href: "/dashboard/invoices" },
-              { label: "Point of Sale", href: "/dashboard/invoices/new", permission: "create" as const },
-              { label: "Transactions", href: "/dashboard/invoices/transaction" },
-              { label: "Customer Types", href: "/dashboard/invoices/customer-types" },
+              { labelKey: "analytics", href: "/dashboard/invoices" },
+              { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" as const },
+              { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+              { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
             ] as MenuItem[],
           },
         },
@@ -60,14 +112,14 @@ const sidebarConfig = {
           href: "#",
           icon: <IoBagHandleOutline size={20} />,
           menu: {
-            title: "Product",
+            titleKey: "product" as const,
             items: [
-              { label: "Products", href: "/dashboard/product" },
-              { label: "Product Type", href: "/dashboard/product/productType" },
-              { label: "Pricelist", href: "/dashboard/settings/dualPricing" },
+              { labelKey: "products", href: "/dashboard/product" },
+              { labelKey: "productType", href: "/dashboard/product/productType" },
+              { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
 
-              { label: "Live", href: "/dashboard/product/liveProduct" },
-              { label: "Processed", href: "/dashboard/product/processedProduct" },
+              { labelKey: "live", href: "/dashboard/product/liveProduct" },
+              { labelKey: "processed", href: "/dashboard/product/processedProduct" },
 
             ] as MenuItem[],
           },
@@ -77,11 +129,11 @@ const sidebarConfig = {
           href: "#",
           icon: <LuUserCog size={20} />,
           menu: {
-            title: "Attendance",
+            titleKey: "attendance" as const,
             items: [
-              { label: "Analytics", href: "/dashboard/accounts/analytics" },
-              { label: "Clock In/Out", href: "/dashboard/accounts/clock-in-out" },
-              { label: "Directory", href: "/dashboard/accounts/directory" },
+              { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
+              { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
+              { labelKey: "directory", href: "/dashboard/accounts/directory" },
             ] as MenuItem[],
           },
         },
@@ -109,12 +161,12 @@ const sidebarConfig = {
           href: "#",
           icon: <CiSettings size={20} />,
           menu: {
-            title: "Settings",
+            titleKey: "settings" as const,
             items: [
-              { label: "Outlets", href: "/dashboard/settings/outlet" },
-              { label: "Users", href: "/dashboard/settings/users" },
-              { label: "Departments", href: "/dashboard/settings/departments" },
-              { label: "Roles", href: "/dashboard/accounts/roles" },  
+              { labelKey: "outlets", href: "/dashboard/settings/outlet" },
+              { labelKey: "users", href: "/dashboard/settings/users" },
+              { labelKey: "departments", href: "/dashboard/settings/departments" },
+              { labelKey: "roles", href: "/dashboard/accounts/roles" },
             ] as MenuItem[],
           },
         },
@@ -126,6 +178,7 @@ const sidebarConfig = {
 export default function Sidebar() {
   const navigate = useNavigate();
   const { canCreate } = usePermissions();
+  const { t } = useI18n();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const allItems = useMemo(
     () => [
@@ -176,6 +229,7 @@ export default function Sidebar() {
         </nav>
 
         <div className="footer">
+          <LanguageToggle className="link" />
           {sidebarConfig.footer[0].items.map((item) => (
             <button
               key={item.id}
@@ -195,17 +249,19 @@ export default function Sidebar() {
           type="button"
           className="drawerBackdrop visible"
           onClick={() => setActiveMenuId(null)}
-          aria-label="Close menu"
+          aria-label={t("Close menu")}
         />
       )}
       <div className={activeMenu ? "drawer open" : "drawer"}>
         <div className="drawerHeader">
-          <span className="drawerTitle">{activeMenu?.title}</span>
+          <span className="drawerTitle">
+            {activeMenu ? t(sidebarLabelMap[activeMenu.titleKey]) : ""}
+          </span>
           <button
             type="button"
             className="drawerClose"
             onClick={() => setActiveMenuId(null)}
-            aria-label="Close menu"
+            aria-label={t("Close menu")}
           >
             ×
           </button>
@@ -214,8 +270,12 @@ export default function Sidebar() {
           {activeMenu?.items
             .filter((entry) => (entry.permission === "create" ? canCreate : true))
             .map((entry) => (
-              <Link key={entry.href} className="drawerItem" to={entry.href}>
-                {entry.label}
+              <Link
+                key={entry.href}
+                className="drawerItem"
+                to={entry.href}
+              >
+                {t(sidebarLabelMap[entry.labelKey])}
               </Link>
             ))}
         </div>
@@ -225,7 +285,7 @@ export default function Sidebar() {
             className="drawerItemLogout"
             onClick={handleLogout}
           >
-            Logout
+            {t("Logout")}
           </button>
         </div>
       </div>

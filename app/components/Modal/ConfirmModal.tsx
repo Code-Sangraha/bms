@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/app/providers/I18nProvider";
 import "./Modal.scss";
 
 type ConfirmModalVariant = "danger" | "default";
@@ -27,6 +28,8 @@ export default function ConfirmModal({
   onClose,
   onConfirm,
 }: ConfirmModalProps) {
+  const { t } = useI18n();
+
   if (!isOpen) return null;
 
   const isDanger = variant === "danger";
@@ -47,7 +50,7 @@ export default function ConfirmModal({
           <button
             type="button"
             className="modalClose"
-            aria-label="Close"
+            aria-label={t("Close")}
             onClick={onClose}
           >
             ×
@@ -63,7 +66,7 @@ export default function ConfirmModal({
             onClick={onClose}
             disabled={loading}
           >
-            {cancelLabel}
+            {t(cancelLabel)}
           </button>
           <button
             type="button"
@@ -72,7 +75,7 @@ export default function ConfirmModal({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "…" : confirmLabel}
+            {loading ? "…" : t(confirmLabel)}
           </button>
         </div>
       </div>

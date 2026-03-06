@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -53,6 +54,7 @@ export default function DirectoryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
+  const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -203,7 +205,7 @@ export default function DirectoryPage() {
     },
     onError: () => {
       setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -217,14 +219,14 @@ export default function DirectoryPage() {
   return (
     <section className="directoryPage">
       <div className="breadcrumb">
-        <span>Staff Management</span> {"›"} Directory
+        <span>{t("Staff Management")}</span> {"›"} {t("Directory")}
       </div>
 
       <div className="directoryHeader">
         <div className="directoryHeaderText">
-          <h1 className="pageTitle">Employee Directory</h1>
+          <h1 className="pageTitle">{t("Employee Directory")}</h1>
           <p className="pageSubtitle">
-            Manage employee information and roles
+            {t("Manage employee information and roles")}
           </p>
         </div>
         {canCreate && (
@@ -233,7 +235,7 @@ export default function DirectoryPage() {
             className="button buttonPrimary"
             onClick={() => setIsModalOpen(true)}
           >
-            Add Employees
+            {t("Add Employees")}
           </button>
         )}
       </div>
@@ -242,26 +244,26 @@ export default function DirectoryPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search employees"
+          placeholder={t("Search employees")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search employees"
+          aria-label={t("Search employees")}
         />
       </div>
 
       <div className="directoryTable">
         <div className="directoryRow directoryRowHeader">
-          <span>Employee ID</span>
-          <span>IOT</span>
-          <span>Name</span>
-          <span>Role</span>
-          <span>Department</span>
-          <span>Contact</span>
+          <span>{t("Employee ID")}</span>
+          <span>{t("IOT")}</span>
+          <span>{t("Name")}</span>
+          <span>{t("Role")}</span>
+          <span>{t("Department")}</span>
+          <span>{t("Contact")}</span>
           <span />
         </div>
         {employeesLoading && (
           <div className="directoryRow">
-            <span className="directoryMessage">Loading employees…</span>
+            <span className="directoryMessage">{t("Loading employees…")}</span>
             <span />
             <span />
             <span />
@@ -275,7 +277,7 @@ export default function DirectoryPage() {
             <span className="directoryMessage directoryError">
               {employeesErrorDetail instanceof Error
                 ? employeesErrorDetail.message
-                : "Failed to load employees"}
+                : t("Failed to load employees")}
             </span>
             <span />
             <span />
@@ -288,7 +290,7 @@ export default function DirectoryPage() {
         {!employeesLoading && !employeesError && employees.length === 0 && (
           <div className="directoryRow">
             <span className="directoryMessage">
-              No employees yet. Add one to get started.
+              {t("No employees yet. Add one to get started.")}
             </span>
             <span />
             <span />
@@ -304,7 +306,7 @@ export default function DirectoryPage() {
           filteredEmployees.length === 0 && (
             <div className="directoryRow">
               <span className="directoryMessage">
-                No employees match &quot;{searchQuery.trim()}&quot;.
+                {t("No employees match")} &quot;{searchQuery.trim()}&quot;.
               </span>
               <span />
               <span />
@@ -339,7 +341,7 @@ export default function DirectoryPage() {
                   onClick={() =>
                     setOpenMenuId((id) => (id === emp.id ? null : emp.id))
                   }
-                  aria-label="More options"
+                  aria-label={t("More options")}
                   aria-expanded={openMenuId === emp.id}
                 >
                   ⋮
@@ -347,10 +349,10 @@ export default function DirectoryPage() {
                 {openMenuId === emp.id && (
                   <div className="directoryMenuDropdown">
                     <button type="button" className="directoryMenuItem">
-                      Edit
+                      {t("Edit")}
                     </button>
                     <button type="button" className="directoryMenuItem directoryMenuItemDanger">
-                      Delete
+                      {t("Delete")}
                     </button>
                   </div>
                 )}
@@ -373,8 +375,8 @@ export default function DirectoryPage() {
 
       <Modal
         isOpen={isModalOpen}
-        title="Register employee"
-        subtitle="Add a new employee to the directory"
+        title={t("Register employee")}
+        subtitle={t("Add a new employee to the directory")}
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
@@ -383,7 +385,7 @@ export default function DirectoryPage() {
               className="button modalButton"
               onClick={() => setIsModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -391,7 +393,7 @@ export default function DirectoryPage() {
               className="button buttonPrimary modalButton"
               disabled={loading}
             >
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -405,10 +407,10 @@ export default function DirectoryPage() {
             <p className="directoryFormError">{errors.root.message}</p>
           )}
           <label className="modalField">
-            <span className="label">Employee ID</span>
+            <span className="label">{t("Employee ID")}</span>
             <input
               className="input"
-              placeholder="e.g. TXN-001"
+              placeholder={t("e.g. TXN-001")}
               {...register("employeeId")}
             />
             {errors.employeeId && (
@@ -418,10 +420,10 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">IOT</span>
+            <span className="label">{t("IOT")}</span>
             <input
               className="input"
-              placeholder="e.g. 1ab2c58a"
+              placeholder={t("e.g. 1ab2c58a")}
               {...register("iot")}
             />
             {errors.iot && (
@@ -429,10 +431,10 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Name</span>
+            <span className="label">{t("Name")}</span>
             <input
               className="input"
-              placeholder="e.g. Employ number one"
+              placeholder={t("e.g. Employ number one")}
               {...register("name")}
             />
             {errors.name && (
@@ -442,9 +444,9 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Department</span>
+            <span className="label">{t("Department")}</span>
             <select className="select" {...register("departmentId")}>
-              <option value="">Select department</option>
+              <option value="">{t("Select department")}</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -458,9 +460,9 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Outlet</span>
+            <span className="label">{t("Outlet")}</span>
             <select className="select" {...register("outletId")}>
-              <option value="">Select outlet</option>
+              <option value="">{t("Select outlet")}</option>
               {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -474,9 +476,9 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Role</span>
+            <span className="label">{t("Role")}</span>
             <select className="select" {...register("roleId")}>
-              <option value="">Select role</option>
+              <option value="">{t("Select role")}</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -490,10 +492,10 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Contact</span>
+            <span className="label">{t("Contact")}</span>
             <input
               className="input"
-              placeholder="e.g. 9876543210"
+              placeholder={t("e.g. 9876543210")}
               {...register("contact")}
             />
             {errors.contact && (
@@ -503,10 +505,10 @@ export default function DirectoryPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

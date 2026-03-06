@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -33,6 +34,7 @@ const defaultAddFormValues: CreateProductTypeFormValues = {
 export default function ProductTypePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<
     string | null
   >(null);
@@ -185,7 +187,7 @@ export default function ProductTypePage() {
     },
     onError: () => {
       setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -199,14 +201,14 @@ export default function ProductTypePage() {
   return (
     <section className="productTypePage">
       <div className="breadcrumb">
-        <span>Product</span> {"›"} Product Type
+        <span>{t("Product")}</span> {"›"} {t("Product Type")}
       </div>
 
       <div className="productTypeHeader">
         <div className="productTypeHeaderText">
-          <h1 className="pageTitle">Product Type</h1>
+          <h1 className="pageTitle">{t("Product Type")}</h1>
           <p className="pageSubtitle">
-            Manage product types such as processed, raw, and packaged
+            {t("Manage product types such as processed, raw, and packaged")}
           </p>
         </div>
         <button
@@ -214,26 +216,26 @@ export default function ProductTypePage() {
           className="button buttonPrimary"
           onClick={() => setIsAddModalOpen(true)}
         >
-          Add Product Type
+          {t("Add Product Type")}
         </button>
       </div>
 
       <div className="cardList">
         {productTypesLoading && (
-          <p className="productTypePageMessage">Loading product types…</p>
+          <p className="productTypePageMessage">{t("Loading product types…")}</p>
         )}
         {productTypesError && (
           <p className="productTypePageMessage productTypePageError">
             {productTypesErrorDetail instanceof Error
               ? productTypesErrorDetail.message
-              : "Failed to load product types"}
+              : t("Failed to load product types")}
           </p>
         )}
         {!productTypesLoading &&
           !productTypesError &&
           productTypes.length === 0 && (
             <p className="productTypePageMessage">
-              No product types yet. Add one to get started.
+              {t("No product types yet. Add one to get started.")}
             </p>
           )}
         {!productTypesLoading &&
@@ -251,7 +253,7 @@ export default function ProductTypePage() {
                       productType.status ? "badge badgeActive" : "badge"
                     }
                   >
-                    {productType.status ? "Active" : "Inactive"}
+                    {productType.status ? t("Active") : t("Inactive")}
                   </span>
                   <div
                     className="cardMenuWrap"
@@ -267,7 +269,7 @@ export default function ProductTypePage() {
                           id === productType.id ? null : productType.id
                         )
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === productType.id}
                     >
                       ⋮
@@ -282,7 +284,7 @@ export default function ProductTypePage() {
                             setOpenMenuId(null);
                           }}
                         >
-                          Delete
+                          {t("Delete")}
                         </button>
                       </div>
                     )}
@@ -292,7 +294,7 @@ export default function ProductTypePage() {
 
               <div className="cardBody">
                 <label className="field">
-                  <span className="label">Name</span>
+                  <span className="label">{t("Name")}</span>
                   <input
                     className="input"
                     value={productType.name}
@@ -301,15 +303,15 @@ export default function ProductTypePage() {
                 </label>
 
                 <label className="field">
-                  <span className="label">Status</span>
+                  <span className="label">{t("Status")}</span>
                   <select
                     className="select"
                     value={productType.status ? "Active" : "Inactive"}
                     disabled
                     aria-readonly="true"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Active">{t("Active")}</option>
+                    <option value="Inactive">{t("Inactive")}</option>
                   </select>
                 </label>
               </div>
@@ -320,7 +322,7 @@ export default function ProductTypePage() {
                   className="button buttonPrimary"
                   onClick={() => setSelectedProductTypeId(productType.id)}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
               </div>
             </article>
@@ -351,14 +353,16 @@ export default function ProductTypePage() {
 
       <ConfirmModal
         isOpen={!!productTypeToDelete}
-        title="Delete product type"
+        title={t("Delete product type")}
         message={
           productTypeToDelete
-            ? `Are you sure you want to delete "${productTypeToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${productTypeToDelete.name}"? ${t(
+                "This action cannot be undone."
+              )}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setProductTypeToDelete(null)}
@@ -367,8 +371,8 @@ export default function ProductTypePage() {
 
       <Modal
         isOpen={isAddModalOpen}
-        title="Add Product Type"
-        subtitle="Add a new product type (e.g. processed, raw, packaged)"
+        title={t("Add Product Type")}
+        subtitle={t("Add a new product type (e.g. processed, raw, packaged)")}
         onClose={() => setIsAddModalOpen(false)}
         footer={
           <>
@@ -377,7 +381,7 @@ export default function ProductTypePage() {
               className="button modalButton"
               onClick={() => setIsAddModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -385,7 +389,7 @@ export default function ProductTypePage() {
               className="button buttonPrimary modalButton"
               disabled={loading}
             >
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -399,10 +403,10 @@ export default function ProductTypePage() {
             <p className="productTypeFormError">{errors.root.message}</p>
           )}
           <label className="modalField">
-            <span className="label">Name</span>
+            <span className="label">{t("Name")}</span>
             <input
               className="input"
-              placeholder="e.g. processed"
+              placeholder={t("e.g. processed")}
               {...register("name")}
             />
             {errors.name && (
@@ -412,10 +416,10 @@ export default function ProductTypePage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

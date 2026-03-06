@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+import { useI18n } from "@/app/providers/I18nProvider";
 import {
   getDashboardSales,
   type DashboardSalesData,
@@ -21,6 +22,7 @@ const STATIC_ATTENDANCE_PREVIEW = [
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -48,25 +50,25 @@ export default function DashboardPage() {
   return (
     <section className="dashboardOverview">
       <div className="dashboardHero">
-        <h1 className="dashboardTitle">Dashboard</h1>
-        <p className="dashboardSubtitle">Sales, billing and attendance at a glance.</p>
+        <h1 className="dashboardTitle">{t("Dashboard")}</h1>
+        <p className="dashboardSubtitle">{t("Sales, billing and attendance at a glance.")}</p>
       </div>
 
       {/* Sales & Billing */}
       <div className="dashboardSection dashboardSectionSales">
         <div className="dashboardSectionHead">
-          <h2 className="dashboardSectionTitle">Sales & Billing</h2>
+          <h2 className="dashboardSectionTitle">{t("Sales & Billing")}</h2>
           <Link to="/dashboard/invoices" className="dashboardSectionLink">
-            View full analytics →
+            {t("View full analytics")} →
           </Link>
         </div>
 
         {salesLoading && (
-          <div className="dashboardBlock dashboardMessage">Loading sales…</div>
+          <div className="dashboardBlock dashboardMessage">{t("Loading sales…")}</div>
         )}
         {salesError && (
           <div className="dashboardBlock dashboardMessage dashboardError">
-            {salesErrorDetail instanceof Error ? salesErrorDetail.message : "Failed to load sales"}
+            {salesErrorDetail instanceof Error ? salesErrorDetail.message : t("Failed to load sales")}
           </div>
         )}
 
@@ -74,21 +76,21 @@ export default function DashboardPage() {
           <>
             <div className="dashboardCards">
               <div className="dashboardCard dashboardCardRevenue">
-                <span className="dashboardCardLabel">Total Revenue</span>
+                <span className="dashboardCardLabel">{t("Total Revenue")}</span>
                 <span className="dashboardCardValue">
                   Rs.{totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="dashboardCard dashboardCardTransactions">
-                <span className="dashboardCardLabel">Transactions</span>
+                <span className="dashboardCardLabel">{t("Transactions")}</span>
                 <span className="dashboardCardValue">{totalTransactions}</span>
               </div>
               <div className="dashboardCard dashboardCardWeight">
-                <span className="dashboardCardLabel">Weight Sold</span>
+                <span className="dashboardCardLabel">{t("Weight Sold")}</span>
                 <span className="dashboardCardValue">{totalWeight} kg</span>
               </div>
               <div className="dashboardCard dashboardCardQuantity">
-                <span className="dashboardCardLabel">Quantity Sold</span>
+                <span className="dashboardCardLabel">{t("Quantity Sold")}</span>
                 <span className="dashboardCardValue">{totalQuantity}</span>
               </div>
             </div>
@@ -97,7 +99,7 @@ export default function DashboardPage() {
               <div className="dashboardCharts">
                 {salesByOutlet.length > 0 && (
                   <div className="dashboardChartBlock">
-                    <h3 className="dashboardChartTitle">Top outlets</h3>
+                    <h3 className="dashboardChartTitle">{t("Top outlets")}</h3>
                     <div className="dashboardOutletBars">
                       {salesByOutlet.map((row: SalesByOutletItem) => {
                         const amount = row.totalAmount ?? 0;
@@ -117,7 +119,7 @@ export default function DashboardPage() {
                 )}
                 {salesByProduct.length > 0 && (
                   <div className="dashboardChartBlock">
-                    <h3 className="dashboardChartTitle">Top products</h3>
+                    <h3 className="dashboardChartTitle">{t("Top products")}</h3>
                     <div className="dashboardProductList">
                       {salesByProduct.map((row: SalesByProductItem) => (
                         <div key={row.productId} className="dashboardProductRow">
@@ -132,7 +134,7 @@ export default function DashboardPage() {
                 )}
                 {salesByCustomer.length > 0 && (
                   <div className="dashboardChartBlock">
-                    <h3 className="dashboardChartTitle">Top customers</h3>
+                    <h3 className="dashboardChartTitle">{t("Top customers")}</h3>
                     <div className="dashboardProductList">
                       {salesByCustomer.map((row: SalesByCustomerItem, idx: number) => (
                         <div key={idx} className="dashboardProductRow">
@@ -149,7 +151,7 @@ export default function DashboardPage() {
             )}
 
             {totalTransactions === 0 && salesByOutlet.length === 0 && salesByProduct.length === 0 && salesByCustomer.length === 0 && (
-              <div className="dashboardBlock dashboardMessage">No sales data yet.</div>
+              <div className="dashboardBlock dashboardMessage">{t("No sales data yet.")}</div>
             )}
           </>
         )}
@@ -158,33 +160,33 @@ export default function DashboardPage() {
       {/* Attendance */}
       <div className="dashboardSection dashboardSectionAttendance">
         <div className="dashboardSectionHead">
-          <h2 className="dashboardSectionTitle">Attendance</h2>
+          <h2 className="dashboardSectionTitle">{t("Attendance")}</h2>
           <Link to="/dashboard/accounts/analytics" className="dashboardSectionLink">
-            View full analytics →
+            {t("View full analytics")} →
           </Link>
         </div>
         <div className="dashboardCards dashboardCardsAttendance">
           <div className="dashboardCard dashboardCardStaff">
-            <span className="dashboardCardLabel">Total Staff</span>
+            <span className="dashboardCardLabel">{t("Total Staff")}</span>
             <span className="dashboardCardValue">32</span>
-            <span className="dashboardCardSub">4 departments</span>
+            <span className="dashboardCardSub">{t("4 departments")}</span>
           </div>
           <div className="dashboardCard dashboardCardPresent">
-            <span className="dashboardCardLabel">Present Today</span>
+            <span className="dashboardCardLabel">{t("Present Today")}</span>
             <span className="dashboardCardValue">20</span>
-            <span className="dashboardCardSub">70% present</span>
+            <span className="dashboardCardSub">{t("70% present")}</span>
           </div>
         </div>
         <div className="dashboardChartBlock">
-          <h3 className="dashboardChartTitle">Daily attendance</h3>
+          <h3 className="dashboardChartTitle">{t("Daily attendance")}</h3>
           <div className="dashboardAttendanceTableWrap">
             <table className="dashboardAttendanceTable">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Clock In</th>
-                  <th>Clock Out</th>
-                  <th>Status</th>
+                  <th>{t("Name")}</th>
+                  <th>{t("Clock In")}</th>
+                  <th>{t("Clock Out")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,7 +196,7 @@ export default function DashboardPage() {
                     <td>{row.clockIn}</td>
                     <td>{row.clockOut}</td>
                     <td>
-                      <span className={`dashboardPill dashboardPill${row.status}`}>{row.status}</span>
+                      <span className={`dashboardPill dashboardPill${row.status}`}>{t(row.status)}</span>
                     </td>
                   </tr>
                 ))}

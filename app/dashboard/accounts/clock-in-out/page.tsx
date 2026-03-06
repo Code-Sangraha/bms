@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { getEmployees } from "@/handlers/employee";
 import { clockIn as clockInApi, clockOut as clockOutApi } from "@/handlers/attendance";
 import "./clock-in-out.scss";
@@ -18,6 +19,7 @@ function formatElapsed(seconds: number) {
 
 export default function ClockInOutPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -47,7 +49,7 @@ export default function ClockInOutPage() {
         else setClockError(result.error);
       }
     },
-    onError: () => setClockError("Something went wrong. Please try again."),
+    onError: () => setClockError(t("Something went wrong. Please try again.")),
   });
 
   const clockOutMutation = useMutation({
@@ -61,7 +63,7 @@ export default function ClockInOutPage() {
         else setClockError(result.error);
       }
     },
-    onError: () => setClockError("Something went wrong. Please try again."),
+    onError: () => setClockError(t("Something went wrong. Please try again.")),
   });
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function ClockInOutPage() {
 
   const handleClockIn = () => {
     if (!selectedEmployeeId) {
-      setClockError("Please select an employee.");
+      setClockError(t("Please select an employee."));
       return;
     }
     setClockError(null);
@@ -93,39 +95,39 @@ export default function ClockInOutPage() {
   return (
     <section className="clockInOutPage">
       <div className="breadcrumb">
-        <span>Staff Management</span> {"›"} Clock-IN/OUT
+        <span>{t("Staff Management")}</span> {"›"} {t("Clock-IN/OUT")}
       </div>
 
       <div className="clockInOutHeader">
         <div className="clockInOutHeaderText">
-          <h1 className="pageTitle">Clock-IN/OUT</h1>
+          <h1 className="pageTitle">{t("Clock-IN/OUT")}</h1>
           <p className="pageSubtitle">
-            Track staff attendance and working hours
+            {t("Track staff attendance and working hours")}
           </p>
         </div>
       </div>
 
       <div className="clockInOutLayout">
         <div className="clockInOutCard">
-          <span className="clockInOutLabel">Clock in</span>
+          <span className="clockInOutLabel">{t("Clock in")}</span>
           <div className="clockInOutTimer">
             <div className="clockInOutTimerBox">
               <span className="clockInOutTimerValue">{String(h).padStart(2, "0")}</span>
-              <span className="clockInOutTimerUnit">HOURS</span>
+              <span className="clockInOutTimerUnit">{t("HOURS")}</span>
             </div>
             <div className="clockInOutTimerBox">
               <span className="clockInOutTimerValue">{String(m).padStart(2, "0")}</span>
-              <span className="clockInOutTimerUnit">MINUTES</span>
+              <span className="clockInOutTimerUnit">{t("MINUTES")}</span>
             </div>
             <div className="clockInOutTimerBox">
               <span className="clockInOutTimerValue">{String(s).padStart(2, "0")}</span>
-              <span className="clockInOutTimerUnit">SECONDS</span>
+              <span className="clockInOutTimerUnit">{t("SECONDS")}</span>
             </div>
           </div>
           <p className="clockInOutHint">
             {isClockedIn
-              ? "You are clocked in. Click Clock-OUT when you finish."
-              : "Start tracking your time by clocking in."}
+              ? t("You are clocked in. Click Clock-OUT when you finish.")
+              : t("Start tracking your time by clocking in.")}
           </p>
           {employees.length > 0 && (
             <div className="clockInOutSelectWrap">
@@ -133,10 +135,10 @@ export default function ClockInOutPage() {
                 className="clockInOutSelect"
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                aria-label="Select employee"
+                aria-label={t("Select employee")}
                 disabled={isClockedIn}
               >
-                <option value="">Select employee</option>
+                <option value="">{t("Select employee")}</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name} ({emp.employeeId})
@@ -157,7 +159,7 @@ export default function ClockInOutPage() {
               onClick={handleClockOut}
               disabled={loading}
             >
-              {loading ? "Processing…" : "Clock-OUT"}
+              {loading ? t("Processing…") : t("Clock-OUT")}
             </button>
           ) : (
             <button
@@ -166,31 +168,31 @@ export default function ClockInOutPage() {
               onClick={handleClockIn}
               disabled={loading || !selectedEmployeeId}
             >
-              {loading ? "Processing…" : "Clock-IN"}
+              {loading ? t("Processing…") : t("Clock-IN")}
             </button>
           )}
         </div>
 
         <div className="clockInOutStats">
           <div className="clockInOutStatCard">
-            <span className="clockInOutStatTitle">Weekly Work</span>
-            <span className="clockInOutStatValue">14h 30m</span>
-            <span className="clockInOutStatSub">This week</span>
+            <span className="clockInOutStatTitle">{t("Weekly Work")}</span>
+            <span className="clockInOutStatValue">{t("14h 30m")}</span>
+            <span className="clockInOutStatSub">{t("This week")}</span>
           </div>
           <div className="clockInOutStatCard">
-            <span className="clockInOutStatTitle">Present Today</span>
+            <span className="clockInOutStatTitle">{t("Present Today")}</span>
             <span className="clockInOutStatValue">20</span>
-            <span className="clockInOutStatSub">70% present</span>
+            <span className="clockInOutStatSub">{t("70% present")}</span>
           </div>
           <div className="clockInOutStatCard">
-            <span className="clockInOutStatTitle">Absent Today</span>
+            <span className="clockInOutStatTitle">{t("Absent Today")}</span>
             <span className="clockInOutStatValue">1</span>
-            <span className="clockInOutStatSub">This week</span>
+            <span className="clockInOutStatSub">{t("This week")}</span>
           </div>
           <div className="clockInOutStatCard">
-            <span className="clockInOutStatTitle">Total Staff</span>
+            <span className="clockInOutStatTitle">{t("Total Staff")}</span>
             <span className="clockInOutStatValue">20</span>
-            <span className="clockInOutStatSub">Total Staff</span>
+            <span className="clockInOutStatSub">{t("Total Staff")}</span>
           </div>
         </div>
       </div>

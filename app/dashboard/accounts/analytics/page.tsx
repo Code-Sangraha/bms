@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import "./analytics.scss";
 
 const STATIC_ATTENDANCE = [
@@ -11,58 +12,59 @@ const STATIC_ATTENDANCE = [
 
 export default function AccountsAnalyticsPage() {
   const [outletFilter, setOutletFilter] = useState("all");
+  const { t } = useI18n();
 
   return (
     <section className="analyticsPage">
       <div className="breadcrumb">
-        <span>Accounts</span>
+        <span>{t("Accounts")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
-        <span>Analytics</span>
+        <span>{t("Analytics")}</span>
       </div>
 
       <div className="analyticsHeader">
         <div className="analyticsHeaderText">
-          <h1 className="pageTitle">Analytics</h1>
-          <p className="pageSubtitle">Track staff attendance and working hours.</p>
+          <h1 className="pageTitle">{t("Analytics")}</h1>
+          <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
           <select
             className="analyticsOutletSelect"
             value={outletFilter}
             onChange={(e) => setOutletFilter(e.target.value)}
-            aria-label="Filter by outlet"
+            aria-label={t("Filter by outlet")}
           >
-            <option value="all">All Outlets</option>
+            <option value="all">{t("All Outlets")}</option>
           </select>
-          <span className="analyticsLastSync">Last sync: 2mins</span>
+          <span className="analyticsLastSync">{t("Last sync: 2mins")}</span>
         </div>
       </div>
 
       <div className="analyticsCards">
         <div className="analyticsCard analyticsCardTotal">
-          <div className="analyticsCardLabel">Total Staff</div>
+          <div className="analyticsCardLabel">{t("Total Staff")}</div>
           <div className="analyticsCardValue">32</div>
-          <div className="analyticsCardSub">4 departments</div>
+          <div className="analyticsCardSub">{t("4 departments")}</div>
         </div>
         <div className="analyticsCard analyticsCardPresent">
-          <div className="analyticsCardLabel">Present Today</div>
+          <div className="analyticsCardLabel">{t("Present Today")}</div>
           <div className="analyticsCardValue">20</div>
-          <div className="analyticsCardSub">70% present</div>
+          <div className="analyticsCardSub">{t("70% present")}</div>
         </div>
       </div>
 
       <div className="analyticsTableSection">
-        <h2 className="analyticsTableTitle">Daily Attendance</h2>
+        <h2 className="analyticsTableTitle">{t("Daily Attendance")}</h2>
         <div className="analyticsTableWrap">
           <table className="analyticsTable">
             <thead>
               <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Clock In</th>
-                <th>Clock Out</th>
-                <th>Status</th>
-                <th>Total Hours</th>
+                <th>{t("Employee ID")}</th>
+                <th>{t("Name")}</th>
+                <th>{t("Clock In")}</th>
+                <th>{t("Clock Out")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Total Hours")}</th>
                 <th aria-hidden />
               </tr>
             </thead>
@@ -75,15 +77,15 @@ export default function AccountsAnalyticsPage() {
                   <td>{row.clockOut}</td>
                   <td>
                     <span className={`analyticsPill analyticsPill${row.status}`}>
-                      {row.status}
+                      {t(row.status)}
                     </span>
                   </td>
-                  <td>{row.totalHours}</td>
+                  <td>{t(row.totalHours)}</td>
                   <td>
                     <button
                       type="button"
                       className="analyticsRowAction"
-                      aria-label="More options"
+                      aria-label={t("More options")}
                     >
                       ⋮
                     </button>

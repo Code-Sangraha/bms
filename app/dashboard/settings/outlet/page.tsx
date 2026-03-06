@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -35,6 +36,7 @@ export default function OutletPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { t } = useI18n();
   const [selectedOutletId, setSelectedOutletId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export default function OutletPage() {
       }
     },
     onError: () => {
-      setError("root", { message: "Something went wrong. Please try again." });
+      setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -183,14 +185,14 @@ export default function OutletPage() {
   return (
     <section className="outletPage">
       <div className="breadcrumb">
-        <span>Settings</span> {"›"} Outlet Management
+        <span>{t("Settings")}</span> {"›"} {t("Outlet Management")}
       </div>
 
       <div className="outletHeader">
         <div className="outletHeaderText">
-          <h1 className="pageTitle">Outlet Management</h1>
+          <h1 className="pageTitle">{t("Outlet Management")}</h1>
           <p className="pageSubtitle">
-            Manage processing plants, retail stores, and distribution centers
+            {t("Manage processing plants, retail stores, and distribution centers")}
           </p>
         </div>
         {canCreate && (
@@ -199,24 +201,24 @@ export default function OutletPage() {
             className="button buttonPrimary"
             onClick={() => setIsAddModalOpen(true)}
           >
-            Add Outlet
+            {t("Add Outlet")}
           </button>
         )}
       </div>
 
       <div className="cardList">
         {outletsLoading && (
-          <p className="outletPageMessage">Loading outlets…</p>
+          <p className="outletPageMessage">{t("Loading outlets…")}</p>
         )}
         {outletsError && (
           <p className="outletPageMessage outletPageError">
             {outletsErrorDetail instanceof Error
               ? outletsErrorDetail.message
-              : "Failed to load outlets"}
+              : t("Failed to load outlets")}
           </p>
         )}
         {!outletsLoading && !outletsError && outlets.length === 0 && (
-          <p className="outletPageMessage">No outlets yet. Add one to get started.</p>
+          <p className="outletPageMessage">{t("No outlets yet. Add one to get started.")}</p>
         )}
         {!outletsLoading &&
           !outletsError &&
@@ -233,7 +235,7 @@ export default function OutletPage() {
                     outlet.status ? "badge badgeActive" : "badge"
                   }
                 >
-                  {outlet.status ? "Active" : "Inactive"}
+                  {outlet.status ? t("Active") : t("Inactive")}
                 </span>
                 {canDelete && (
                   <div
@@ -246,7 +248,7 @@ export default function OutletPage() {
                       onClick={() =>
                         setOpenMenuId((id) => (id === outlet.id ? null : outlet.id))
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === outlet.id}
                     >
                       ⋮
@@ -261,7 +263,7 @@ export default function OutletPage() {
                             setOpenMenuId(null);
                           }}
                         >
-                          Delete
+                          {t("Delete")}
                         </button>
                       </div>
                     )}
@@ -272,7 +274,7 @@ export default function OutletPage() {
 
             <div className="cardBody">
               <label className="field">
-                <span className="label">Manager</span>
+                <span className="label">{t("Manager")}</span>
                 <input
                   className="input"
                   value={
@@ -285,7 +287,7 @@ export default function OutletPage() {
               </label>
 
               <label className="field">
-                <span className="label">Contact</span>
+                <span className="label">{t("Contact")}</span>
                 <input
                   className="input"
                   value={outlet.contact}
@@ -294,22 +296,22 @@ export default function OutletPage() {
               </label>
 
               <label className="field">
-                <span className="label">Status</span>
+                <span className="label">{t("Status")}</span>
                 <select
                   className="select"
                   value={outlet.status ? "Active" : "Inactive"}
                   disabled
                   aria-readonly="true"
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="Active">{t("Active")}</option>
+                  <option value="Inactive">{t("Inactive")}</option>
                 </select>
               </label>
             </div>
 
             <div className="cardActions">
               <button type="button" className="button">
-                View details
+                {t("View details")}
               </button>
               {canUpdate && (
                 <button
@@ -317,7 +319,7 @@ export default function OutletPage() {
                   className="button buttonPrimary"
                   onClick={() => setSelectedOutletId(outlet.id)}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
               )}
             </div>
@@ -350,14 +352,14 @@ export default function OutletPage() {
 
       <ConfirmModal
         isOpen={!!outletToDelete}
-        title="Delete outlet"
+        title={t("Delete outlet")}
         message={
           outletToDelete
-            ? `Are you sure you want to delete "${outletToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${outletToDelete.name}"? ${t("This action cannot be undone.")}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setOutletToDelete(null)}
@@ -366,8 +368,8 @@ export default function OutletPage() {
 
       <Modal
         isOpen={isAddModalOpen}
-        title="Add Outlet"
-        subtitle="Quickly add a new outlet to your organization"
+        title={t("Add Outlet")}
+        subtitle={t("Quickly add a new outlet to your organization")}
         onClose={() => setIsAddModalOpen(false)}
         footer={
           <>
@@ -376,7 +378,7 @@ export default function OutletPage() {
               className="button modalButton"
               onClick={() => setIsAddModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -384,7 +386,7 @@ export default function OutletPage() {
               className="button buttonPrimary modalButton"
               disabled={loading}
             >
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -398,10 +400,10 @@ export default function OutletPage() {
             <p className="outletFormError">{errors.root.message}</p>
           )}
           <label className="modalField">
-            <span className="label">Outlet name</span>
+            <span className="label">{t("Outlet name")}</span>
             <input
               className="input"
-              placeholder="e.g. Main processing plant"
+              placeholder={t("e.g. Main processing plant")}
               {...register("name")}
             />
             {errors.name && (
@@ -409,9 +411,9 @@ export default function OutletPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Manager</span>
+            <span className="label">{t("Manager")}</span>
             <select className="select" {...register("managerId")}>
-              <option value="">Select manager</option>
+              <option value="">{t("Select manager")}</option>
               {managers.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.fullName ?? user.email ?? user.id}
@@ -425,10 +427,10 @@ export default function OutletPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Contact</span>
+            <span className="label">{t("Contact")}</span>
             <input
               className="input"
-              placeholder="e.g. 987654321"
+              placeholder={t("e.g. 987654321")}
               {...register("contact")}
             />
             {errors.contact && (
@@ -438,10 +440,10 @@ export default function OutletPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

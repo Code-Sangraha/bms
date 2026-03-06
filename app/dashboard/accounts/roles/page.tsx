@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -33,6 +34,7 @@ export default function RolesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { t } = useI18n();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -100,7 +102,7 @@ export default function RolesPage() {
     },
     onError: () => {
       editForm.setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -155,14 +157,14 @@ export default function RolesPage() {
   return (
     <section className="rolesPage">
       <div className="breadcrumb">
-        <span>Accounts</span> {"›"} Roles
+        <span>{t("Accounts")}</span> {"›"} {t("Roles")}
       </div>
 
       <div className="rolesHeader">
         <div className="rolesHeaderText">
-          <h1 className="pageTitle">Roles</h1>
+          <h1 className="pageTitle">{t("Roles")}</h1>
           <p className="pageSubtitle">
-            Manage roles and permissions for your team
+            {t("Manage roles and permissions for your team")}
           </p>
         </div>
         {canCreate && (
@@ -170,7 +172,7 @@ export default function RolesPage() {
             href="/dashboard/accounts/roles/create"
             className="button buttonPrimary"
           >
-            Create role
+            {t("Create role")}
           </Link>
         )}
       </div>
@@ -179,21 +181,21 @@ export default function RolesPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search roles"
+          placeholder={t("Search roles")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search roles"
+          aria-label={t("Search roles")}
         />
       </div>
 
       <div className="rolesTable">
         <div className="rolesRow rolesRowHeader">
-          <span>Role</span>
+          <span>{t("Role")}</span>
           <span />
         </div>
         {rolesLoading && (
           <div className="rolesRow">
-            <span className="rolesMessage">Loading roles…</span>
+            <span className="rolesMessage">{t("Loading roles…")}</span>
             <span />
           </div>
         )}
@@ -202,7 +204,7 @@ export default function RolesPage() {
             <span className="rolesMessage rolesError">
               {rolesErrorDetail instanceof Error
                 ? rolesErrorDetail.message
-                : "Failed to load roles"}
+                : t("Failed to load roles")}
             </span>
             <span />
           </div>
@@ -210,7 +212,7 @@ export default function RolesPage() {
         {!rolesLoading && !rolesError && roles.length === 0 && (
           <div className="rolesRow">
             <span className="rolesMessage">
-              No roles yet. Create one to get started.
+              {t("No roles yet. Create one to get started.")}
             </span>
             <span />
           </div>
@@ -221,7 +223,7 @@ export default function RolesPage() {
           filteredRoles.length === 0 && (
             <div className="rolesRow">
               <span className="rolesMessage">
-                No roles match &quot;{searchQuery.trim()}&quot;.
+                {t("No roles match")} &quot;{searchQuery.trim()}&quot;.
               </span>
               <span />
             </div>
@@ -243,7 +245,7 @@ export default function RolesPage() {
                       onClick={() =>
                         setOpenMenuId((id) => (id === role.id ? null : role.id))
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === role.id}
                     >
                       ⋮
@@ -259,7 +261,7 @@ export default function RolesPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Edit
+                            {t("Edit")}
                           </button>
                         )}
                         {canDelete && (
@@ -271,7 +273,7 @@ export default function RolesPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Delete
+                            {t("Delete")}
                           </button>
                         )}
                       </div>
@@ -297,14 +299,16 @@ export default function RolesPage() {
 
       <ConfirmModal
         isOpen={!!roleToDelete}
-        title="Delete role"
+        title={t("Delete role")}
         message={
           roleToDelete
-            ? `Are you sure you want to delete "${roleToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${roleToDelete.name}"? ${t(
+                "This action cannot be undone."
+              )}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setRoleToDelete(null)}
@@ -313,7 +317,7 @@ export default function RolesPage() {
 
       <Modal
         isOpen={!!editingRole}
-        title="Edit Role"
+        title={t("Edit Role")}
         subtitle={editingRole?.name}
         onClose={() => setEditingRole(null)}
         footer={
@@ -323,7 +327,7 @@ export default function RolesPage() {
               className="button modalButton"
               onClick={() => setEditingRole(null)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -331,7 +335,7 @@ export default function RolesPage() {
               className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
-              {editLoading ? "Saving…" : "Save"}
+              {editLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -347,10 +351,10 @@ export default function RolesPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Role name</span>
+            <span className="label">{t("Role name")}</span>
             <input
               className="input"
-              placeholder="e.g. Employee"
+              placeholder={t("e.g. Employee")}
               {...editForm.register("name")}
             />
             {editForm.formState.errors.name && (

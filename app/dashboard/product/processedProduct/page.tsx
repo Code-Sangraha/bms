@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -19,6 +20,7 @@ type ActionType = "restock" | "deduct";
 export default function ProcessedProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [actionModal, setActionModal] = useState<{
     product: Product;
@@ -106,7 +108,7 @@ export default function ProcessedProductPage() {
         setQuantity("");
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
-        setActionError(result.error ?? "Restock failed");
+        setActionError(result.error ?? t("Restock failed"));
       }
     },
   });
@@ -119,7 +121,7 @@ export default function ProcessedProductPage() {
         setQuantity("");
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
-        setActionError(result.error ?? "Deduct failed");
+        setActionError(result.error ?? t("Deduct failed"));
       }
     },
   });
@@ -146,38 +148,38 @@ export default function ProcessedProductPage() {
   return (
     <section className="processedProductPage">
       <div className="breadcrumb">
-        <span>Product</span> {"›"} Processed
+        <span>{t("Product")}</span> {"›"} {t("Processed")}
       </div>
 
       <div className="processedProductHeader">
         <div className="processedProductHeaderText">
-          <h1 className="pageTitle">Processed Products</h1>
-          <p className="pageSubtitle">Products of type Processed</p>
+          <h1 className="pageTitle">{t("Processed Products")}</h1>
+          <p className="pageSubtitle">{t("Products of type Processed")}</p>
         </div>
         <div className="processedProductSearch">
           <span className="searchIcon">🔍</span>
           <input
             className="searchInput"
-            placeholder="Search"
+            placeholder={t("Search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search processed products"
+            aria-label={t("Search processed products")}
           />
         </div>
       </div>
 
       <div className="productsTable">
         <div className="productsRow productsRowHeader">
-          <span>Name</span>
-          <span>Product Type</span>
-          <span>Outlet</span>
-          <span>Quantity</span>
-          <span>Status</span>
-          <span>Actions</span>
+          <span>{t("Name")}</span>
+          <span>{t("Product Type")}</span>
+          <span>{t("Outlet")}</span>
+          <span>{t("Quantity")}</span>
+          <span>{t("Status")}</span>
+          <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
           <div className="productsRow">
-            <span className="productsMessage">Loading…</span>
+            <span className="productsMessage">{t("Loading…")}</span>
             <span />
             <span />
             <span />
@@ -190,7 +192,7 @@ export default function ProcessedProductPage() {
             <span className="productsMessage productsError">
               {productsErrorDetail instanceof Error
                 ? productsErrorDetail.message
-                : "Failed to load products"}
+                : t("Failed to load products")}
             </span>
             <span />
             <span />
@@ -201,7 +203,9 @@ export default function ProcessedProductPage() {
         )}
         {!productsLoading && !productsError && !processedTypeId && productTypes.length > 0 && (
           <div className="productsRow">
-            <span className="productsMessage">No product type named &quot;Processed&quot; found.</span>
+            <span className="productsMessage">
+              {t('No product type named "Processed" found.')}
+            </span>
             <span />
             <span />
             <span />
@@ -216,8 +220,8 @@ export default function ProcessedProductPage() {
             <div className="productsRow">
               <span className="productsMessage">
                 {searchQuery.trim()
-                  ? `No processed products match "${searchQuery.trim()}".`
-                  : "No processed products yet."}
+                  ? `${t("No processed products match")} "${searchQuery.trim()}".`
+                  : t("No processed products yet.")}
               </span>
               <span />
               <span />
@@ -237,7 +241,7 @@ export default function ProcessedProductPage() {
               <span>{product.quantity}</span>
               <span>
                 <span className={product.status ? "badge badgeActive" : "badge"}>
-                  {product.status ? "Active" : "Inactive"}
+                  {product.status ? t("Active") : t("Inactive")}
                 </span>
               </span>
               <span className="productsRowActions">
@@ -246,14 +250,14 @@ export default function ProcessedProductPage() {
                   className="productActionBtn productActionRestock"
                   onClick={() => handleOpenAction(product, "restock")}
                 >
-                  Restock
+                  {t("Restock")}
                 </button>
                 <button
                   type="button"
                   className="productActionBtn productActionDeduct"
                   onClick={() => handleOpenAction(product, "deduct")}
                 >
-                  Deduct
+                  {t("Deduct")}
                 </button>
               </span>
             </div>
@@ -274,7 +278,7 @@ export default function ProcessedProductPage() {
 
       <Modal
         isOpen={!!actionModal}
-        title={actionModal ? (actionModal.action === "restock" ? "Restock" : "Deduct") : ""}
+        title={actionModal ? (actionModal.action === "restock" ? t("Restock") : t("Deduct")) : ""}
         subtitle={actionModal ? actionModal.product.name : ""}
         onClose={() => {
           setActionModal(null);
@@ -291,7 +295,7 @@ export default function ProcessedProductPage() {
                   setQuantity("");
                 }}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -306,10 +310,10 @@ export default function ProcessedProductPage() {
                 }
               >
                 {restockMutation.isPending || deductMutation.isPending
-                  ? "Saving…"
+                  ? t("Saving…")
                   : actionModal.action === "restock"
-                    ? "Restock"
-                    : "Deduct"}
+                    ? t("Restock")
+                    : t("Deduct")}
               </button>
             </div>
           ) : null
@@ -319,7 +323,7 @@ export default function ProcessedProductPage() {
           <div className="productActionModalBody">
             {actionError && <p className="productActionModalError">{actionError}</p>}
             <label className="productActionModalLabel">
-              Quantity
+              {t("Quantity")}
               <input
                 type="number"
                 min={1}
@@ -327,7 +331,7 @@ export default function ProcessedProductPage() {
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="productActionModalInput"
-                placeholder="Enter quantity"
+                placeholder={t("Enter quantity")}
               />
             </label>
           </div>

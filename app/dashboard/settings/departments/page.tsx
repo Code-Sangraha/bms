@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -41,6 +42,7 @@ export default function DepartmentsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
@@ -110,7 +112,7 @@ export default function DepartmentsPage() {
       }
     },
     onError: () => {
-      addForm.setError("root", { message: "Something went wrong. Please try again." });
+      addForm.setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -138,7 +140,7 @@ export default function DepartmentsPage() {
       }
     },
     onError: () => {
-      editForm.setError("root", { message: "Something went wrong. Please try again." });
+      editForm.setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -196,14 +198,14 @@ export default function DepartmentsPage() {
   return (
     <section className="departmentsPage">
       <div className="breadcrumb">
-        <span>Settings</span> {"›"} Department
+        <span>{t("Settings")}</span> {"›"} {t("Department")}
       </div>
 
       <div className="departmentsHeader">
         <div className="departmentsHeaderText">
-          <h1 className="pageTitle">Department</h1>
+          <h1 className="pageTitle">{t("Department")}</h1>
           <p className="pageSubtitle">
-            Organize your team by departments for clarity
+            {t("Organize your team by departments for clarity")}
           </p>
         </div>
         {canCreate && (
@@ -212,7 +214,7 @@ export default function DepartmentsPage() {
             className="button buttonPrimary"
             onClick={() => setIsModalOpen(true)}
           >
-            Add Department
+            {t("Add Department")}
           </button>
         )}
       </div>
@@ -221,22 +223,22 @@ export default function DepartmentsPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search departments"
+          placeholder={t("Search departments")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search departments"
+          aria-label={t("Search departments")}
         />
       </div>
 
       <div className="departmentsTable">
         <div className="departmentsRow departmentsRowHeader">
-          <span>Department</span>
-          <span>Status</span>
+          <span>{t("Department")}</span>
+          <span>{t("Status")}</span>
           <span />
         </div>
         {departmentsLoading && (
           <div className="departmentsRow">
-            <span className="departmentsMessage">Loading departments…</span>
+            <span className="departmentsMessage">{t("Loading departments…")}</span>
             <span />
             <span />
           </div>
@@ -246,7 +248,7 @@ export default function DepartmentsPage() {
             <span className="departmentsMessage departmentsError">
               {departmentsErrorDetail instanceof Error
                 ? departmentsErrorDetail.message
-                : "Failed to load departments"}
+                : t("Failed to load departments")}
             </span>
             <span />
             <span />
@@ -257,7 +259,7 @@ export default function DepartmentsPage() {
           departments.length === 0 && (
             <div className="departmentsRow">
               <span className="departmentsMessage">
-                No departments yet. Add one to get started.
+                {t("No departments yet. Add one to get started.")}
               </span>
               <span />
               <span />
@@ -269,7 +271,7 @@ export default function DepartmentsPage() {
           filteredDepartments.length === 0 && (
             <div className="departmentsRow">
               <span className="departmentsMessage">
-                No departments match &quot;{searchQuery.trim()}&quot;.
+                {t("No departments match")} &quot;{searchQuery.trim()}&quot;.
               </span>
               <span />
               <span />
@@ -286,7 +288,7 @@ export default function DepartmentsPage() {
                     department.status ? "badge badgeActive" : "badge"
                   }
                 >
-                  {department.status ? "Active" : "Inactive"}
+                  {department.status ? t("Active") : t("Inactive")}
                 </span>
               </span>
               <div
@@ -303,7 +305,7 @@ export default function DepartmentsPage() {
                           id === department.id ? null : department.id
                         )
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === department.id}
                     >
                       ⋮
@@ -319,7 +321,7 @@ export default function DepartmentsPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Edit
+                            {t("Edit")}
                           </button>
                         )}
                         {canDelete && (
@@ -331,7 +333,7 @@ export default function DepartmentsPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Delete
+                            {t("Delete")}
                           </button>
                         )}
                       </div>
@@ -357,14 +359,14 @@ export default function DepartmentsPage() {
 
       <ConfirmModal
         isOpen={!!departmentToDelete}
-        title="Delete department"
+        title={t("Delete department")}
         message={
           departmentToDelete
-            ? `Are you sure you want to delete "${departmentToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${departmentToDelete.name}"? ${t("This action cannot be undone.")}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setDepartmentToDelete(null)}
@@ -373,7 +375,7 @@ export default function DepartmentsPage() {
 
       <Modal
         isOpen={!!editingDepartment}
-        title="Edit Department"
+        title={t("Edit Department")}
         subtitle={editingDepartment?.name}
         onClose={() => setEditingDepartment(null)}
         footer={
@@ -383,7 +385,7 @@ export default function DepartmentsPage() {
               className="button modalButton"
               onClick={() => setEditingDepartment(null)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -391,7 +393,7 @@ export default function DepartmentsPage() {
               className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
-              {editLoading ? "Saving…" : "Save"}
+              {editLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -407,10 +409,10 @@ export default function DepartmentsPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Department name</span>
+            <span className="label">{t("Department name")}</span>
             <input
               className="input"
-              placeholder="e.g. Production"
+              placeholder={t("e.g. Production")}
               {...editForm.register("name")}
             />
             {editForm.formState.errors.name && (
@@ -420,10 +422,10 @@ export default function DepartmentsPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...editForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>
@@ -431,8 +433,8 @@ export default function DepartmentsPage() {
 
       <Modal
         isOpen={isModalOpen}
-        title="Add Department"
-        subtitle="Quickly add a new department"
+        title={t("Add Department")}
+        subtitle={t("Quickly add a new department")}
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
@@ -441,7 +443,7 @@ export default function DepartmentsPage() {
               className="button modalButton"
               onClick={() => setIsModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -449,7 +451,7 @@ export default function DepartmentsPage() {
               className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
-              {addLoading ? "Saving…" : "Save"}
+              {addLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -465,10 +467,10 @@ export default function DepartmentsPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Department name</span>
+            <span className="label">{t("Department name")}</span>
             <input
               className="input"
-              placeholder="e.g. Production"
+              placeholder={t("e.g. Production")}
               {...addForm.register("name")}
             />
             {addForm.formState.errors.name && (
@@ -478,10 +480,10 @@ export default function DepartmentsPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...addForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

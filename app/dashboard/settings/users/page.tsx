@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -34,6 +35,7 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
+  const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -96,7 +98,7 @@ export default function UsersPage() {
       }
     },
     onError: () => {
-      setError("root", { message: "Something went wrong. Please try again." });
+      setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -144,13 +146,13 @@ export default function UsersPage() {
   return (
     <section className="usersPage">
       <div className="breadcrumb">
-        <span>Settings</span> {"›"} User Management
+        <span>{t("Settings")}</span> {"›"} {t("User Management")}
       </div>
 
       <div className="usersHeader">
         <div className="usersHeaderText">
-          <h1 className="pageTitle">User Management</h1>
-          <p className="pageSubtitle">Manage system users and permissions</p>
+          <h1 className="pageTitle">{t("User Management")}</h1>
+          <p className="pageSubtitle">{t("Manage system users and permissions")}</p>
         </div>
         {canCreate && (
           <button
@@ -158,7 +160,7 @@ export default function UsersPage() {
             className="button buttonPrimary"
             onClick={() => setIsModalOpen(true)}
           >
-            Add User
+            {t("Add User")}
           </button>
         )}
       </div>
@@ -167,25 +169,25 @@ export default function UsersPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search users"
+          placeholder={t("Search users")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search users"
+          aria-label={t("Search users")}
         />
       </div>
 
       <div className="usersTable">
         <div className="usersRow usersRowHeader">
-          <span>Employee ID</span>
-          <span>Name</span>
-          <span>Role</span>
-          <span>Status</span>
-          <span>Contact</span>
+          <span>{t("Employee ID")}</span>
+          <span>{t("Name")}</span>
+          <span>{t("Role")}</span>
+          <span>{t("Status")}</span>
+          <span>{t("Contact")}</span>
           <span />
         </div>
         {usersLoading && (
           <div className="usersRow">
-            <span className="usersMessage">Loading users…</span>
+            <span className="usersMessage">{t("Loading users…")}</span>
             <span />
             <span />
             <span />
@@ -198,7 +200,7 @@ export default function UsersPage() {
             <span className="usersMessage usersError">
               {usersErrorDetail instanceof Error
                 ? usersErrorDetail.message
-                : "Failed to load users"}
+                : t("Failed to load users")}
             </span>
             <span />
             <span />
@@ -209,7 +211,7 @@ export default function UsersPage() {
         )}
         {!usersLoading && !usersError && users.length === 0 && (
           <div className="usersRow">
-            <span className="usersMessage">No users yet. Add one to get started.</span>
+            <span className="usersMessage">{t("No users yet. Add one to get started.")}</span>
             <span />
             <span />
             <span />
@@ -223,7 +225,7 @@ export default function UsersPage() {
           filteredUsers.length === 0 && (
             <div className="usersRow">
               <span className="usersMessage">
-                No users match &quot;{searchQuery.trim()}&quot;.
+                {t("No users match")} &quot;{searchQuery.trim()}&quot;.
               </span>
               <span />
               <span />
@@ -243,7 +245,7 @@ export default function UsersPage() {
                 <span
                   className={user.status ? "badge badgeActive" : "badge"}
                 >
-                  {user.status ? "Active" : "Inactive"}
+                  {user.status ? t("Active") : t("Inactive")}
                 </span>
               </span>
               <span>{user.email ?? "—"}</span>
@@ -266,8 +268,8 @@ export default function UsersPage() {
 
       <Modal
         isOpen={isModalOpen}
-        title="Add User"
-        subtitle="Quickly add a new user to your team"
+        title={t("Add User")}
+        subtitle={t("Quickly add a new user to your team")}
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
@@ -276,7 +278,7 @@ export default function UsersPage() {
               className="button modalButton"
               onClick={() => setIsModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -284,7 +286,7 @@ export default function UsersPage() {
               className="button buttonPrimary modalButton"
               disabled={loading}
             >
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -300,10 +302,10 @@ export default function UsersPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Full name</span>
+            <span className="label">{t("Full name")}</span>
             <input
               className="input"
-              placeholder="e.g. John Smith"
+              placeholder={t("e.g. John Smith")}
               {...register("fullName")}
             />
             {errors.fullName && (
@@ -311,11 +313,11 @@ export default function UsersPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Email</span>
+            <span className="label">{t("Email")}</span>
             <input
               className="input"
               type="email"
-              placeholder="e.g. john@example.com"
+              placeholder={t("e.g. john@example.com")}
               {...register("email")}
             />
             {errors.email && (
@@ -323,11 +325,11 @@ export default function UsersPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Contact</span>
+            <span className="label">{t("Contact")}</span>
             <input
               className="input"
               type="text"
-              placeholder="e.g. +91 9876543210"
+              placeholder={t("e.g. +91 9876543210")}
               {...register("contact")}
             />
             {errors.contact && (
@@ -335,9 +337,9 @@ export default function UsersPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Role</span>
+            <span className="label">{t("Role")}</span>
             <select className="select" {...register("roleId")}>
-              <option value="">Select role</option>
+              <option value="">{t("Select role")}</option>
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
@@ -349,10 +351,10 @@ export default function UsersPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

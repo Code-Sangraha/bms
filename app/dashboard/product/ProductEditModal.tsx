@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Modal from "../../components/Modal/Modal";
 import type { Product } from "@/handlers/product";
 import type { Outlet } from "@/handlers/outlet";
@@ -42,6 +43,7 @@ export default function ProductEditModal({
   onSave,
   loading = false,
 }: ProductEditModalProps) {
+  const { t } = useI18n();
   const {
     register,
     handleSubmit,
@@ -59,13 +61,13 @@ export default function ProductEditModal({
   return (
     <Modal
       isOpen={isOpen}
-      title="Edit Product"
+      title={t("Edit Product")}
       subtitle={product.id}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="button modalButton" onClick={onClose}>
-            Discard
+            {t("Discard")}
           </button>
           <button
             type="submit"
@@ -73,7 +75,7 @@ export default function ProductEditModal({
             className="button buttonPrimary modalButton"
             disabled={loading}
           >
-            {loading ? "Saving…" : "Save"}
+            {loading ? t("Saving…") : t("Save")}
           </button>
         </>
       }
@@ -87,10 +89,10 @@ export default function ProductEditModal({
           <p className="productFormError">{errors.root.message}</p>
         )}
         <label className="modalField">
-          <span className="label">Product name</span>
+          <span className="label">{t("Product name")}</span>
           <input
             className="input"
-            placeholder="e.g. Pork"
+            placeholder={t("e.g. Pork")}
             {...register("name")}
           />
           {errors.name && (
@@ -98,9 +100,9 @@ export default function ProductEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">Product Type</span>
+          <span className="label">{t("Product Type")}</span>
           <select className="select" {...register("productTypeId")}>
-            <option value="">Select product type</option>
+            <option value="">{t("Select product type")}</option>
             {productTypes.map((pt) => (
               <option key={pt.id} value={pt.id}>
                 {pt.name}
@@ -114,9 +116,9 @@ export default function ProductEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">Outlet</span>
+          <span className="label">{t("Outlet")}</span>
           <select className="select" {...register("outletId")}>
-            <option value="">Select outlet</option>
+            <option value="">{t("Select outlet")}</option>
             {outlets.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -130,13 +132,13 @@ export default function ProductEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">Quantity</span>
+          <span className="label">{t("Quantity")}</span>
           <input
             className="input"
             type="number"
             step="any"
             min={0}
-            placeholder="e.g. 45.2"
+            placeholder={t("e.g. 45.2")}
             {...register("quantity", { valueAsNumber: true })}
           />
           {errors.quantity && (
@@ -146,17 +148,17 @@ export default function ProductEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">Status</span>
+          <span className="label">{t("Status")}</span>
           <select className="select" {...register("status")}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">{t("Active")}</option>
+            <option value="Inactive">{t("Inactive")}</option>
           </select>
         </label>
         <label className="modalField">
-          <span className="label">Created by (optional, user UUID)</span>
+          <span className="label">{t("Created by (optional, user UUID)")}</span>
           <input
             className="input"
-            placeholder="e.g. 601756be-54be-4623-8e97-7ff891e43081"
+            placeholder={t("e.g. 601756be-54be-4623-8e97-7ff891e43081")}
             {...register("createdBy")}
           />
           {errors.createdBy && (

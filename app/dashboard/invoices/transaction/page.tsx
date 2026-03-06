@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { getSales, type SaleTransaction } from "@/handlers/sale";
 import { getOutlets } from "@/handlers/outlet";
 import "./transaction.scss";
@@ -46,9 +47,12 @@ function getType(tx: SaleTransaction): string {
   return resolveName(tx.type ?? tx.customerType, "—");
 }
 
-function getItemsCount(tx: SaleTransaction): string {
+function getItemsCount(
+  tx: SaleTransaction,
+  t: (text: string) => string
+): string {
   const n = tx.itemsCount ?? tx.itemCount ?? 0;
-  return n === 1 ? "1 Item" : `${n} Items`;
+  return n === 1 ? t("1 Item") : `${n} ${t("Items")}`;
 }
 
 function getAmount(tx: SaleTransaction): string {
@@ -66,6 +70,7 @@ function getProductNames(tx: SaleTransaction): string {
 
 export default function TransactionPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
@@ -137,14 +142,14 @@ export default function TransactionPage() {
   return (
     <section className="transactionPage">
       <div className="breadcrumb">
-        <span>Sales & Billing</span> {"›"} Transaction
+        <span>{t("Sales & Billing")}</span> {"›"} {t("Transaction")}
       </div>
 
       <div className="transactionHeader">
         <div className="transactionHeaderText">
-          <h1 className="pageTitle">Recent Transactions</h1>
+          <h1 className="pageTitle">{t("Recent Transactions")}</h1>
           <p className="pageSubtitle">
-            View and manage recent sales transactions
+            {t("View and manage recent sales transactions")}
           </p>
         </div>
       </div>
@@ -154,10 +159,10 @@ export default function TransactionPage() {
           <span className="searchIcon">🔍</span>
           <input
             className="searchInput"
-            placeholder="Search"
+            placeholder={t("Search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search transactions"
+            aria-label={t("Search transactions")}
           />
         </div>
         <div className="transactionFilterWrap">
@@ -165,9 +170,9 @@ export default function TransactionPage() {
             className="transactionFilterSelect"
             value={outletFilter}
             onChange={(e) => setOutletFilter(e.target.value)}
-            aria-label="Filter by outlet"
+            aria-label={t("Filter by outlet")}
           >
-            <option value="">All Outlets</option>
+            <option value="">{t("All Outlets")}</option>
             {outlets.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -175,22 +180,22 @@ export default function TransactionPage() {
             ))}
           </select>
         </div>
-        <span className="transactionLastSync">Last sync: 2mins</span>
+        <span className="transactionLastSync">{t("Last sync: 2mins")}</span>
       </div>
 
       <div className="transactionTable">
         <div className="transactionRow transactionRowHeader">
-          <span>Transaction ID</span>
-          <span>Date & Time</span>
-          <span>Customer</span>
-          <span>Type</span>
-          <span>Items</span>
-          <span className="transactionColAmount">Amount</span>
-          <span aria-label="Actions" />
+          <span>{t("Transaction ID")}</span>
+          <span>{t("Date & Time")}</span>
+          <span>{t("Customer")}</span>
+          <span>{t("Type")}</span>
+          <span>{t("Items")}</span>
+          <span className="transactionColAmount">{t("Amount")}</span>
+          <span aria-label={t("Actions")} />
         </div>
         {salesLoading && (
           <div className="transactionRow">
-            <span className="transactionMessage">Loading transactions…</span>
+            <span className="transactionMessage">{t("Loading transactions…")}</span>
             <span />
             <span />
             <span />
@@ -204,7 +209,7 @@ export default function TransactionPage() {
             <span className="transactionMessage transactionError">
               {salesErrorDetail instanceof Error
                 ? salesErrorDetail.message
-                : "Failed to load transactions"}
+                : t("Failed to load transactions")}
             </span>
             <span />
             <span />
@@ -217,7 +222,7 @@ export default function TransactionPage() {
         {!salesLoading && !salesError && transactions.length === 0 && (
           <div className="transactionRow">
             <span className="transactionMessage">
-              No transactions yet.
+              {t("No transactions yet.")}
             </span>
             <span />
             <span />
@@ -233,7 +238,7 @@ export default function TransactionPage() {
           filteredTransactions.length === 0 && (
             <div className="transactionRow">
               <span className="transactionMessage">
-                No transactions match your search.
+                {t("No transactions match your search.")}
               </span>
               <span />
               <span />
@@ -263,7 +268,7 @@ export default function TransactionPage() {
                   }
                 }
               }}
-              aria-label={`View details for transaction ${getTransactionId(tx)}`}
+              aria-label={`${t("View details for transaction")} ${getTransactionId(tx)}`}
             >
               <span>{getTransactionId(tx)}</span>
               <span>{formatDate(tx)}</span>
@@ -273,13 +278,13 @@ export default function TransactionPage() {
                   {getType(tx)}
                 </span>
               </span>
-              <span>{getItemsCount(tx)}</span>
+              <span>{getItemsCount(tx, t)}</span>
               <span className="transactionColAmount">{getAmount(tx)}</span>
               <div className="transactionMenuWrap">
                 <button
                   type="button"
                   className="transactionMenuTrigger"
-                  aria-label="More options"
+                  aria-label={t("More options")}
                 >
                   ⋮
                 </button>
@@ -302,31 +307,35 @@ export default function TransactionPage() {
 
       <Modal
         isOpen={!!selectedTransaction}
-        title={selectedTransaction ? `Transaction ${getTransactionId(selectedTransaction)}` : ""}
+        title={
+          selectedTransaction
+            ? `${t("Transaction")} ${getTransactionId(selectedTransaction)}`
+            : ""
+        }
         subtitle={selectedTransaction ? getCustomerName(selectedTransaction) : ""}
         onClose={() => setSelectedTransaction(null)}
       >
         {selectedTransaction && (
           <div className="transactionDetail">
             <dl className="transactionDetailList">
-              <dt>Customer</dt>
+              <dt>{t("Customer")}</dt>
               <dd>{getCustomerName(selectedTransaction)}</dd>
-              <dt>Contact</dt>
+              <dt>{t("Contact")}</dt>
               <dd>{selectedTransaction.contact || "—"}</dd>
-              <dt>Date & Time</dt>
+              <dt>{t("Date & Time")}</dt>
               <dd>{formatDate(selectedTransaction)}</dd>
-              <dt>Type</dt>
+              <dt>{t("Type")}</dt>
               <dd>{getType(selectedTransaction)}</dd>
             </dl>
             {selectedTransaction.items && selectedTransaction.items.length > 0 && (
               <div className="transactionDetailItems">
-                <div className="transactionDetailItemsHeader">Products</div>
+                <div className="transactionDetailItemsHeader">{t("Products")}</div>
                 <table className="transactionDetailTable">
                   <thead>
                     <tr>
-                      <th>Product</th>
-                      <th>Qty (kg)</th>
-                      <th>Price</th>
+                      <th>{t("Product")}</th>
+                      <th>{t("Qty (kg)")}</th>
+                      <th>{t("Price")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -351,12 +360,12 @@ export default function TransactionPage() {
             )}
             {(!selectedTransaction.items || selectedTransaction.items.length === 0) && (
               <dl className="transactionDetailList">
-                <dt>Products</dt>
+                <dt>{t("Products")}</dt>
                 <dd>{getProductNames(selectedTransaction)}</dd>
               </dl>
             )}
             <dl className="transactionDetailList transactionDetailTotal">
-              <dt>Total</dt>
+              <dt>{t("Total")}</dt>
               <dd>{getAmount(selectedTransaction)}</dd>
             </dl>
           </div>

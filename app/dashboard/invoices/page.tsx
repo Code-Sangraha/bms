@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import {
   getDashboardSales,
   type DashboardSalesData,
@@ -18,6 +19,7 @@ const OUTLETS_QUERY_KEY = ["outlets"];
 
 export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [dateRange, setDateRange] = useState("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
 
@@ -59,15 +61,17 @@ export default function InvoicesAnalyticsPage() {
   return (
     <section className="invoicesAnalyticsPage">
       <div className="breadcrumb">
-        <span>Sales & Billing</span>
+        <span>{t("Sales & Billing")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
-        <span>Analytics</span>
+        <span>{t("Analytics")}</span>
       </div>
 
       <div className="invoicesAnalyticsHeader">
         <div className="invoicesAnalyticsHeaderText">
-          <h1 className="pageTitle">Analytics</h1>
-          <p className="pageSubtitle">Track revenue, transactions and sales performance.</p>
+          <h1 className="pageTitle">{t("Analytics")}</h1>
+          <p className="pageSubtitle">
+            {t("Track revenue, transactions and sales performance.")}
+          </p>
         </div>
         <div className="invoicesAnalyticsToolbar">
           <div className="dateRangePills">
@@ -78,7 +82,7 @@ export default function InvoicesAnalyticsPage() {
                 className={`dateRangePill ${dateRange === label ? "active" : ""}`}
                 onClick={() => setDateRange(label)}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
@@ -87,26 +91,26 @@ export default function InvoicesAnalyticsPage() {
               className="outletSelect"
               value={outletFilter}
               onChange={(e) => setOutletFilter(e.target.value)}
-              aria-label="Filter by outlet"
+              aria-label={t("Filter by outlet")}
             >
-              <option value="all">All Outlets</option>
+              <option value="all">{t("All Outlets")}</option>
               {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
                 </option>
               ))}
             </select>
-            <span className="lastSync">Last sync: 2mins</span>
+            <span className="lastSync">{t("Last sync: 2mins")}</span>
           </div>
         </div>
       </div>
 
       {isLoading && (
-        <div className="invoicesAnalyticsMessage">Loading analytics…</div>
+        <div className="invoicesAnalyticsMessage">{t("Loading analytics…")}</div>
       )}
       {isError && (
         <div className="invoicesAnalyticsMessage invoicesAnalyticsError">
-          {error instanceof Error ? error.message : "Failed to load analytics"}
+          {error instanceof Error ? error.message : t("Failed to load analytics")}
         </div>
       )}
 
@@ -114,22 +118,22 @@ export default function InvoicesAnalyticsPage() {
         <>
           <div className="summaryCards">
             <div className="summaryCard">
-              <div className="summaryCardLabel">Total Revenue</div>
+              <div className="summaryCardLabel">{t("Total Revenue")}</div>
               <div className="summaryCardValue">Rs.{totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
             <div className="summaryCard">
-              <div className="summaryCardLabel">Total Transactions</div>
+              <div className="summaryCardLabel">{t("Total Transactions")}</div>
               <div className="summaryCardValue">{totalTransactions}</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
             <div className="summaryCard">
-              <div className="summaryCardLabel">Total Weight</div>
+              <div className="summaryCardLabel">{t("Total Weight")}</div>
               <div className="summaryCardValue">{totalWeight} kg</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
             <div className="summaryCard">
-              <div className="summaryCardLabel">Total Quantity</div>
+              <div className="summaryCardLabel">{t("Total Quantity")}</div>
               <div className="summaryCardValue">{totalQuantity}</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
@@ -137,7 +141,7 @@ export default function InvoicesAnalyticsPage() {
 
           {salesByOutlet.length > 0 && (
             <div className="chartSection">
-              <h2 className="chartSectionTitle">Outlet Performance</h2>
+              <h2 className="chartSectionTitle">{t("Outlet Performance")}</h2>
               <div className="outletBars">
                 {salesByOutlet.map((row: SalesByOutletItem) => {
                   const amount = row.totalAmount ?? 0;
@@ -161,15 +165,15 @@ export default function InvoicesAnalyticsPage() {
 
           {salesByProduct.length > 0 && (
             <div className="chartSection">
-              <h2 className="chartSectionTitle">Sales by Product</h2>
+              <h2 className="chartSectionTitle">{t("Sales by Product")}</h2>
               <div className="salesByProductTableWrap">
                 <table className="salesByProductTable">
                   <thead>
                     <tr>
-                      <th>Product</th>
-                      <th>Amount (Rs.)</th>
-                      <th>Weight (kg)</th>
-                      <th>Quantity</th>
+                      <th>{t("Product")}</th>
+                      <th>{t("Amount (Rs.)")}</th>
+                      <th>{t("Weight (kg)")}</th>
+                      <th>{t("Quantity")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -189,15 +193,15 @@ export default function InvoicesAnalyticsPage() {
 
           {salesByCustomer.length > 0 && (
             <div className="chartSection">
-              <h2 className="chartSectionTitle">Sales by Customer</h2>
+              <h2 className="chartSectionTitle">{t("Sales by Customer")}</h2>
               <div className="salesByProductTableWrap">
                 <table className="salesByProductTable">
                   <thead>
                     <tr>
-                      <th>Customer</th>
-                      <th>Amount (Rs.)</th>
-                      <th>Weight (kg)</th>
-                      <th>Quantity</th>
+                      <th>{t("Customer")}</th>
+                      <th>{t("Amount (Rs.)")}</th>
+                      <th>{t("Weight (kg)")}</th>
+                      <th>{t("Quantity")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -216,7 +220,7 @@ export default function InvoicesAnalyticsPage() {
           )}
 
           {salesByOutlet.length === 0 && salesByProduct.length === 0 && salesByCustomer.length === 0 && totalTransactions === 0 && (
-            <div className="invoicesAnalyticsMessage">No sales data yet.</div>
+            <div className="invoicesAnalyticsMessage">{t("No sales data yet.")}</div>
           )}
         </>
       )}

@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Modal from "../../../components/Modal/Modal";
 import type { ProductType } from "@/handlers/productType";
 import {
@@ -32,6 +33,7 @@ export default function ProductTypeEditModal({
   onSave,
   loading = false,
 }: ProductTypeEditModalProps) {
+  const { t } = useI18n();
   const {
     register,
     handleSubmit,
@@ -49,13 +51,13 @@ export default function ProductTypeEditModal({
   return (
     <Modal
       isOpen={isOpen}
-      title="Edit Product Type"
+      title={t("Edit Product Type")}
       subtitle={productType.id}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="button modalButton" onClick={onClose}>
-            Discard
+            {t("Discard")}
           </button>
           <button
             type="submit"
@@ -63,7 +65,7 @@ export default function ProductTypeEditModal({
             className="button buttonPrimary modalButton"
             disabled={loading}
           >
-            {loading ? "Saving…" : "Save"}
+            {loading ? t("Saving…") : t("Save")}
           </button>
         </>
       }
@@ -77,10 +79,10 @@ export default function ProductTypeEditModal({
           <p className="productTypeFormError">{errors.root.message}</p>
         )}
         <label className="modalField">
-          <span className="label">Name</span>
+          <span className="label">{t("Name")}</span>
           <input
             className="input"
-            placeholder="e.g. processed"
+            placeholder={t("e.g. processed")}
             {...register("name")}
           />
           {errors.name && (
@@ -90,10 +92,10 @@ export default function ProductTypeEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">Status</span>
+          <span className="label">{t("Status")}</span>
           <select className="select" {...register("status")}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">{t("Active")}</option>
+            <option value="Inactive">{t("Inactive")}</option>
           </select>
         </label>
       </form>

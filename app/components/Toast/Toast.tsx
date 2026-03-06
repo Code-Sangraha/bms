@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import "./Toast.scss";
 
 export type ToastVariant = "error" | "success" | "info";
@@ -18,6 +19,8 @@ export default function Toast({
   onDismiss,
   duration = 5000,
 }: ToastProps) {
+  const { t } = useI18n();
+
   useEffect(() => {
     const t = setTimeout(onDismiss, duration);
     return () => clearTimeout(t);
@@ -34,7 +37,7 @@ export default function Toast({
         type="button"
         className="toastClose"
         onClick={onDismiss}
-        aria-label="Dismiss"
+        aria-label={t("Dismiss")}
       >
         ×
       </button>

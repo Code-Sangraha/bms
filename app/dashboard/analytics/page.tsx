@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { getDashboardSales, type DashboardSalesResponse } from "@/handlers/sale";
 import "./analytics.scss";
 
@@ -11,17 +12,18 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function formatValue(v: unknown): string {
+function formatValue(v: unknown, t: (text: string) => string): string {
   if (v == null) return "—";
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
   if (typeof v === "string") return v;
-  if (Array.isArray(v)) return `${v.length} items`;
+  if (Array.isArray(v)) return `${v.length} ${t("items")}`;
   if (isPlainObject(v)) return Object.keys(v).length ? "..." : "—";
   return String(v);
 }
 
 export default function DashboardAnalyticsPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const {
     data: dashboardData,
     isLoading,
@@ -47,24 +49,30 @@ export default function DashboardAnalyticsPage() {
   return (
     <section className="dashboardAnalyticsPage">
       <div className="breadcrumb">
-        <span>Dashboard</span>
+        <span>{t("Dashboard")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
-        <span>Analytics</span>
+        <span>{t("Analytics")}</span>
       </div>
 
       <div className="dashboardAnalyticsHeader">
         <div className="dashboardAnalyticsHeaderText">
-          <h1 className="pageTitle">Analytics</h1>
-          <p className="pageSubtitle">Sales and revenue overview from dashboard.</p>
+          <h1 className="pageTitle">{t("Analytics")}</h1>
+          <p className="pageSubtitle">
+            {t("Sales and revenue overview from dashboard.")}
+          </p>
         </div>
       </div>
 
       {isLoading && (
-        <div className="dashboardAnalyticsMessage">Loading dashboard sales…</div>
+        <div className="dashboardAnalyticsMessage">
+          {t("Loading dashboard sales…")}
+        </div>
       )}
       {isError && (
         <div className="dashboardAnalyticsMessage dashboardAnalyticsError">
-          {error instanceof Error ? error.message : "Failed to load dashboard sales"}
+          {error instanceof Error
+            ? error.message
+            : t("Failed to load dashboard sales")}
         </div>
       )}
 
@@ -74,17 +82,19 @@ export default function DashboardAnalyticsPage() {
             <div className="dashboardAnalyticsCards">
               {totalSales != null && (
                 <div className="dashboardAnalyticsCard">
-                  <div className="dashboardAnalyticsCardLabel">Total Sales</div>
-                  <div className="dashboardAnalyticsCardValue">{formatValue(totalSales)}</div>
+                  <div className="dashboardAnalyticsCardLabel">{t("Total Sales")}</div>
+                  <div className="dashboardAnalyticsCardValue">
+                    {formatValue(totalSales, t)}
+                  </div>
                 </div>
               )}
               {totalRevenue != null && (
                 <div className="dashboardAnalyticsCard dashboardAnalyticsCardRevenue">
-                  <div className="dashboardAnalyticsCardLabel">Total Revenue</div>
+                  <div className="dashboardAnalyticsCardLabel">{t("Total Revenue")}</div>
                   <div className="dashboardAnalyticsCardValue">
                     {typeof totalRevenue === "number"
                       ? `Rs.${totalRevenue.toFixed(2)}`
-                      : formatValue(totalRevenue)}
+                      : formatValue(totalRevenue, t)}
                   </div>
                 </div>
               )}
@@ -92,7 +102,7 @@ export default function DashboardAnalyticsPage() {
           )}
           {isPlainObject(data) && Object.keys(data).length > 0 && (
             <div className="dashboardAnalyticsData">
-              <h2 className="dashboardAnalyticsDataTitle">Dashboard data</h2>
+              <h2 className="dashboardAnalyticsDataTitle">{t("Dashboard data")}</h2>
               <dl className="dashboardAnalyticsDataList">
                 {Object.entries(data).map(([key, value]) => (
                   <div key={key} className="dashboardAnalyticsDataRow">
@@ -100,7 +110,7 @@ export default function DashboardAnalyticsPage() {
                     <dd>
                       {isPlainObject(value) || Array.isArray(value)
                         ? JSON.stringify(value)
-                        : formatValue(value)}
+                        : formatValue(value, t)}
                     </dd>
                   </div>
                 ))}
@@ -111,7 +121,7 @@ export default function DashboardAnalyticsPage() {
             totalSales == null &&
             totalRevenue == null && (
               <div className="dashboardAnalyticsMessage">
-                No dashboard sales data available.
+                {t("No dashboard sales data available.")}
               </div>
             )}
         </>

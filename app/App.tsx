@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import LayoutWrapper from "./components/LayoutWrapper";
+import { I18nProvider } from "./providers/I18nProvider";
 import QueryProvider from "./providers/QueryProvider";
 import LoginPage from "./(auth)/login/page";
 import RegisterPage from "./(auth)/register/page";
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-50 font-sans antialiased">
       <QueryProvider>
+        <I18nProvider>
         <Routes>
           <Route path="/" element={<LayoutWrapper />}>
             <Route index element={<Navigate to="/login" replace />} />
@@ -50,9 +52,10 @@ export default function App() {
             <Route path="dashboard/accounts/roles/create" element={<RolesCreatePage />} />
             <Route path="dashboard/accounts/directory" element={<DirectoryPage />} />
             <Route path="dashboard/accounts/clock-in-out" element={<ClockInOutPage />} />
-            <Route path="dashboard/accounts/analytics" element={<AccountsAnalyticsPage />} />
-          </Route>
-        </Routes>
+              <Route path="dashboard/accounts/analytics" element={<AccountsAnalyticsPage />} />
+            </Route>
+          </Routes>
+        </I18nProvider>
       </QueryProvider>
     </div>
   );

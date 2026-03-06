@@ -12,11 +12,13 @@ import {
 } from "@/handlers/auth";
 import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { setStoredUser } from "@/lib/auth/user";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { loginSchema, type LoginFormValues } from "@/schema/auth";
 import "../auth.scss";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const {
     register: registerField,
     handleSubmit,
@@ -43,14 +45,14 @@ export default function LoginPage() {
           }
           navigate("/dashboard");
         } else {
-          setError("root", { message: "No token received. Please try again." });
+          setError("root", { message: t("No token received. Please try again.") });
         }
       } else {
         setError("root", { message: result.error });
       }
     },
     onError: () => {
-      setError("root", { message: "Something went wrong. Please try again." });
+      setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -64,8 +66,8 @@ export default function LoginPage() {
     <div className="authLayout">
     <div className="authCard">
       <div className="authHeader">
-        <h1 className="authTitle">Sign in</h1>
-        <p className="authSubtitle">Enter your credentials to access BMS.</p>
+        <h1 className="authTitle">{t("Sign in")}</h1>
+        <p className="authSubtitle">{t("Enter your credentials to access BMS.")}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="authForm">
@@ -73,7 +75,7 @@ export default function LoginPage() {
           <p className="authError">{errors.root.message}</p>
         )}
         <label htmlFor="login-email" className="authField">
-          <span className="authLabel">Email</span>
+          <span className="authLabel">{t("Email")}</span>
           <input
             id="login-email"
             type="email"
@@ -87,7 +89,7 @@ export default function LoginPage() {
           )}
         </label>
         <label htmlFor="login-password" className="authField">
-          <span className="authLabel">Password</span>
+          <span className="authLabel">{t("Password")}</span>
           <input
             id="login-password"
             type="password"
@@ -106,15 +108,15 @@ export default function LoginPage() {
             className="authButton authButtonPrimary"
             disabled={loading}
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? t("Signing in…") : t("Sign in")}
           </button>
         </div>
       </form>
 
       <p className="authFooter">
-        Don&apos;t have an account?{" "}
+        {t("Don't have an account?")}{" "}
         <Link to="/register" className="authLink">
-          Register
+          {t("Register")}
         </Link>
       </p>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/app/providers/I18nProvider";
 import "./Modal.scss";
 
 type ModalProps = {
@@ -19,6 +20,8 @@ export default function Modal({
   children,
   footer,
 }: ModalProps) {
+  const { t } = useI18n();
+
   if (!isOpen) {
     return null;
   }
@@ -42,7 +45,7 @@ export default function Modal({
           <button
             type="button"
             className="modalClose"
-            aria-label="Close modal"
+            aria-label={t("Close modal")}
             onClick={onClose}
           >
             ×

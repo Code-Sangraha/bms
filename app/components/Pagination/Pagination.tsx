@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/app/providers/I18nProvider";
 import "./Pagination.scss";
 
 export type PaginationProps = {
@@ -28,6 +29,8 @@ export default function Pagination({
   pageSizeOptions = [10, 20, 50],
   onPageSizeChange,
 }: PaginationProps) {
+  const { t } = useI18n();
+
   if (totalItems === 0) return null;
 
   const start = (currentPage - 1) * pageSize + 1;
@@ -35,15 +38,15 @@ export default function Pagination({
   const pages = getPageNumbers(currentPage, totalPages);
 
   return (
-    <div className="pagination" role="navigation" aria-label="Pagination">
+    <div className="pagination" role="navigation" aria-label={t("Pagination")}>
       <div className="paginationSummary">
         <span className="paginationSummaryText">
-          Showing {start}–{end} of {totalItems}
+          {t("Showing")} {start}–{end} {t("of")} {totalItems}
         </span>
         {onPageSizeChange && pageSizeOptions.length > 0 && (
           <span className="paginationSizeWrap">
             <label htmlFor="pagination-size" className="paginationSizeLabel">
-              per page
+              {t("per page")}
             </label>
             <select
               id="pagination-size"
@@ -53,7 +56,7 @@ export default function Pagination({
                 onPageSizeChange(Number(e.target.value));
                 onPageChange(1);
               }}
-              aria-label="Items per page"
+              aria-label={t("Items per page")}
             >
               {pageSizeOptions.map((n) => (
                 <option key={n} value={n}>
@@ -70,11 +73,11 @@ export default function Pagination({
           className="paginationBtn paginationPrev"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          aria-label="Previous page"
+          aria-label={t("Previous page")}
         >
-          Previous
+          {t("Previous")}
         </button>
-        <div className="paginationNumbers" role="group" aria-label="Page numbers">
+        <div className="paginationNumbers" role="group" aria-label={t("Page numbers")}>
           {pages.map((p, i) =>
             p === "ellipsis" ? (
               <span key={`ellipsis-${i}`} className="paginationEllipsis" aria-hidden>
@@ -87,7 +90,7 @@ export default function Pagination({
                 className={`paginationNum ${currentPage === p ? "active" : ""}`}
                 onClick={() => onPageChange(p)}
                 disabled={currentPage === p}
-                aria-label={`Page ${p}`}
+                aria-label={`${t("Page")} ${p}`}
                 aria-current={currentPage === p ? "page" : undefined}
               >
                 {p}
@@ -100,9 +103,9 @@ export default function Pagination({
           className="paginationBtn paginationNext"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          aria-label="Next page"
+          aria-label={t("Next page")}
         >
-          Next
+          {t("Next")}
         </button>
       </div>
     </div>

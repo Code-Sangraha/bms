@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -61,6 +62,7 @@ export default function DualPricingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<DualPricing | null>(null);
   const [editingItem, setEditingItem] = useState<DualPricing | null>(null);
@@ -139,7 +141,7 @@ export default function DualPricingPage() {
     },
     onError: () => {
       addForm.setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -163,7 +165,7 @@ export default function DualPricingPage() {
     },
     onError: () => {
       editForm.setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -231,14 +233,14 @@ export default function DualPricingPage() {
   return (
     <section className="dualPricingPage">
       <div className="breadcrumb">
-        <span>Sales & Billing</span> {"›"} Pricelist
+        <span>{t("Sales & Billing")}</span> {"›"} {t("Pricelist")}
       </div>
 
       <div className="dualPricingHeader">
         <div className="dualPricingHeaderText">
-          <h1 className="pageTitle">Dual Pricing System</h1>
+          <h1 className="pageTitle">{t("Dual Pricing System")}</h1>
           <p className="pageSubtitle">
-            Manage retail and wholesale pricing
+            {t("Manage retail and wholesale pricing")}
           </p>
         </div>
         {canCreate && (
@@ -247,7 +249,7 @@ export default function DualPricingPage() {
             className="button buttonPrimary dualPricingUpgradeBtn"
             onClick={() => setIsModalOpen(true)}
           >
-            Upgrade Price
+            {t("Upgrade Price")}
           </button>
         )}
       </div>
@@ -256,27 +258,27 @@ export default function DualPricingPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search"
+          placeholder={t("Search")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search dual pricing"
+          aria-label={t("Search dual pricing")}
         />
       </div>
 
       <div className="dualPricingCardGrid">
         {itemsLoading && (
-          <div className="dualPricingCardMessage">Loading…</div>
+          <div className="dualPricingCardMessage">{t("Loading…")}</div>
         )}
         {itemsError && (
           <div className="dualPricingCardMessage dualPricingError">
             {itemsErrorDetail instanceof Error
               ? itemsErrorDetail.message
-              : "Failed to load"}
+              : t("Failed to load")}
           </div>
         )}
         {!itemsLoading && !itemsError && items.length === 0 && (
           <div className="dualPricingCardMessage">
-            No dual pricing yet. Add one to get started.
+            {t("No dual pricing yet. Add one to get started.")}
           </div>
         )}
         {!itemsLoading &&
@@ -284,7 +286,7 @@ export default function DualPricingPage() {
           items.length > 0 &&
           filteredItems.length === 0 && (
             <div className="dualPricingCardMessage">
-              No items match &quot;{searchQuery.trim()}&quot;.
+              {t("No items match")} &quot;{searchQuery.trim()}&quot;.
             </div>
           )}
         {!itemsLoading &&
@@ -300,7 +302,7 @@ export default function DualPricingPage() {
                         type="button"
                         className="dualPricingCardIconBtn"
                         onClick={() => setItemToDelete(item)}
-                        aria-label="Delete"
+                        aria-label={t("Delete")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6" />
@@ -315,7 +317,7 @@ export default function DualPricingPage() {
                         type="button"
                         className="dualPricingCardIconBtn"
                         onClick={() => setEditingItem(item)}
-                        aria-label="Edit"
+                        aria-label={t("Edit")}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -328,21 +330,21 @@ export default function DualPricingPage() {
               </div>
               <div className="dualPricingCardBody">
                 <p className="dualPricingCardRow">
-                  <span className="dualPricingCardLabel">Retail Price:</span>{" "}
+                  <span className="dualPricingCardLabel">{t("Retail Price")}:</span>{" "}
                   <span className="dualPricingCardValue">{formatPrice(item.retailPrice)}</span>
                 </p>
                 <p className="dualPricingCardRow">
-                  <span className="dualPricingCardLabel">Wholesale Price:</span>{" "}
+                  <span className="dualPricingCardLabel">{t("Wholesale Price")}:</span>{" "}
                   <span className="dualPricingCardValue">{formatPrice(item.wholesalePrice)}</span>
                 </p>
               </div>
               <div className="dualPricingCardFooter">
                 <span className="dualPricingCardMetric">
-                  Margin: {getMarginPercent(item.retailPrice, item.wholesalePrice)}%
+                  {t("Margin")}: {getMarginPercent(item.retailPrice, item.wholesalePrice)}%
                 </span>
                 <span className="dualPricingCardMetricDivider" />
                 <span className="dualPricingCardMetric">
-                  Cost: {formatPrice(item.wholesalePrice)}
+                  {t("Cost")}: {formatPrice(item.wholesalePrice)}
                 </span>
               </div>
             </div>
@@ -351,14 +353,14 @@ export default function DualPricingPage() {
 
       <ConfirmModal
         isOpen={!!itemToDelete}
-        title="Delete dual pricing"
+        title={t("Delete dual pricing")}
         message={
           itemToDelete
-            ? `Are you sure you want to delete this dual pricing entry? This action cannot be undone.`
+            ? t("Are you sure you want to delete this dual pricing entry? This action cannot be undone.")
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setItemToDelete(null)}
@@ -367,7 +369,7 @@ export default function DualPricingPage() {
 
       <Modal
         isOpen={!!editingItem}
-        title="Edit dual pricing"
+        title={t("Edit dual pricing")}
         subtitle={editingItem?.id}
         onClose={() => setEditingItem(null)}
         footer={
@@ -377,7 +379,7 @@ export default function DualPricingPage() {
               className="button modalButton"
               onClick={() => setEditingItem(null)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -385,7 +387,7 @@ export default function DualPricingPage() {
               className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
-              {editLoading ? "Saving…" : "Save"}
+              {editLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -401,9 +403,9 @@ export default function DualPricingPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Product</span>
+            <span className="label">{t("Product")}</span>
             <select className="select" {...editForm.register("productId")}>
-              <option value="">Select product</option>
+              <option value="">{t("Select product")}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -417,9 +419,9 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Outlet</span>
+            <span className="label">{t("Outlet")}</span>
             <select className="select" {...editForm.register("outletId")}>
-              <option value="">Select outlet</option>
+              <option value="">{t("Select outlet")}</option>
               {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -433,7 +435,7 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Wholesale price</span>
+            <span className="label">{t("Wholesale price")}</span>
             <input
               type="number"
               min={0}
@@ -448,7 +450,7 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Retail price</span>
+            <span className="label">{t("Retail price")}</span>
             <input
               type="number"
               min={0}
@@ -463,10 +465,10 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...editForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>
@@ -474,8 +476,8 @@ export default function DualPricingPage() {
 
       <Modal
         isOpen={isModalOpen}
-        title="Add dual pricing"
-        subtitle="Set wholesale and retail prices for a product at an outlet"
+        title={t("Add dual pricing")}
+        subtitle={t("Set wholesale and retail prices for a product at an outlet")}
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
@@ -484,7 +486,7 @@ export default function DualPricingPage() {
               className="button modalButton"
               onClick={() => setIsModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -492,7 +494,7 @@ export default function DualPricingPage() {
               className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
-              {addLoading ? "Saving…" : "Save"}
+              {addLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -508,9 +510,9 @@ export default function DualPricingPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Product</span>
+            <span className="label">{t("Product")}</span>
             <select className="select" {...addForm.register("productId")}>
-              <option value="">Select product</option>
+              <option value="">{t("Select product")}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -524,9 +526,9 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Outlet</span>
+            <span className="label">{t("Outlet")}</span>
             <select className="select" {...addForm.register("outletId")}>
-              <option value="">Select outlet</option>
+              <option value="">{t("Select outlet")}</option>
               {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -540,7 +542,7 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Wholesale price</span>
+            <span className="label">{t("Wholesale price")}</span>
             <input
               type="number"
               min={0}
@@ -555,7 +557,7 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Retail price</span>
+            <span className="label">{t("Retail price")}</span>
             <input
               type="number"
               min={0}
@@ -570,10 +572,10 @@ export default function DualPricingPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...addForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

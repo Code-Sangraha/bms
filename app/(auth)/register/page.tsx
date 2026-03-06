@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { getTokenFromAuthResponse, register as registerApi } from "@/handlers/auth";
 import { setAuthToken } from "@/lib/auth/token";
 import { registerSchema, type RegisterFormValues } from "@/schema/auth";
@@ -11,6 +12,7 @@ import "../auth.scss";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const {
     register: registerField,
     handleSubmit,
@@ -50,7 +52,7 @@ export default function RegisterPage() {
       }
     },
     onError: () => {
-      setError("root", { message: "Something went wrong. Please try again." });
+      setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -65,14 +67,14 @@ export default function RegisterPage() {
     <div className="authLayout">
     <div className="authCard">
       <div className="authHeader">
-        <h1 className="authTitle">Create account</h1>
-        <p className="authSubtitle">Register to get started with BMS.</p>
+        <h1 className="authTitle">{t("Create account")}</h1>
+        <p className="authSubtitle">{t("Register to get started with BMS.")}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="authForm">
         {errorMessage && <p className="authError">{errorMessage}</p>}
         <label htmlFor="register-username" className="authField">
-          <span className="authLabel">User name</span>
+          <span className="authLabel">{t("User name")}</span>
           <input
             id="register-username"
             type="text"
@@ -86,7 +88,7 @@ export default function RegisterPage() {
           )}
         </label>
         <label htmlFor="register-fullname" className="authField">
-          <span className="authLabel">Full name</span>
+          <span className="authLabel">{t("Full name")}</span>
           <input
             id="register-fullname"
             type="text"
@@ -100,7 +102,7 @@ export default function RegisterPage() {
           )}
         </label>
         <label htmlFor="register-email" className="authField">
-          <span className="authLabel">Email</span>
+          <span className="authLabel">{t("Email")}</span>
           <input
             id="register-email"
             type="email"
@@ -114,7 +116,7 @@ export default function RegisterPage() {
           )}
         </label>
         <label htmlFor="register-password" className="authField">
-          <span className="authLabel">Password</span>
+          <span className="authLabel">{t("Password")}</span>
           <input
             id="register-password"
             type="password"
@@ -128,7 +130,7 @@ export default function RegisterPage() {
           )}
         </label>
         <label htmlFor="register-confirm" className="authField">
-          <span className="authLabel">Confirm password</span>
+          <span className="authLabel">{t("Confirm password")}</span>
           <input
             id="register-confirm"
             type="password"
@@ -149,15 +151,15 @@ export default function RegisterPage() {
             className="authButton authButtonPrimary"
             disabled={loading}
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? t("Creating account…") : t("Create account")}
           </button>
         </div>
       </form>
 
       <p className="authFooter">
-        Already have an account?{" "}
+        {t("Already have an account?")}{" "}
         <Link to="/login" className="authLink">
-          Sign in
+          {t("Sign in")}
         </Link>
       </p>
     </div>

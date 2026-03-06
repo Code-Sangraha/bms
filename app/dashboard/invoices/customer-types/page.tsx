@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
@@ -39,6 +40,7 @@ function toFormValues(ct: CustomerType): CreateCustomerTypeFormValues {
 
 export default function CustomerTypesPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -111,7 +113,7 @@ export default function CustomerTypesPage() {
     },
     onError: () => {
       addForm.setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -135,7 +137,7 @@ export default function CustomerTypesPage() {
     },
     onError: () => {
       editForm.setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -193,14 +195,14 @@ export default function CustomerTypesPage() {
   return (
     <section className="customerTypesPage">
       <div className="breadcrumb">
-        <span>Sales & Billing</span> {"›"} Customer Types
+        <span>{t("Sales & Billing")}</span> {"›"} {t("Customer Types")}
       </div>
 
       <div className="customerTypesHeader">
         <div className="customerTypesHeaderText">
-          <h1 className="pageTitle">Customer Types</h1>
+          <h1 className="pageTitle">{t("Customer Types")}</h1>
           <p className="pageSubtitle">
-            Manage customer types for retail and wholesale
+            {t("Manage customer types for retail and wholesale")}
           </p>
         </div>
         {canCreate && (
@@ -209,7 +211,7 @@ export default function CustomerTypesPage() {
             className="button buttonPrimary"
             onClick={() => setIsModalOpen(true)}
           >
-            Add Customer Type
+            {t("Add Customer Type")}
           </button>
         )}
       </div>
@@ -218,22 +220,22 @@ export default function CustomerTypesPage() {
         <span className="searchIcon">🔍</span>
         <input
           className="searchInput"
-          placeholder="Search customer types"
+          placeholder={t("Search customer types")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search customer types"
+          aria-label={t("Search customer types")}
         />
       </div>
 
       <div className="customerTypesTable">
         <div className="customerTypesRow customerTypesRowHeader">
-          <span>Name</span>
-          <span>Status</span>
+          <span>{t("Name")}</span>
+          <span>{t("Status")}</span>
           <span />
         </div>
         {itemsLoading && (
           <div className="customerTypesRow">
-            <span className="customerTypesMessage">Loading…</span>
+            <span className="customerTypesMessage">{t("Loading…")}</span>
             <span />
             <span />
           </div>
@@ -243,7 +245,7 @@ export default function CustomerTypesPage() {
             <span className="customerTypesMessage customerTypesError">
               {itemsErrorDetail instanceof Error
                 ? itemsErrorDetail.message
-                : "Failed to load"}
+                : t("Failed to load")}
             </span>
             <span />
             <span />
@@ -252,7 +254,7 @@ export default function CustomerTypesPage() {
         {!itemsLoading && !itemsError && items.length === 0 && (
           <div className="customerTypesRow">
             <span className="customerTypesMessage">
-              No customer types yet. Add one to get started.
+              {t("No customer types yet. Add one to get started.")}
             </span>
             <span />
             <span />
@@ -264,7 +266,7 @@ export default function CustomerTypesPage() {
           filteredItems.length === 0 && (
             <div className="customerTypesRow">
               <span className="customerTypesMessage">
-                No items match &quot;{searchQuery.trim()}&quot;.
+                {t("No items match")} &quot;{searchQuery.trim()}&quot;.
               </span>
               <span />
               <span />
@@ -279,7 +281,7 @@ export default function CustomerTypesPage() {
                 <span
                   className={ct.status ? "badge badgeActive" : "badge"}
                 >
-                  {ct.status ? "Active" : "Inactive"}
+                  {ct.status ? t("Active") : t("Inactive")}
                 </span>
               </span>
               <div
@@ -294,7 +296,7 @@ export default function CustomerTypesPage() {
                       onClick={() =>
                         setOpenMenuId((id) => (id === ct.id ? null : ct.id))
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === ct.id}
                     >
                       ⋮
@@ -310,7 +312,7 @@ export default function CustomerTypesPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Edit
+                            {t("Edit")}
                           </button>
                         )}
                         {canDelete && (
@@ -322,7 +324,7 @@ export default function CustomerTypesPage() {
                               setOpenMenuId(null);
                             }}
                           >
-                            Delete
+                            {t("Delete")}
                           </button>
                         )}
                       </div>
@@ -348,14 +350,16 @@ export default function CustomerTypesPage() {
 
       <ConfirmModal
         isOpen={!!itemToDelete}
-        title="Delete customer type"
+        title={t("Delete customer type")}
         message={
           itemToDelete
-            ? `Are you sure you want to delete "${itemToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${itemToDelete.name}"? ${t(
+                "This action cannot be undone."
+              )}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setItemToDelete(null)}
@@ -364,7 +368,7 @@ export default function CustomerTypesPage() {
 
       <Modal
         isOpen={!!editingItem}
-        title="Edit Customer Type"
+        title={t("Edit Customer Type")}
         subtitle={editingItem?.name}
         onClose={() => setEditingItem(null)}
         footer={
@@ -374,7 +378,7 @@ export default function CustomerTypesPage() {
               className="button modalButton"
               onClick={() => setEditingItem(null)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -382,7 +386,7 @@ export default function CustomerTypesPage() {
               className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
-              {editLoading ? "Saving…" : "Save"}
+              {editLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -398,10 +402,10 @@ export default function CustomerTypesPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Name</span>
+            <span className="label">{t("Name")}</span>
             <input
               className="input"
-              placeholder="e.g. Wholesale"
+              placeholder={t("e.g. Wholesale")}
               {...editForm.register("name")}
             />
             {editForm.formState.errors.name && (
@@ -411,10 +415,10 @@ export default function CustomerTypesPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...editForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>
@@ -422,8 +426,8 @@ export default function CustomerTypesPage() {
 
       <Modal
         isOpen={isModalOpen}
-        title="Add Customer Type"
-        subtitle="Create a new customer type for sales"
+        title={t("Add Customer Type")}
+        subtitle={t("Create a new customer type for sales")}
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
@@ -432,7 +436,7 @@ export default function CustomerTypesPage() {
               className="button modalButton"
               onClick={() => setIsModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -440,7 +444,7 @@ export default function CustomerTypesPage() {
               className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
-              {addLoading ? "Saving…" : "Save"}
+              {addLoading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -456,10 +460,10 @@ export default function CustomerTypesPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Name</span>
+            <span className="label">{t("Name")}</span>
             <input
               className="input"
-              placeholder="e.g. Wholesale"
+              placeholder={t("e.g. Wholesale")}
               {...addForm.register("name")}
             />
             {addForm.formState.errors.name && (
@@ -469,10 +473,10 @@ export default function CustomerTypesPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...addForm.register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
         </form>

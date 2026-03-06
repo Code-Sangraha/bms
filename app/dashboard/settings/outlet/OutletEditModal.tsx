@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Modal from "../../../components/Modal/Modal";
 import {
   updateOutlet,
@@ -20,6 +21,7 @@ export default function OutletEditModal({
   onClose,
   onSuccess,
 }: OutletEditModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(outlet.name);
   const [contact, setContact] = useState(outlet.contact);
   const [status, setStatus] = useState(outlet.status);
@@ -49,20 +51,20 @@ export default function OutletEditModal({
       onSuccess?.();
       onClose();
     } else {
-      setError(result.error ?? "Failed to update outlet");
+      setError(result.error ?? t("Failed to update outlet"));
     }
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      title="Manage Outlet"
+      title={t("Manage Outlet")}
       subtitle={outlet.id}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="button modalButton" onClick={onClose}>
-            Discard
+            {t("Discard")}
           </button>
           <button
             type="button"
@@ -70,7 +72,7 @@ export default function OutletEditModal({
             onClick={handleSave}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Saving…" : "Save"}
+            {isSubmitting ? t("Saving…") : t("Save")}
           </button>
         </>
       }
@@ -81,7 +83,7 @@ export default function OutletEditModal({
         </p>
       )}
       <label className="modalField">
-        <span className="label">Outlet</span>
+        <span className="label">{t("Outlet")}</span>
         <input
           className="input"
           value={name}
@@ -90,24 +92,24 @@ export default function OutletEditModal({
       </label>
 
       <label className="modalField">
-        <span className="label">Manager ID</span>
+        <span className="label">{t("Manager ID")}</span>
         <input className="input" value={outlet.managerId} readOnly disabled />
       </label>
 
       <label className="modalField">
-        <span className="label">Status</span>
+        <span className="label">{t("Status")}</span>
         <select
           className="select"
           value={status ? "Active" : "Inactive"}
           onChange={(e) => setStatus(e.target.value === "Active")}
         >
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+          <option value="Active">{t("Active")}</option>
+          <option value="Inactive">{t("Inactive")}</option>
         </select>
       </label>
 
       <label className="modalField">
-        <span className="label">Contact</span>
+        <span className="label">{t("Contact")}</span>
         <input
           className="input"
           value={contact}

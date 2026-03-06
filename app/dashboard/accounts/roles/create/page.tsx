@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useI18n } from "@/app/providers/I18nProvider";
 import { createRole as createRoleApi } from "@/handlers/role";
 import { createRoleSchema, type CreateRoleFormValues } from "@/schema/role";
 import "./createRole.scss";
@@ -19,6 +20,7 @@ export default function CreateRolePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (canCreate === false) {
@@ -51,7 +53,7 @@ export default function CreateRolePage() {
       }
     },
     onError: () => {
-      setError("root", { message: "Something went wrong. Please try again." });
+      setError("root", { message: t("Something went wrong. Please try again.") });
     },
   });
 
@@ -68,13 +70,14 @@ export default function CreateRolePage() {
   return (
     <section className="createRolePage">
       <div className="breadcrumb">
-        <span>Accounts</span> {"›"} <span>Roles</span> {"›"} Create role
+        <span>{t("Accounts")}</span> {"›"} <span>{t("Roles")}</span> {"›"}{" "}
+        {t("Create role")}
       </div>
 
       <div className="createRoleHeader">
-        <h1 className="pageTitle">Create role</h1>
+        <h1 className="pageTitle">{t("Create role")}</h1>
         <p className="pageSubtitle">
-          Add a new role to assign to users (e.g. Employee, Manager).
+          {t("Add a new role to assign to users (e.g. Employee, Manager).")}
         </p>
       </div>
 
@@ -90,10 +93,10 @@ export default function CreateRolePage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">Role name</span>
+            <span className="label">{t("Role name")}</span>
             <input
               className="input"
-              placeholder="e.g. Employee"
+              placeholder={t("e.g. Employee")}
               {...register("name")}
               autoFocus
             />
@@ -109,10 +112,10 @@ export default function CreateRolePage() {
               className="button buttonPrimary"
               disabled={loading}
             >
-              {loading ? "Creating…" : "Create role"}
+              {loading ? t("Creating…") : t("Create role")}
             </button>
             <Link to="/dashboard/accounts/roles" className="cancelLink">
-              Cancel
+              {t("Cancel")}
             </Link>
           </div>
         </form>

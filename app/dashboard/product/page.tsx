@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
@@ -39,6 +40,7 @@ const defaultAddFormValues: CreateProductFormValues = {
 export default function ProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -210,7 +212,7 @@ export default function ProductPage() {
     },
     onError: () => {
       setError("root", {
-        message: "Something went wrong. Please try again.",
+        message: t("Something went wrong. Please try again."),
       });
     },
   });
@@ -224,14 +226,14 @@ export default function ProductPage() {
   return (
     <section className="productPage">
       <div className="breadcrumb">
-        <span>Product</span> {"›"} Products
+        <span>{t("Product")}</span> {"›"} {t("Products")}
       </div>
 
       <div className="productHeader">
         <div className="productHeaderText">
-          <h1 className="pageTitle">Products</h1>
+          <h1 className="pageTitle">{t("Products")}</h1>
           <p className="pageSubtitle">
-            Create and manage products by type and outlet
+            {t("Create and manage products by type and outlet")}
           </p>
         </div>
         <button
@@ -239,24 +241,24 @@ export default function ProductPage() {
           className="button buttonPrimary"
           onClick={() => setIsAddModalOpen(true)}
         >
-          Add Product
+          {t("Add Product")}
         </button>
       </div>
 
       <div className="cardList">
         {productsLoading && (
-          <p className="productPageMessage">Loading products…</p>
+          <p className="productPageMessage">{t("Loading products…")}</p>
         )}
         {productsError && (
           <p className="productPageMessage productPageError">
             {productsErrorDetail instanceof Error
               ? productsErrorDetail.message
-              : "Failed to load products"}
+              : t("Failed to load products")}
           </p>
         )}
         {!productsLoading && !productsError && products.length === 0 && (
           <p className="productPageMessage">
-            No products yet. Add one to get started.
+            {t("No products yet. Add one to get started.")}
           </p>
         )}
         {!productsLoading &&
@@ -274,7 +276,7 @@ export default function ProductPage() {
                       product.status ? "badge badgeActive" : "badge"
                     }
                   >
-                    {product.status ? "Active" : "Inactive"}
+                    {product.status ? t("Active") : t("Inactive")}
                   </span>
                   <div
                     className="cardMenuWrap"
@@ -288,7 +290,7 @@ export default function ProductPage() {
                           id === product.id ? null : product.id
                         )
                       }
-                      aria-label="More options"
+                      aria-label={t("More options")}
                       aria-expanded={openMenuId === product.id}
                     >
                       ⋮
@@ -305,7 +307,7 @@ export default function ProductPage() {
                             setOpenMenuId(null);
                           }}
                         >
-                          Delete
+                          {t("Delete")}
                         </button>
                       </div>
                     )}
@@ -315,7 +317,7 @@ export default function ProductPage() {
 
               <div className="cardBody">
                 <label className="field">
-                  <span className="label">Product Type</span>
+                  <span className="label">{t("Product Type")}</span>
                   <input
                     className="input"
                     value={getProductTypeName(product)}
@@ -323,7 +325,7 @@ export default function ProductPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="label">Outlet</span>
+                  <span className="label">{t("Outlet")}</span>
                   <input
                     className="input"
                     value={getOutletName(product)}
@@ -331,7 +333,7 @@ export default function ProductPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="label">Quantity</span>
+                  <span className="label">{t("Quantity")}</span>
                   <input
                     className="input"
                     type="text"
@@ -347,7 +349,7 @@ export default function ProductPage() {
                   className="button buttonPrimary"
                   onClick={() => setSelectedProductId(product.id)}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
               </div>
             </article>
@@ -380,14 +382,16 @@ export default function ProductPage() {
 
       <ConfirmModal
         isOpen={!!productToDelete}
-        title="Delete product"
+        title={t("Delete product")}
         message={
           productToDelete
-            ? `Are you sure you want to delete "${productToDelete.name}"? This action cannot be undone.`
+            ? `${t("Are you sure you want to delete")} "${productToDelete.name}"? ${t(
+                "This action cannot be undone."
+              )}`
             : ""
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
         onClose={() => setProductToDelete(null)}
@@ -396,8 +400,8 @@ export default function ProductPage() {
 
       <Modal
         isOpen={isAddModalOpen}
-        title="Add Product"
-        subtitle="Create a new product with type, outlet, and quantity"
+        title={t("Add Product")}
+        subtitle={t("Create a new product with type, outlet, and quantity")}
         onClose={() => setIsAddModalOpen(false)}
         footer={
           <>
@@ -406,7 +410,7 @@ export default function ProductPage() {
               className="button modalButton"
               onClick={() => setIsAddModalOpen(false)}
             >
-              Discard
+              {t("Discard")}
             </button>
             <button
               type="submit"
@@ -414,7 +418,7 @@ export default function ProductPage() {
               className="button buttonPrimary modalButton"
               disabled={loading}
             >
-              {loading ? "Saving…" : "Save"}
+              {loading ? t("Saving…") : t("Save")}
             </button>
           </>
         }
@@ -428,10 +432,10 @@ export default function ProductPage() {
             <p className="productFormError">{errors.root.message}</p>
           )}
           <label className="modalField">
-            <span className="label">Product name</span>
+            <span className="label">{t("Product name")}</span>
             <input
               className="input"
-              placeholder="e.g. Pork"
+              placeholder={t("e.g. Pork")}
               {...register("name")}
             />
             {errors.name && (
@@ -439,9 +443,9 @@ export default function ProductPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Product Type</span>
+            <span className="label">{t("Product Type")}</span>
             <select className="select" {...register("productTypeId")}>
-              <option value="">Select product type</option>
+              <option value="">{t("Select product type")}</option>
               {productTypes.map((pt) => (
                 <option key={pt.id} value={pt.id}>
                   {pt.name}
@@ -455,9 +459,9 @@ export default function ProductPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Outlet</span>
+            <span className="label">{t("Outlet")}</span>
             <select className="select" {...register("outletId")}>
-              <option value="">Select outlet</option>
+              <option value="">{t("Select outlet")}</option>
               {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -471,13 +475,13 @@ export default function ProductPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Quantity</span>
+            <span className="label">{t("Quantity")}</span>
             <input
               className="input"
               type="number"
               step="any"
               min={0}
-              placeholder="e.g. 45.2"
+              placeholder={t("e.g. 45.2")}
               {...register("quantity", { valueAsNumber: true })}
             />
             {errors.quantity && (
@@ -487,17 +491,17 @@ export default function ProductPage() {
             )}
           </label>
           <label className="modalField">
-            <span className="label">Status</span>
+            <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="Active">{t("Active")}</option>
+              <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
           <label className="modalField">
-            <span className="label">Created by (optional, user UUID)</span>
+            <span className="label">{t("Created by (optional, user UUID)")}</span>
             <input
               className="input"
-              placeholder="e.g. 601756be-54be-4623-8e97-7ff891e43081"
+              placeholder={t("e.g. 601756be-54be-4623-8e97-7ff891e43081")}
               {...register("createdBy")}
             />
             {errors.createdBy && (
