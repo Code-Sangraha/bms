@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import LayoutWrapper from "./components/LayoutWrapper";
+import InstallPrompt from "./components/InstallPrompt/InstallPrompt";
 import { I18nProvider } from "./providers/I18nProvider";
 import QueryProvider from "./providers/QueryProvider";
 import LoginPage from "./(auth)/login/page";
@@ -29,6 +30,7 @@ export default function App() {
     <div className="min-h-screen bg-zinc-50 font-sans antialiased">
       <QueryProvider>
         <I18nProvider>
+        <InstallPrompt />
         <Routes>
           <Route path="/" element={<LayoutWrapper />}>
             <Route index element={<Navigate to="/login" replace />} />

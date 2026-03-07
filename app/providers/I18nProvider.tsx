@@ -358,6 +358,9 @@ const translations: Record<string, string> = {
     "सिर्जना गर्ने (वैकल्पिक, प्रयोगकर्ता UUID)",
   "e.g. 601756be-54be-4623-8e97-7ff891e43081":
     "जस्तै: 601756be-54be-4623-8e97-7ff891e43081",
+  "Install App": "एप इन्स्टल गर्नुहोस्",
+  "Install BMS on your device for quick access.":
+    "छिटो पहुँचको लागि आफ्नो उपकरणमा BMS इन्स्टल गर्नुहोस्।",
   "Edit Product": "उत्पादन सम्पादन गर्नुहोस्",
   "Manage product types such as processed, raw, and packaged":
     "प्रशोधित, कच्चा र प्याकेज्ड जस्ता उत्पादन प्रकारहरू व्यवस्थापन गर्नुहोस्",

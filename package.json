@@ -30,6 +30,7 @@
     "sass": "^1.97.3",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }
