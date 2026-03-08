@@ -47,6 +47,7 @@ export type LoginResponse = {
   data?: AuthResponseData;
   accessToken?: string;
   token?: string;
+  refreshToken?: string;
   [key: string]: unknown;
 };
 
@@ -59,7 +60,7 @@ export function getTokenFromAuthResponse(response: LoginResponse | RegisterRespo
 /** Get refresh token from login API response. */
 export function getRefreshTokenFromAuthResponse(response: LoginResponse): string | undefined {
   const data = response.data ?? response;
-  return (data as AuthResponseData).refreshToken;
+  return (data as AuthResponseData).refreshToken ?? (response as LoginResponse).refreshToken;
 }
 
 /** Get user from login/register API response for storing outletId (Manager/Staff). */
