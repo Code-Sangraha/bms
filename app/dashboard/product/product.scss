@@ -286,3 +286,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .pageTitle {
+    font-size: 18px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .productHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .cardId {
+    display: none;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .cardTop {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .badgeGroup {
+    width: 100%;
+  }
+
+  .cardMenuWrap {
+    align-self: flex-end;
+  }
+}

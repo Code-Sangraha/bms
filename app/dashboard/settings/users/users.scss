@@ -184,3 +184,111 @@
   }
 }
 
+@media (max-width: 768px) {
+  .pageTitle {
+    font-size: 18px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .usersHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .usersSearch {
+    width: 100%;
+  }
+
+  .usersRowHeader {
+    display: none;
+  }
+
+  .usersTable {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: none;
+  }
+
+  .usersRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    font-size: 12px;
+    border-bottom: none;
+
+    span {
+      padding: 4px 0;
+      word-break: break-word;
+    }
+
+    span:first-child {
+      display: none;
+    }
+
+    span:nth-child(2)::before {
+      content: "Name";
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #9ca3af;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+
+    span:nth-child(3)::before {
+      content: "Role";
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #9ca3af;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+
+    span:nth-child(4)::before {
+      content: "Status";
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #9ca3af;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+
+    span:nth-child(5)::before {
+      content: "Contact";
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #9ca3af;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+
+    span:nth-child(5) {
+      grid-column: 1 / -1;
+    }
+
+    span:last-child {
+      display: none;
+    }
+  }
+}
+

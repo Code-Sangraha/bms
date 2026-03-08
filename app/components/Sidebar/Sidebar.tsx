@@ -61,7 +61,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   products: "Products",
   productType: "Product Type",
   pricelist: "Pricelist",
-  live: "Live",
+  live: "Live Stock",
   processed: "Processed",
   attendance: "Attendance",
   clockInOut: "Clock In/Out",
@@ -274,6 +274,7 @@ export default function Sidebar() {
                 key={entry.href}
                 className="drawerItem"
                 to={entry.href}
+                onClick={() => setActiveMenuId(null)}
               >
                 {t(sidebarLabelMap[entry.labelKey])}
               </Link>
