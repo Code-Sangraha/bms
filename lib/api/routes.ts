@@ -39,6 +39,11 @@ export const PRODUCT_ROUTES = {
   DEDUCT: "/products/deduct",
 } as const;
 
+export const LIVESTOCK_ROUTES = {
+  CREATE_ITEM: "/products/livestock/create-item",
+  GET_ITEMS: "/products/livestock/get-items",
+} as const;
+
 export const ROLE_ROUTES = {
   GET: "/roles/get",
   CREATE: "/roles/create",

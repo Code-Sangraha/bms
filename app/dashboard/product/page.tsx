@@ -17,8 +17,10 @@ import {
   updateProduct as updateProductApi,
   type Product,
 } from "@/handlers/product";
+import { createLivestockItem } from "@/handlers/livestock";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
+import { getProducts as getProductsList } from "@/handlers/product";
 import {
   createProductSchema,
   type CreateProductFormValues,
@@ -28,14 +30,17 @@ import ProductEditModal from "./ProductEditModal";
 
 const PRODUCTS_QUERY_KEY = ["products"];
 
-const defaultAddFormValues: CreateProductFormValues = {
+// We initialise only the common fields here and let
+// react-hook-form manage the rest so we don't fight
+// the user's typing (especially for numeric fields).
+const defaultAddFormValues = {
+  productType: "processed" as const,
   name: "",
   productTypeId: "",
   outletId: "",
   quantity: 0,
-  status: "Active",
-  createdBy: "",
-};
+  status: "Active" as const,
+} as unknown as CreateProductFormValues;
 
 export default function ProductPage() {
   const navigate = useNavigate();
@@ -45,6 +50,7 @@ export default function ProductPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [activeTab, setActiveTab] = useState<"processed" | "live">("processed");
   const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -60,6 +66,16 @@ export default function ProductPage() {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
+      return result.data;
+    },
+  });
+
+  // Get all products for the product dropdown (for live tab)
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ["allProducts"],
+    queryFn: async () => {
+      const result = await getProductsList();
+      if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
@@ -87,15 +103,75 @@ export default function ProductPage() {
     handleSubmit,
     setError,
     reset,
+    setValue,
+    getValues,
+    clearErrors,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateProductFormValues>({
     resolver: zodResolver(createProductSchema),
     defaultValues: defaultAddFormValues,
   });
 
+  // Watch productTypeId for live tab to get selected product
+  const selectedProductId_watch = watch("productTypeId");
+
+  // Get processed product types
+  const processedProductTypes = productTypes.filter((pt) => 
+    pt.name.toLowerCase().includes("processed")
+  );
+
+  // Set default processed product type when modal opens
   useEffect(() => {
-    if (!isAddModalOpen) reset(defaultAddFormValues);
+    if (isAddModalOpen && activeTab === "processed" && processedProductTypes.length > 0) {
+      if (!getValues("productTypeId")) {
+        setValue("productTypeId", processedProductTypes[0].id);
+      }
+    }
+  }, [isAddModalOpen, activeTab, processedProductTypes, setValue, getValues]);
+
+  useEffect(() => {
+    if (!isAddModalOpen) {
+      reset(defaultAddFormValues);
+      setActiveTab("processed");
+    }
   }, [isAddModalOpen, reset]);
+
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+
+    // Update the form's productType when tab changes
+    setValue("productType", activeTab);
+
+    if (activeTab === "processed") {
+      // For processed products – keep whatever the user typed
+      // for weight/price/itemId instead of forcing them to 0.
+      // Set default outlet if available for processed products
+      if (outlets.length > 0 && !getValues("outletId")) {
+        setValue("outletId", outlets[0].id);
+      }
+      // Set default product type if available
+      if (processedProductTypes.length > 0 && !getValues("productTypeId")) {
+        setValue("productTypeId", processedProductTypes[0].id);
+      }
+      clearErrors(["weight", "price", "itemId"]);
+    } else if (activeTab === "live") {
+      // For live products - outletId is NOT needed
+      setValue("quantity", 0);
+      setValue("outletId", ""); // Clear outletId for live products
+      clearErrors(["quantity", "outletId"]);
+    }
+  }, [activeTab, isAddModalOpen, setValue, clearErrors, outlets, getValues, processedProductTypes]);
+
+  // When a product is selected in live tab, set the name
+  useEffect(() => {
+    if (activeTab === "live" && selectedProductId_watch) {
+      const selectedProduct = allProducts.find(p => p.id === selectedProductId_watch);
+      if (selectedProduct) {
+        setValue("name", selectedProduct.name);
+      }
+    }
+  }, [selectedProductId_watch, activeTab, allProducts, setValue]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -189,19 +265,50 @@ export default function ProductPage() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (values: CreateProductFormValues) =>
-      createProductApi({
-        name: values.name,
-        productTypeId: values.productTypeId,
-        outletId: values.outletId,
-        quantity: values.quantity,
-        status: values.status,
-        createdBy: values.createdBy || undefined,
-      }),
-    onSuccess: (result) => {
+    mutationFn: async (values: CreateProductFormValues) => {
+      if (values.productType === "live") {
+        // For live products - livestock item
+        if (!values.itemId || !values.weight || !values.price) {
+          throw new Error("Missing required fields for livestock item");
+        }
+        
+        const payload = {
+          productId: values.productTypeId, // This is the product category ID
+          name: values.name,
+          itemId: values.itemId,
+          weight: Number(values.weight),
+          price: Number(values.price),
+          status: values.status === "Active",
+        };
+        
+        console.log("Creating livestock item with payload:", payload);
+        return createLivestockItem(payload);
+      } else {
+        // For processed products - using the curl example
+        const payload = {
+          name: values.name,
+          productTypeId: values.productTypeId,
+          outletId: values.outletId,
+          weight: Number(values.weight), // API expects weight for processed products (based on your curl)
+          status: values.status === "Active",
+        };
+
+        console.log("Creating processed product with payload:", payload);
+        return createProductApi(payload);
+      }
+    },
+    onSuccess: (result, variables) => {
       if (result.ok) {
         setIsAddModalOpen(false);
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["allProducts"] });
+
+        // Redirect based on which tab/product type was used
+        if (variables.productType === "live") {
+          navigate("/dashboard/product/liveProduct");
+        } else {
+          navigate("/dashboard/product/processedProduct");
+        }
       } else {
         if (result.status === 401) {
           navigate("/login");
@@ -210,14 +317,16 @@ export default function ProductPage() {
         setError("root", { message: result.error });
       }
     },
-    onError: () => {
+    onError: (error) => {
       setError("root", {
-        message: t("Something went wrong. Please try again."),
+        message: error instanceof Error ? error.message : t("Something went wrong. Please try again."),
       });
     },
   });
 
   const onAddSubmit = (data: CreateProductFormValues) => {
+    // Log the data being submitted for debugging
+    console.log("Submitting form data:", data);
     createMutation.mutate(data);
   };
 
@@ -333,11 +442,11 @@ export default function ProductPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="label">{t("Quantity")}</span>
+                  <span className="label">{t("Weight/Quantity")}</span>
                   <input
                     className="input"
                     type="text"
-                    value={product.quantity}
+                    value={product.quantity || product.weight || 0}
                     readOnly
                   />
                 </label>
@@ -401,7 +510,7 @@ export default function ProductPage() {
       <Modal
         isOpen={isAddModalOpen}
         title={t("Add Product")}
-        subtitle={t("Create a new product with type, outlet, and quantity")}
+        subtitle={activeTab === "live" ? t("Create a new livestock item") : t("Create a new product with type, outlet, and quantity")}
         onClose={() => setIsAddModalOpen(false)}
         footer={
           <>
@@ -423,92 +532,192 @@ export default function ProductPage() {
           </>
         }
       >
+        <div className="productTabs">
+          <button
+            type="button"
+            className={`productTab ${activeTab === "processed" ? "active" : ""}`}
+            onClick={() => setActiveTab("processed")}
+          >
+            {t("Processed")}
+          </button>
+          <button
+            type="button"
+            className={`productTab ${activeTab === "live" ? "active" : ""}`}
+            onClick={() => setActiveTab("live")}
+          >
+            {t("Live")}
+          </button>
+        </div>
         <form
           id="add-product-form"
           onSubmit={handleSubmit(onAddSubmit)}
           className="productAddForm"
         >
+          {/* Hidden field for product type */}
+          <input type="hidden" {...register("productType")} />
+
           {errors.root?.message && (
             <p className="productFormError">{errors.root.message}</p>
           )}
-          <label className="modalField">
-            <span className="label">{t("Product name")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. Pork")}
-              {...register("name")}
-            />
-            {errors.name && (
-              <span className="productFieldError">{errors.name.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Product Type")}</span>
-            <select className="select" {...register("productTypeId")}>
-              <option value="">{t("Select product type")}</option>
-              {productTypes.map((pt) => (
-                <option key={pt.id} value={pt.id}>
-                  {pt.name}
-                </option>
-              ))}
-            </select>
-            {errors.productTypeId && (
-              <span className="productFieldError">
-                {errors.productTypeId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...register("outletId")}>
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {errors.outletId && (
-              <span className="productFieldError">
-                {errors.outletId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Quantity")}</span>
-            <input
-              className="input"
-              type="number"
-              step="any"
-              min={0}
-              placeholder={t("e.g. 45.2")}
-              {...register("quantity", { valueAsNumber: true })}
-            />
-            {errors.quantity && (
-              <span className="productFieldError">
-                {errors.quantity.message}
-              </span>
-            )}
-          </label>
+
+          {activeTab === "processed" ? (
+            // Processed product fields
+            <>
+              <label className="modalField">
+                <span className="label">{t("Product name")}</span>
+                <input
+                  className="input"
+                  placeholder={t("e.g. Pork")}
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <span className="productFieldError">{errors.name.message}</span>
+                )}
+              </label>
+
+              <label className="modalField">
+                <span className="label">{t("Product Type")}</span>
+                <select 
+                  className="select" 
+                  {...register("productTypeId")}
+                  value={watch("productTypeId") || (processedProductTypes.length > 0 ? processedProductTypes[0].id : "")}
+                  onChange={(e) => setValue("productTypeId", e.target.value)}
+                >
+                  {processedProductTypes.map((pt) => (
+                    <option key={pt.id} value={pt.id}>
+                      {pt.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.productTypeId && (
+                  <span className="productFieldError">
+                    {errors.productTypeId.message}
+                  </span>
+                )}
+              </label>
+
+              <label className="modalField">
+                <span className="label">{t("Outlet")}</span>
+                <select className="select" {...register("outletId")}>
+                  <option value="">{t("Select outlet")}</option>
+                  {outlets.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.outletId && (
+                  <span className="productFieldError">
+                    {errors.outletId.message}
+                  </span>
+                )}
+              </label>
+
+              <label className="modalField">
+                <span className="label">{t("Weight")}</span>
+                <input
+                  className="input"
+                  type="number"
+                  step="any"
+                  placeholder={t("e.g. 50")}
+                  {...register("weight")}
+                />
+                {errors.weight && (
+                  <span className="productFieldError">
+                    {errors.weight.message}
+                  </span>
+                )}
+              </label>
+            </>
+          ) : (
+            // Livestock fields - EXACTLY matching Postman API structure
+            <>
+              <label className="modalField">
+                <span className="label">{t("Livestock Product Category")}</span>
+                <select 
+                  className="select" 
+                  {...register("productTypeId")}
+                  onChange={(e) => {
+                    const selectedProduct = allProducts.find(p => p.id === e.target.value);
+                    if (selectedProduct) {
+                      setValue("name", selectedProduct.name);
+                    }
+                  }}
+                >
+                  <option value="">{t("Select livestock category")}</option>
+                  {allProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.productTypeId && (
+                  <span className="productFieldError">
+                    {errors.productTypeId.message}
+                  </span>
+                )}
+              </label>
+
+              {/* Hidden field for name - will be set automatically */}
+              <input type="hidden" {...register("name")} />
+
+              <label className="modalField">
+                <span className="label">{t("Item ID")}</span>
+                <input
+                  className="input"
+                  placeholder={t("e.g. pork-03")}
+                  {...register("itemId")}
+                />
+                {errors.itemId && (
+                  <span className="productFieldError">
+                    {errors.itemId.message}
+                  </span>
+                )}
+              </label>
+
+              <label className="modalField">
+                <span className="label">{t("Weight")}</span>
+                <input
+                  className="input"
+                  type="number"
+                  step="any"
+                  placeholder={t("e.g. 30")}
+                  {...register("weight")}
+                />
+                {errors.weight && (
+                  <span className="productFieldError">
+                    {errors.weight.message}
+                  </span>
+                )}
+              </label>
+
+              <label className="modalField">
+                <span className="label">{t("Price")}</span>
+                <input
+                  className="input"
+                  type="number"
+                  step="any"
+                  placeholder={t("e.g. 60000")}
+                  {...register("price")}
+                />
+                {errors.price && (
+                  <span className="productFieldError">
+                    {errors.price.message}
+                  </span>
+                )}
+              </label>
+
+              {/* NO outlet field for live products - matches Postman API */}
+              {/* NO createdBy field - removed completely */}
+            </>
+          )}
+
           <label className="modalField">
             <span className="label">{t("Status")}</span>
             <select className="select" {...register("status")}>
               <option value="Active">{t("Active")}</option>
               <option value="Inactive">{t("Inactive")}</option>
             </select>
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Created by (optional, user UUID)")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. 601756be-54be-4623-8e97-7ff891e43081")}
-              {...register("createdBy")}
-            />
-            {errors.createdBy && (
-              <span className="productFieldError">
-                {errors.createdBy.message}
-              </span>
-            )}
           </label>
         </form>
       </Modal>

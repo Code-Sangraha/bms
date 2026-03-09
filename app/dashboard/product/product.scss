@@ -198,6 +198,34 @@
   gap: 8px;
 }
 
+.productTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.productTab {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.productTab:hover {
+  color: #374151;
+}
+
+.productTab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
 .cardBody {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

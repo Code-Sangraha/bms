@@ -1,89 +1,45 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
-import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
-import { getProducts, restockProduct, deductProduct, type Product } from "@/handlers/product";
-import { getOutlets } from "@/handlers/outlet";
-import { getProductTypes } from "@/handlers/productType";
+import { getLivestockItems, type LivestockItem } from "@/handlers/livestock";
 import "./liveProduct.scss";
 
-const PRODUCT_TYPE_NAME = "Live";
-const PRODUCTS_QUERY_KEY = ["products"];
-
-type ActionType = "restock" | "deduct";
+const LIVESTOCK_QUERY_KEY = ["livestock-items"];
 
 export default function LiveProductPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionModal, setActionModal] = useState<{
-    product: Product;
-    action: ActionType;
-  } | null>(null);
-  const [quantity, setQuantity] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
 
-  const { data: products = [], isLoading: productsLoading, isError: productsError, error: productsErrorDetail } = useQuery({
-    queryKey: PRODUCTS_QUERY_KEY,
+  // Livestock items created from the "Live" tab in Add Product modal
+  const {
+    data: livestockItems = [],
+    isLoading: livestockLoading,
+    isError: livestockError,
+    error: livestockErrorDetail,
+  } = useQuery({
+    queryKey: LIVESTOCK_QUERY_KEY,
     queryFn: async () => {
-      const result = await getProducts();
+      const result = await getLivestockItems();
       if (!result.ok) {
-        if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
       return result.data;
     },
   });
 
-  const { data: productTypes = [] } = useQuery({
-    queryKey: ["productTypes"],
-    queryFn: async () => {
-      const result = await getProductTypes();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-  });
-
-  const { data: outlets = [] } = useQuery({
-    queryKey: ["outlets"],
-    queryFn: async () => {
-      const result = await getOutlets();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-  });
-
-  const liveTypeId = useMemo(
-    () => productTypes.find((pt) => pt.name.toLowerCase() === PRODUCT_TYPE_NAME.toLowerCase())?.id ?? null,
-    [productTypes]
-  );
-
-  const filteredProducts = useMemo(() => {
-    let list: Product[] = liveTypeId
-      ? products.filter((p) => p.productTypeId === liveTypeId)
-      : [];
+  const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      const outletNames = new Map(outlets.map((o) => [o.id, o.name.toLowerCase()]));
-      const typeNames = new Map(productTypes.map((pt) => [pt.id, pt.name.toLowerCase()]));
-      list = list.filter((p) => {
-        const name = p.name.toLowerCase();
-        const outletName = outletNames.get(p.outletId) ?? "";
-        const typeName = typeNames.get(p.productTypeId) ?? "";
-        return name.includes(q) || outletName.includes(q) || typeName.includes(q);
-      });
-    }
-    return list;
-  }, [products, liveTypeId, searchQuery, outlets, productTypes]);
-
-  const getOutletName = (outletId: string) => outlets.find((o) => o.id === outletId)?.name ?? outletId;
-  const getTypeName = (typeId: string) => productTypes.find((pt) => pt.id === typeId)?.name ?? typeId;
+    if (!q) return livestockItems;
+    return livestockItems.filter((item: LivestockItem) => {
+      const name = item.name.toLowerCase();
+      const itemId = item.itemId.toLowerCase();
+      return name.includes(q) || itemId.includes(q);
+    });
+  }, [livestockItems, searchQuery]);
 
   const {
     currentPage,
@@ -93,57 +49,12 @@ export default function LiveProductPage() {
     totalPages,
     startIndex,
     endIndex,
-  } = usePagination(filteredProducts.length, { defaultPageSize: 10 });
-  const paginatedProducts = useMemo(
-    () => paginate(filteredProducts, startIndex, endIndex),
-    [filteredProducts, startIndex, endIndex]
+  } = usePagination(filteredItems.length, { defaultPageSize: 10 });
+
+  const paginatedItems = useMemo(
+    () => paginate(filteredItems, startIndex, endIndex),
+    [filteredItems, startIndex, endIndex]
   );
-
-  const restockMutation = useMutation({
-    mutationFn: restockProduct,
-    onSuccess: (result) => {
-      setActionError(null);
-      if (result.ok) {
-        setActionModal(null);
-        setQuantity("");
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
-      } else {
-        setActionError(result.error ?? t("Restock failed"));
-      }
-    },
-  });
-  const deductMutation = useMutation({
-    mutationFn: deductProduct,
-    onSuccess: (result) => {
-      setActionError(null);
-      if (result.ok) {
-        setActionModal(null);
-        setQuantity("");
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
-      } else {
-        setActionError(result.error ?? t("Deduct failed"));
-      }
-    },
-  });
-
-  const handleOpenAction = (product: Product, action: ActionType) => {
-    setActionModal({ product, action });
-    setQuantity("");
-    setActionError(null);
-  };
-  const handleSubmitAction = () => {
-    if (!actionModal) return;
-    const q = Number(quantity);
-    if (!Number.isInteger(q) || q <= 0) return;
-    const payload = {
-      id: actionModal.product.id,
-      productTypeId: actionModal.product.productTypeId,
-      outletId: actionModal.product.outletId,
-      quantity: q,
-    };
-    if (actionModal.action === "restock") restockMutation.mutate(payload);
-    else deductMutation.mutate(payload);
-  };
 
   return (
     <section className="liveProductPage">
@@ -170,14 +81,13 @@ export default function LiveProductPage() {
 
       <div className="productsTable">
         <div className="productsRow productsRowHeader">
-          <span>{t("Name")}</span>
-          <span>{t("Product Type")}</span>
-          <span>{t("Outlet")}</span>
-          <span>{t("Quantity")}</span>
+          <span>{t("Item name")}</span>
+          <span>{t("ID Tag")}</span>
+          <span>{t("Weight")}</span>
+          <span>{t("Price")}</span>
           <span>{t("Status")}</span>
-          <span>{t("Actions")}</span>
         </div>
-        {productsLoading && (
+        {livestockLoading && (
           <div className="productsRow">
             <span className="productsMessage">{t("Loading…")}</span>
             <span />
@@ -187,12 +97,12 @@ export default function LiveProductPage() {
             <span />
           </div>
         )}
-        {productsError && (
+        {livestockError && (
           <div className="productsRow">
             <span className="productsMessage productsError">
-              {productsErrorDetail instanceof Error
-                ? productsErrorDetail.message
-                : t("Failed to load products")}
+              {livestockErrorDetail instanceof Error
+                ? livestockErrorDetail.message
+                : t("Failed to load livestock items")}
             </span>
             <span />
             <span />
@@ -201,28 +111,11 @@ export default function LiveProductPage() {
             <span />
           </div>
         )}
-        {!productsLoading && !productsError && !liveTypeId && productTypes.length > 0 && (
-          <div className="productsRow">
-            <span className="productsMessage">
-              {t('No product type named "Live" found.')}
-            </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        )}
-        {!productsLoading &&
-          !productsError &&
-          liveTypeId &&
-          filteredProducts.length === 0 && (
+        {!livestockLoading &&
+          !livestockError &&
+          filteredItems.length === 0 && (
             <div className="productsRow">
-              <span className="productsMessage">
-                {searchQuery.trim()
-                  ? `${t("No live products match")} "${searchQuery.trim()}".`
-                  : t("No live products yet.")}
-              </span>
+              <span className="productsMessage">{t("No livestock items yet.")}</span>
               <span />
               <span />
               <span />
@@ -230,113 +123,35 @@ export default function LiveProductPage() {
               <span />
             </div>
           )}
-        {!productsLoading &&
-          !productsError &&
-          filteredProducts.length > 0 &&
-          paginatedProducts.map((product) => (
-            <div key={product.id} className="productsRow">
-              <span>{product.name}</span>
-              <span>{getTypeName(product.productTypeId)}</span>
-              <span>{getOutletName(product.outletId)}</span>
-              <span>{product.quantity}</span>
+        {!livestockLoading &&
+          !livestockError &&
+          paginatedItems.length > 0 &&
+          paginatedItems.map((item: LivestockItem) => (
+            <div key={item.id} className="productsRow">
+              <span>{item.name}</span>
+              <span>{item.itemId}</span>
+              <span>{item.weight}</span>
+              <span>{item.price}</span>
               <span>
-                <span className={product.status ? "badge badgeActive" : "badge"}>
-                  {product.status ? t("Active") : t("Inactive")}
+                <span className={item.status ? "badge badgeActive" : "badge"}>
+                  {item.status ? t("Active") : t("Inactive")}
                 </span>
-              </span>
-              <span className="productsRowActions">
-                <button
-                  type="button"
-                  className="productActionBtn productActionRestock"
-                  onClick={() => handleOpenAction(product, "restock")}
-                >
-                  {t("Restock")}
-                </button>
-                <button
-                  type="button"
-                  className="productActionBtn productActionDeduct"
-                  onClick={() => handleOpenAction(product, "deduct")}
-                >
-                  {t("Deduct")}
-                </button>
               </span>
             </div>
           ))}
       </div>
 
-      {!productsLoading && !productsError && filteredProducts.length > 0 && (
+      {!livestockLoading && !livestockError && filteredItems.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={filteredProducts.length}
+          totalItems={filteredItems.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           pageSizeOptions={[10, 20, 50]}
           onPageSizeChange={setPageSize}
         />
       )}
-
-      <Modal
-        isOpen={!!actionModal}
-        title={actionModal ? (actionModal.action === "restock" ? t("Restock") : t("Deduct")) : ""}
-        subtitle={actionModal ? actionModal.product.name : ""}
-        onClose={() => {
-          setActionModal(null);
-          setQuantity("");
-        }}
-        footer={
-          actionModal ? (
-            <div className="productActionModalFooter">
-              <button
-                type="button"
-                className="productActionModalCancel"
-                onClick={() => {
-                  setActionModal(null);
-                  setQuantity("");
-                }}
-              >
-                {t("Cancel")}
-              </button>
-              <button
-                type="button"
-                className="productActionModalSubmit"
-                onClick={handleSubmitAction}
-                disabled={
-                  !quantity ||
-                  !Number.isInteger(Number(quantity)) ||
-                  Number(quantity) <= 0 ||
-                  restockMutation.isPending ||
-                  deductMutation.isPending
-                }
-              >
-                {restockMutation.isPending || deductMutation.isPending
-                  ? t("Saving…")
-                  : actionModal.action === "restock"
-                    ? t("Restock")
-                    : t("Deduct")}
-              </button>
-            </div>
-          ) : null
-        }
-      >
-        {actionModal && (
-          <div className="productActionModalBody">
-            {actionError && <p className="productActionModalError">{actionError}</p>}
-            <label className="productActionModalLabel">
-              {t("Quantity")}
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="productActionModalInput"
-                placeholder={t("Enter quantity")}
-              />
-            </label>
-          </div>
-        )}
-      </Modal>
     </section>
   );
 }

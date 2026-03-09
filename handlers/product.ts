@@ -27,7 +27,8 @@ export type CreateProductPayload = {
   name: string;
   productTypeId: string;
   outletId: string;
-  quantity: number;
+  quantity?: number;
+  weight?: number;
   status: boolean;
   createdBy?: string;
 };
@@ -78,9 +79,14 @@ export async function createProduct(payload: CreateProductFormValues) {
     name: payload.name.trim(),
     productTypeId: payload.productTypeId.trim(),
     outletId: payload.outletId.trim(),
-    quantity: Number(payload.quantity),
     status: payload.status === "Active",
   };
+  if (payload.quantity !== undefined && payload.quantity !== null) {
+    body.quantity = Number(payload.quantity);
+  }
+  if (payload.weight !== undefined && payload.weight !== null) {
+    body.weight = Number(payload.weight);
+  }
   if (payload.createdBy?.trim()) body.createdBy = payload.createdBy.trim();
   return apiRequest<CreateProductResponse>(PRODUCT_ROUTES.CREATE, {
     method: "POST",
