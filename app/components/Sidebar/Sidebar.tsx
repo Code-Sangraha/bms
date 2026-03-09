@@ -1,10 +1,10 @@
 "use client";
 
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
 import { IoBagHandleOutline } from "react-icons/io5";
-import { LuReceiptText, LuUserCog } from "react-icons/lu";
+import { LuDownload, LuReceiptText, LuUserCog } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -201,6 +201,27 @@ export default function Sidebar() {
     navigate("/login");
   };
 
+  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setShowInstallButton(!standalone);
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const handleInstallClick = useCallback(() => {
+    const el = document.getElementById("pwa-install") as
+      | (HTMLElement & { showDialog?: () => void })
+      | null;
+    el?.showDialog?.();
+  }, []);
+
   return (
     <div className="sidebarWrapper">
       <aside className="sidebar" aria-label="Primary">
@@ -230,17 +251,30 @@ export default function Sidebar() {
 
         <div className="footer">
           <LanguageToggle className="link" />
-          {sidebarConfig.footer[0].items.map((item) => (
+          {showInstallButton && (
             <button
-              key={item.id}
-              className={activeMenuId === item.id ? "link active" : "link"}
               type="button"
-              aria-pressed={activeMenuId === item.id}
-              onClick={() => handleMenuToggle(item.id)}
+              className="link"
+              onClick={handleInstallClick}
+              aria-label={t("Install App")}
+              title={t("Install App")}
             >
-              {item.icon}
+              <LuDownload size={20} />
             </button>
-          ))}
+          )}
+          {sidebarConfig.footer[0].items
+            .filter((item) => !isMobile || item.id !== "settings")
+            .map((item) => (
+              <button
+                key={item.id}
+                className={activeMenuId === item.id ? "link active" : "link"}
+                type="button"
+                aria-pressed={activeMenuId === item.id}
+                onClick={() => handleMenuToggle(item.id)}
+              >
+                {item.icon}
+              </button>
+            ))}
         </div>
       </aside>
 
