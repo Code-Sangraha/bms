@@ -110,6 +110,112 @@ export type CreateSaleResponse = {
   [key: string]: unknown;
 };
 
+export type LivestockSalePayload = {
+  name: string;
+  contact: string;
+  livestockItemId: string;
+  weight: number;
+  amount: number;
+};
+
+export type LivestockSale = {
+  id?: string;
+  transactionId?: string;
+  name?: string;
+  contact?: string;
+  livestockItemId?: string;
+  weight?: number;
+  amount?: number;
+  totalAmount?: number;
+  createdAt?: string;
+  date?: string;
+  items?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
+export type GetLivestockSalesResponse = {
+  success?: boolean;
+  message?: string;
+  data?: LivestockSale[] | Record<string, unknown>;
+  sales?: LivestockSale[];
+  transactions?: LivestockSale[] | Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+function getNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function normalizeSaleEntry(entry: unknown): LivestockSale[] {
+  if (!entry || typeof entry !== "object") return [];
+  const obj = entry as Record<string, unknown>;
+  const base: LivestockSale = {
+    id: getString(obj.id),
+    transactionId: getString(obj.transactionId),
+    name: getString(obj.name),
+    contact: getString(obj.contact),
+    createdAt: getString(obj.createdAt),
+    date: getString(obj.date),
+    livestockItemId: getString(obj.livestockItemId) ?? getString(obj.itemId),
+    weight: getNumber(obj.weight),
+    amount: getNumber(obj.amount) ?? getNumber(obj.totalAmount),
+    totalAmount: getNumber(obj.totalAmount),
+  };
+
+  const items = Array.isArray(obj.items) ? obj.items : [];
+  if (items.length === 0) return [base];
+
+  return items.map((item, index) => {
+    const itemObj = item as Record<string, unknown>;
+    const livestockItemObj =
+      itemObj.livestockItem && typeof itemObj.livestockItem === "object"
+        ? (itemObj.livestockItem as Record<string, unknown>)
+        : null;
+
+    const livestockItemId =
+      getString(itemObj.livestockItemId) ??
+      getString(itemObj.itemId) ??
+      (livestockItemObj ? getString(livestockItemObj.id) ?? getString(livestockItemObj.itemId) : undefined) ??
+      base.livestockItemId;
+
+    const weight = getNumber(itemObj.weight) ?? base.weight;
+    const amount =
+      getNumber(itemObj.amount) ??
+      getNumber(itemObj.totalAmount) ??
+      base.amount ??
+      base.totalAmount;
+
+    return {
+      ...base,
+      id: base.id ? `${base.id}-${index}` : undefined,
+      livestockItemId,
+      weight,
+      amount,
+      items: [itemObj],
+    };
+  });
+}
+
+function normalizeLivestockSales(raw: unknown): LivestockSale[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw.flatMap((entry) => normalizeSaleEntry(entry));
+  if (typeof raw !== "object") return [];
+  const obj = raw as Record<string, unknown>;
+  if (obj.data != null) return normalizeLivestockSales(obj.data);
+  if (obj.sales != null) return normalizeLivestockSales(obj.sales);
+  if (obj.transactions != null) return normalizeLivestockSales(obj.transactions);
+  return Object.values(obj).flatMap((entry) => normalizeSaleEntry(entry));
+}
+
 export async function getSales(): Promise<
   | { ok: true; data: SaleTransaction[] }
   | { ok: false; error: string; status: number }
@@ -148,6 +254,35 @@ export async function createSale(items: SaleItemPayload[]) {
     method: "POST",
     body: JSON.stringify(items),
   });
+}
+
+export async function createLivestockSale(items: LivestockSalePayload[]) {
+  return apiRequest<CreateSaleResponse>(SALES_ROUTES.LIVESTOCK_CREATE, {
+    method: "POST",
+    body: JSON.stringify(items),
+  });
+}
+
+export async function getLivestockSales(): Promise<
+  | { ok: true; data: LivestockSale[] }
+  | { ok: false; error: string; status: number }
+> {
+  const getResult = await apiRequest<GetLivestockSalesResponse>(SALES_ROUTES.LIVESTOCK_GET, {
+    method: "GET",
+  });
+  if (getResult.ok) {
+    const raw = getResult.data?.data ?? getResult.data?.sales ?? getResult.data?.transactions ?? [];
+    return { ok: true, data: normalizeLivestockSales(raw) };
+  }
+
+  // Fallback for backends that define this endpoint as POST.
+  const postResult = await apiRequest<GetLivestockSalesResponse>(SALES_ROUTES.LIVESTOCK_GET, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  if (!postResult.ok) return getResult;
+  const raw = postResult.data?.data ?? postResult.data?.sales ?? postResult.data?.transactions ?? [];
+  return { ok: true, data: normalizeLivestockSales(raw) };
 }
 
 /** Sales by product item from /sales/dashboardSales */

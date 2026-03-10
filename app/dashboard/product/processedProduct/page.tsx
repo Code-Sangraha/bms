@@ -26,7 +26,7 @@ export default function ProcessedProductPage() {
     product: Product;
     action: ActionType;
   } | null>(null);
-  const [quantity, setQuantity] = useState("");
+  const [weight, setWeight] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: products = [], isLoading: productsLoading, isError: productsError, error: productsErrorDetail } = useQuery({
@@ -105,8 +105,9 @@ export default function ProcessedProductPage() {
       setActionError(null);
       if (result.ok) {
         setActionModal(null);
-        setQuantity("");
+        setWeight("");
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+        queryClient.refetchQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
         setActionError(result.error ?? t("Restock failed"));
       }
@@ -118,8 +119,9 @@ export default function ProcessedProductPage() {
       setActionError(null);
       if (result.ok) {
         setActionModal(null);
-        setQuantity("");
+        setWeight("");
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+        queryClient.refetchQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
         setActionError(result.error ?? t("Deduct failed"));
       }
@@ -128,18 +130,26 @@ export default function ProcessedProductPage() {
 
   const handleOpenAction = (product: Product, action: ActionType) => {
     setActionModal({ product, action });
-    setQuantity("");
+    setWeight("");
     setActionError(null);
   };
   const handleSubmitAction = () => {
     if (!actionModal) return;
-    const q = Number(quantity);
-    if (!Number.isInteger(q) || q <= 0) return;
+    const enteredWeight = Number(weight);
+    if (!Number.isFinite(enteredWeight) || enteredWeight <= 0) return;
+    const currentStock =
+      typeof actionModal.product.weight === "number"
+        ? actionModal.product.weight
+        : typeof actionModal.product.quantity === "number"
+          ? actionModal.product.quantity
+          : 0;
     const payload = {
       id: actionModal.product.id,
-      productTypeId: actionModal.product.productTypeId,
       outletId: actionModal.product.outletId,
-      quantity: q,
+      weight:
+        actionModal.action === "restock"
+          ? currentStock + enteredWeight
+          : enteredWeight,
     };
     if (actionModal.action === "restock") restockMutation.mutate(payload);
     else deductMutation.mutate(payload);
@@ -173,7 +183,7 @@ export default function ProcessedProductPage() {
           <span>{t("Name")}</span>
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
-          <span>{t("Quantity")}</span>
+          <span>{t("Weight")}</span>
           <span>{t("Status")}</span>
           <span>{t("Actions")}</span>
         </div>
@@ -238,7 +248,7 @@ export default function ProcessedProductPage() {
               <span>{product.name}</span>
               <span>{getTypeName(product.productTypeId)}</span>
               <span>{getOutletName(product.outletId)}</span>
-              <span>{product.quantity}</span>
+              <span>{product.weight ?? product.quantity}</span>
               <span>
                 <span className={product.status ? "badge badgeActive" : "badge"}>
                   {product.status ? t("Active") : t("Inactive")}
@@ -282,7 +292,7 @@ export default function ProcessedProductPage() {
         subtitle={actionModal ? actionModal.product.name : ""}
         onClose={() => {
           setActionModal(null);
-          setQuantity("");
+          setWeight("");
         }}
         footer={
           actionModal ? (
@@ -292,7 +302,7 @@ export default function ProcessedProductPage() {
                 className="productActionModalCancel"
                 onClick={() => {
                   setActionModal(null);
-                  setQuantity("");
+                  setWeight("");
                 }}
               >
                 {t("Cancel")}
@@ -302,9 +312,9 @@ export default function ProcessedProductPage() {
                 className="productActionModalSubmit"
                 onClick={handleSubmitAction}
                 disabled={
-                  !quantity ||
-                  !Number.isInteger(Number(quantity)) ||
-                  Number(quantity) <= 0 ||
+                  !weight ||
+                  !Number.isFinite(Number(weight)) ||
+                  Number(weight) <= 0 ||
                   restockMutation.isPending ||
                   deductMutation.isPending
                 }
@@ -323,15 +333,15 @@ export default function ProcessedProductPage() {
           <div className="productActionModalBody">
             {actionError && <p className="productActionModalError">{actionError}</p>}
             <label className="productActionModalLabel">
-              {t("Quantity")}
+              {t("Weight")}
               <input
                 type="number"
                 min={1}
-                step={1}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                step="any"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
                 className="productActionModalInput"
-                placeholder={t("Enter quantity")}
+                placeholder={t("Enter weight")}
               />
             </label>
           </div>

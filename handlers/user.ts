@@ -60,3 +60,23 @@ export async function createUser(payload: CreateUserFormValues) {
     body: JSON.stringify(body),
   });
 }
+
+export type DeleteUserResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export async function deleteUser(id: string) {
+  const deleteResult = await apiRequest<DeleteUserResponse>(USER_ROUTES.DELETE, {
+    method: "DELETE",
+    body: JSON.stringify({ id }),
+  });
+  if (deleteResult.ok) return deleteResult;
+
+  const postFallback = await apiRequest<DeleteUserResponse>(USER_ROUTES.DELETE, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+  return postFallback.ok ? postFallback : deleteResult;
+}

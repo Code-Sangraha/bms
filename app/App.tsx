@@ -16,6 +16,7 @@ import LiveProductPage from "./dashboard/product/liveProduct/page";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
+import LivestockSalesPage from "./dashboard/invoices/livestock-sales/page";
 import TransactionPage from "./dashboard/invoices/transaction/page";
 import CustomerTypesPage from "./dashboard/invoices/customer-types/page";
 import AnalyticsPage from "./dashboard/analytics/page";
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
             <Route path="dashboard/invoices" element={<InvoicesPage />} />
             <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />
+            <Route path="dashboard/invoices/livestock-sales" element={<LivestockSalesPage />} />
             <Route path="dashboard/invoices/transaction" element={<TransactionPage />} />
             <Route path="dashboard/invoices/customer-types" element={<CustomerTypesPage />} />
             <Route path="dashboard/analytics" element={<AnalyticsPage />} />

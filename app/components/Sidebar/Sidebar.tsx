@@ -24,6 +24,7 @@ type TranslationKey =
   | "salesBilling"
   | "analytics"
   | "pointOfSale"
+  | "livestockSales"
   | "transactions"
   | "customerTypes"
   | "product"
@@ -55,6 +56,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
   pointOfSale: "Point of Sale",
+  livestockSales: "Livestock Sales",
   transactions: "Transactions",
   customerTypes: "Customer Types",
   product: "Product",
@@ -102,6 +104,7 @@ const sidebarConfig = {
             items: [
               { labelKey: "analytics", href: "/dashboard/invoices" },
               { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" as const },
+              { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", permission: "create" as const },
               { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
               { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
             ] as MenuItem[],

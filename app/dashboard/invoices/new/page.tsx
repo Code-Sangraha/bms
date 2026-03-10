@@ -8,13 +8,11 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
-import { getDualPricings } from "@/handlers/dualPricing";
+import { getDualPricings, type DualPricing } from "@/handlers/dualPricing";
 import { getOutlets } from "@/handlers/outlet";
-import { getProducts } from "@/handlers/product";
+import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { createSale } from "@/handlers/sale";
-import type { DualPricing } from "@/handlers/dualPricing";
-import type { Product } from "@/handlers/product";
 import "./pos.scss";
 
 const PRODUCTS_QUERY_KEY = ["products"];
@@ -162,11 +160,11 @@ export default function PointOfSalePage() {
       ...prev,
       {
         productId,
-        productName: product?.name ?? "—",
+        productName: product?.name ?? "-",
         quantity: Number(quantity) || 1,
         unitPrice,
         customerTypeId: lineTypeId,
-        typeName: selectedType?.name ?? "—",
+        typeName: selectedType?.name ?? "-",
       },
     ]);
     setQuantity(1);
@@ -237,7 +235,7 @@ export default function PointOfSalePage() {
   return (
     <section className="posPage">
       <div className="breadcrumb">
-        <span>{t("Sales & Billing")}</span> {"›"} {t("Transaction")}
+        <span>{t("Sales & Billing")}</span> {" > "} {t("Transaction")}
       </div>
 
       <div className="posHeader">
@@ -345,7 +343,7 @@ export default function PointOfSalePage() {
             className="posAddBtn"
             onClick={handleAddProduct}
           >
-          {t("+ Add Product")}
+            {t("+ Add Product")}
           </button>
         </div>
 
@@ -385,7 +383,7 @@ export default function PointOfSalePage() {
                     <td>{item.quantity}</td>
                     <td>
                       {item.quantity !== 1
-                        ? `${item.unitPrice}×${item.quantity}`
+                        ? `${item.unitPrice}x${item.quantity}`
                         : String(item.unitPrice * item.quantity)}
                     </td>
                     <td>
@@ -395,7 +393,7 @@ export default function PointOfSalePage() {
                         onClick={() => removeLine(index)}
                         aria-label={t("Remove line")}
                       >
-                        ×
+                        x
                       </button>
                     </td>
                   </tr>
@@ -415,14 +413,6 @@ export default function PointOfSalePage() {
             )}
           </table>
         </div>
-
-        {/* <button
-          type="button"
-          className="posAddMoreBtn"
-          onClick={() => productSelectRef.current?.focus()}
-        >
-          + Add more products
-        </button> */}
 
         <button
           type="button"

@@ -40,6 +40,27 @@
   gap: 6px;
 }
 
+.liveProductHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.addLivestockBtn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(2, 149, 90, 0.35);
+  background: rgba(2, 149, 90, 0.1);
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addLivestockBtn:hover {
+  background: rgba(2, 149, 90, 0.16);
+}
+
 .liveProductSearch {
   display: flex;
   align-items: center;
@@ -75,6 +96,9 @@
 
 .productsTable {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .productsRow {
@@ -148,7 +172,18 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 8px;
   font-size: 14px;
-  max-width: 200px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.productActionModalSelect {
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 280px;
+  background: #ffffff;
 }
 
 .productActionModalFooter {
@@ -208,18 +243,60 @@
   color: #02955a;
 }
 
+.livestockTableWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.liveStockSectionTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.livestockRow {
+  grid-template-columns: 1.2fr 1fr 1fr 0.8fr 0.8fr 0.8fr;
+}
+
+.livestockRowWithActions {
+  grid-template-columns: 1.2fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1fr;
+  min-width: 980px;
+}
+
+.livestockRowHeader {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
 @media (max-width: 900px) {
   .liveProductHeader {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .productsRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
+  .liveProductHeaderActions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .addLivestockBtn {
+    width: fit-content;
   }
 
   .productsRowActions {
-    grid-column: 1;
+    justify-content: flex-start;
+  }
+
+  .productsTable {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .productActionBtn {
+    min-width: 70px;
   }
 }

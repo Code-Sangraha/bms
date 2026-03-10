@@ -66,6 +66,11 @@
   align-items: end;
 }
 
+.posFormRowLivestockAdd {
+  grid-template-columns: 1fr 120px 120px auto;
+  align-items: end;
+}
+
 .posField {
   display: flex;
   flex-direction: column;
@@ -259,6 +264,10 @@
   }
 
   .posFormRowAdd {
+    grid-template-columns: 1fr;
+  }
+
+  .posFormRowLivestockAdd {
     grid-template-columns: 1fr;
   }
 

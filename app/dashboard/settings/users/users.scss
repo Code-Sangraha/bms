@@ -73,6 +73,11 @@
   color: #dc2626;
 }
 
+.usersDeleteError {
+  font-size: 12px;
+  color: #dc2626;
+}
+
 .usersAddForm {
   display: flex;
   flex-direction: column;
@@ -165,11 +170,59 @@
 }
 
 .moreButton {
-  border: none;
-  background: transparent;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #111827;
+  border-radius: 10px;
+  background: #ffffff;
   cursor: pointer;
   font-size: 16px;
-  color: #6b7280;
+  color: #111827;
+  line-height: 1;
+}
+
+.usersActionsCell {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.usersActionsMenu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  min-width: 120px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  padding: 8px;
+  z-index: 20;
+}
+
+.usersActionItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 8px;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.usersActionItem:hover {
+  background: #f9fafb;
+}
+
+.usersActionDelete {
+  color: #dc2626;
+}
+
+.usersActionItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {
@@ -286,8 +339,9 @@
       grid-column: 1 / -1;
     }
 
-    span:last-child {
-      display: none;
+    .usersActionsCell {
+      grid-column: 2 / 3;
+      justify-content: flex-end;
     }
   }
 }

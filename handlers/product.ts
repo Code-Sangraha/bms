@@ -116,9 +116,10 @@ export async function deleteProduct(id: string) {
 
 export type RestockDeductPayload = {
   id: string;
-  productTypeId: string;
+  productTypeId?: string;
   outletId: string;
-  quantity: number;
+  quantity?: number;
+  weight?: number;
 };
 
 export type RestockDeductResponse = {
@@ -139,4 +140,168 @@ export async function deductProduct(payload: RestockDeductPayload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export type CreateLivestockItemPayload = {
+  productId: string;
+  name: string;
+  itemId: string;
+  weight: number;
+  price: number;
+  status: boolean;
+};
+
+export type LivestockItem = {
+  id?: string;
+  productId: string;
+  name: string;
+  itemId: string;
+  weight: number;
+  price: number;
+  status: boolean;
+  [key: string]: unknown;
+};
+
+export type CreateLivestockItemResponse = {
+  success?: boolean;
+  message?: string;
+  data?: LivestockItem;
+  item?: LivestockItem;
+  [key: string]: unknown;
+};
+
+export async function createLivestockItem(payload: CreateLivestockItemPayload) {
+  return apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type GetLivestockItemsByProductResponse = {
+  success?: boolean;
+  message?: string;
+  data?: LivestockItem[];
+  items?: LivestockItem[];
+  [key: string]: unknown;
+};
+
+export async function getLivestockItemsByProduct(
+  productId: string
+): Promise<
+  | { ok: true; data: LivestockItem[] }
+  | { ok: false; error: string; status: number }
+> {
+  // Backend endpoint supports query string GET in browser fetch environments.
+  const getResult = await apiRequest<GetLivestockItemsByProductResponse>(
+    `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
+    {
+      method: "GET",
+    }
+  );
+  if (!getResult.ok) return getResult;
+  const list = getResult.data?.data ?? getResult.data?.items ?? [];
+  const data = Array.isArray(list)
+    ? list.map((item) => ({
+        ...item,
+        productId: item.productId || productId,
+      }))
+    : [];
+  return { ok: true, data };
+}
+
+export type UpdateLivestockItemPayload = {
+  id: string;
+  name: string;
+  itemId: string;
+  productId: string;
+  weight: number;
+  price: number;
+  status: boolean;
+};
+
+export type UpdateLivestockItemResponse = {
+  success?: boolean;
+  message?: string;
+  data?: LivestockItem;
+  item?: LivestockItem;
+  [key: string]: unknown;
+};
+
+export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
+  return apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type DeleteLivestockItemPayload = {
+  id: string;
+};
+
+export type DeleteLivestockItemResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
+  const encodedId = encodeURIComponent(payload.id);
+
+  const attempts = [
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+        method: "DELETE",
+        body: JSON.stringify(payload),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(
+        `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?id=${encodedId}`,
+        {
+          method: "DELETE",
+        }
+      ),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+        method: "DELETE",
+        body: JSON.stringify({ livestockItemId: payload.id }),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+        method: "DELETE",
+        body: JSON.stringify({ itemId: payload.id }),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
+        method: "DELETE",
+        body: JSON.stringify(payload),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  ];
+
+  let lastError:
+    | { ok: false; error: string; status: number }
+    | null = null;
+
+  for (const attempt of attempts) {
+    const result = await attempt();
+    if (result.ok) return result;
+    lastError = result;
+  }
+
+  return (
+    lastError ?? {
+      ok: false,
+      error: "Failed to delete live stock item",
+      status: 500,
+    }
+  );
 }

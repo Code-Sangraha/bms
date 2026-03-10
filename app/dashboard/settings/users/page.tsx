@@ -13,6 +13,7 @@ import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { getRoles } from "@/handlers/role";
 import {
   createUser as createUserApi,
+  deleteUser as deleteUserApi,
   getUsers,
   type User,
 } from "@/handlers/user";
@@ -38,6 +39,8 @@ export default function UsersPage() {
   const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [openActionUserId, setOpenActionUserId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     data: users = [],
@@ -83,6 +86,12 @@ export default function UsersPage() {
     if (!isModalOpen) reset(defaultFormValues);
   }, [isModalOpen, reset]);
 
+  useEffect(() => {
+    const handleWindowClick = () => setOpenActionUserId(null);
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
+
   const createMutation = useMutation({
     mutationFn: (values: CreateUserFormValues) => createUserApi(values),
     onSuccess: (result) => {
@@ -102,8 +111,33 @@ export default function UsersPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteUserApi(id),
+    onSuccess: (result) => {
+      if (result.ok) {
+        setDeleteError(null);
+        setOpenActionUserId(null);
+        queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      } else if (result.status === 401) {
+        navigate("/login");
+      } else {
+        setDeleteError(result.error ?? t("Failed to delete user"));
+      }
+    },
+    onError: () => {
+      setDeleteError(t("Something went wrong. Please try again."));
+    },
+  });
+
   const onAddSubmit = (data: CreateUserFormValues) => {
     createMutation.mutate(data);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    const label = user.fullName?.trim() || user.email?.trim() || user.id;
+    const confirmed = window.confirm(`${t("Delete user")} "${label}"?`);
+    if (!confirmed) return;
+    deleteMutation.mutate(user.id);
   };
 
   const loading = isSubmitting || createMutation.isPending;
@@ -175,6 +209,7 @@ export default function UsersPage() {
           aria-label={t("Search users")}
         />
       </div>
+      {deleteError && <p className="usersDeleteError">{deleteError}</p>}
 
       <div className="usersTable">
         <div className="usersRow usersRowHeader">
@@ -249,7 +284,35 @@ export default function UsersPage() {
                 </span>
               </span>
               <span>{user.email ?? "—"}</span>
-              <span />
+              <span className="usersActionsCell">
+                <button
+                  type="button"
+                  className="moreButton"
+                  aria-label={t("Open actions")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenActionUserId((prev) => (prev === user.id ? null : user.id));
+                  }}
+                >
+                  ⋮
+                </button>
+                {openActionUserId === user.id && (
+                  <div
+                    className="usersActionsMenu"
+                    role="menu"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="usersActionItem usersActionDelete"
+                      onClick={() => handleDeleteUser(user)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? t("Deleting…") : t("Delete")}
+                    </button>
+                  </div>
+                )}
+              </span>
             </div>
           ))}
       </div>
