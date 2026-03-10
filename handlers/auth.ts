@@ -96,7 +96,10 @@ export async function logout() {
 
 export type RefreshResponse = {
   success?: boolean;
-  data?: { accessToken?: string; refreshToken?: string };
+  accessToken?: string;
+  refreshToken?: string;
+  token?: string;
+  data?: { accessToken?: string; refreshToken?: string; token?: string };
   [key: string]: unknown;
 };
 
@@ -113,7 +116,8 @@ export async function refreshTokens(): Promise<
   const res = await fetch(`${baseUrl}${AUTH_ROUTES.REFRESH}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    // Backend expects { token } for refresh endpoint.
+    body: JSON.stringify({ token: refreshToken }),
     credentials: "include",
   });
   const data = (await res.json().catch(() => ({}))) as RefreshResponse;
@@ -121,11 +125,11 @@ export async function refreshTokens(): Promise<
     const msg = (data as { message?: string }).message ?? "Refresh failed";
     return { ok: false, error: typeof msg === "string" ? msg : "Refresh failed" };
   }
-  const accessToken = data.data?.accessToken;
+  const accessToken = data.data?.accessToken ?? data.accessToken ?? data.data?.token ?? data.token;
   if (!accessToken) return { ok: false, error: "No access token in refresh response" };
   return {
     ok: true,
     accessToken,
-    refreshToken: data.data?.refreshToken,
+    refreshToken: data.data?.refreshToken ?? data.refreshToken,
   };
 }

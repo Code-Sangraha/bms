@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import {
+  deleteLivestockItem,
   getLivestockItemsByProduct,
   getProducts,
   type LivestockItem,
@@ -36,14 +37,12 @@ type LivestockLineItem = {
 };
 
 function resolveLivestockItemId(item: LivestockItem): string | null {
+  const withUnderscore = item as unknown as { _id?: unknown };
+  const withLivestockItemId = item as unknown as { livestockItemId?: unknown };
   const fromId = typeof item.id === "string" ? item.id : null;
-  const fromUnderscore = typeof (item as { _id?: unknown })._id === "string"
-    ? ((item as { _id: string })._id)
-    : null;
+  const fromUnderscore = typeof withUnderscore._id === "string" ? withUnderscore._id : null;
   const fromLivestockItemId =
-    typeof (item as { livestockItemId?: unknown }).livestockItemId === "string"
-      ? ((item as { livestockItemId: string }).livestockItemId)
-      : null;
+    typeof withLivestockItemId.livestockItemId === "string" ? withLivestockItemId.livestockItemId : null;
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
@@ -236,8 +235,14 @@ export default function LivestockSalesPage() {
 
   const createLivestockSaleMutation = useMutation({
     mutationFn: (items: LivestockSalePayload[]) => createLivestockSale(items),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
+        const soldItemIds = [...new Set(livestockLineItems.map((item) => item.livestockItemId))];
+        const deleteResults = await Promise.all(
+          soldItemIds.map((id) => deleteLivestockItem({ id }))
+        );
+        const hasDeleteError = deleteResults.some((res) => !res.ok);
+
         setLivestockLineItems([]);
         setCustomerName("");
         setCustomerContact("");
@@ -247,7 +252,12 @@ export default function LivestockSalesPage() {
         setLivestockError(null);
         queryClient.invalidateQueries({ queryKey: LIVESTOCK_SALES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
-        showToast(t("Livestock sale created successfully."), "success");
+        queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
+        if (hasDeleteError) {
+          showToast(t("Sale created, but some livestock items could not be removed automatically."), "error");
+        } else {
+          showToast(t("Livestock sale created successfully."), "success");
+        }
       } else {
         if (result.status === 401) navigate("/login");
         else {

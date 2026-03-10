@@ -28,7 +28,7 @@ function toFormValues(p: Product): CreateProductFormValues {
     name: p.name,
     productTypeId: p.productTypeId,
     outletId: p.outletId,
-    quantity: p.quantity,
+    quantity: p.weight ?? p.quantity,
     status: p.status ? "Active" : "Inactive",
     createdBy: p.createdBy ?? "",
   };

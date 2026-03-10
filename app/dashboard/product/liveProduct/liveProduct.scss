@@ -300,3 +300,131 @@
     min-width: 70px;
   }
 }
+
+@media (max-width: 768px) {
+  .liveProductPage {
+    gap: 14px;
+  }
+
+  .pageTitle {
+    font-size: 28px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .addLivestockBtn {
+    width: 100%;
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .liveProductSearch {
+    width: 100%;
+  }
+
+  .productsTable {
+    border: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .livestockRowHeader {
+    display: none;
+  }
+
+  .productsRow.livestockRowWithActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    min-width: 0;
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+  }
+
+  .productsRow.livestockRowWithActions span {
+    min-width: 0;
+    word-break: break-word;
+    font-size: 13px;
+  }
+
+  .productsRow.livestockRowWithActions .productsMessage {
+    grid-column: 1 / -1;
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(1)::before {
+    content: "Product Category";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(2)::before {
+    content: "Name";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(3)::before {
+    content: "Item ID";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(4)::before {
+    content: "Weight";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(5)::before {
+    content: "Price";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(6)::before {
+    content: "Status";
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(1)::before,
+  .productsRow.livestockRowWithActions > span:nth-child(2)::before,
+  .productsRow.livestockRowWithActions > span:nth-child(3)::before,
+  .productsRow.livestockRowWithActions > span:nth-child(4)::before,
+  .productsRow.livestockRowWithActions > span:nth-child(5)::before,
+  .productsRow.livestockRowWithActions > span:nth-child(6)::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .productsRow.livestockRowWithActions > span:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+
+  .productsRowActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .productActionBtn {
+    width: 100%;
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  .productActionModalInput,
+  .productActionModalSelect {
+    max-width: none;
+  }
+
+  .productActionModalFooter {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .productActionModalCancel,
+  .productActionModalSubmit {
+    flex: 1;
+    min-height: 38px;
+  }
+}

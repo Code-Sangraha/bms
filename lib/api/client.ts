@@ -34,16 +34,22 @@ async function tryRefresh(): Promise<string | null> {
   const res = await fetch(`${baseUrl}${AUTH_ROUTES.REFRESH}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    // Backend expects { token } for refresh endpoint.
+    body: JSON.stringify({ token: refreshToken }),
     credentials: "include",
   });
   const data = (await res.json().catch(() => ({}))) as {
-    data?: { accessToken?: string; refreshToken?: string };
+    accessToken?: string;
+    refreshToken?: string;
+    token?: string;
+    data?: { accessToken?: string; refreshToken?: string; token?: string };
   };
-  if (!res.ok || !data.data?.accessToken) return null;
-  setAuthToken(data.data.accessToken);
-  if (data.data.refreshToken) setRefreshToken(data.data.refreshToken);
-  return data.data.accessToken;
+  const accessToken = data.data?.accessToken ?? data.accessToken ?? data.data?.token ?? data.token;
+  const nextRefreshToken = data.data?.refreshToken ?? data.refreshToken;
+  if (!res.ok || !accessToken) return null;
+  setAuthToken(accessToken);
+  if (nextRefreshToken) setRefreshToken(nextRefreshToken);
+  return accessToken;
 }
 
 export async function apiRequest<T>(

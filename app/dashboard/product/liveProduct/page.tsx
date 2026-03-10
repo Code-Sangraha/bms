@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
+import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
+import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createLivestockItem,
   deleteLivestockItem,
@@ -13,7 +15,6 @@ import {
   updateLivestockItem,
   type CreateLivestockItemPayload,
   type LivestockItem,
-  type Product,
 } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import "./liveProduct.scss";
@@ -41,14 +42,12 @@ const defaultLivestockForm: LivestockFormState = {
 };
 
 function resolveLivestockItemId(item: LivestockItem): string | null {
+  const withUnderscore = item as unknown as { _id?: unknown };
+  const withLivestockItemId = item as unknown as { livestockItemId?: unknown };
   const fromId = typeof item.id === "string" ? item.id : null;
-  const fromUnderscore = typeof (item as { _id?: unknown })._id === "string"
-    ? ((item as { _id: string })._id)
-    : null;
+  const fromUnderscore = typeof withUnderscore._id === "string" ? withUnderscore._id : null;
   const fromLivestockItemId =
-    typeof (item as { livestockItemId?: unknown }).livestockItemId === "string"
-      ? ((item as { livestockItemId: string }).livestockItemId)
-      : null;
+    typeof withLivestockItemId.livestockItemId === "string" ? withLivestockItemId.livestockItemId : null;
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
@@ -184,6 +183,21 @@ export default function LiveProductPage() {
       );
     });
   }, [livestockItems, liveStockProducts, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    startIndex,
+    endIndex,
+  } = usePagination(filteredLivestockItems.length, { defaultPageSize: 10 });
+
+  const paginatedLivestockItems = useMemo(
+    () => paginate(filteredLivestockItems, startIndex, endIndex),
+    [filteredLivestockItems, startIndex, endIndex]
+  );
 
   const getLiveProductName = (productId: string) =>
     liveStockProducts.find((product) => product.id === productId)?.name ?? productId;
@@ -458,7 +472,7 @@ export default function LiveProductPage() {
           !productsError &&
           !livestockItemsLoading &&
           !livestockItemsError &&
-          filteredLivestockItems.map((item) => (
+          paginatedLivestockItems.map((item) => (
             <div
               key={resolveLivestockItemId(item) ?? `${item.productId}-${item.itemId}`}
               className="productsRow livestockRowWithActions"
@@ -494,6 +508,22 @@ export default function LiveProductPage() {
             </div>
           ))}
       </div>
+
+      {!productsLoading &&
+        !productsError &&
+        !livestockItemsLoading &&
+        !livestockItemsError &&
+        filteredLivestockItems.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredLivestockItems.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            pageSizeOptions={[10, 20, 50]}
+            onPageSizeChange={setPageSize}
+          />
+        )}
 
       <Modal
         isOpen={isLivestockModalOpen}

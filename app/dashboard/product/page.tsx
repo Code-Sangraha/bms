@@ -122,6 +122,10 @@ export default function ProductPage() {
     (typeof p.outlet === "object" && p.outlet?.name) ||
     outlets.find((o) => o.id === p.outletId)?.name ||
     p.outletId;
+  const isProcessedTypeId = (productTypeId: string) =>
+    productTypes.some(
+      (pt) => pt.id === productTypeId && pt.name.toLowerCase() === "processed"
+    );
 
   const {
     currentPage,
@@ -157,10 +161,11 @@ export default function ProductPage() {
     }: {
       id: string;
       values: CreateProductFormValues;
-    }) => updateProductApi(id, values),
+    }) => updateProductApi(id, values, { isProcessed: isProcessedTypeId(values.productTypeId) }),
     onSuccess: (result, variables) => {
       if (result.ok) {
         setSelectedProductId(null);
+        const isProcessed = isProcessedTypeId(variables.values.productTypeId);
         queryClient.setQueryData<Product[]>(PRODUCTS_QUERY_KEY, (old) => {
           if (!old) return old;
           return old.map((p) =>
@@ -170,7 +175,8 @@ export default function ProductPage() {
                   name: variables.values.name,
                   productTypeId: variables.values.productTypeId,
                   outletId: variables.values.outletId,
-                  quantity: variables.values.quantity,
+                  quantity: isProcessed ? p.quantity : variables.values.quantity,
+                  weight: isProcessed ? variables.values.quantity : p.weight,
                   status: variables.values.status === "Active",
                 }
               : p
@@ -189,15 +195,20 @@ export default function ProductPage() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (values: CreateProductFormValues) =>
-      createProductApi({
-        name: values.name,
-        productTypeId: values.productTypeId,
-        outletId: values.outletId,
-        quantity: values.quantity,
-        status: values.status,
-        createdBy: values.createdBy || undefined,
-      }),
+    mutationFn: (values: CreateProductFormValues) => {
+      const isProcessed = isProcessedTypeId(values.productTypeId);
+      return createProductApi(
+        {
+          name: values.name,
+          productTypeId: values.productTypeId,
+          outletId: values.outletId,
+          quantity: values.quantity,
+          status: values.status,
+          createdBy: values.createdBy || undefined,
+        },
+        { isProcessed }
+      );
+    },
     onSuccess: (result) => {
       if (result.ok) {
         setIsAddModalOpen(false);
@@ -337,7 +348,7 @@ export default function ProductPage() {
                   <input
                     className="input"
                     type="text"
-                    value={product.quantity}
+                    value={product.weight ?? product.quantity}
                     readOnly
                   />
                 </label>

@@ -28,6 +28,7 @@ type LineItem = {
   unitPrice: number;
   customerTypeId: string;
   typeName: string;
+  stockAvailable: number;
 };
 
 function getUnitPrice(
@@ -148,6 +149,19 @@ export default function PointOfSalePage() {
       return;
     }
     const product = products.find((p: Product) => p.id === productId);
+    const stockAvailable =
+      typeof product?.weight === "number"
+        ? product.weight
+        : typeof product?.quantity === "number"
+          ? product.quantity
+          : 0;
+    const selectedQty = Number(quantity) || 1;
+    if (selectedQty > stockAvailable) {
+      setError(
+        t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockAvailable}).`)
+      );
+      return;
+    }
     const selectedType = customerTypes.find((ct) => ct.id === lineTypeId);
     const isWholesale = selectedType?.name?.toLowerCase().includes("wholesale") ?? false;
     const unitPrice = getUnitPrice(
@@ -161,10 +175,11 @@ export default function PointOfSalePage() {
       {
         productId,
         productName: product?.name ?? "-",
-        quantity: Number(quantity) || 1,
+        quantity: selectedQty,
         unitPrice,
         customerTypeId: lineTypeId,
         typeName: selectedType?.name ?? "-",
+        stockAvailable,
       },
     ]);
     setQuantity(1);
@@ -182,7 +197,15 @@ export default function PointOfSalePage() {
   );
 
   const createSaleMutation = useMutation({
-    mutationFn: (items: { name: string; contact: string; customerTypeId: string; productId: string; outletId: string; quantity: number }[]) =>
+    mutationFn: (items: {
+      name: string;
+      contact: string;
+      customerTypeId: string;
+      productId: string;
+      outletId: string;
+      weight?: number;
+      quantity?: number;
+    }[]) =>
       createSale(items),
     onSuccess: (result) => {
       if (result.ok) {
@@ -213,7 +236,8 @@ export default function PointOfSalePage() {
       customerTypeId: item.customerTypeId,
       productId: item.productId,
       outletId,
-      quantity: item.quantity,
+      // For processed sales backend stock checks align better with weight.
+      weight: item.quantity,
     }));
     createSaleMutation.mutate(items);
     setCheckoutConfirmOpen(false);

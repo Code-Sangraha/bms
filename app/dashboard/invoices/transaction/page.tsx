@@ -2,27 +2,62 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { getSales, type SaleTransaction } from "@/handlers/sale";
 import { getOutlets } from "@/handlers/outlet";
+import {
+  getLivestockSales,
+  getSales,
+  type LivestockSale,
+  type SaleTransaction,
+} from "@/handlers/sale";
 import "./transaction.scss";
 
 const SALES_QUERY_KEY = ["sales"];
+const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
-function formatDate(tx: SaleTransaction): string {
-  const raw = tx.date ?? tx.createdAt ?? "";
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "number") return new Date(raw).toISOString().slice(0, 16).replace("T", " ");
-  return "—";
+type TransactionDetailItem = {
+  product: string;
+  qtyKg: number | null;
+  price: number | null;
+};
+
+type TransactionRecord = {
+  id: string;
+  timestamp: number;
+  dateLabel: string;
+  customer: string;
+  contact: string;
+  type: string;
+  itemsCount: number;
+  amount: number | null;
+  outletId?: string;
+  detailItems: TransactionDetailItem[];
+};
+
+function toTimestamp(raw: unknown): number {
+  if (typeof raw !== "string" && typeof raw !== "number") return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
 }
 
-function getTransactionId(tx: SaleTransaction): string {
-  return tx.transactionId ?? tx.id ?? "—";
+function formatDate(raw: unknown): string {
+  if (typeof raw === "string") return raw || "-";
+  if (typeof raw === "number") return new Date(raw).toISOString();
+  return "-";
+}
+
+function getNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
 }
 
 function resolveName(
@@ -30,42 +65,110 @@ function resolveName(
   fallback: string
 ): string {
   if (value == null) return fallback;
-  if (typeof value === "string") return value;
-  if (typeof value === "object" && "name" in value && typeof value.name === "string")
-    return value.name;
+  if (typeof value === "string") return value || fallback;
+  if (typeof value === "object" && "name" in value && typeof value.name === "string") {
+    return value.name || fallback;
+  }
   return fallback;
 }
 
 function getCustomerName(tx: SaleTransaction): string {
-  if (tx.name != null && typeof tx.name === "string") return tx.name;
+  if (typeof tx.name === "string" && tx.name) return tx.name;
   const fromCustomer = resolveName(tx.customer, "");
-  if (fromCustomer) return fromCustomer;
-  return "—";
+  return fromCustomer || "-";
 }
 
-function getType(tx: SaleTransaction): string {
-  return resolveName(tx.type ?? tx.customerType, "—");
+function getTxType(tx: SaleTransaction): string {
+  return resolveName(tx.type ?? tx.customerType, "-");
 }
 
-function getItemsCount(
-  tx: SaleTransaction,
-  t: (text: string) => string
-): string {
-  const n = tx.itemsCount ?? tx.itemCount ?? 0;
+function getLivestockLabel(sale: LivestockSale): string {
+  const saleItemId = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
+  const firstItem =
+    Array.isArray(sale.items) && sale.items.length > 0 && typeof sale.items[0] === "object"
+      ? (sale.items[0] as Record<string, unknown>)
+      : null;
+  const livestockItemObj =
+    firstItem && typeof firstItem.livestockItem === "object"
+      ? (firstItem.livestockItem as Record<string, unknown>)
+      : null;
+  const itemId =
+    (typeof livestockItemObj?.itemId === "string" && livestockItemObj.itemId) ||
+    (typeof firstItem?.itemId === "string" && firstItem.itemId) ||
+    "";
+  const itemName =
+    (typeof livestockItemObj?.name === "string" && livestockItemObj.name) ||
+    (typeof firstItem?.name === "string" && firstItem.name) ||
+    "";
+
+  if (itemId || itemName) return [itemId, itemName].filter(Boolean).join(" - ");
+  return saleItemId || "-";
+}
+
+function toTransactionFromSale(tx: SaleTransaction): TransactionRecord {
+  const dateRaw = tx.date ?? tx.createdAt;
+  const detailItems: TransactionDetailItem[] =
+    tx.items?.map((item) => ({
+      product:
+        (typeof item.product === "string" && item.product) ||
+        (item.product && typeof item.product.name === "string" ? item.product.name : "-"),
+      qtyKg: getNumber(item.weight),
+      price: getNumber(item.amount),
+    })) ?? [];
+  const amount = getNumber(tx.amount ?? tx.total ?? tx.totalAmount);
+  const itemsCount = tx.itemsCount ?? tx.itemCount ?? detailItems.length ?? 0;
+
+  return {
+    id: tx.transactionId ?? tx.id ?? "-",
+    timestamp: toTimestamp(dateRaw),
+    dateLabel: formatDate(dateRaw),
+    customer: getCustomerName(tx),
+    contact: typeof tx.contact === "string" ? tx.contact : "-",
+    type: getTxType(tx),
+    itemsCount,
+    amount,
+    outletId: typeof tx.outletId === "string" ? tx.outletId : tx.outlet?.id,
+    detailItems,
+  };
+}
+
+function toTransactionFromLivestock(sale: LivestockSale, index: number): TransactionRecord {
+  const dateRaw = sale.date ?? sale.createdAt;
+  const amount = getNumber(sale.amount ?? sale.totalAmount);
+  const weight = getNumber(sale.weight);
+  const label = getLivestockLabel(sale);
+  const maybeOutletId =
+    typeof (sale as { outletId?: unknown }).outletId === "string"
+      ? ((sale as { outletId: string }).outletId)
+      : undefined;
+
+  return {
+    id: sale.transactionId ?? sale.id ?? `LS-${index + 1}`,
+    timestamp: toTimestamp(dateRaw),
+    dateLabel: formatDate(dateRaw),
+    customer: typeof sale.name === "string" && sale.name ? sale.name : "-",
+    contact: typeof sale.contact === "string" && sale.contact ? sale.contact : "-",
+    type: "Livestock",
+    itemsCount: 1,
+    amount,
+    outletId: maybeOutletId,
+    detailItems: [
+      {
+        product: label,
+        qtyKg: weight,
+        price: amount,
+      },
+    ],
+  };
+}
+
+function formatItemsCount(n: number, t: (text: string) => string): string {
   return n === 1 ? t("1 Item") : `${n} ${t("Items")}`;
 }
 
-function getAmount(tx: SaleTransaction): string {
-  const n = tx.amount ?? tx.total ?? tx.totalAmount;
-  if (n == null) return "—";
-  return `Rs.${Number(n).toFixed(2)}`;
-}
-
-function getProductNames(tx: SaleTransaction): string {
-  const names = tx.items
-    ?.map((i) => (typeof i.product === "string" ? i.product : i.product?.name))
-    .filter(Boolean) ?? [];
-  return names.length === 0 ? "—" : names.join(", ");
+function formatAmount(n: number | null): string {
+  if (n == null) return "-";
+  return `Rs.${n.toFixed(2)}`;
 }
 
 export default function TransactionPage() {
@@ -73,12 +176,10 @@ export default function TransactionPage() {
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
-  const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   const {
-    data: transactions = [],
+    data: sales = [],
     isLoading: salesLoading,
     isError: salesError,
     error: salesErrorDetail,
@@ -86,6 +187,23 @@ export default function TransactionPage() {
     queryKey: SALES_QUERY_KEY,
     queryFn: async () => {
       const result = await getSales();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const {
+    data: livestockSales = [],
+    isLoading: livestockLoading,
+    isError: livestockError,
+    error: livestockErrorDetail,
+  } = useQuery({
+    queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getLivestockSales();
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -106,20 +224,27 @@ export default function TransactionPage() {
     },
   });
 
+  const transactions = useMemo(() => {
+    const standard = sales.map(toTransactionFromSale);
+    const livestock = livestockSales.map((sale, index) => toTransactionFromLivestock(sale, index));
+    return [...standard, ...livestock].sort((a, b) => b.timestamp - a.timestamp);
+  }, [sales, livestockSales]);
+
   const filteredTransactions = useMemo(
     () =>
       transactions.filter((tx) => {
         const q = searchQuery.trim().toLowerCase();
         if (q) {
           const match =
-            getTransactionId(tx).toLowerCase().includes(q) ||
-            getCustomerName(tx).toLowerCase().includes(q) ||
-            getType(tx).toLowerCase().includes(q) ||
-            getAmount(tx).toLowerCase().includes(q);
+            tx.id.toLowerCase().includes(q) ||
+            tx.customer.toLowerCase().includes(q) ||
+            tx.type.toLowerCase().includes(q) ||
+            formatAmount(tx.amount).toLowerCase().includes(q);
           if (!match) return false;
         }
-        if (outletFilter && tx.outletId && tx.outletId !== outletFilter)
-          return false;
+        if (outletFilter) {
+          if (!tx.outletId || tx.outletId !== outletFilter) return false;
+        }
         return true;
       }),
     [transactions, searchQuery, outletFilter]
@@ -134,10 +259,14 @@ export default function TransactionPage() {
     startIndex,
     endIndex,
   } = usePagination(filteredTransactions.length, { defaultPageSize: 10 });
+
   const paginatedTransactions = useMemo(
     () => paginate(filteredTransactions, startIndex, endIndex),
     [filteredTransactions, startIndex, endIndex]
   );
+
+  const loading = salesLoading || livestockLoading;
+  const error = salesError || livestockError;
 
   return (
     <section className="transactionPage">
@@ -193,9 +322,9 @@ export default function TransactionPage() {
           <span className="transactionColAmount">{t("Amount")}</span>
           <span aria-label={t("Actions")} />
         </div>
-        {salesLoading && (
+        {loading && (
           <div className="transactionRow">
-            <span className="transactionMessage">{t("Loading transactions…")}</span>
+            <span className="transactionMessage">{t("Loading transactions...")}</span>
             <span />
             <span />
             <span />
@@ -204,12 +333,14 @@ export default function TransactionPage() {
             <span />
           </div>
         )}
-        {salesError && (
+        {error && (
           <div className="transactionRow">
             <span className="transactionMessage transactionError">
               {salesErrorDetail instanceof Error
                 ? salesErrorDetail.message
-                : t("Failed to load transactions")}
+                : livestockErrorDetail instanceof Error
+                  ? livestockErrorDetail.message
+                  : t("Failed to load transactions")}
             </span>
             <span />
             <span />
@@ -219,11 +350,9 @@ export default function TransactionPage() {
             <span />
           </div>
         )}
-        {!salesLoading && !salesError && transactions.length === 0 && (
+        {!loading && !error && transactions.length === 0 && (
           <div className="transactionRow">
-            <span className="transactionMessage">
-              {t("No transactions yet.")}
-            </span>
+            <span className="transactionMessage">{t("No transactions yet.")}</span>
             <span />
             <span />
             <span />
@@ -232,14 +361,12 @@ export default function TransactionPage() {
             <span />
           </div>
         )}
-        {!salesLoading &&
-          !salesError &&
+        {!loading &&
+          !error &&
           transactions.length > 0 &&
           filteredTransactions.length === 0 && (
             <div className="transactionRow">
-              <span className="transactionMessage">
-                {t("No transactions match your search.")}
-              </span>
+              <span className="transactionMessage">{t("No transactions match your search.")}</span>
               <span />
               <span />
               <span />
@@ -248,44 +375,33 @@ export default function TransactionPage() {
               <span />
             </div>
           )}
-        {!salesLoading &&
-          !salesError &&
+        {!loading &&
+          !error &&
           paginatedTransactions.map((tx) => (
             <div
               key={tx.id}
               className="transactionRow transactionRowClickable"
               role="button"
               tabIndex={0}
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest(".transactionMenuWrap")) return;
-                setSelectedTransaction(tx);
-              }}
+              onClick={() => setSelectedTransaction(tx)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  if (!(e.target as HTMLElement).closest(".transactionMenuWrap")) {
-                    setSelectedTransaction(tx);
-                  }
+                  setSelectedTransaction(tx);
                 }
               }}
-              aria-label={`${t("View details for transaction")} ${getTransactionId(tx)}`}
+              aria-label={`${t("View details for transaction")} ${tx.id}`}
             >
-              <span>{getTransactionId(tx)}</span>
-              <span>{formatDate(tx)}</span>
-              <span>{getCustomerName(tx)}</span>
+              <span>{tx.id}</span>
+              <span>{tx.dateLabel}</span>
+              <span>{tx.customer}</span>
               <span>
-                <span className="badge transactionTypeBadge">
-                  {getType(tx)}
-                </span>
+                <span className="badge transactionTypeBadge">{tx.type}</span>
               </span>
-              <span>{getItemsCount(tx, t)}</span>
-              <span className="transactionColAmount">{getAmount(tx)}</span>
+              <span>{formatItemsCount(tx.itemsCount, t)}</span>
+              <span className="transactionColAmount">{formatAmount(tx.amount)}</span>
               <div className="transactionMenuWrap">
-                <button
-                  type="button"
-                  className="transactionMenuTrigger"
-                  aria-label={t("More options")}
-                >
+                <button type="button" className="transactionMenuTrigger" aria-label={t("More options")}>
                   ⋮
                 </button>
               </div>
@@ -293,7 +409,7 @@ export default function TransactionPage() {
           ))}
       </div>
 
-      {!salesLoading && !salesError && filteredTransactions.length > 0 && (
+      {!loading && !error && filteredTransactions.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -307,66 +423,56 @@ export default function TransactionPage() {
 
       <Modal
         isOpen={!!selectedTransaction}
-        title={
-          selectedTransaction
-            ? `${t("Transaction")} ${getTransactionId(selectedTransaction)}`
-            : ""
-        }
-        subtitle={selectedTransaction ? getCustomerName(selectedTransaction) : ""}
+        title={selectedTransaction ? `${t("Transaction")} ${selectedTransaction.id}` : ""}
+        subtitle={selectedTransaction ? selectedTransaction.customer : ""}
         onClose={() => setSelectedTransaction(null)}
       >
         {selectedTransaction && (
           <div className="transactionDetail">
             <dl className="transactionDetailList">
               <dt>{t("Customer")}</dt>
-              <dd>{getCustomerName(selectedTransaction)}</dd>
+              <dd>{selectedTransaction.customer}</dd>
               <dt>{t("Contact")}</dt>
-              <dd>{selectedTransaction.contact || "—"}</dd>
+              <dd>{selectedTransaction.contact}</dd>
               <dt>{t("Date & Time")}</dt>
-              <dd>{formatDate(selectedTransaction)}</dd>
+              <dd>{selectedTransaction.dateLabel}</dd>
               <dt>{t("Type")}</dt>
-              <dd>{getType(selectedTransaction)}</dd>
+              <dd>{selectedTransaction.type}</dd>
             </dl>
-            {selectedTransaction.items && selectedTransaction.items.length > 0 && (
-              <div className="transactionDetailItems">
-                <div className="transactionDetailItemsHeader">{t("Products")}</div>
-                <table className="transactionDetailTable">
-                  <thead>
-                    <tr>
-                      <th>{t("Product")}</th>
-                      <th>{t("Qty (kg)")}</th>
-                      <th>{t("Price")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedTransaction.items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          {typeof item.product === "string"
-                            ? item.product
-                            : item.product?.name ?? "—"}
-                        </td>
-                        <td>{item.weight ?? "—"}</td>
-                        <td>
-                          {item.amount != null
-                            ? `Rs.${Number(item.amount).toFixed(2)}`
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="transactionDetailItems">
+              <div className="transactionDetailItemsHeader">
+                {selectedTransaction.type === "Livestock" ? t("Livestock Sales Details") : t("Products")}
               </div>
-            )}
-            {(!selectedTransaction.items || selectedTransaction.items.length === 0) && (
-              <dl className="transactionDetailList">
-                <dt>{t("Products")}</dt>
-                <dd>{getProductNames(selectedTransaction)}</dd>
-              </dl>
-            )}
+              <table className="transactionDetailTable">
+                <thead>
+                  <tr>
+                    <th>{selectedTransaction.type === "Livestock" ? t("Livestock Item ID") : t("Product")}</th>
+                    <th>{t("Qty (kg)")}</th>
+                    <th>{t("Price")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedTransaction.detailItems.length === 0 ? (
+                    <tr>
+                      <td>-</td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                  ) : (
+                    selectedTransaction.detailItems.map((item, idx) => (
+                      <tr key={`${selectedTransaction.id}-${idx}`}>
+                        <td>{item.product}</td>
+                        <td>{item.qtyKg ?? "-"}</td>
+                        <td>{item.price != null ? `Rs.${item.price.toFixed(2)}` : "-"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <dl className="transactionDetailList transactionDetailTotal">
               <dt>{t("Total")}</dt>
-              <dd>{getAmount(selectedTransaction)}</dd>
+              <dd>{formatAmount(selectedTransaction.amount)}</dd>
             </dl>
           </div>
         )}

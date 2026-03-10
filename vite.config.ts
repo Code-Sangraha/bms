@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["highland-logo.jpeg", "mask-icon.svg"],
       manifest: {
-        name: "Highland Meat Processing",
-        short_name: "BMS",
+        name: "Highland",
+        short_name: "Highland",
         description: "Business Management System for meat processing and selling",
         theme_color: "#18181b",
         background_color: "#fafafa",

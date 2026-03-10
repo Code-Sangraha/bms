@@ -22,7 +22,7 @@ const STORAGE_KEY = "app-locale";
 
 const translations: Record<string, string> = {
   "Sign in": "साइन इन",
-  "Enter your credentials to access BMS.": "BMS पहुँच गर्न आफ्नो विवरण प्रविष्ट गर्नुहोस्।",
+  "Enter your credentials to access Highland Meat Processing.": "Highland Meat Processing पहुँच गर्न आफ्नो विवरण प्रविष्ट गर्नुहोस्।",
   "No token received. Please try again.": "टोकन प्राप्त भएन। कृपया फेरि प्रयास गर्नुहोस्।",
   "Something went wrong. Please try again.": "केही गलत भयो। कृपया फेरि प्रयास गर्नुहोस्।",
   Email: "इमेल",

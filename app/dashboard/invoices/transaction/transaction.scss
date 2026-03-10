@@ -281,3 +281,140 @@
     text-align: left;
   }
 }
+
+@media (max-width: 768px) {
+  .transactionPage {
+    gap: 14px;
+  }
+
+  .pageTitle {
+    font-size: 30px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .transactionToolbar {
+    gap: 10px;
+  }
+
+  .transactionSearch {
+    width: 100%;
+    max-width: none;
+  }
+
+  .transactionFilterWrap {
+    width: 100%;
+  }
+
+  .transactionFilterSelect {
+    width: 100%;
+  }
+
+  .transactionLastSync {
+    width: 100%;
+    margin-top: 2px;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .transactionTable {
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .transactionRowHeader {
+    display: none;
+  }
+
+  .transactionRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    background: #ffffff;
+  }
+
+  .transactionRow > span {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .transactionRow > span:nth-child(1)::before {
+    content: "Transaction ID";
+  }
+
+  .transactionRow > span:nth-child(2)::before {
+    content: "Date & Time";
+  }
+
+  .transactionRow > span:nth-child(3)::before {
+    content: "Customer";
+  }
+
+  .transactionRow > span:nth-child(4)::before {
+    content: "Type";
+  }
+
+  .transactionRow > span:nth-child(5)::before {
+    content: "Items";
+  }
+
+  .transactionRow > span:nth-child(6)::before {
+    content: "Amount";
+  }
+
+  .transactionRow > span:nth-child(1)::before,
+  .transactionRow > span:nth-child(2)::before,
+  .transactionRow > span:nth-child(3)::before,
+  .transactionRow > span:nth-child(4)::before,
+  .transactionRow > span:nth-child(5)::before,
+  .transactionRow > span:nth-child(6)::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .transactionColAmount {
+    text-align: left;
+  }
+
+  .transactionMenuWrap {
+    grid-column: 2 / 3;
+    justify-self: end;
+    align-self: end;
+  }
+
+  .transactionMenuTrigger {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .transactionMessage {
+    grid-column: 1 / -1;
+  }
+
+  .transactionDetailList {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .transactionDetailList dt {
+    font-size: 12px;
+  }
+
+  .transactionDetailList dd {
+    margin-bottom: 8px;
+  }
+}

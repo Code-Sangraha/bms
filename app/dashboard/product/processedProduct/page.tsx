@@ -137,19 +137,11 @@ export default function ProcessedProductPage() {
     if (!actionModal) return;
     const enteredWeight = Number(weight);
     if (!Number.isFinite(enteredWeight) || enteredWeight <= 0) return;
-    const currentStock =
-      typeof actionModal.product.weight === "number"
-        ? actionModal.product.weight
-        : typeof actionModal.product.quantity === "number"
-          ? actionModal.product.quantity
-          : 0;
     const payload = {
       id: actionModal.product.id,
       outletId: actionModal.product.outletId,
-      weight:
-        actionModal.action === "restock"
-          ? currentStock + enteredWeight
-          : enteredWeight,
+      weight: enteredWeight,
+      quantity: enteredWeight,
     };
     if (actionModal.action === "restock") restockMutation.mutate(payload);
     else deductMutation.mutate(payload);

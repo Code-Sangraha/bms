@@ -46,6 +46,11 @@ type MenuItem = {
   permission?: "create";
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 const sidebarLabelMap: Record<TranslationKey, string> = {
   dashboard: "Dashboard",
   overview: "Overview",
@@ -205,25 +210,47 @@ export default function Sidebar() {
   };
 
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    setShowInstallButton(!standalone);
+    setShowInstallButton(true);
     const mq = window.matchMedia("(max-width: 768px)");
     setIsMobile(mq.matches);
     const handler = () => setIsMobile(mq.matches);
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+      setShowInstallButton(true);
+    };
+    const onAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
     mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    return () => {
+      mq.removeEventListener("change", handler);
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
   }, []);
 
-  const handleInstallClick = useCallback(() => {
+  const handleInstallClick = useCallback(async () => {
+    if (deferredInstallPrompt) {
+      await deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice.catch(() => null);
+      setDeferredInstallPrompt(null);
+      return;
+    }
+
     const el = document.getElementById("pwa-install") as
-      | (HTMLElement & { showDialog?: () => void })
+      | (HTMLElement & { showDialog?: () => void; show?: () => void })
       | null;
     el?.showDialog?.();
-  }, []);
+    if (!el?.showDialog && el?.show) el.show();
+  }, [deferredInstallPrompt]);
 
   return (
     <div className="sidebarWrapper">

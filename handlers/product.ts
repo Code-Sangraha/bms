@@ -27,7 +27,8 @@ export type CreateProductPayload = {
   name: string;
   productTypeId: string;
   outletId: string;
-  quantity: number;
+  quantity?: number;
+  weight?: number;
   status: boolean;
   createdBy?: string;
 };
@@ -43,7 +44,8 @@ export type UpdateProductPayload = {
   name: string;
   productTypeId: string;
   outletId: string;
-  quantity: number;
+  quantity?: number;
+  weight?: number;
   status: boolean;
   createdBy?: string;
 };
@@ -73,14 +75,21 @@ export async function getProducts(): Promise<
   return { ok: true, data };
 }
 
-export async function createProduct(payload: CreateProductFormValues) {
+export async function createProduct(
+  payload: CreateProductFormValues,
+  options?: { isProcessed?: boolean }
+) {
   const body: CreateProductPayload = {
     name: payload.name.trim(),
     productTypeId: payload.productTypeId.trim(),
     outletId: payload.outletId.trim(),
-    quantity: Number(payload.quantity),
     status: payload.status === "Active",
   };
+  if (options?.isProcessed) {
+    body.weight = Number(payload.quantity);
+    body.quantity = Number(payload.quantity);
+  }
+  else body.quantity = Number(payload.quantity);
   if (payload.createdBy?.trim()) body.createdBy = payload.createdBy.trim();
   return apiRequest<CreateProductResponse>(PRODUCT_ROUTES.CREATE, {
     method: "POST",
@@ -90,16 +99,21 @@ export async function createProduct(payload: CreateProductFormValues) {
 
 export async function updateProduct(
   id: string,
-  payload: CreateProductFormValues
+  payload: CreateProductFormValues,
+  options?: { isProcessed?: boolean }
 ) {
   const body: UpdateProductPayload = {
     id,
     name: payload.name.trim(),
     productTypeId: payload.productTypeId.trim(),
     outletId: payload.outletId.trim(),
-    quantity: Number(payload.quantity),
     status: payload.status === "Active",
   };
+  if (options?.isProcessed) {
+    body.weight = Number(payload.quantity);
+    body.quantity = Number(payload.quantity);
+  }
+  else body.quantity = Number(payload.quantity);
   if (payload.createdBy?.trim()) body.createdBy = payload.createdBy.trim();
   return apiRequest<UpdateProductResponse>(PRODUCT_ROUTES.UPDATE, {
     method: "POST",

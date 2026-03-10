@@ -67,7 +67,7 @@ export default function LoginPage() {
     <div className="authCard">
       <div className="authHeader">
         <h1 className="authTitle">{t("Sign in")}</h1>
-        <p className="authSubtitle">{t("Enter your credentials to access BMS.")}</p>
+        <p className="authSubtitle">{t("Enter your credentials to access Highland Meat Processing.")}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="authForm">
