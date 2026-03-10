@@ -133,11 +133,14 @@
   margin: 20px 0;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .posTable {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -160,6 +163,17 @@
   color: #374151;
 }
 
+.posTable th:last-child,
+.posTable td:last-child {
+  width: 86px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.posRemoveHeader {
+  text-align: center !important;
+}
+
 .posTable tbody tr:last-child td {
   border-bottom: none;
 }
@@ -171,14 +185,15 @@
 }
 
 .posRemoveBtn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #6b7280;
-  font-size: 18px;
+  min-width: 70px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.06);
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
 }
@@ -259,14 +274,8 @@
 }
 
 @media (max-width: 900px) {
-  .posFormRow {
-    grid-template-columns: 1fr;
-  }
-
-  .posFormRowAdd {
-    grid-template-columns: 1fr;
-  }
-
+  .posFormRow,
+  .posFormRowAdd,
   .posFormRowLivestockAdd {
     grid-template-columns: 1fr;
   }
@@ -274,4 +283,9 @@
   .posFieldQty {
     max-width: none;
   }
+
+  .posTable {
+    min-width: 760px;
+  }
 }
+

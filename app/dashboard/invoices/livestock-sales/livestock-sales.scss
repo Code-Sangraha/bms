@@ -112,12 +112,14 @@
   margin-top: 14px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
-  min-width: 760px;
+  min-width: 860px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -138,6 +140,13 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
+.table th:last-child,
+.table td:last-child {
+  width: 86px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .emptyCell {
   text-align: center;
   color: #6b7280;
@@ -145,12 +154,15 @@
 }
 
 .removeBtn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 6px;
-  background: rgba(220, 38, 38, 0.08);
+  min-width: 70px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.06);
   color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
 }
 

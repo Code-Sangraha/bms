@@ -54,7 +54,7 @@ export default function LivestockSalesPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [selectedLivestockItemId, setSelectedLivestockItemId] = useState("");
-  const [livestockWeight, setLivestockWeight] = useState<number>(1);
+  const [livestockWeight, setLivestockWeight] = useState("");
   const [livestockAmount, setLivestockAmount] = useState<number>(0);
   const [livestockLineItems, setLivestockLineItems] = useState<LivestockLineItem[]>([]);
   const [livestockError, setLivestockError] = useState<string | null>(null);
@@ -202,7 +202,8 @@ export default function LivestockSalesPage() {
       setLivestockError(t("Select livestock item."));
       return;
     }
-    if (!Number.isFinite(livestockWeight) || livestockWeight <= 0) {
+    const parsedWeight = Number(livestockWeight);
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
       setLivestockError(t("Weight must be greater than 0."));
       return;
     }
@@ -219,12 +220,12 @@ export default function LivestockSalesPage() {
         livestockItemId: selectedLivestockItemId.trim(),
         livestockItemLabel:
           livestockOptionMap.get(selectedLivestockItemId.trim()) ?? selectedLivestockItemId.trim(),
-        weight: livestockWeight,
+        weight: parsedWeight,
         amount: livestockAmount,
       },
     ]);
     setSelectedLivestockItemId("");
-    setLivestockWeight(1);
+    setLivestockWeight("");
     setLivestockAmount(0);
     setLivestockError(null);
   };
@@ -247,7 +248,7 @@ export default function LivestockSalesPage() {
         setCustomerName("");
         setCustomerContact("");
         setSelectedLivestockItemId("");
-        setLivestockWeight(1);
+        setLivestockWeight("");
         setLivestockAmount(0);
         setLivestockError(null);
         queryClient.invalidateQueries({ queryKey: LIVESTOCK_SALES_QUERY_KEY });
@@ -348,8 +349,9 @@ export default function LivestockSalesPage() {
               type="number"
               min={0}
               step="any"
-              value={livestockWeight || ""}
-              onChange={(e) => setLivestockWeight(Number(e.target.value) || 0)}
+              value={livestockWeight}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => setLivestockWeight(e.target.value)}
             />
           </label>
           <label className="field fieldSm">
@@ -401,7 +403,7 @@ export default function LivestockSalesPage() {
                         className="removeBtn"
                         onClick={() => removeLivestockLine(index)}
                       >
-                        x
+                        {t("Delete")}
                       </button>
                     </td>
                   </tr>

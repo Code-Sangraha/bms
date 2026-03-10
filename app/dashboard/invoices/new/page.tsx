@@ -54,7 +54,7 @@ export default function PointOfSalePage() {
   const [outletId, setOutletId] = useState("");
   const [productId, setProductId] = useState("");
   const [lineTypeId, setLineTypeId] = useState("");
-  const [quantity, setQuantity] = useState<number>(1);
+  const [quantity, setQuantity] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
@@ -155,7 +155,11 @@ export default function PointOfSalePage() {
         : typeof product?.quantity === "number"
           ? product.quantity
           : 0;
-    const selectedQty = Number(quantity) || 1;
+    const selectedQty = Number(quantity);
+    if (!Number.isFinite(selectedQty) || selectedQty <= 0) {
+      setError(t("Quantity must be greater than 0."));
+      return;
+    }
     if (selectedQty > stockAvailable) {
       setError(
         t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockAvailable}).`)
@@ -182,7 +186,7 @@ export default function PointOfSalePage() {
         stockAvailable,
       },
     ]);
-    setQuantity(1);
+    setQuantity("");
     setProductId("");
     setError(null);
   };
@@ -357,8 +361,9 @@ export default function PointOfSalePage() {
               type="number"
               min={1}
               step={1}
-              value={quantity || ""}
-              onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+              value={quantity}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => setQuantity(e.target.value)}
               aria-label={t("Quantity")}
             />
           </label>
@@ -385,7 +390,8 @@ export default function PointOfSalePage() {
                 <th>{t("TYPE")}</th>
                 <th>{t("QUANTITY")}</th>
                 <th>{t("SUB-TOTAL")}</th>
-                <th aria-label={t("Remove")} />
+                {/* explicit header so mobile users can see there is a delete column */}
+                <th className="posRemoveHeader">{t("Remove")}</th>
               </tr>
             </thead>
             <tbody>
@@ -417,7 +423,7 @@ export default function PointOfSalePage() {
                         onClick={() => removeLine(index)}
                         aria-label={t("Remove line")}
                       >
-                        x
+                        {t("Delete")}
                       </button>
                     </td>
                   </tr>
