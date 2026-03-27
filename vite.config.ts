@@ -48,7 +48,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://api.highlandmeatprocessing.com",
+        target: process.env.VITE_PROXY_TARGET || "https://bmsapi.codesangraha.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "/v1"),
       },

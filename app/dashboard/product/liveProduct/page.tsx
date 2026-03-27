@@ -10,17 +10,14 @@ import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createLivestockItem,
   deleteLivestockItem,
+  getLivestockCategories,
   getLivestockItemsByProduct,
-  getProducts,
   updateLivestockItem,
-  type CreateLivestockItemPayload,
   type LivestockItem,
 } from "@/handlers/product";
-import { getProductTypes } from "@/handlers/productType";
 import "./liveProduct.scss";
 
-const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
-const PRODUCTS_QUERY_KEY = ["products"];
+const LIVESTOCK_CATEGORY_QUERY_KEY = ["livestockCategories"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
 
 type LivestockFormState = {
@@ -85,14 +82,14 @@ export default function LiveProductPage() {
   const [editingLivestockId, setEditingLivestockId] = useState<string | null>(null);
 
   const {
-    data: products = [],
-    isLoading: productsLoading,
-    isError: productsError,
-    error: productsErrorDetail,
+    data: livestockCategories = [],
+    isLoading: categoryLoading,
+    isError: categoryError,
+    error: categoryErrorDetail,
   } = useQuery({
-    queryKey: PRODUCTS_QUERY_KEY,
+    queryKey: LIVESTOCK_CATEGORY_QUERY_KEY,
     queryFn: async () => {
-      const result = await getProducts();
+      const result = await getLivestockCategories();
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -101,38 +98,9 @@ export default function LiveProductPage() {
     },
   });
 
-  const { data: productTypes = [] } = useQuery({
-    queryKey: ["productTypes"],
-    queryFn: async () => {
-      const result = await getProductTypes();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-  });
-
-  const liveTypeIds = useMemo(() => {
-    const ids = new Set<string>();
-    productTypes.forEach((pt) => {
-      if (LIVE_PRODUCT_TYPE_NAMES.includes(pt.name.toLowerCase())) ids.add(pt.id);
-    });
-    return ids;
-  }, [productTypes]);
-
-  const liveStockProducts = useMemo(
-    () =>
-      products.filter((p) => {
-        const productTypeName =
-          typeof p.productType === "object" && typeof p.productType?.name === "string"
-            ? p.productType.name.toLowerCase()
-            : "";
-        return liveTypeIds.has(p.productTypeId) || LIVE_PRODUCT_TYPE_NAMES.includes(productTypeName);
-      }),
-    [products, liveTypeIds]
-  );
-
   const liveStockProductIds = useMemo(
-    () => liveStockProducts.map((product) => product.id).sort(),
-    [liveStockProducts]
+    () => livestockCategories.map((category) => category.id).sort(),
+    [livestockCategories]
   );
 
   const {
@@ -173,7 +141,7 @@ export default function LiveProductPage() {
     if (!q) return livestockItems;
     return livestockItems.filter((item) => {
       const productName =
-        liveStockProducts.find((product) => product.id === item.productId)?.name.toLowerCase() ?? "";
+        livestockCategories.find((product) => product.id === item.productId)?.name.toLowerCase() ?? "";
       return (
         item.name.toLowerCase().includes(q) ||
         item.itemId.toLowerCase().includes(q) ||
@@ -182,7 +150,7 @@ export default function LiveProductPage() {
         productName.includes(q)
       );
     });
-  }, [livestockItems, liveStockProducts, searchQuery]);
+  }, [livestockItems, livestockCategories, searchQuery]);
 
   const {
     currentPage,
@@ -200,7 +168,7 @@ export default function LiveProductPage() {
   );
 
   const getLiveProductName = (productId: string) =>
-    liveStockProducts.find((product) => product.id === productId)?.name ?? productId;
+    livestockCategories.find((product) => product.id === productId)?.name ?? productId;
 
   const livestockMutation = useMutation({
     mutationFn: createLivestockItem,
@@ -219,7 +187,9 @@ export default function LiveProductPage() {
         productId: variables.productId,
         name: variables.name,
         itemId: variables.itemId,
-        weight: variables.weight,
+        weight: variables.itemQuantityOrWeight,
+        itemQuantityOrWeight: variables.itemQuantityOrWeight,
+        isBulk: variables.isBulk,
         price: variables.price,
         status: variables.status,
       };
@@ -256,6 +226,8 @@ export default function LiveProductPage() {
             return {
               ...item,
               ...variables,
+              weight: variables.itemQuantityOrWeight,
+              itemQuantityOrWeight: variables.itemQuantityOrWeight,
             };
           })
       );
@@ -310,23 +282,42 @@ export default function LiveProductPage() {
       productId: form.productId,
       name: trimmedName,
       itemId: trimmedItemId,
-      weight,
+      itemQuantityOrWeight: weight,
       price,
-      status: form.status === "Active",
+      isBulk: true,
+      status: true,
     };
   };
 
   const handleSubmitLivestock = () => {
     const payload = validateLivestockForm(livestockForm, setLivestockError);
     if (!payload) return;
-    livestockMutation.mutate(payload as CreateLivestockItemPayload);
+    livestockMutation.mutate(payload);
   };
 
   const handleSubmitEditLivestock = () => {
     if (!editingLivestockId) return;
-    const payload = validateLivestockForm(editLivestockForm, setEditLivestockError);
-    if (!payload) return;
-    updateLivestockMutation.mutate({ id: editingLivestockId, ...payload });
+    const trimmedName = editLivestockForm.name.trim();
+    const trimmedItemId = editLivestockForm.itemId.trim();
+    const weight = Number(editLivestockForm.weight);
+    const price = Number(editLivestockForm.price);
+
+    if (!editLivestockForm.productId) return setEditLivestockError(t("Please select live stock product category."));
+    if (!trimmedName) return setEditLivestockError(t("Name is required."));
+    if (!trimmedItemId) return setEditLivestockError(t("Item ID is required."));
+    if (!Number.isFinite(weight) || weight <= 0) return setEditLivestockError(t("Weight must be greater than 0."));
+    if (!Number.isFinite(price) || price <= 0) return setEditLivestockError(t("Price must be greater than 0."));
+
+    setEditLivestockError(null);
+    updateLivestockMutation.mutate({
+      id: editingLivestockId,
+      name: trimmedName,
+      itemId: trimmedItemId,
+      productId: editLivestockForm.productId,
+      itemQuantityOrWeight: weight,
+      price,
+      status: editLivestockForm.status === "Active",
+    });
   };
 
   const handleOpenEdit = (item: LivestockItem) => {
@@ -401,7 +392,7 @@ export default function LiveProductPage() {
           <span>{t("Status")}</span>
           <span>{t("Actions")}</span>
         </div>
-        {(productsLoading || livestockItemsLoading) && (
+        {(categoryLoading || livestockItemsLoading) && (
           <div className="productsRow livestockRowWithActions">
             <span className="productsMessage">{t("Loading…")}</span>
             <span />
@@ -412,12 +403,12 @@ export default function LiveProductPage() {
             <span />
           </div>
         )}
-        {productsError && (
+        {categoryError && (
           <div className="productsRow livestockRowWithActions">
             <span className="productsMessage productsError">
-              {productsErrorDetail instanceof Error
-                ? productsErrorDetail.message
-                : t("Failed to load products")}
+              {categoryErrorDetail instanceof Error
+                ? categoryErrorDetail.message
+                : t("Failed to load livestock categories")}
             </span>
             <span />
             <span />
@@ -442,19 +433,8 @@ export default function LiveProductPage() {
             <span />
           </div>
         )}
-        {!productsLoading && !productsError && liveTypeIds.size === 0 && productTypes.length > 0 && (
-          <div className="productsRow livestockRowWithActions">
-            <span className="productsMessage">{t('No product type named "Live Stock" found.')}</span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        )}
-        {!productsLoading &&
-          !productsError &&
+        {!categoryLoading &&
+          !categoryError &&
           !livestockItemsLoading &&
           !livestockItemsError &&
           filteredLivestockItems.length === 0 && (
@@ -468,8 +448,8 @@ export default function LiveProductPage() {
               <span />
             </div>
           )}
-        {!productsLoading &&
-          !productsError &&
+        {!categoryLoading &&
+          !categoryError &&
           !livestockItemsLoading &&
           !livestockItemsError &&
           paginatedLivestockItems.map((item) => (
@@ -509,8 +489,8 @@ export default function LiveProductPage() {
           ))}
       </div>
 
-      {!productsLoading &&
-        !productsError &&
+      {!categoryLoading &&
+        !categoryError &&
         !livestockItemsLoading &&
         !livestockItemsError &&
         filteredLivestockItems.length > 0 && (
@@ -575,7 +555,7 @@ export default function LiveProductPage() {
               className="productActionModalSelect"
             >
               <option value="">{t("Select product category")}</option>
-              {liveStockProducts.map((product) => (
+              {livestockCategories.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
                 </option>
@@ -583,7 +563,7 @@ export default function LiveProductPage() {
             </select>
           </label>
           <label className="productActionModalLabel">
-            {t("Name")}
+            {t("Name of Livestock Item")}
             <input
               type="text"
               value={livestockForm.name}
@@ -603,7 +583,7 @@ export default function LiveProductPage() {
             />
           </label>
           <label className="productActionModalLabel">
-            {t("Weight")}
+            {t("Quantity")}
             <input
               type="number"
               min={0}
@@ -611,7 +591,7 @@ export default function LiveProductPage() {
               value={livestockForm.weight}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, weight: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Enter weight")}
+              placeholder={t("Enter quantity")}
             />
           </label>
           <label className="productActionModalLabel">
@@ -625,22 +605,6 @@ export default function LiveProductPage() {
               className="productActionModalInput"
               placeholder={t("Enter price")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Status")}
-            <select
-              value={livestockForm.status}
-              onChange={(e) =>
-                setLivestockForm((prev) => ({
-                  ...prev,
-                  status: e.target.value === "Inactive" ? "Inactive" : "Active",
-                }))
-              }
-              className="productActionModalSelect"
-            >
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
           </label>
         </div>
       </Modal>
@@ -698,7 +662,7 @@ export default function LiveProductPage() {
               className="productActionModalSelect"
             >
               <option value="">{t("Select product category")}</option>
-              {liveStockProducts.map((product) => (
+              {livestockCategories.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
                 </option>

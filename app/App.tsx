@@ -10,13 +10,15 @@ import OutletPage from "./dashboard/settings/outlet/page";
 import UsersPage from "./dashboard/settings/users/page";
 import DualPricingPage from "./dashboard/settings/dualPricing/page";
 import DepartmentsPage from "./dashboard/settings/departments/page";
+import ProcessingPlantPage from "./dashboard/settings/processingPlant/page";
 import ProductTypePage from "./dashboard/product/productType/page";
 import ProductPage from "./dashboard/product/page";
 import LiveProductPage from "./dashboard/product/liveProduct/page";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
+import LivestockCategoryPage from "./dashboard/product/livestockCategory/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
-import LivestockSalesPage from "./dashboard/invoices/livestock-sales/page";
+import LivestockSalesPage from "./dashboard/invoices/livestocksales/page";
 import TransactionPage from "./dashboard/invoices/transaction/page";
 import CustomerTypesPage from "./dashboard/invoices/customer-types/page";
 import AnalyticsPage from "./dashboard/analytics/page";
@@ -42,8 +44,10 @@ export default function App() {
             <Route path="dashboard/settings/users" element={<UsersPage />} />
             <Route path="dashboard/settings/dualPricing" element={<DualPricingPage />} />
             <Route path="dashboard/settings/departments" element={<DepartmentsPage />} />
+            <Route path="dashboard/settings/processingPlant" element={<ProcessingPlantPage />} />
             <Route path="dashboard/product" element={<ProductPage />} />
             <Route path="dashboard/product/productType" element={<ProductTypePage />} />
+            <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />
             <Route path="dashboard/product/liveProduct" element={<LiveProductPage />} />
             <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
             <Route path="dashboard/invoices" element={<InvoicesPage />} />

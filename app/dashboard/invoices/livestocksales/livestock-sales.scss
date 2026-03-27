@@ -1,0 +1,208 @@
+.livestockSalesPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #111827;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.breadcrumb span {
+  color: #6b7280;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.pageSubtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.salesCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cardTitle {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.formGridTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.formGridAdd {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.fieldSm {
+  max-width: 120px;
+}
+
+.input,
+.select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #02955a;
+  box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.14);
+}
+
+.addBtn {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(2, 149, 90, 0.3);
+  border-radius: 8px;
+  background: rgba(2, 149, 90, 0.08);
+  color: #047857;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.tableWrap {
+  margin-top: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.table th:last-child,
+.table td:last-child {
+  width: 86px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.emptyCell {
+  text-align: center;
+  color: #6b7280;
+  padding: 20px !important;
+}
+
+.removeBtn {
+  min-width: 70px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.06);
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.totalLabel {
+  text-align: right;
+  font-weight: 600;
+}
+
+.totalValue {
+  font-weight: 700;
+}
+
+.submitBtn {
+  width: 100%;
+  margin-top: 14px;
+  height: 46px;
+  border: none;
+  border-radius: 10px;
+  background: #02955a;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .formGridTwo {
+    grid-template-columns: 1fr;
+  }
+
+  .formGridAdd {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldSm {
+    max-width: none;
+  }
+}

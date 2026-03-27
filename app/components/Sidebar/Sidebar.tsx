@@ -20,6 +20,7 @@ type TranslationKey =
   | "outlets"
   | "users"
   | "departments"
+  | "processingPlant"
   | "roles"
   | "salesBilling"
   | "analytics"
@@ -31,6 +32,7 @@ type TranslationKey =
   | "products"
   | "productType"
   | "pricelist"
+  | "livestockCategory"
   | "live"
   | "processed"
   | "attendance"
@@ -57,6 +59,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   outlets: "Outlets",
   users: "Users",
   departments: "Departments",
+  processingPlant: "Processing Plant",
   roles: "Roles",
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
@@ -68,6 +71,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   products: "Products",
   productType: "Product Type",
   pricelist: "Pricelist",
+  livestockCategory: "Livestock Category",
   live: "Live Stock",
   processed: "Processed",
   attendance: "Attendance",
@@ -94,6 +98,7 @@ const sidebarConfig = {
               { labelKey: "outlets", href: "/dashboard/settings/outlet" },
               { labelKey: "users", href: "/dashboard/settings/users" },
               { labelKey: "departments", href: "/dashboard/settings/departments" },
+              { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
               // { label: "Analytics", href: "/dashboard/analytics" },
               // { label: "Reports", href: "/dashboard/reports" },
@@ -125,7 +130,7 @@ const sidebarConfig = {
               { labelKey: "products", href: "/dashboard/product" },
               { labelKey: "productType", href: "/dashboard/product/productType" },
               { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
-
+              { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
               { labelKey: "live", href: "/dashboard/product/liveProduct" },
               { labelKey: "processed", href: "/dashboard/product/processedProduct" },
 
@@ -174,6 +179,7 @@ const sidebarConfig = {
               { labelKey: "outlets", href: "/dashboard/settings/outlet" },
               { labelKey: "users", href: "/dashboard/settings/users" },
               { labelKey: "departments", href: "/dashboard/settings/departments" },
+              { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
             ] as MenuItem[],
           },

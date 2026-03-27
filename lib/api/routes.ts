@@ -37,10 +37,13 @@ export const PRODUCT_ROUTES = {
   DELETE: "/products/delete",
   RESTOCK: "/products/restock",
   DEDUCT: "/products/deduct",
+  LIVESTOCK_CREATE_CATEGORY: "/products/livestock/create-category",
+  LIVESTOCK_GET_CATEGORY: "/products/livestock/get-category",
   LIVESTOCK_CREATE_ITEM: "/products/livestock/create-item",
   LIVESTOCK_GET_ITEMS_BY_PRODUCT: "/products/livestock/get-items-by-product",
   LIVESTOCK_UPDATE_ITEM: "/products/livestock/update-item",
   LIVESTOCK_DELETE_ITEM: "/products/livestock/delete-item",
+  LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
 } as const;
 
 export const ROLE_ROUTES = {
@@ -87,4 +90,11 @@ export const CUSTOMER_TYPE_ROUTES = {
   CREATE: "/customer-types/create",
   UPDATE: "/customer-types/update",
   DELETE: "/customer-types/delete",
+} as const;
+
+export const PROCESSING_PLANT_ROUTES = {
+  GET: "/processing-plants/get",
+  CREATE: "/processing-plants/create",
+  UPDATE: "/processing-plants/update",
+  DELETE: "/processing-plants/delete",
 } as const;
