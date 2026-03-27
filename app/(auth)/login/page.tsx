@@ -2,8 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import {
   getRefreshTokenFromAuthResponse,
   getTokenFromAuthResponse,
@@ -19,6 +20,7 @@ import "../auth.scss";
 export default function LoginPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register: registerField,
     handleSubmit,
@@ -64,62 +66,57 @@ export default function LoginPage() {
 
   return (
     <div className="authLayout">
-    <div className="authCard">
-      <div className="authHeader">
-        <h1 className="authTitle">{t("Sign in")}</h1>
-        <p className="authSubtitle">{t("Enter your credentials to access Highland Meat Processing.")}</p>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="authForm">
-        {errors.root?.message && (
-          <p className="authError">{errors.root.message}</p>
-        )}
-        <label htmlFor="login-email" className="authField">
-          <span className="authLabel">{t("Email")}</span>
-          <input
-            id="login-email"
-            type="email"
-            placeholder="you@example.com"
-            className="authInput"
-            autoComplete="email"
-            {...registerField("email")}
-          />
-          {errors.email && (
-            <span className="authFieldError">{errors.email.message}</span>
-          )}
-        </label>
-        <label htmlFor="login-password" className="authField">
-          <span className="authLabel">{t("Password")}</span>
-          <input
-            id="login-password"
-            type="password"
-            placeholder="••••••••"
-            className="authInput"
-            autoComplete="current-password"
-            {...registerField("password")}
-          />
-          {errors.password && (
-            <span className="authFieldError">{errors.password.message}</span>
-          )}
-        </label>
-        <div className="authActions">
-          <button
-            type="submit"
-            className="authButton authButtonPrimary"
-            disabled={loading}
-          >
-            {loading ? t("Signing in…") : t("Sign in")}
-          </button>
+      <div className="authCard">
+        <div className="authHeader">
+          <h1 className="authTitle">{t("Sign in")}</h1>
+          <p className="authSubtitle">
+            {t("Enter your credentials to access Highland Meat Processing.")}
+          </p>
         </div>
-      </form>
 
-      <p className="authFooter">
-        {t("Don't have an account?")}{" "}
-        <Link to="/register" className="authLink">
-          {t("Register")}
-        </Link>
-      </p>
-    </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="authForm">
+          {errors.root?.message && <p className="authError">{errors.root.message}</p>}
+          <label htmlFor="login-email" className="authField">
+            <span className="authLabel">{t("Email")}</span>
+            <input
+              id="login-email"
+              type="email"
+              placeholder="you@example.com"
+              className="authInput"
+              autoComplete="email"
+              {...registerField("email")}
+            />
+            {errors.email && <span className="authFieldError">{errors.email.message}</span>}
+          </label>
+          <label htmlFor="login-password" className="authField">
+            <span className="authLabel">{t("Password")}</span>
+            <div className="authPasswordWrap">
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                placeholder={t("Enter your password")}
+                className="authInput authInputPassword"
+                autoComplete="current-password"
+                {...registerField("password")}
+              />
+              <button
+                type="button"
+                className="authPasswordToggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? t("Hide password") : t("Show password")}
+              >
+                {showPassword ? t("Hide") : t("Show")}
+              </button>
+            </div>
+            {errors.password && <span className="authFieldError">{errors.password.message}</span>}
+          </label>
+          <div className="authActions">
+            <button type="submit" className="authButton authButtonPrimary" disabled={loading}>
+              {loading ? t("Signing inâ€¦") : t("Sign in")}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

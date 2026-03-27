@@ -114,7 +114,7 @@ export type LivestockSalePayload = {
   name: string;
   contact: string;
   livestockItemId: string;
-  weight: number;
+  itemQuantityOrWeight: number;
   amount: number;
 };
 
@@ -124,6 +124,8 @@ export type LivestockSale = {
   name?: string;
   contact?: string;
   livestockItemId?: string;
+  quantity?: number;
+  itemQuantityOrWeight?: number;
   weight?: number;
   amount?: number;
   totalAmount?: number;
@@ -166,7 +168,10 @@ function normalizeSaleEntry(entry: unknown): LivestockSale[] {
     createdAt: getString(obj.createdAt),
     date: getString(obj.date),
     livestockItemId: getString(obj.livestockItemId) ?? getString(obj.itemId),
-    weight: getNumber(obj.weight),
+    quantity: getNumber(obj.quantity),
+    itemQuantityOrWeight:
+      getNumber(obj.itemQuantityOrWeight) ?? getNumber(obj.quantity) ?? getNumber(obj.weight),
+    weight: getNumber(obj.weight) ?? getNumber(obj.itemQuantityOrWeight) ?? getNumber(obj.quantity),
     amount: getNumber(obj.amount) ?? getNumber(obj.totalAmount),
     totalAmount: getNumber(obj.totalAmount),
   };
@@ -187,7 +192,13 @@ function normalizeSaleEntry(entry: unknown): LivestockSale[] {
       (livestockItemObj ? getString(livestockItemObj.id) ?? getString(livestockItemObj.itemId) : undefined) ??
       base.livestockItemId;
 
-    const weight = getNumber(itemObj.weight) ?? base.weight;
+    const itemQuantityOrWeight =
+      getNumber(itemObj.itemQuantityOrWeight) ??
+      getNumber(itemObj.quantity) ??
+      getNumber(itemObj.weight) ??
+      base.itemQuantityOrWeight ??
+      base.quantity ??
+      base.weight;
     const amount =
       getNumber(itemObj.amount) ??
       getNumber(itemObj.totalAmount) ??
@@ -198,7 +209,9 @@ function normalizeSaleEntry(entry: unknown): LivestockSale[] {
       ...base,
       id: base.id ? `${base.id}-${index}` : undefined,
       livestockItemId,
-      weight,
+      quantity: itemQuantityOrWeight,
+      itemQuantityOrWeight,
+      weight: itemQuantityOrWeight,
       amount,
       items: [itemObj],
     };

@@ -4,18 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import {
-  getLivestockItemsByProduct,
-  getProducts,
-  type LivestockItem,
-  type Product,
-} from "@/handlers/product";
+import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import {
   getDashboardSales,
   getLivestockSales,
+  getSales,
   type DashboardSalesData,
   type LivestockSale,
+  type SaleTransaction,
   type SalesByCustomerItem,
   type SalesByOutletItem,
   type SalesByProductItem,
@@ -24,28 +21,15 @@ import "./dashboard.scss";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
+const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
-const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
-const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 
 const STATIC_ATTENDANCE_PREVIEW = [
   { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "David Chen", clockIn: "—", clockOut: "—", status: "Absent" as const },
 ];
-
-function resolveLivestockItemId(item: LivestockItem): string | null {
-  const fromId = typeof item.id === "string" ? item.id : null;
-  const fromUnderscore = typeof (item as { _id?: unknown })._id === "string"
-    ? (((item as unknown) as { _id: string })._id)
-    : null;
-  const fromLivestockItemId =
-    typeof (item as { livestockItemId?: unknown }).livestockItemId === "string"
-      ? (((item as unknown) as { livestockItemId: string }).livestockItemId)
-      : null;
-  return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
-}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -80,6 +64,18 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: salesTransactions = [] } = useQuery({
+    queryKey: SALES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getSales();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
     queryFn: async () => {
@@ -101,56 +97,6 @@ export default function DashboardPage() {
     },
   });
 
-  const liveTypeIds = useMemo(() => {
-    const ids = new Set<string>();
-    productTypes.forEach((pt) => {
-      if (LIVE_PRODUCT_TYPE_NAMES.includes(pt.name.toLowerCase())) ids.add(pt.id);
-    });
-    return ids;
-  }, [productTypes]);
-
-  const liveStockProducts = useMemo(
-    () =>
-      products.filter((p: Product) => {
-        const productTypeName =
-          typeof p.productType === "object" && typeof p.productType?.name === "string"
-            ? p.productType.name.toLowerCase()
-            : "";
-        return liveTypeIds.has(p.productTypeId) || LIVE_PRODUCT_TYPE_NAMES.includes(productTypeName);
-      }),
-    [products, liveTypeIds]
-  );
-
-  const liveStockProductIds = useMemo(
-    () => liveStockProducts.map((product) => product.id).sort(),
-    [liveStockProducts]
-  );
-
-  const { data: livestockItems = [] } = useQuery({
-    queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
-    enabled: liveStockProductIds.length > 0,
-    queryFn: async () => {
-      const results = await Promise.all(
-        liveStockProductIds.map((productId) => getLivestockItemsByProduct(productId))
-      );
-      const merged: LivestockItem[] = [];
-      for (const result of results) {
-        if (!result.ok) {
-          if (result.status === 401) navigate("/login");
-          throw new Error(result.error);
-        }
-        merged.push(...result.data);
-      }
-      const seen = new Set<string>();
-      return merged.filter((item) => {
-        const id = resolveLivestockItemId(item) ?? `${item.productId}-${item.itemId}`;
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      });
-    },
-  });
-
   const salesData: DashboardSalesData | undefined = salesResponse?.data;
   const apiTotalRevenue = salesData?.totalRevenue ?? 0;
   const apiTotalTransactions = salesData?.totalTransactions ?? 0;
@@ -160,28 +106,104 @@ export default function DashboardPage() {
   const salesByProduct = (salesData?.salesByProduct ?? []).slice(0, 5);
   const salesByCustomer = (salesData?.salesByCustomer ?? []).slice(0, 5);
 
-  const livestockOptions = useMemo(() => {
-    return livestockItems
-      .map((item) => {
-        const id = resolveLivestockItemId(item);
-        if (!id) return null;
-        return {
-          value: id,
-          label: `${item.itemId} - ${item.name}`,
-        };
-      })
-      .filter((option): option is { value: string; label: string } => option != null);
-  }, [livestockItems]);
+  const processedTypeIds = useMemo(() => {
+    const ids = new Set<string>();
+    productTypes.forEach((pt) => {
+      if (pt.name?.toLowerCase() === "processed") ids.add(pt.id);
+    });
+    return ids;
+  }, [productTypes]);
 
-  const livestockOptionMap = useMemo(
-    () => new Map(livestockOptions.map((option) => [option.value, option.label])),
-    [livestockOptions]
-  );
+  const processedProductIdSet = useMemo(() => {
+    const ids = new Set<string>();
+    products.forEach((product: Product) => {
+      if (processedTypeIds.has(product.productTypeId)) ids.add(product.id);
+    });
+    return ids;
+  }, [products, processedTypeIds]);
+
+  const processedProductNameSet = useMemo(() => {
+    const names = new Set<string>();
+    products.forEach((product: Product) => {
+      if (processedTypeIds.has(product.productTypeId)) names.add(product.name.toLowerCase());
+    });
+    return names;
+  }, [products, processedTypeIds]);
+
+  const processedLineItems = useMemo(() => {
+    const toNumber = (value: unknown): number => {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof value === "string" && value.trim()) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return 0;
+    };
+
+    const rows: Array<{
+      transactionId: string;
+      customerName: string;
+      contact: string;
+      type: string;
+      productName: string;
+      amount: number;
+      weight: number;
+      quantity: number;
+      date: string;
+    }> = [];
+
+    for (const tx of salesTransactions as SaleTransaction[]) {
+      const items = Array.isArray(tx.items) ? tx.items : [];
+      const txCustomer =
+        (typeof tx.name === "string" && tx.name) ||
+        (typeof tx.customer === "object" && tx.customer && typeof tx.customer.name === "string"
+          ? tx.customer.name
+          : t("Unknown customer"));
+      const txContact = typeof tx.contact === "string" ? tx.contact : "-";
+      const txDate =
+        (typeof tx.createdAt === "string" && tx.createdAt) ||
+        (typeof tx.date === "string" && tx.date) ||
+        "";
+      const txId = tx.transactionId ?? tx.id;
+
+      for (const item of items) {
+        const productObj = item.product as { id?: unknown; name?: unknown } | undefined;
+        const productId = typeof productObj?.id === "string" ? productObj.id : "";
+        const productName = typeof productObj?.name === "string" ? productObj.name : "";
+        const isProcessed =
+          processedProductIdSet.has(productId) ||
+          processedProductNameSet.has(productName.toLowerCase());
+        if (!isProcessed) continue;
+
+        const itemAmount = toNumber((item as { amount?: unknown }).amount);
+        const itemWeight = toNumber((item as { weight?: unknown }).weight);
+        const itemQuantity = toNumber((item as { quantity?: unknown }).quantity);
+        const resolvedName = productName || t("Unknown product");
+        const typeName =
+          typeof item.customerType === "object" && item.customerType && typeof item.customerType.name === "string"
+            ? item.customerType.name
+            : typeof tx.type === "string"
+              ? tx.type
+              : t("Unknown");
+        rows.push({
+          transactionId: txId,
+          customerName: txCustomer,
+          contact: txContact,
+          type: typeName,
+          productName: resolvedName,
+          amount: itemAmount,
+          weight: itemWeight,
+          quantity: itemQuantity,
+          date: txDate,
+        });
+      }
+    }
+
+    return rows;
+  }, [salesTransactions, processedProductIdSet, processedProductNameSet, t]);
 
   const getLivestockDisplay = (sale: LivestockSale): string => {
     const id = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
-    if (id && livestockOptionMap.has(id)) return livestockOptionMap.get(id) ?? id;
-
     const firstItem =
       Array.isArray(sale.items) && sale.items.length > 0 && typeof sale.items[0] === "object"
         ? (sale.items[0] as Record<string, unknown>)
@@ -208,16 +230,155 @@ export default function DashboardPage() {
     0
   );
   const livestockWeight = livestockSales.reduce(
-    (sum, row) => sum + (typeof row.weight === "number" ? row.weight : 0),
+    (sum, row) =>
+      sum +
+      (typeof row.weight === "number"
+        ? row.weight
+        : typeof row.itemQuantityOrWeight === "number"
+          ? row.itemQuantityOrWeight
+          : typeof row.quantity === "number"
+            ? row.quantity
+            : 0),
     0
   );
-  const livestockQuantity = livestockSales.length;
+  const livestockQuantity = livestockSales.reduce(
+    (sum, row) =>
+      sum +
+      (typeof row.quantity === "number"
+        ? row.quantity
+        : typeof row.itemQuantityOrWeight === "number"
+          ? row.itemQuantityOrWeight
+          : 1),
+    0
+  );
   const livestockTransactions = livestockSales.length;
 
-  const totalRevenue = apiTotalRevenue + livestockRevenue;
-  const totalTransactions = apiTotalTransactions + livestockTransactions;
-  const totalWeight = apiTotalWeight + livestockWeight;
-  const totalQuantity = apiTotalQuantity + livestockQuantity;
+  const processedTransactions = useMemo(
+    () => new Set(processedLineItems.map((row) => row.transactionId)).size,
+    [processedLineItems]
+  );
+  const processedRevenue = useMemo(
+    () => processedLineItems.reduce((sum, row) => sum + row.amount, 0),
+    [processedLineItems]
+  );
+  const processedWeight = useMemo(
+    () => processedLineItems.reduce((sum, row) => sum + row.weight, 0),
+    [processedLineItems]
+  );
+  const processedQuantity = useMemo(
+    () => processedLineItems.reduce((sum, row) => sum + row.quantity, 0),
+    [processedLineItems]
+  );
+  const processedProductsSold = useMemo(() => {
+    const byItem = new Map<string, { name: string; revenue: number; weight: number; quantity: number }>();
+    for (const row of processedLineItems) {
+      const key = row.productName.toLowerCase();
+      const prev = byItem.get(key);
+      if (!prev) {
+        byItem.set(key, {
+          name: row.productName,
+          revenue: row.amount,
+          weight: row.weight,
+          quantity: row.quantity,
+        });
+      } else {
+        prev.revenue += row.amount;
+        prev.weight += row.weight;
+        prev.quantity += row.quantity;
+      }
+    }
+    return Array.from(byItem.values()).sort((a, b) => b.revenue - a.revenue);
+  }, [processedLineItems]);
+  const processedRows = useMemo(
+    () =>
+      [...processedLineItems]
+        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+        .slice(0, 12),
+    [processedLineItems]
+  );
+
+  const dailySalesRows = useMemo(() => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const toDateKey = (value: string): string => {
+      const d = new Date(value);
+      if (!Number.isFinite(d.getTime())) return "";
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const daily = new Map<
+      string,
+      { dateKey: string; revenue: number; weight: number; quantity: number; txIds: Set<string> }
+    >();
+
+    for (const row of processedLineItems) {
+      const key = toDateKey(row.date);
+      if (!key) continue;
+      const current = daily.get(key) ?? {
+        dateKey: key,
+        revenue: 0,
+        weight: 0,
+        quantity: 0,
+        txIds: new Set<string>(),
+      };
+      current.revenue += row.amount || 0;
+      current.weight += row.weight || 0;
+      current.quantity += row.quantity || 0;
+      current.txIds.add(`p-${row.transactionId}`);
+      daily.set(key, current);
+    }
+
+    for (const row of livestockSales) {
+      const dateValue =
+        (typeof row.createdAt === "string" && row.createdAt) ||
+        (typeof row.date === "string" && row.date) ||
+        "";
+      const key = toDateKey(dateValue);
+      if (!key) continue;
+      const current = daily.get(key) ?? {
+        dateKey: key,
+        revenue: 0,
+        weight: 0,
+        quantity: 0,
+        txIds: new Set<string>(),
+      };
+      const amount = typeof row.amount === "number" ? row.amount : 0;
+      const weight =
+        typeof row.weight === "number"
+          ? row.weight
+          : typeof row.itemQuantityOrWeight === "number"
+            ? row.itemQuantityOrWeight
+            : typeof row.quantity === "number"
+              ? row.quantity
+              : 0;
+      const quantity =
+        typeof row.quantity === "number"
+          ? row.quantity
+          : typeof row.itemQuantityOrWeight === "number"
+            ? row.itemQuantityOrWeight
+            : 1;
+      current.revenue += amount;
+      current.weight += weight;
+      current.quantity += quantity;
+      current.txIds.add(`l-${row.id ?? row.transactionId ?? key}`);
+      daily.set(key, current);
+    }
+
+    return Array.from(daily.values())
+      .map((d) => ({
+        dateKey: d.dateKey,
+        revenue: d.revenue,
+        transactions: d.txIds.size,
+        weight: d.weight,
+        quantity: d.quantity,
+      }))
+      .sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1))
+      .slice(0, 10);
+  }, [processedLineItems, livestockSales]);
+
+  const totalRevenue = processedRevenue + livestockRevenue;
+  const totalTransactions = processedTransactions + livestockTransactions;
+  const totalWeight = processedWeight + livestockWeight;
+  const totalQuantity = processedQuantity + livestockQuantity;
 
   const livestockSalesRows = [...livestockSales]
     .sort((a, b) => {
@@ -276,6 +437,36 @@ export default function DashboardPage() {
                 <span className="dashboardCardValue">{totalQuantity}</span>
               </div>
             </div>
+
+            {dailySalesRows.length > 0 && (
+              <div className="dashboardChartBlock dashboardLiveStockBlock">
+                <h3 className="dashboardChartTitle">{t("Per Day Sales")}</h3>
+                <div className="dashboardSalesTableWrap">
+                  <table className="dashboardSalesTable">
+                    <thead>
+                      <tr>
+                        <th>{t("Date")}</th>
+                        <th>{t("Revenue")}</th>
+                        <th>{t("Transactions")}</th>
+                        <th>{t("Weight Sold")}</th>
+                        <th>{t("Quantity Sold")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailySalesRows.map((row) => (
+                        <tr key={row.dateKey}>
+                          <td>{row.dateKey}</td>
+                          <td>Rs.{row.revenue.toLocaleString("en-IN")}</td>
+                          <td>{row.transactions}</td>
+                          <td>{row.weight} kg</td>
+                          <td>{row.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {(salesByOutlet.length > 0 || salesByProduct.length > 0 || salesByCustomer.length > 0) && (
               <div className="dashboardCharts">
@@ -337,7 +528,107 @@ export default function DashboardPage() {
             )}
 
             <div className="dashboardChartBlock dashboardLiveStockBlock">
+              <h3 className="dashboardChartTitle">{t("Processed Sales Details")}</h3>
+              <div className="dashboardCards dashboardCardsLivestock">
+                <div className="dashboardCard dashboardCardRevenue">
+                  <span className="dashboardCardLabel">{t("Processed Revenue")}</span>
+                  <span className="dashboardCardValue">
+                    Rs.{processedRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="dashboardCard dashboardCardTransactions">
+                  <span className="dashboardCardLabel">{t("Processed Transactions")}</span>
+                  <span className="dashboardCardValue">{processedTransactions}</span>
+                </div>
+                <div className="dashboardCard dashboardCardWeight">
+                  <span className="dashboardCardLabel">{t("Processed Weight Sold")}</span>
+                  <span className="dashboardCardValue">{processedWeight} kg</span>
+                </div>
+              </div>
+              {processedProductsSold.length > 0 && (
+                <div className="dashboardTrendingCard">
+                  <h4 className="dashboardTrendingTitle">{t("Top Processed Item Sold")}</h4>
+                  <div className="dashboardTrendingHead">
+                    <span>#</span>
+                    <span>{t("Item")}</span>
+                    <span>{t("Qty Sold")}</span>
+                    <span>{t("Total Sales")}</span>
+                  </div>
+                  <div className="dashboardTrendingBody">
+                    {processedProductsSold.slice(0, 5).map((item, idx) => (
+                      <div key={item.name} className="dashboardTrendingRow">
+                        <span className="dashboardTrendingRank">{idx + 1}</span>
+                        <span className="dashboardTrendingItem">{item.name}</span>
+                        <span className="dashboardTrendingQty">{item.quantity}</span>
+                        <span className="dashboardTrendingAmount">
+                          Rs.{item.revenue.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {processedRows.length === 0 && (
+                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
+                  {t("No processed sales yet.")}
+                </div>
+              )}
+              {processedRows.length > 0 && (
+                <div className="dashboardSalesTableWrap">
+                  <table className="dashboardSalesTable">
+                    <thead>
+                      <tr>
+                        <th>{t("Name")}</th>
+                        <th>{t("Contact")}</th>
+                        <th>{t("Type")}</th>
+                        <th>{t("Processed Item")}</th>
+                        <th>{t("Quantity")}</th>
+                        <th>{t("Weight")}</th>
+                        <th>{t("Amount")}</th>
+                        <th>{t("Date")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processedRows.map((row, index) => (
+                        <tr key={`${row.transactionId}-${row.productName}-${index}`}>
+                          <td>{row.customerName || "-"}</td>
+                          <td>{row.contact || "-"}</td>
+                          <td>{row.type || "-"}</td>
+                          <td>{row.productName || "-"}</td>
+                          <td>{row.quantity || 0}</td>
+                          <td>{row.weight || 0}</td>
+                          <td>Rs.{row.amount.toLocaleString("en-IN")}</td>
+                          <td>{row.date ? new Date(row.date).toLocaleString() : "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="dashboardChartBlock dashboardLiveStockBlock">
               <h3 className="dashboardChartTitle">{t("Live Stock Sale Details")}</h3>
+              <div className="dashboardCards dashboardCardsLivestock">
+                <div className="dashboardCard dashboardCardRevenue">
+                  <span className="dashboardCardLabel">{t("Livestock Revenue")}</span>
+                  <span className="dashboardCardValue">
+                    Rs.{livestockRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="dashboardCard dashboardCardTransactions">
+                  <span className="dashboardCardLabel">{t("Livestock Transactions")}</span>
+                  <span className="dashboardCardValue">{livestockTransactions}</span>
+                </div>
+                <div className="dashboardCard dashboardCardWeight">
+                  <span className="dashboardCardLabel">{t("Livestock Weight Sold")}</span>
+                  <span className="dashboardCardValue">{livestockWeight} kg</span>
+                </div>
+                <div className="dashboardCard dashboardCardQuantity">
+                  <span className="dashboardCardLabel">{t("Livestock Quantity Sold")}</span>
+                  <span className="dashboardCardValue">{livestockQuantity}</span>
+                </div>
+              </div>
               {livestockSalesLoading && (
                 <div className="dashboardBlock dashboardMessage dashboardMessageInline">
                   {t("Loading sales…")}
@@ -363,7 +654,7 @@ export default function DashboardPage() {
                         <th>{t("Name")}</th>
                         <th>{t("Contact")}</th>
                         <th>{t("Livestock Item")}</th>
-                        <th>{t("Weight")}</th>
+                        <th>{t("Quantity")}</th>
                         <th>{t("Amount")}</th>
                         <th>{t("Date")}</th>
                       </tr>
@@ -376,7 +667,7 @@ export default function DashboardPage() {
                             <td>{row.name ?? "-"}</td>
                             <td>{row.contact ?? "-"}</td>
                             <td>{getLivestockDisplay(row)}</td>
-                            <td>{row.weight ?? "-"}</td>
+                            <td>{row.quantity ?? row.itemQuantityOrWeight ?? row.weight ?? "-"}</td>
                             <td>
                               {typeof row.amount === "number"
                                 ? `Rs.${row.amount.toLocaleString("en-IN")}`

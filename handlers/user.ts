@@ -6,6 +6,7 @@ export type User = {
   id: string;
   fullName: string;
   email: string;
+  contact?: string;
   roleId: string;
   /** API may return role as string or as object { name: string } */
   role?: string | { name: string };
@@ -51,13 +52,35 @@ export async function createUser(payload: CreateUserFormValues) {
   const body: CreateUserPayload = {
     fullName: payload.fullName.trim(),
     roleId: payload.roleId,
-    status: payload.status === "Active",
+    status: (payload.status ?? "Active") === "Active",
     email: payload.email.trim().toLowerCase(),
   };
   if (payload.contact?.trim()) body.contact = payload.contact.trim();
   return apiRequest<CreateUserResponse>(USER_ROUTES.CREATE, {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export type UpdateUserPayload = {
+  id: string;
+  fullName: string;
+  email: string;
+  roleId: string;
+  status: boolean;
+  contact?: string;
+};
+
+export type UpdateUserResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export async function updateUser(payload: UpdateUserPayload) {
+  return apiRequest<UpdateUserResponse>(USER_ROUTES.UPDATE, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

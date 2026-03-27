@@ -215,6 +215,7 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
     return null;
   };
   const quantityOrWeight =
+    parseNum((item as { quantity?: unknown }).quantity) ??
     parseNum(item.itemQuantityOrWeight) ??
     parseNum(item.weight) ??
     0;
@@ -307,28 +308,75 @@ export type GetLivestockItemsByProductResponse = {
   [key: string]: unknown;
 };
 
+type LivestockItemsResult =
+  | { ok: true; data: LivestockItem[] }
+  | { ok: false; error: string; status: number };
+
+const LIVESTOCK_ITEMS_CACHE_MS = 2 * 60 * 1000;
+const LIVESTOCK_ITEMS_COOLDOWN_MS = 30 * 1000;
+const livestockItemsCache = new Map<string, { data: LivestockItem[]; expiresAt: number }>();
+const livestockItemsInflight = new Map<string, Promise<LivestockItemsResult>>();
+let livestockItemsCooldownUntil = 0;
+
 export async function getLivestockItemsByProduct(
   productId: string
-): Promise<
-  | { ok: true; data: LivestockItem[] }
-  | { ok: false; error: string; status: number }
-> {
+): Promise<LivestockItemsResult> {
+  const now = Date.now();
+  const cached = livestockItemsCache.get(productId);
+  if (cached && cached.expiresAt > now) {
+    return { ok: true, data: cached.data };
+  }
+
+  // Avoid hammering endpoint during backend rate-limit window.
+  if (now < livestockItemsCooldownUntil) {
+    return { ok: true, data: cached?.data ?? [] };
+  }
+
+  const inflight = livestockItemsInflight.get(productId);
+  if (inflight) return inflight;
+
+  const requestPromise: Promise<LivestockItemsResult> = (async () => {
   // Backend endpoint supports query string GET in browser fetch environments.
-  const getResult = await apiRequest<GetLivestockItemsByProductResponse>(
-    `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
-    {
-      method: "GET",
+    const getResult = await apiRequest<GetLivestockItemsByProductResponse>(
+      `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
+      {
+        method: "GET",
+      }
+    );
+    if (!getResult.ok) {
+      if (getResult.status === 429) {
+        livestockItemsCooldownUntil = Date.now() + LIVESTOCK_ITEMS_COOLDOWN_MS;
+        if (cached?.data) {
+          return { ok: true, data: cached.data };
+        }
+        return {
+          ok: false,
+          status: 429,
+          error: "Rate limit reached while loading livestock items. Please retry shortly.",
+        };
+      }
+      return getResult;
     }
-  );
-  if (!getResult.ok) return getResult;
-  const list = getResult.data?.data ?? getResult.data?.items ?? [];
-  const data = Array.isArray(list)
-    ? list.map((item) => ({
-        ...normalizeLivestockItem(item),
-        productId: item.productId || productId,
-      }))
-    : [];
-  return { ok: true, data };
+    const list = getResult.data?.data ?? getResult.data?.items ?? [];
+    const data = Array.isArray(list)
+      ? list.map((item) => ({
+          ...normalizeLivestockItem(item),
+          productId: item.productId || productId,
+        }))
+      : [];
+    livestockItemsCache.set(productId, {
+      data,
+      expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
+    });
+    return { ok: true, data };
+  })();
+
+  livestockItemsInflight.set(productId, requestPromise);
+  try {
+    return await requestPromise;
+  } finally {
+    livestockItemsInflight.delete(productId);
+  }
 }
 
 export type UpdateLivestockItemPayload = {
@@ -350,9 +398,8 @@ export type UpdateLivestockItemResponse = {
 };
 
 export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
-  const result = await apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
-    method: "POST",
-    body: JSON.stringify({
+  const requestBodies = [
+    {
       id: payload.id,
       name: payload.name,
       itemId: payload.itemId,
@@ -360,18 +407,57 @@ export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
       itemQuantityOrWeight: payload.itemQuantityOrWeight,
       price: payload.price,
       status: payload.status,
-    }),
-  });
+    },
+    {
+      id: payload.id,
+      name: payload.name,
+      itemId: payload.itemId,
+      productId: payload.productId,
+      weight: payload.itemQuantityOrWeight,
+      price: payload.price,
+      status: payload.status,
+    },
+  ];
 
-  if (!result.ok && result.status === 404) {
-    return {
+  const attempts = [
+    () =>
+      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+        method: "POST",
+        body: JSON.stringify(requestBodies[0]),
+      }),
+    () =>
+      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+        method: "POST",
+        body: JSON.stringify(requestBodies[1]),
+      }),
+    () =>
+      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+        method: "PUT",
+        body: JSON.stringify(requestBodies[0]),
+      }),
+    () =>
+      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+        method: "PATCH",
+        body: JSON.stringify(requestBodies[0]),
+      }),
+  ];
+
+  let lastError:
+    | { ok: false; error: string; status: number }
+    | null = null;
+  for (const attempt of attempts) {
+    const result = await attempt();
+    if (result.ok) return result;
+    lastError = result;
+    if (result.status && ![400, 404, 405].includes(result.status)) return result;
+  }
+  return (
+    lastError ?? {
       ok: false,
       status: 404,
       error: "Update route is not available on this server deployment.",
-    };
-  }
-
-  return result;
+    }
+  );
 }
 
 export type DeleteLivestockItemPayload = {
@@ -411,6 +497,18 @@ export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
     () =>
       apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
         method: "DELETE",
+        body: JSON.stringify({ id: payload.id }),
+      }),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(
+        `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?id=${encodeURIComponent(payload.id)}`,
+        {
+          method: "DELETE",
+        }
+      ),
+    () =>
+      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+        method: "POST",
         body: JSON.stringify({ id: payload.id }),
       }),
   ];

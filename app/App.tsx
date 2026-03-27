@@ -15,7 +15,7 @@ import ProductTypePage from "./dashboard/product/productType/page";
 import ProductPage from "./dashboard/product/page";
 import LiveProductPage from "./dashboard/product/liveProduct/page";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
-import LivestockCategoryPage from "./dashboard/product/livestockCategory/page";
+import LivestockCategoryPage from "./dashboard/product/livestockCategoryV2/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
 import LivestockSalesPage from "./dashboard/invoices/livestocksales/page";

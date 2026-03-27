@@ -1,0 +1,144 @@
+.livestockCategoryPage {
+  display: grid;
+  gap: 1rem;
+
+  .breadcrumb {
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .headerText {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .pageTitle {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .pageSubtitle {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.95rem;
+  }
+
+  .addBtn {
+    border: 1px solid #9de0ca;
+    background: #dff5ec;
+    color: #00715c;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .createForm {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .inputLabel {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.84rem;
+    color: #475569;
+  }
+
+  .categoryInput {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.65rem 0.8rem;
+    font-size: 0.95rem;
+    background: #fff;
+    color: #0f172a;
+  }
+
+  .modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .cancelBtn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #475569;
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem;
+    cursor: pointer;
+  }
+
+  .saveBtn {
+    border: 1px solid #9de0ca;
+    background: #7ad7b4;
+    color: #05332a;
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .saveBtn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .error {
+    margin: 0;
+    color: #dc2626;
+    font-size: 0.88rem;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 360px;
+  }
+
+  .table thead th {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.7rem;
+    color: #64748b;
+    padding: 0.9rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .table tbody td {
+    padding: 0.9rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    font-size: 0.92rem;
+  }
+
+  .table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .emptyCell {
+    text-align: center;
+    color: #64748b;
+    padding: 1rem 0.75rem !important;
+  }
+}
+

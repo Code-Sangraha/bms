@@ -118,7 +118,7 @@
 
 .usersRow {
   display: grid;
-  grid-template-columns: 120px 1.2fr 1.2fr 1fr 1.4fr 32px;
+  grid-template-columns: 120px 1.2fr 1.2fr 1.6fr 32px;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -314,17 +314,6 @@
     }
 
     span:nth-child(4)::before {
-      content: "Status";
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #9ca3af;
-      letter-spacing: 0.08em;
-      margin-bottom: 2px;
-    }
-
-    span:nth-child(5)::before {
       content: "Contact";
       display: block;
       font-size: 10px;
@@ -335,7 +324,7 @@
       margin-bottom: 2px;
     }
 
-    span:nth-child(5) {
+    span:nth-child(4) {
       grid-column: 1 / -1;
     }
 

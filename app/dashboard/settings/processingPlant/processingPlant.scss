@@ -50,6 +50,12 @@
     align-items: center;
   }
 
+  .createRowModal {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
   .input {
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -67,11 +73,28 @@
     padding: 0.65rem 0.9rem;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .saveBtn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
+  }
+
+  .modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .cancelBtn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #475569;
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    cursor: pointer;
   }
 
   .error {
@@ -85,6 +108,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     background: #fff;
+    -webkit-overflow-scrolling: touch;
   }
 
   .sendCard {
@@ -184,16 +208,76 @@
   }
 
   @media (max-width: 900px) {
+    .pageTitle {
+      font-size: 1.65rem;
+    }
+
+    .addBtn {
+      width: 100%;
+    }
+
     .createRow {
       grid-template-columns: 1fr;
+    }
+
+    .createRow .saveBtn {
+      width: 100%;
     }
 
     .sendGrid {
       grid-template-columns: 1fr;
     }
 
+    .sendGrid .saveBtn {
+      width: 100%;
+    }
+
     .fieldSm {
       max-width: none;
+    }
+
+    .table {
+      min-width: 560px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    gap: 0.8rem;
+
+    .header {
+      gap: 0.75rem;
+    }
+
+    .pageTitle {
+      font-size: 1.45rem;
+      line-height: 1.2;
+    }
+
+    .pageSubtitle {
+      font-size: 0.86rem;
+    }
+
+    .createRow,
+    .sendCard,
+    .historyCard {
+      padding: 0.75rem;
+    }
+
+    .input,
+    .addBtn,
+    .saveBtn {
+      min-height: 42px;
+      font-size: 0.9rem;
+    }
+
+    .table {
+      min-width: 520px;
+    }
+
+    .table thead th,
+    .table tbody td {
+      padding: 0.7rem 0.6rem;
+      font-size: 0.84rem;
     }
   }
 }

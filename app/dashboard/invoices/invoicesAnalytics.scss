@@ -122,6 +122,17 @@
   gap: 20px;
 }
 
+.livestockSummaryCards {
+  padding: 18px;
+  background: #f0f9ff;
+  border-top: 1px solid rgba(14, 116, 144, 0.15);
+}
+
+.livestockSummaryCards .summaryCard {
+  background: #ecfeff;
+  border-color: rgba(14, 116, 144, 0.2);
+}
+
 .summaryCard {
   background: #fef9e7;
   border: 1px solid rgba(251, 191, 36, 0.25);

@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -15,6 +15,7 @@ import {
   createUser as createUserApi,
   deleteUser as deleteUserApi,
   getUsers,
+  updateUser as updateUserApi,
   type User,
 } from "@/handlers/user";
 import { createUserSchema, type CreateUserFormValues } from "@/schema/user";
@@ -41,6 +42,12 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openActionUserId, setOpenActionUserId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editModalUser, setEditModalUser] = useState<User | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editContact, setEditContact] = useState("");
+  const [editRoleId, setEditRoleId] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
 
   const {
     data: users = [],
@@ -129,8 +136,69 @@ export default function UsersPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (payload: {
+      id: string;
+      fullName: string;
+      email: string;
+      roleId: string;
+      contact?: string;
+    }) =>
+      updateUserApi({
+        id: payload.id,
+        fullName: payload.fullName,
+        email: payload.email,
+        roleId: payload.roleId,
+        status: true,
+        contact: payload.contact,
+      }),
+    onSuccess: (result) => {
+      if (result.ok) {
+        setEditError(null);
+        setEditModalUser(null);
+        queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      } else if (result.status === 401) {
+        navigate("/login");
+      } else {
+        setEditError(result.error ?? t("Failed to update user"));
+      }
+    },
+    onError: () => {
+      setEditError(t("Something went wrong. Please try again."));
+    },
+  });
+
   const onAddSubmit = (data: CreateUserFormValues) => {
     createMutation.mutate(data);
+  };
+
+  const handleOpenEdit = (user: User) => {
+    setOpenActionUserId(null);
+    setEditError(null);
+    setEditModalUser(user);
+    setEditFullName(typeof user.fullName === "string" ? user.fullName : "");
+    setEditEmail(typeof user.email === "string" ? user.email : "");
+    setEditContact(typeof user.contact === "string" ? user.contact : "");
+    setEditRoleId(typeof user.roleId === "string" ? user.roleId : "");
+  };
+
+  const handleEditSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editModalUser) return;
+    const fullName = editFullName.trim();
+    const email = editEmail.trim().toLowerCase();
+    const roleId = editRoleId.trim();
+    if (!fullName || !email || !roleId) {
+      setEditError(t("Please fill all required fields"));
+      return;
+    }
+    updateMutation.mutate({
+      id: editModalUser.id,
+      fullName,
+      email,
+      roleId,
+      contact: editContact.trim() || undefined,
+    });
   };
 
   const handleDeleteUser = (user: User) => {
@@ -216,14 +284,12 @@ export default function UsersPage() {
           <span>{t("Employee ID")}</span>
           <span>{t("Name")}</span>
           <span>{t("Role")}</span>
-          <span>{t("Status")}</span>
           <span>{t("Contact")}</span>
           <span />
         </div>
         {usersLoading && (
           <div className="usersRow">
             <span className="usersMessage">{t("Loading users…")}</span>
-            <span />
             <span />
             <span />
             <span />
@@ -241,13 +307,11 @@ export default function UsersPage() {
             <span />
             <span />
             <span />
-            <span />
           </div>
         )}
         {!usersLoading && !usersError && users.length === 0 && (
           <div className="usersRow">
             <span className="usersMessage">{t("No users yet. Add one to get started.")}</span>
-            <span />
             <span />
             <span />
             <span />
@@ -266,7 +330,6 @@ export default function UsersPage() {
               <span />
               <span />
               <span />
-              <span />
             </div>
           )}
         {!usersLoading &&
@@ -276,14 +339,7 @@ export default function UsersPage() {
               <span>{user.id}</span>
               <span>{user.fullName ?? "—"}</span>
               <span>{getRoleName(user)}</span>
-              <span>
-                <span
-                  className={user.status ? "badge badgeActive" : "badge"}
-                >
-                  {user.status ? t("Active") : t("Inactive")}
-                </span>
-              </span>
-              <span>{user.email ?? "—"}</span>
+              <span>{user.contact ?? user.email ?? "—"}</span>
               <span className="usersActionsCell">
                 <button
                   type="button"
@@ -302,6 +358,13 @@ export default function UsersPage() {
                     role="menu"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <button
+                      type="button"
+                      className="usersActionItem"
+                      onClick={() => handleOpenEdit(user)}
+                    >
+                      {t("Edit")}
+                    </button>
                     <button
                       type="button"
                       className="usersActionItem usersActionDelete"
@@ -413,11 +476,82 @@ export default function UsersPage() {
               <span className="usersFieldError">{errors.roleId.message}</span>
             )}
           </label>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!editModalUser}
+        title={t("Edit User")}
+        subtitle={t("Update user details")}
+        onClose={() => setEditModalUser(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="button modalButton"
+              onClick={() => setEditModalUser(null)}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="submit"
+              form="edit-user-form"
+              className="button buttonPrimary modalButton"
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? t("Saving…") : t("Update")}
+            </button>
+          </>
+        }
+      >
+        <form id="edit-user-form" onSubmit={handleEditSubmit} className="usersAddForm">
+          {editError && (
+            <p className="usersFormError" role="alert">
+              {editError}
+            </p>
+          )}
           <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
+            <span className="label">{t("Full name")}</span>
+            <input
+              className="input"
+              value={editFullName}
+              onChange={(e) => setEditFullName(e.target.value)}
+              placeholder={t("e.g. John Smith")}
+            />
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Email")}</span>
+            <input
+              className="input"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              placeholder={t("e.g. john@example.com")}
+            />
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Contact")}</span>
+            <input
+              className="input"
+              type="text"
+              value={editContact}
+              onChange={(e) => setEditContact(e.target.value)}
+              placeholder={t("e.g. +91 9876543210")}
+            />
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Role")}</span>
+            <select
+              className="select"
+              value={editRoleId}
+              onChange={(e) => setEditRoleId(e.target.value)}
+            >
+              <option value="">{t("Select role")}</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
             </select>
           </label>
         </form>

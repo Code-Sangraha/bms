@@ -309,16 +309,19 @@ export default function InvoicesAnalyticsPage() {
     });
   }, [filteredLivestockSales, livestockMetaById, t]);
 
-  const allLines = useMemo(() => [...normalLines, ...livestockLines], [normalLines, livestockLines]);
+  const totalRevenue = normalLines.reduce((sum, line) => sum + line.amount, 0);
+  const totalWeight = normalLines.reduce((sum, line) => sum + line.weight, 0);
+  const totalQuantity = normalLines.reduce((sum, line) => sum + line.quantity, 0);
+  const totalTransactions = filteredNormalSales.length;
 
-  const totalRevenue = allLines.reduce((sum, line) => sum + line.amount, 0);
-  const totalWeight = allLines.reduce((sum, line) => sum + line.weight, 0);
-  const totalQuantity = allLines.reduce((sum, line) => sum + line.quantity, 0);
-  const totalTransactions = filteredNormalSales.length + filteredLivestockSales.length;
+  const livestockTotalRevenue = livestockLines.reduce((sum, line) => sum + line.amount, 0);
+  const livestockTotalWeight = livestockLines.reduce((sum, line) => sum + line.weight, 0);
+  const livestockTotalQuantity = livestockLines.reduce((sum, line) => sum + line.quantity, 0);
+  const livestockTotalTransactions = filteredLivestockSales.length;
 
   const salesByOutlet = useMemo(() => {
     const map = new Map<string, AggregatedRow>();
-    for (const line of allLines) {
+    for (const line of normalLines) {
       const key = line.outletId ?? "unknown";
       const name = line.outletId ? (outletNameById.get(line.outletId) ?? line.outletId) : t("Unknown outlet");
       const prev = map.get(key);
@@ -331,11 +334,11 @@ export default function InvoicesAnalyticsPage() {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  }, [allLines, outletNameById, t]);
+  }, [normalLines, outletNameById, t]);
 
   const salesByProduct = useMemo(() => {
     const map = new Map<string, AggregatedRow>();
-    for (const line of allLines) {
+    for (const line of normalLines) {
       const prev = map.get(line.productKey);
       if (!prev) {
         map.set(line.productKey, {
@@ -352,11 +355,11 @@ export default function InvoicesAnalyticsPage() {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  }, [allLines]);
+  }, [normalLines]);
 
   const salesByCustomer = useMemo(() => {
     const map = new Map<string, AggregatedRow>();
-    for (const line of allLines) {
+    for (const line of normalLines) {
       const key = line.customerName || t("Unknown customer");
       const prev = map.get(key);
       if (!prev) {
@@ -374,7 +377,50 @@ export default function InvoicesAnalyticsPage() {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  }, [allLines, t]);
+  }, [normalLines, t]);
+
+  const livestockSalesByItem = useMemo(() => {
+    const map = new Map<string, AggregatedRow>();
+    for (const line of livestockLines) {
+      const prev = map.get(line.productKey);
+      if (!prev) {
+        map.set(line.productKey, {
+          key: line.productKey,
+          name: line.productName,
+          amount: line.amount,
+          weight: line.weight,
+          quantity: line.quantity,
+        });
+      } else {
+        prev.amount += line.amount;
+        prev.weight += line.weight;
+        prev.quantity += line.quantity;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  }, [livestockLines]);
+
+  const livestockSalesByCustomer = useMemo(() => {
+    const map = new Map<string, AggregatedRow>();
+    for (const line of livestockLines) {
+      const key = line.customerName || t("Unknown customer");
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, {
+          key,
+          name: key,
+          amount: line.amount,
+          weight: line.weight,
+          quantity: line.quantity,
+        });
+      } else {
+        prev.amount += line.amount;
+        prev.weight += line.weight;
+        prev.quantity += line.quantity;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  }, [livestockLines, t]);
 
   const maxOutletAmount = Math.max(...salesByOutlet.map((o) => o.amount), 1);
 
@@ -475,6 +521,32 @@ export default function InvoicesAnalyticsPage() {
             </div>
           </div>
 
+          <div className="chartSection">
+            <h2 className="chartSectionTitle">{t("Livestock Sales Overview")}</h2>
+            <div className="summaryCards livestockSummaryCards">
+              <div className="summaryCard">
+                <div className="summaryCardLabel">{t("Livestock Revenue")}</div>
+                <div className="summaryCardValue">Rs.{livestockTotalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                <div className="summaryCardTrend positive">—</div>
+              </div>
+              <div className="summaryCard">
+                <div className="summaryCardLabel">{t("Livestock Transactions")}</div>
+                <div className="summaryCardValue">{livestockTotalTransactions}</div>
+                <div className="summaryCardTrend positive">—</div>
+              </div>
+              <div className="summaryCard">
+                <div className="summaryCardLabel">{t("Livestock Quantity")}</div>
+                <div className="summaryCardValue">{livestockTotalQuantity}</div>
+                <div className="summaryCardTrend positive">—</div>
+              </div>
+              <div className="summaryCard">
+                <div className="summaryCardLabel">{t("Livestock Weight (kg)")}</div>
+                <div className="summaryCardValue">{livestockTotalWeight}</div>
+                <div className="summaryCardTrend positive">—</div>
+              </div>
+            </div>
+          </div>
+
           {salesByOutlet.length > 0 && (
             <div className="chartSection">
               <h2 className="chartSectionTitle">{t("Outlet Performance")}</h2>
@@ -554,10 +626,69 @@ export default function InvoicesAnalyticsPage() {
             </div>
           )}
 
+          {livestockSalesByItem.length > 0 && (
+            <div className="chartSection">
+              <h2 className="chartSectionTitle">{t("Livestock Sales by Item")}</h2>
+              <div className="salesByProductTableWrap">
+                <table className="salesByProductTable">
+                  <thead>
+                    <tr>
+                      <th>{t("Livestock Item")}</th>
+                      <th>{t("Amount (Rs.)")}</th>
+                      <th>{t("Weight (kg)")}</th>
+                      <th>{t("Quantity")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {livestockSalesByItem.map((row) => (
+                      <tr key={row.key}>
+                        <td>{row.name}</td>
+                        <td>{row.amount.toLocaleString("en-IN")}</td>
+                        <td>{row.weight}</td>
+                        <td>{row.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {livestockSalesByCustomer.length > 0 && (
+            <div className="chartSection">
+              <h2 className="chartSectionTitle">{t("Livestock Sales by Customer")}</h2>
+              <div className="salesByProductTableWrap">
+                <table className="salesByProductTable">
+                  <thead>
+                    <tr>
+                      <th>{t("Customer")}</th>
+                      <th>{t("Amount (Rs.)")}</th>
+                      <th>{t("Weight (kg)")}</th>
+                      <th>{t("Quantity")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {livestockSalesByCustomer.map((row) => (
+                      <tr key={row.key}>
+                        <td>{row.name}</td>
+                        <td>{row.amount.toLocaleString("en-IN")}</td>
+                        <td>{row.weight}</td>
+                        <td>{row.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {salesByOutlet.length === 0 &&
             salesByProduct.length === 0 &&
             salesByCustomer.length === 0 &&
-            totalTransactions === 0 && (
+            livestockSalesByItem.length === 0 &&
+            livestockSalesByCustomer.length === 0 &&
+            totalTransactions === 0 &&
+            livestockTotalTransactions === 0 && (
               <div className="invoicesAnalyticsMessage">{t("No sales data yet.")}</div>
             )}
         </>

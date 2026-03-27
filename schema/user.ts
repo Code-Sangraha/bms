@@ -7,7 +7,7 @@ export const createUserSchema = z.object({
     .max(200, "Full name is too long"),
   email: z.string().min(1, "Email is required").email("Invalid email address"),
   roleId: z.string().min(1, "Role is required"),
-  status: z.enum(["Active", "Inactive"]),
+  status: z.enum(["Active", "Inactive"]).optional().default("Active"),
   contact: z.string().max(50, "Contact is too long").optional(),
 });
 

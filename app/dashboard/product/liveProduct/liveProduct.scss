@@ -97,8 +97,11 @@
 .productsTable {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   overflow-x: auto;
+  overflow-y: visible;
   border-radius: 10px;
   background: #ffffff;
+  width: 100%;
+  position: relative;
 }
 
 .productsRow {
@@ -111,10 +114,84 @@
   font-size: 13px;
 }
 
+.productsRow > span {
+  min-width: 0;
+  word-break: break-word;
+}
+
 .productsRowActions {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.rowActionMenu {
+  position: relative;
+  z-index: 5;
+}
+
+.rowMenuTrigger {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rowMenuTrigger:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.rowMenuTrigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rowMenuDropdown {
+  position: absolute;
+  top: 50%;
+  bottom: auto;
+  right: calc(100% + 8px);
+  left: auto;
+  transform: translateY(-50%);
+  min-width: 120px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+  padding: 8px 0;
+  z-index: 999;
+}
+
+.rowActionMenuUp .rowMenuDropdown {
+  top: 50%;
+  bottom: auto;
+}
+
+.rowMenuItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.rowMenuItem:hover {
+  background: #f8fafc;
+}
+
+.rowMenuItemDelete {
+  color: #dc2626;
 }
 
 .productActionBtn {
@@ -228,6 +305,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+  font-weight: 600;
+}
+
+.productsRowHeader > span {
+  white-space: nowrap;
 }
 
 .badge {
@@ -262,8 +344,15 @@
 }
 
 .livestockRowWithActions {
-  grid-template-columns: 1.2fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1fr;
-  min-width: 980px;
+  grid-template-columns:
+    minmax(160px, 240px)
+    minmax(140px, 220px)
+    minmax(120px, 180px)
+    minmax(90px, 120px)
+    minmax(90px, 120px)
+    34px;
+  column-gap: 10px;
+  min-width: 0;
 }
 
 .livestockRowHeader {
@@ -271,6 +360,13 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+  padding-right: 0;
+}
+
+.rowActionFloating {
+  position: static;
+  transform: none;
+  justify-self: end;
 }
 
 @media (max-width: 900px) {
@@ -347,6 +443,12 @@
     background: #ffffff;
   }
 
+  .rowActionFloating {
+    position: static;
+    transform: none;
+    margin-left: auto;
+  }
+
   .productsRow.livestockRowWithActions span {
     min-width: 0;
     word-break: break-word;
@@ -370,23 +472,18 @@
   }
 
   .productsRow.livestockRowWithActions > span:nth-child(4)::before {
-    content: "Weight";
+    content: "Quantity";
   }
 
   .productsRow.livestockRowWithActions > span:nth-child(5)::before {
     content: "Price";
   }
 
-  .productsRow.livestockRowWithActions > span:nth-child(6)::before {
-    content: "Status";
-  }
-
   .productsRow.livestockRowWithActions > span:nth-child(1)::before,
   .productsRow.livestockRowWithActions > span:nth-child(2)::before,
   .productsRow.livestockRowWithActions > span:nth-child(3)::before,
   .productsRow.livestockRowWithActions > span:nth-child(4)::before,
-  .productsRow.livestockRowWithActions > span:nth-child(5)::before,
-  .productsRow.livestockRowWithActions > span:nth-child(6)::before {
+  .productsRow.livestockRowWithActions > span:nth-child(5)::before {
     display: block;
     margin-bottom: 2px;
     font-size: 10px;
@@ -394,23 +491,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #9ca3af;
-  }
-
-  .productsRow.livestockRowWithActions > span:nth-child(7) {
-    grid-column: 1 / -1;
-  }
-
-  .productsRowActions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .productActionBtn {
-    width: 100%;
-    min-height: 38px;
-    font-size: 13px;
   }
 
   .productActionModalInput,

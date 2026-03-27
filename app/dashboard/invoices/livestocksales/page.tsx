@@ -6,10 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import {
-  deleteLivestockItem,
   getLivestockItemsByProduct,
   getProducts,
-  updateLivestockItem,
   type LivestockItem,
   type Product,
 } from "@/handlers/product";
@@ -37,6 +35,27 @@ type LivestockLineItem = {
   amount: number;
 };
 
+async function fetchLivestockItemsWithLimit(
+  productIds: string[],
+  fetcher: (productId: string) => Promise<{ ok: true; data: LivestockItem[] } | { ok: false; error: string; status: number }>,
+  concurrency = 2
+): Promise<{ ok: true; data: LivestockItem[] } | { ok: false; error: string; status: number }> {
+  const merged: LivestockItem[] = [];
+  for (let i = 0; i < productIds.length; i += concurrency) {
+    const batch = productIds.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map((productId) => fetcher(productId)));
+    for (const result of results) {
+      // If API rate-limit is hit, keep already fetched items and stop burst.
+      if (!result.ok && result.status === 429) {
+        return { ok: true, data: merged };
+      }
+      if (!result.ok) return result;
+      merged.push(...result.data);
+    }
+  }
+  return { ok: true, data: merged };
+}
+
 function resolveLivestockItemId(item: LivestockItem): string | null {
   const withUnderscore = item as unknown as { _id?: unknown };
   const withLivestockItemId = item as unknown as { livestockItemId?: unknown };
@@ -59,9 +78,13 @@ export default function LivestockSalesPage() {
   const [livestockAmount, setLivestockAmount] = useState<number>(0);
   const [livestockLineItems, setLivestockLineItems] = useState<LivestockLineItem[]>([]);
   const [livestockError, setLivestockError] = useState<string | null>(null);
+  const [loadLivestockItems, setLoadLivestockItems] = useState(false);
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const result = await getProducts();
       if (!result.ok) {
@@ -74,6 +97,9 @@ export default function LivestockSalesPage() {
 
   const { data: productTypes = [] } = useQuery({
     queryKey: PRODUCT_TYPES_QUERY_KEY,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const result = await getProductTypes();
       if (!result.ok) throw new Error(result.error);
@@ -108,19 +134,22 @@ export default function LivestockSalesPage() {
 
   const { data: livestockItems = [] } = useQuery({
     queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
-    enabled: liveStockProductIds.length > 0,
+    enabled: loadLivestockItems && liveStockProductIds.length > 0,
+    staleTime: 60 * 1000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
-      const results = await Promise.all(
-        liveStockProductIds.map((productId) => getLivestockItemsByProduct(productId))
+      const response = await fetchLivestockItemsWithLimit(
+        liveStockProductIds,
+        getLivestockItemsByProduct,
+        2
       );
-      const merged: LivestockItem[] = [];
-      for (const result of results) {
-        if (!result.ok) {
-          if (result.status === 401) navigate("/login");
-          throw new Error(result.error);
-        }
-        merged.push(...result.data);
+      if (!response.ok) {
+        if (response.status === 401) navigate("/login");
+        throw new Error(response.error);
       }
+      const merged = response.data;
       const seen = new Set<string>();
       return merged.filter((item) => {
         const id = resolveLivestockItemId(item) ?? `${item.productId}-${item.itemId}`;
@@ -181,7 +210,10 @@ export default function LivestockSalesPage() {
     error: livestockSalesErrorDetail,
   } = useQuery({
     queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    staleTime: 30 * 1000,
     retry: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       const result = await getLivestockSales();
       if (!result.ok) {
@@ -205,7 +237,7 @@ export default function LivestockSalesPage() {
     }
     const parsedWeight = Number(livestockWeight);
     if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
-      setLivestockError(t("Weight must be greater than 0."));
+      setLivestockError(t("Quantity must be greater than 0."));
       return;
     }
     if (!Number.isFinite(livestockAmount) || livestockAmount <= 0) {
@@ -237,47 +269,8 @@ export default function LivestockSalesPage() {
 
   const createLivestockSaleMutation = useMutation({
     mutationFn: (items: LivestockSalePayload[]) => createLivestockSale(items),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       if (result.ok) {
-        const soldWeightById = new Map<string, number>();
-        livestockLineItems.forEach((line) => {
-          soldWeightById.set(
-            line.livestockItemId,
-            (soldWeightById.get(line.livestockItemId) ?? 0) + Number(line.weight)
-          );
-        });
-
-        const stockResults = await Promise.all(
-          Array.from(soldWeightById.entries()).map(async ([id, soldWeight]) => {
-            const currentItem = livestockItems.find((item) => resolveLivestockItemId(item) === id);
-            if (!currentItem) {
-              return { ok: false as const, error: t("Failed to resolve livestock item for stock deduction.") };
-            }
-            const currentWeight =
-              typeof currentItem.itemQuantityOrWeight === "number"
-                ? currentItem.itemQuantityOrWeight
-                : Number(currentItem.weight);
-            const remainingWeight = currentWeight - soldWeight;
-            if (remainingWeight < 0) {
-              return { ok: false as const, error: t("Insufficient livestock stock for deduction.") };
-            }
-            if (remainingWeight === 0) {
-              return deleteLivestockItem({ id });
-            }
-            return updateLivestockItem({
-              id,
-              name: currentItem.name,
-              itemId: currentItem.itemId,
-              productId: currentItem.productId,
-              itemQuantityOrWeight: remainingWeight,
-              price: Number(currentItem.price),
-              status: Boolean(currentItem.status),
-            });
-          })
-        );
-        const hasStockError = stockResults.some((res) => !res.ok);
-        const stockErrorMessage = stockResults.find((res) => !res.ok)?.error;
-
         setLivestockLineItems([]);
         setCustomerName("");
         setCustomerContact("");
@@ -287,15 +280,7 @@ export default function LivestockSalesPage() {
         setLivestockError(null);
         queryClient.invalidateQueries({ queryKey: LIVESTOCK_SALES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
-        queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
-        if (hasStockError) {
-          showToast(
-            stockErrorMessage ?? t("Sale created, but stock deduction failed for some livestock items."),
-            "error"
-          );
-        } else {
-          showToast(t("Livestock sale created successfully."), "success");
-        }
+        showToast(t("Livestock sale created successfully."), "success");
       } else {
         if (result.status === 401) navigate("/login");
         else {
@@ -322,7 +307,7 @@ export default function LivestockSalesPage() {
         name: item.name,
         contact: item.contact,
         livestockItemId: item.livestockItemId,
-        weight: item.weight,
+        itemQuantityOrWeight: item.weight,
         amount: item.amount,
       }))
     );
@@ -369,6 +354,8 @@ export default function LivestockSalesPage() {
             <select
               className="select"
               value={selectedLivestockItemId}
+              onFocus={() => setLoadLivestockItems(true)}
+              onClick={() => setLoadLivestockItems(true)}
               onChange={(e) => setSelectedLivestockItemId(e.target.value)}
             >
               <option value="">{t("Select livestock item")}</option>
@@ -380,7 +367,7 @@ export default function LivestockSalesPage() {
             </select>
           </label>
           <label className="field fieldSm">
-            <span>{t("Weight")}</span>
+            <span>{t("Quantity")}</span>
             <input
               className="input"
               type="number"
@@ -416,7 +403,7 @@ export default function LivestockSalesPage() {
                 <th>{t("Name")}</th>
                 <th>{t("Contact")}</th>
                 <th>{t("Livestock Item ID")}</th>
-                <th>{t("Weight")}</th>
+                <th>{t("Quantity")}</th>
                 <th>{t("Amount")}</th>
                 <th />
               </tr>
@@ -478,7 +465,7 @@ export default function LivestockSalesPage() {
                 <th>{t("Name")}</th>
                 <th>{t("Contact")}</th>
                 <th>{t("Livestock Item ID")}</th>
-                <th>{t("Weight")}</th>
+                <th>{t("Quantity")}</th>
                 <th>{t("Amount")}</th>
                 <th>{t("Date")}</th>
               </tr>
@@ -510,7 +497,7 @@ export default function LivestockSalesPage() {
                     <td>{String(sale.name ?? "-")}</td>
                     <td>{String(sale.contact ?? "-")}</td>
                     <td>{getLivestockDisplay(sale)}</td>
-                    <td>{sale.weight ?? "-"}</td>
+                    <td>{sale.quantity ?? sale.itemQuantityOrWeight ?? sale.weight ?? "-"}</td>
                     <td>{sale.amount ?? "-"}</td>
                     <td>{String(sale.createdAt ?? "-")}</td>
                   </tr>

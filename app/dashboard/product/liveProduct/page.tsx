@@ -48,6 +48,13 @@ function resolveLivestockItemId(item: LivestockItem): string | null {
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
+function resolveLivestockRowActionKey(item: LivestockItem, index: number): string {
+  const withUnderscore = item as unknown as { _id?: unknown };
+  if (typeof item.id === "string" && item.id) return `id:${item.id}`;
+  if (typeof withUnderscore._id === "string" && withUnderscore._id) return `_id:${withUnderscore._id}`;
+  return `fallback:${item.productId}:${item.itemId}:${index}`;
+}
+
 function toFormState(item: LivestockItem): LivestockFormState {
   return {
     productId: item.productId,
@@ -152,6 +159,28 @@ export default function LiveProductPage() {
     });
   }, [livestockItems, livestockCategories, searchQuery]);
 
+  const orderedLivestockItems = useMemo(() => {
+    const toTimestamp = (item: LivestockItem): number => {
+      const candidate =
+        item.createdAt ??
+        item.updatedAt ??
+        (item as { created_at?: unknown }).created_at ??
+        (item as { date?: unknown }).date;
+      if (typeof candidate !== "string" || !candidate) return Number.POSITIVE_INFINITY;
+      const ts = new Date(candidate).getTime();
+      return Number.isFinite(ts) ? ts : Number.POSITIVE_INFINITY;
+    };
+
+    return filteredLivestockItems
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const diff = toTimestamp(a.item) - toTimestamp(b.item);
+        if (diff !== 0) return diff;
+        return a.index - b.index;
+      })
+      .map((row) => row.item);
+  }, [filteredLivestockItems]);
+
   const {
     currentPage,
     setCurrentPage,
@@ -160,11 +189,11 @@ export default function LiveProductPage() {
     totalPages,
     startIndex,
     endIndex,
-  } = usePagination(filteredLivestockItems.length, { defaultPageSize: 10 });
+  } = usePagination(orderedLivestockItems.length, { defaultPageSize: 10 });
 
   const paginatedLivestockItems = useMemo(
-    () => paginate(filteredLivestockItems, startIndex, endIndex),
-    [filteredLivestockItems, startIndex, endIndex]
+    () => paginate(orderedLivestockItems, startIndex, endIndex),
+    [orderedLivestockItems, startIndex, endIndex]
   );
 
   const getLiveProductName = (productId: string) =>
@@ -274,7 +303,7 @@ export default function LiveProductPage() {
     if (!form.productId) return setError(t("Please select live stock product category.")), null;
     if (!trimmedName) return setError(t("Name is required.")), null;
     if (!trimmedItemId) return setError(t("Item ID is required.")), null;
-    if (!Number.isFinite(weight) || weight <= 0) return setError(t("Weight must be greater than 0.")), null;
+    if (!Number.isFinite(weight) || weight <= 0) return setError(t("Quantity must be greater than 0.")), null;
     if (!Number.isFinite(price) || price <= 0) return setError(t("Price must be greater than 0.")), null;
 
     setError(null);
@@ -305,7 +334,7 @@ export default function LiveProductPage() {
     if (!editLivestockForm.productId) return setEditLivestockError(t("Please select live stock product category."));
     if (!trimmedName) return setEditLivestockError(t("Name is required."));
     if (!trimmedItemId) return setEditLivestockError(t("Item ID is required."));
-    if (!Number.isFinite(weight) || weight <= 0) return setEditLivestockError(t("Weight must be greater than 0."));
+    if (!Number.isFinite(weight) || weight <= 0) return setEditLivestockError(t("Quantity must be greater than 0."));
     if (!Number.isFinite(price) || price <= 0) return setEditLivestockError(t("Price must be greater than 0."));
 
     setEditLivestockError(null);
@@ -365,7 +394,7 @@ export default function LiveProductPage() {
               setIsLivestockModalOpen(true);
             }}
           >
-            {t("Add Live Stock Item")}
+            {t("Restock Live Stock")}
           </button>
           <div className="liveProductSearch">
             <span className="searchIcon">🔍</span>
@@ -387,15 +416,13 @@ export default function LiveProductPage() {
           <span>{t("Product Category")}</span>
           <span>{t("Name")}</span>
           <span>{t("Item ID")}</span>
-          <span>{t("Weight")}</span>
+          <span>{t("Quantity")}</span>
           <span>{t("Price")}</span>
-          <span>{t("Status")}</span>
           <span>{t("Actions")}</span>
         </div>
         {(categoryLoading || livestockItemsLoading) && (
           <div className="productsRow livestockRowWithActions">
             <span className="productsMessage">{t("Loading…")}</span>
-            <span />
             <span />
             <span />
             <span />
@@ -415,7 +442,6 @@ export default function LiveProductPage() {
             <span />
             <span />
             <span />
-            <span />
           </div>
         )}
         {livestockItemsError && (
@@ -425,7 +451,6 @@ export default function LiveProductPage() {
                 ? livestockItemsErrorDetail.message
                 : t("Failed to load live stock items")}
             </span>
-            <span />
             <span />
             <span />
             <span />
@@ -445,16 +470,17 @@ export default function LiveProductPage() {
               <span />
               <span />
               <span />
-              <span />
             </div>
           )}
         {!categoryLoading &&
           !categoryError &&
           !livestockItemsLoading &&
           !livestockItemsError &&
-          paginatedLivestockItems.map((item) => (
+          paginatedLivestockItems.map((item, index) => {
+            const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
+            return (
             <div
-              key={resolveLivestockItemId(item) ?? `${item.productId}-${item.itemId}`}
+              key={rowKey}
               className="productsRow livestockRowWithActions"
             >
               <span>{getLiveProductName(item.productId)}</span>
@@ -462,17 +488,12 @@ export default function LiveProductPage() {
               <span>{item.itemId}</span>
               <span>{item.weight}</span>
               <span>{item.price}</span>
-              <span>
-                <span className={item.status ? "badge badgeActive" : "badge"}>
-                  {item.status ? t("Active") : t("Inactive")}
-                </span>
-              </span>
-              <span className="productsRowActions">
+              <div className="productsRowActions">
                 <button
                   type="button"
                   className="productActionBtn productActionRestock"
                   onClick={() => handleOpenEdit(item)}
-                  disabled={updateLivestockMutation.isPending}
+                  disabled={updateLivestockMutation.isPending || deleteLivestockMutation.isPending}
                 >
                   {t("Edit")}
                 </button>
@@ -480,24 +501,25 @@ export default function LiveProductPage() {
                   type="button"
                   className="productActionBtn productActionDeduct"
                   onClick={() => handleDelete(item)}
-                  disabled={deleteLivestockMutation.isPending}
+                  disabled={updateLivestockMutation.isPending || deleteLivestockMutation.isPending}
                 >
                   {t("Delete")}
                 </button>
-              </span>
+              </div>
             </div>
-          ))}
+          );
+          })}
       </div>
 
       {!categoryLoading &&
         !categoryError &&
         !livestockItemsLoading &&
         !livestockItemsError &&
-        filteredLivestockItems.length > 0 && (
+        orderedLivestockItems.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={filteredLivestockItems.length}
+            totalItems={orderedLivestockItems.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
             pageSizeOptions={[10, 20, 50]}
@@ -507,7 +529,7 @@ export default function LiveProductPage() {
 
       <Modal
         isOpen={isLivestockModalOpen}
-        title={t("Add Live Stock Item")}
+        title={t("Restock Live Stock")}
         subtitle={t("Create a live stock item and map it to product category")}
         onClose={() => {
           setIsLivestockModalOpen(false);
@@ -690,7 +712,7 @@ export default function LiveProductPage() {
             />
           </label>
           <label className="productActionModalLabel">
-            {t("Weight")}
+            {t("Quantity")}
             <input
               type="number"
               min={0}
@@ -698,7 +720,7 @@ export default function LiveProductPage() {
               value={editLivestockForm.weight}
               onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, weight: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Enter weight")}
+              placeholder={t("Enter quantity")}
             />
           </label>
           <label className="productActionModalLabel">

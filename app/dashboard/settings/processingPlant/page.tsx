@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Pagination from "@/app/components/Pagination/Pagination";
+import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { paginate, usePagination } from "@/app/hooks/usePagination";
 import {
@@ -53,7 +54,7 @@ export default function ProcessingPlantPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [userId, setUserId] = useState("");
   const [contact, setContact] = useState("");
@@ -209,7 +210,7 @@ export default function ProcessingPlantPage() {
       setUserId("");
       setContact("");
       setStatus(true);
-      setShowCreateForm(false);
+      setIsCreateModalOpen(false);
       queryClient.invalidateQueries({ queryKey: PROCESSING_PLANTS_QUERY_KEY });
     },
     onError: () => {
@@ -305,7 +306,7 @@ export default function ProcessingPlantPage() {
           type="button"
           className="addBtn"
           onClick={() => {
-            setShowCreateForm((prev) => !prev);
+            setIsCreateModalOpen(true);
             setError(null);
           }}
         >
@@ -313,8 +314,46 @@ export default function ProcessingPlantPage() {
         </button>
       </div>
 
-      {showCreateForm && (
-        <div className="createRow">
+      <Modal
+        isOpen={isCreateModalOpen}
+        title={t("Add Processing Plant")}
+        subtitle={t("Create a new processing plant")}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setError(null);
+          setName("");
+          setUserId("");
+          setContact("");
+          setStatus(true);
+        }}
+        footer={
+          <div className="modalFooter">
+            <button
+              type="button"
+              className="cancelBtn"
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setError(null);
+                setName("");
+                setUserId("");
+                setContact("");
+                setStatus(true);
+              }}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              className="saveBtn"
+              onClick={handleCreate}
+              disabled={createMutation.isPending || !name.trim() || !userId || !contact.trim()}
+            >
+              {createMutation.isPending ? t("Saving...") : t("Create")}
+            </button>
+          </div>
+        }
+      >
+        <div className="createRowModal">
           <input
             className="input"
             placeholder={t("Enter processing plant name")}
@@ -347,16 +386,8 @@ export default function ProcessingPlantPage() {
             <option value="active">{t("Active")}</option>
             <option value="inactive">{t("Inactive")}</option>
           </select>
-          <button
-            type="button"
-            className="saveBtn"
-            onClick={handleCreate}
-            disabled={createMutation.isPending || !name.trim() || !userId || !contact.trim()}
-          >
-            {createMutation.isPending ? t("Saving...") : t("Create")}
-          </button>
         </div>
-      )}
+      </Modal>
 
       {error && <p className="error">{error}</p>}
 

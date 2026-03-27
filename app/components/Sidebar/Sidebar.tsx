@@ -192,7 +192,7 @@ const sidebarConfig = {
 export default function Sidebar() {
   const navigate = useNavigate();
   const { canCreate } = usePermissions();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const allItems = useMemo(
     () => [
@@ -203,6 +203,18 @@ export default function Sidebar() {
   );
 
   const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
+  const getSidebarLabel = useCallback(
+    (key: TranslationKey) => {
+      if (locale === "ne") {
+        if (key === "live") return "जीवित पशुधन";
+        if (key === "livestockCategory") return "पशुधन श्रेणी";
+        if (key === "livestockSales") return "पशुधन बिक्री";
+        if (key === "processingPlant") return "प्रशोधन केन्द्र";
+      }
+      return t(sidebarLabelMap[key]);
+    },
+    [locale, t]
+  );
   const handleMenuToggle = (id: string) => {
     setActiveMenuId((current) => (current === id ? null : id));
   };
@@ -325,7 +337,7 @@ export default function Sidebar() {
       <div className={activeMenu ? "drawer open" : "drawer"}>
         <div className="drawerHeader">
           <span className="drawerTitle">
-            {activeMenu ? t(sidebarLabelMap[activeMenu.titleKey]) : ""}
+            {activeMenu ? getSidebarLabel(activeMenu.titleKey) : ""}
           </span>
           <button
             type="button"
@@ -346,7 +358,7 @@ export default function Sidebar() {
                 to={entry.href}
                 onClick={() => setActiveMenuId(null)}
               >
-                {t(sidebarLabelMap[entry.labelKey])}
+                {getSidebarLabel(entry.labelKey)}
               </Link>
             ))}
         </div>

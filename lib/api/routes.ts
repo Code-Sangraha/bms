@@ -56,6 +56,7 @@ export const ROLE_ROUTES = {
 export const USER_ROUTES = {
   GET: "/users/get",
   CREATE: "/users/create",
+  UPDATE: "/users/update",
   DELETE: "/users/delete",
 } as const;
 
