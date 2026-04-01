@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
@@ -79,6 +79,7 @@ export default function LiveProductPage() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("all");
   const [isLivestockModalOpen, setIsLivestockModalOpen] = useState(false);
   const [isEditLivestockModalOpen, setIsEditLivestockModalOpen] = useState(false);
   const [livestockError, setLivestockError] = useState<string | null>(null);
@@ -95,6 +96,10 @@ export default function LiveProductPage() {
     error: categoryErrorDetail,
   } = useQuery({
     queryKey: LIVESTOCK_CATEGORY_QUERY_KEY,
+    retry: 0,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       const result = await getLivestockCategories();
       if (!result.ok) {
@@ -126,12 +131,22 @@ export default function LiveProductPage() {
         liveStockProductIds.map((productId) => getLivestockItemsByProduct(productId))
       );
       const merged: LivestockItem[] = [];
+      const errors: string[] = [];
       for (const result of results) {
         if (!result.ok) {
           if (result.status === 401) navigate("/login");
-          throw new Error(result.error);
+          // Some product/category ids may be stale on live; skip those rows
+          // instead of crashing the whole page.
+          if (result.status === 400 || result.status === 404) {
+            continue;
+          }
+          errors.push(result.error);
+          continue;
         }
         merged.push(...result.data.map(toNormalizedItem));
+      }
+      if (errors.length > 0 && merged.length === 0) {
+        throw new Error(errors[0]);
       }
       const seen = new Set<string>();
       return merged.filter((item) => {
@@ -144,9 +159,13 @@ export default function LiveProductPage() {
   });
 
   const filteredLivestockItems = useMemo(() => {
+    const categoryFiltered =
+      selectedCategoryId === "all"
+        ? livestockItems
+        : livestockItems.filter((item) => item.productId === selectedCategoryId);
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return livestockItems;
-    return livestockItems.filter((item) => {
+    if (!q) return categoryFiltered;
+    return categoryFiltered.filter((item) => {
       const productName =
         livestockCategories.find((product) => product.id === item.productId)?.name.toLowerCase() ?? "";
       return (
@@ -157,7 +176,7 @@ export default function LiveProductPage() {
         productName.includes(q)
       );
     });
-  }, [livestockItems, livestockCategories, searchQuery]);
+  }, [livestockItems, livestockCategories, searchQuery, selectedCategoryId]);
 
   const orderedLivestockItems = useMemo(() => {
     const toTimestamp = (item: LivestockItem): number => {
@@ -190,6 +209,10 @@ export default function LiveProductPage() {
     startIndex,
     endIndex,
   } = usePagination(orderedLivestockItems.length, { defaultPageSize: 10 });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategoryId, searchQuery, setCurrentPage]);
 
   const paginatedLivestockItems = useMemo(
     () => paginate(orderedLivestockItems, startIndex, endIndex),
@@ -255,8 +278,8 @@ export default function LiveProductPage() {
             return {
               ...item,
               ...variables,
-              weight: variables.itemQuantityOrWeight,
-              itemQuantityOrWeight: variables.itemQuantityOrWeight,
+              weight: variables.weight,
+              itemQuantityOrWeight: variables.weight,
             };
           })
       );
@@ -313,7 +336,7 @@ export default function LiveProductPage() {
       itemId: trimmedItemId,
       itemQuantityOrWeight: weight,
       price,
-      isBulk: true,
+      isBulk: false,
       status: true,
     };
   };
@@ -343,7 +366,7 @@ export default function LiveProductPage() {
       name: trimmedName,
       itemId: trimmedItemId,
       productId: editLivestockForm.productId,
-      itemQuantityOrWeight: weight,
+      weight,
       price,
       status: editLivestockForm.status === "Active",
     });
@@ -396,6 +419,19 @@ export default function LiveProductPage() {
           >
             {t("Restock Live Stock")}
           </button>
+          <select
+            className="liveProductCategoryFilter"
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            aria-label={t("Filter by livestock category")}
+          >
+            <option value="all">{t("All Categories")}</option>
+            {livestockCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
           <div className="liveProductSearch">
             <span className="searchIcon">🔍</span>
             <input

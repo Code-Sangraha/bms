@@ -7,7 +7,7 @@ import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
-import { getProducts, restockProduct, deductProduct, type Product } from "@/handlers/product";
+import { getProducts, deductProduct, type Product } from "@/handlers/product";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import "./processedProduct.scss";
@@ -15,17 +15,13 @@ import "./processedProduct.scss";
 const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
 
-type ActionType = "restock" | "deduct";
-
 export default function ProcessedProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionModal, setActionModal] = useState<{
-    product: Product;
-    action: ActionType;
-  } | null>(null);
+  const [selectedOutletId, setSelectedOutletId] = useState("all");
+  const [actionModal, setActionModal] = useState<Product | null>(null);
   const [weight, setWeight] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -68,6 +64,9 @@ export default function ProcessedProductPage() {
     let list: Product[] = processedTypeId
       ? products.filter((p) => p.productTypeId === processedTypeId)
       : [];
+    if (selectedOutletId !== "all") {
+      list = list.filter((p) => p.outletId === selectedOutletId);
+    }
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       const outletNames = new Map(outlets.map((o) => [o.id, o.name.toLowerCase()]));
@@ -80,7 +79,7 @@ export default function ProcessedProductPage() {
       });
     }
     return list;
-  }, [products, processedTypeId, searchQuery, outlets, productTypes]);
+  }, [products, processedTypeId, selectedOutletId, searchQuery, outlets, productTypes]);
 
   const getOutletName = (outletId: string) => outlets.find((o) => o.id === outletId)?.name ?? outletId;
   const getTypeName = (typeId: string) => productTypes.find((pt) => pt.id === typeId)?.name ?? typeId;
@@ -99,20 +98,6 @@ export default function ProcessedProductPage() {
     [filteredProducts, startIndex, endIndex]
   );
 
-  const restockMutation = useMutation({
-    mutationFn: restockProduct,
-    onSuccess: (result) => {
-      setActionError(null);
-      if (result.ok) {
-        setActionModal(null);
-        setWeight("");
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
-        queryClient.refetchQueries({ queryKey: PRODUCTS_QUERY_KEY });
-      } else {
-        setActionError(result.error ?? t("Restock failed"));
-      }
-    },
-  });
   const deductMutation = useMutation({
     mutationFn: deductProduct,
     onSuccess: (result) => {
@@ -128,8 +113,8 @@ export default function ProcessedProductPage() {
     },
   });
 
-  const handleOpenAction = (product: Product, action: ActionType) => {
-    setActionModal({ product, action });
+  const handleOpenAction = (product: Product) => {
+    setActionModal(product);
     setWeight("");
     setActionError(null);
   };
@@ -138,13 +123,12 @@ export default function ProcessedProductPage() {
     const enteredWeight = Number(weight);
     if (!Number.isFinite(enteredWeight) || enteredWeight <= 0) return;
     const payload = {
-      id: actionModal.product.id,
-      outletId: actionModal.product.outletId,
+      id: actionModal.id,
+      outletId: actionModal.outletId,
       weight: enteredWeight,
       quantity: enteredWeight,
     };
-    if (actionModal.action === "restock") restockMutation.mutate(payload);
-    else deductMutation.mutate(payload);
+    deductMutation.mutate(payload);
   };
 
   return (
@@ -158,15 +142,39 @@ export default function ProcessedProductPage() {
           <h1 className="pageTitle">{t("Processed Products")}</h1>
           <p className="pageSubtitle">{t("Products of type Processed")}</p>
         </div>
-        <div className="processedProductSearch">
+        <div className="processedProductFilters">
+          <label className="processedProductOutletFilter">
+            <span className="processedProductOutletLabel">{t("Outlet")}</span>
+            <select
+              className="processedProductOutletSelect"
+              value={selectedOutletId}
+              onChange={(e) => {
+                setSelectedOutletId(e.target.value);
+                setCurrentPage(1);
+              }}
+              aria-label={t("Filter by outlet")}
+            >
+              <option value="all">{t("All Outlets")}</option>
+              {outlets.map((outlet) => (
+                <option key={outlet.id} value={outlet.id}>
+                  {outlet.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="processedProductSearch">
           <span className="searchIcon">🔍</span>
           <input
             className="searchInput"
             placeholder={t("Search")}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             aria-label={t("Search processed products")}
           />
+        </div>
         </div>
       </div>
 
@@ -176,13 +184,11 @@ export default function ProcessedProductPage() {
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
           <span>{t("Weight")}</span>
-          <span>{t("Status")}</span>
           <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
           <div className="productsRow">
             <span className="productsMessage">{t("Loading…")}</span>
-            <span />
             <span />
             <span />
             <span />
@@ -200,7 +206,6 @@ export default function ProcessedProductPage() {
             <span />
             <span />
             <span />
-            <span />
           </div>
         )}
         {!productsLoading && !productsError && !processedTypeId && productTypes.length > 0 && (
@@ -208,7 +213,6 @@ export default function ProcessedProductPage() {
             <span className="productsMessage">
               {t('No product type named "Processed" found.')}
             </span>
-            <span />
             <span />
             <span />
             <span />
@@ -241,23 +245,11 @@ export default function ProcessedProductPage() {
               <span>{getTypeName(product.productTypeId)}</span>
               <span>{getOutletName(product.outletId)}</span>
               <span>{product.weight ?? product.quantity}</span>
-              <span>
-                <span className={product.status ? "badge badgeActive" : "badge"}>
-                  {product.status ? t("Active") : t("Inactive")}
-                </span>
-              </span>
               <span className="productsRowActions">
                 <button
                   type="button"
-                  className="productActionBtn productActionRestock"
-                  onClick={() => handleOpenAction(product, "restock")}
-                >
-                  {t("Restock")}
-                </button>
-                <button
-                  type="button"
                   className="productActionBtn productActionDeduct"
-                  onClick={() => handleOpenAction(product, "deduct")}
+                  onClick={() => handleOpenAction(product)}
                 >
                   {t("Deduct")}
                 </button>
@@ -280,8 +272,8 @@ export default function ProcessedProductPage() {
 
       <Modal
         isOpen={!!actionModal}
-        title={actionModal ? (actionModal.action === "restock" ? t("Restock") : t("Deduct")) : ""}
-        subtitle={actionModal ? actionModal.product.name : ""}
+        title={actionModal ? t("Deduct") : ""}
+        subtitle={actionModal ? actionModal.name : ""}
         onClose={() => {
           setActionModal(null);
           setWeight("");
@@ -307,15 +299,12 @@ export default function ProcessedProductPage() {
                   !weight ||
                   !Number.isFinite(Number(weight)) ||
                   Number(weight) <= 0 ||
-                  restockMutation.isPending ||
                   deductMutation.isPending
                 }
               >
-                {restockMutation.isPending || deductMutation.isPending
+                {deductMutation.isPending
                   ? t("Saving…")
-                  : actionModal.action === "restock"
-                    ? t("Restock")
-                    : t("Deduct")}
+                  : t("Deduct")}
               </button>
             </div>
           ) : null

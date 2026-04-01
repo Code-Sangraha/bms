@@ -2,11 +2,16 @@ import { AUTH_ROUTES } from "@/lib/api/routes";
 import { clearAuthToken, getAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
+  const configuredBaseUrl = (import.meta.env.VITE_API_URL ?? "").trim();
   if (typeof window !== "undefined") {
-    return import.meta.env.VITE_API_URL ?? "";
+    const host = window.location.hostname.toLowerCase();
+    const isLocalDevHost = host === "localhost" || host === "127.0.0.1";
+    // Always use Vite proxy in local dev to avoid browser CORS/preflight issues.
+    if (isLocalDevHost) return "/api";
   }
-  return import.meta.env.VITE_API_URL ?? "";
+  if (!configuredBaseUrl) return "/api";
+  return configuredBaseUrl.replace(/\/$/, "");
 };
 
 export type ApiError = {
@@ -27,7 +32,7 @@ async function doRequest<T>(
 /** Call refresh endpoint; returns new access token or null. Does not use apiRequest to avoid 401 loop. */
 async function tryRefresh(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  const baseUrl = getBaseUrl().replace(/\/$/, "");
+  const baseUrl = getBaseUrl();
   if (!baseUrl) return null;
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
@@ -58,11 +63,8 @@ export async function apiRequest<T>(
   isRetry = false
 ): Promise<{ data: T; ok: true } | { ok: false; error: string; status: number }> {
   const baseUrl = getBaseUrl();
-  if (!baseUrl) {
-    return { ok: false, error: "API URL is not configured.", status: 0 };
-  }
 
-  const url = `${baseUrl.replace(/\/$/, "")}${route}`;
+  const url = `${baseUrl}${route}`;
   const token = getAuthToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",

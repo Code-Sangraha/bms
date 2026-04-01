@@ -1,10 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
@@ -19,23 +17,11 @@ import {
 } from "@/handlers/product";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
-import {
-  createProductSchema,
-  type CreateProductFormValues,
-} from "@/schema/product";
+import { type CreateProductFormValues } from "@/schema/product";
 import "./product.scss";
 import ProductEditModal from "./ProductEditModal";
 
 const PRODUCTS_QUERY_KEY = ["products"];
-
-const defaultAddFormValues: CreateProductFormValues = {
-  name: "",
-  productTypeId: "",
-  outletId: "",
-  quantity: 0,
-  status: "Active",
-  createdBy: "",
-};
 
 export default function ProductPage() {
   const navigate = useNavigate();
@@ -45,6 +31,8 @@ export default function ProductPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [addProductName, setAddProductName] = useState("");
+  const [addFormError, setAddFormError] = useState<string | null>(null);
   const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -82,20 +70,12 @@ export default function ProductPage() {
     },
   });
 
-  const {
-    register,
-    handleSubmit,
-    setError,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateProductFormValues>({
-    resolver: zodResolver(createProductSchema),
-    defaultValues: defaultAddFormValues,
-  });
-
   useEffect(() => {
-    if (!isAddModalOpen) reset(defaultAddFormValues);
-  }, [isAddModalOpen, reset]);
+    if (!isAddModalOpen) {
+      setAddProductName("");
+      setAddFormError(null);
+    }
+  }, [isAddModalOpen]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -126,6 +106,10 @@ export default function ProductPage() {
     productTypes.some(
       (pt) => pt.id === productTypeId && pt.name.toLowerCase() === "processed"
     );
+  const processedProductType = productTypes.find(
+    (pt) => pt.name.toLowerCase() === "processed"
+  );
+  const processedProductTypeId = processedProductType?.id ?? "";
 
   const {
     currentPage,
@@ -195,44 +179,90 @@ export default function ProductPage() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (values: CreateProductFormValues) => {
-      const isProcessed = isProcessedTypeId(values.productTypeId);
-      return createProductApi(
-        {
-          name: values.name,
-          productTypeId: values.productTypeId,
-          outletId: values.outletId,
-          quantity: values.quantity,
-          status: values.status,
-          createdBy: values.createdBy || undefined,
-        },
-        { isProcessed }
+    mutationFn: async (productName: string) => {
+      const trimmedName = productName.trim();
+      const normalizedName = trimmedName.toLowerCase();
+      if (!trimmedName) {
+        return { ok: false as const, error: t("Product name is required"), status: 400 };
+      }
+      if (!processedProductTypeId) {
+        return { ok: false as const, error: t('No product type named "Processed" found.'), status: 400 };
+      }
+      if (outlets.length === 0) {
+        return { ok: false as const, error: t("No outlets found."), status: 400 };
+      }
+
+      const processedProductOutletIds = new Set(
+        products
+          .filter((product) => {
+            const productName = product.name?.trim().toLowerCase() ?? "";
+            const isProcessed =
+              product.productTypeId === processedProductTypeId ||
+              (typeof product.productType === "object" &&
+                product.productType?.name?.toLowerCase() === "processed");
+            return isProcessed && productName === normalizedName;
+          })
+          .map((product) => product.outletId)
       );
+
+      let createdCount = 0;
+      for (const outlet of outlets) {
+        if (processedProductOutletIds.has(outlet.id)) continue;
+        const result = await createProductApi(
+          {
+            name: trimmedName,
+            productTypeId: processedProductTypeId,
+            outletId: outlet.id,
+            quantity: 0,
+            status: "Active",
+            createdBy: "",
+          },
+          { isProcessed: true }
+        );
+        if (!result.ok) return result;
+        createdCount += 1;
+      }
+
+      if (createdCount === 0) {
+        return {
+          ok: false as const,
+          error: t("This processed product already exists in all outlets."),
+          status: 409,
+        };
+      }
+
+      return { ok: true as const };
     },
     onSuccess: (result) => {
       if (result.ok) {
         setIsAddModalOpen(false);
+        setAddProductName("");
+        setAddFormError(null);
         queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       } else {
         if (result.status === 401) {
           navigate("/login");
           return;
         }
-        setError("root", { message: result.error });
+        setAddFormError(result.error);
       }
     },
     onError: () => {
-      setError("root", {
-        message: t("Something went wrong. Please try again."),
-      });
+      setAddFormError(t("Something went wrong. Please try again."));
     },
   });
 
-  const onAddSubmit = (data: CreateProductFormValues) => {
-    createMutation.mutate(data);
+  const onAddSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!addProductName.trim()) {
+      setAddFormError(t("Product name is required"));
+      return;
+    }
+    setAddFormError(null);
+    createMutation.mutate(addProductName);
   };
 
-  const loading = isSubmitting || createMutation.isPending;
+  const loading = createMutation.isPending;
 
   return (
     <section className="productPage">
@@ -343,15 +373,6 @@ export default function ProductPage() {
                     readOnly
                   />
                 </label>
-                <label className="field">
-                  <span className="label">{t("Quantity")}</span>
-                  <input
-                    className="input"
-                    type="text"
-                    value={product.weight ?? product.quantity}
-                    readOnly
-                  />
-                </label>
               </div>
 
               <div className="cardActions">
@@ -412,14 +433,22 @@ export default function ProductPage() {
       <Modal
         isOpen={isAddModalOpen}
         title={t("Add Product")}
-        subtitle={t("Create a new product with type, outlet, and quantity")}
-        onClose={() => setIsAddModalOpen(false)}
+        subtitle={t("Create a processed product. Stock is managed from processing flow.")}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddProductName("");
+          setAddFormError(null);
+        }}
         footer={
           <>
             <button
               type="button"
               className="button modalButton"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={() => {
+                setIsAddModalOpen(false);
+                setAddProductName("");
+                setAddFormError(null);
+              }}
             >
               {t("Discard")}
             </button>
@@ -436,90 +465,28 @@ export default function ProductPage() {
       >
         <form
           id="add-product-form"
-          onSubmit={handleSubmit(onAddSubmit)}
+          onSubmit={onAddSubmit}
           className="productAddForm"
         >
-          {errors.root?.message && (
-            <p className="productFormError">{errors.root.message}</p>
+          {addFormError && (
+            <p className="productFormError">{addFormError}</p>
           )}
           <label className="modalField">
             <span className="label">{t("Product name")}</span>
             <input
               className="input"
               placeholder={t("e.g. Pork")}
-              {...register("name")}
+              value={addProductName}
+              onChange={(e) => setAddProductName(e.target.value)}
             />
-            {errors.name && (
-              <span className="productFieldError">{errors.name.message}</span>
-            )}
           </label>
           <label className="modalField">
             <span className="label">{t("Product Type")}</span>
-            <select className="select" {...register("productTypeId")}>
-              <option value="">{t("Select product type")}</option>
-              {productTypes.map((pt) => (
-                <option key={pt.id} value={pt.id}>
-                  {pt.name}
-                </option>
-              ))}
-            </select>
-            {errors.productTypeId && (
-              <span className="productFieldError">
-                {errors.productTypeId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...register("outletId")}>
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {errors.outletId && (
-              <span className="productFieldError">
-                {errors.outletId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Quantity")}</span>
             <input
               className="input"
-              type="number"
-              step="any"
-              min={0}
-              placeholder={t("e.g. 45.2")}
-              {...register("quantity", { valueAsNumber: true })}
+              value={processedProductType?.name ?? t("Processed")}
+              readOnly
             />
-            {errors.quantity && (
-              <span className="productFieldError">
-                {errors.quantity.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Created by (optional, user UUID)")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. 601756be-54be-4623-8e97-7ff891e43081")}
-              {...register("createdBy")}
-            />
-            {errors.createdBy && (
-              <span className="productFieldError">
-                {errors.createdBy.message}
-              </span>
-            )}
           </label>
         </form>
       </Modal>

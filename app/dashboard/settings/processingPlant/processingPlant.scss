@@ -63,6 +63,9 @@
     font-size: 0.95rem;
     background: #fff;
     color: #0f172a;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .saveBtn {
@@ -137,9 +140,18 @@
 
   .sendGrid {
     display: grid;
-    grid-template-columns: 1.4fr 1.6fr 0.8fr auto;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto;
     gap: 0.6rem;
     align-items: end;
+    width: 100%;
+  }
+
+  .completeGrid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .sendGrid > .saveBtn {
+    min-height: 42px;
   }
 
   .field {
@@ -147,6 +159,7 @@
     gap: 0.35rem;
     font-size: 0.82rem;
     color: #475569;
+    min-width: 0;
   }
 
   .fieldSm {
@@ -205,6 +218,38 @@
   .badgeActive {
     background: #d1fae5;
     color: #047857;
+  }
+
+  @media (max-width: 1280px) {
+    .sendGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
+    }
+
+    .completeGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fieldSm {
+      max-width: none;
+    }
+
+    .sendGrid > .saveBtn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    gap: 0.85rem;
+
+    .sendCard,
+    .historyCard {
+      padding: 0.85rem;
+    }
+
+    .cardTitle {
+      font-size: 1rem;
+    }
   }
 
   @media (max-width: 900px) {

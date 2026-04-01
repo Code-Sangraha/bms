@@ -1,9 +1,11 @@
 import path from "path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -42,13 +44,15 @@ export default defineConfig({
           },
         ],
       },
-      devOptions: { enabled: true },
+      // Avoid stale cached dev bundles causing old API URL/CORS behavior.
+      // Keep PWA enabled only for production builds.
+      devOptions: { enabled: false },
     }),
   ],
   server: {
     proxy: {
       "/api": {
-        target: process.env.VITE_PROXY_TARGET || "https://bmsapi.codesangraha.com",
+        target: env.VITE_PROXY_TARGET || "https://bmsapi.codesangraha.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "/v1"),
       },
@@ -62,4 +66,5 @@ export default defineConfig({
   build: {
     outDir: "dist",
   },
+  };
 });

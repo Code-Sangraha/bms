@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { getBaseUrl } from "@/lib/api/client";
 import { AUTH_ROUTES } from "@/lib/api/routes";
 import { getRefreshToken } from "@/lib/auth/token";
 
@@ -107,7 +108,7 @@ export type RefreshResponse = {
 export async function refreshTokens(): Promise<
   { ok: true; accessToken: string; refreshToken?: string } | { ok: false; error: string }
 > {
-  const baseUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+  const baseUrl = getBaseUrl();
   if (!baseUrl) return { ok: false, error: "API URL not configured" };
 
   const refreshToken = typeof window !== "undefined" ? getRefreshToken() : null;

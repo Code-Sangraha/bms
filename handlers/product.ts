@@ -71,7 +71,40 @@ export async function getProducts(): Promise<
   });
   if (!result.ok) return result;
   const list = result.data?.data ?? result.data?.products ?? [];
-  const data: Product[] = Array.isArray(list) ? list : [];
+  const parseNum = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+  const data: Product[] = Array.isArray(list)
+    ? list.map((item) => {
+        const asRecord = item as Record<string, unknown>;
+        const quantityFromAny =
+          parseNum(asRecord.quantity) ??
+          parseNum(asRecord.itemQuantityOrWeight) ??
+          parseNum(asRecord.stockQuantity) ??
+          parseNum(asRecord.availableQuantity) ??
+          parseNum(asRecord.currentQuantity) ??
+          0;
+        const weightFromAny =
+          parseNum(asRecord.weight) ??
+          parseNum(asRecord.itemQuantityOrWeight) ??
+          parseNum(asRecord.stockWeight) ??
+          parseNum(asRecord.availableWeight) ??
+          parseNum(asRecord.currentWeight) ??
+          parseNum(asRecord.outputWeight) ??
+          parseNum(asRecord.totalWeight) ??
+          quantityFromAny;
+        return {
+          ...item,
+          quantity: quantityFromAny,
+          weight: weightFromAny,
+        } as Product;
+      })
+    : [];
   return { ok: true, data };
 }
 
@@ -85,11 +118,9 @@ export async function createProduct(
     outletId: payload.outletId.trim(),
     status: payload.status === "Active",
   };
-  if (options?.isProcessed) {
-    body.weight = Number(payload.quantity);
+  if (!options?.isProcessed) {
     body.quantity = Number(payload.quantity);
   }
-  else body.quantity = Number(payload.quantity);
   if (payload.createdBy?.trim()) body.createdBy = payload.createdBy.trim();
   return apiRequest<CreateProductResponse>(PRODUCT_ROUTES.CREATE, {
     method: "POST",
@@ -205,6 +236,16 @@ export type GetLivestockCategoriesResponse = {
   [key: string]: unknown;
 };
 
+type LivestockCategoriesResult =
+  | { ok: true; data: LivestockCategory[] }
+  | { ok: false; error: string; status: number };
+
+const LIVESTOCK_CATEGORIES_CACHE_MS = 2 * 60 * 1000;
+const LIVESTOCK_CATEGORIES_COOLDOWN_MS = 30 * 1000;
+let livestockCategoriesCooldownUntil = 0;
+let livestockCategoriesInflight: Promise<LivestockCategoriesResult> | null = null;
+let livestockCategoriesCache: { data: LivestockCategory[]; expiresAt: number } | null = null;
+
 function normalizeLivestockItem(item: LivestockItem): LivestockItem {
   const parseNum = (value: unknown): number | null => {
     if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -215,8 +256,8 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
     return null;
   };
   const quantityOrWeight =
-    parseNum((item as { quantity?: unknown }).quantity) ??
     parseNum(item.itemQuantityOrWeight) ??
+    parseNum((item as { quantity?: unknown }).quantity) ??
     parseNum(item.weight) ??
     0;
   return {
@@ -230,51 +271,127 @@ export async function createLivestockCategory(payload: CreateLivestockCategoryPa
   | { ok: true; data: LivestockCategory }
   | { ok: false; error: string; status: number }
 > {
-  const result = await apiRequest<CreateLivestockCategoryResponse>(
-    PRODUCT_ROUTES.LIVESTOCK_CREATE_CATEGORY,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
+  const attempts = [
+    () =>
+      apiRequest<CreateLivestockCategoryResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_CATEGORY, {
+        method: "POST",
+        body: JSON.stringify({ name: payload.name }),
+      }),
+    () =>
+      apiRequest<CreateLivestockCategoryResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_CATEGORY, {
+        method: "POST",
+        body: JSON.stringify({ categoryName: payload.name }),
+      }),
+    () =>
+      apiRequest<CreateLivestockCategoryResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_CATEGORY, {
+        method: "POST",
+        body: JSON.stringify({ title: payload.name }),
+      }),
+  ];
+
+  let lastError:
+    | { ok: false; error: string; status: number }
+    | null = null;
+
+  for (const attempt of attempts) {
+    const result = await attempt();
+    if (!result.ok) {
+      lastError = result;
+      if (result.status === 500) return result;
+      if (result.status && ![400, 404, 405].includes(result.status)) return result;
+      continue;
+    }
+
+    const raw = result.data;
+    const id =
+      raw.data?.id ??
+      raw.data?.category?.id ??
+      raw.category?.id ??
+      raw.item?.id;
+    const name =
+      raw.data?.name ??
+      raw.data?.category?.name ??
+      raw.category?.name ??
+      raw.item?.name ??
+      payload.name;
+    if (!id || !name) {
+      return { ok: false, error: "Could not resolve created livestock category.", status: 500 };
+    }
+    return { ok: true, data: { id, name } };
+  }
+
+  if (lastError?.status === 500) {
+    return {
+      ok: false,
+      status: 500,
+      error:
+        lastError.error ||
+        "Server failed to create livestock category. Please verify backend product-type mapping for livestock.",
+    };
+  }
+
+  return (
+    lastError ?? {
+      ok: false,
+      status: 400,
+      error: "Failed to create livestock category.",
     }
   );
-  if (!result.ok) return result;
-  const raw = result.data;
-  const id =
-    raw.data?.id ??
-    raw.data?.category?.id ??
-    raw.category?.id ??
-    raw.item?.id;
-  const name =
-    raw.data?.name ??
-    raw.data?.category?.name ??
-    raw.category?.name ??
-    raw.item?.name ??
-    payload.name;
-  if (!id || !name) {
-    return { ok: false, error: "Could not resolve created livestock category.", status: 500 };
-  }
-  return { ok: true, data: { id, name } };
 }
 
 export async function getLivestockCategories(): Promise<
   | { ok: true; data: LivestockCategory[] }
   | { ok: false; error: string; status: number }
 > {
+  const now = Date.now();
+  if (livestockCategoriesCache && livestockCategoriesCache.expiresAt > now) {
+    return { ok: true, data: livestockCategoriesCache.data };
+  }
+  if (now < livestockCategoriesCooldownUntil) {
+    if (livestockCategoriesCache?.data) return { ok: true, data: livestockCategoriesCache.data };
+    return {
+      ok: false,
+      status: 429,
+      error: "Rate limit reached while loading livestock categories. Please retry shortly.",
+    };
+  }
+  if (livestockCategoriesInflight) return livestockCategoriesInflight;
+
+  livestockCategoriesInflight = (async () => {
   const result = await apiRequest<GetLivestockCategoriesResponse>(
     PRODUCT_ROUTES.LIVESTOCK_GET_CATEGORY,
     { method: "GET" }
   );
-  if (!result.ok) return result;
-  const list = result.data?.data ?? result.data?.categories ?? [];
-  const normalized: LivestockCategory[] = Array.isArray(list)
-    ? list
-        .map((item) => ({
-          id: item.id ?? "",
-          name: item.name ?? "",
-        }))
-        .filter((item) => item.id && item.name)
-    : [];
-  return { ok: true, data: normalized };
+    if (!result.ok) {
+      if (result.status === 429) {
+        livestockCategoriesCooldownUntil = Date.now() + LIVESTOCK_CATEGORIES_COOLDOWN_MS;
+        if (livestockCategoriesCache?.data) {
+          return { ok: true, data: livestockCategoriesCache.data };
+        }
+      }
+      return result;
+    }
+    const list = result.data?.data ?? result.data?.categories ?? [];
+    const normalized: LivestockCategory[] = Array.isArray(list)
+      ? list
+          .map((item) => ({
+            id: item.id ?? "",
+            name: item.name ?? "",
+          }))
+          .filter((item) => item.id && item.name)
+      : [];
+    livestockCategoriesCache = {
+      data: normalized,
+      expiresAt: Date.now() + LIVESTOCK_CATEGORIES_CACHE_MS,
+    };
+    return { ok: true, data: normalized };
+  })();
+
+  try {
+    return await livestockCategoriesInflight;
+  } finally {
+    livestockCategoriesInflight = null;
+  }
 }
 
 export type CreateLivestockItemResponse = {
@@ -286,9 +403,8 @@ export type CreateLivestockItemResponse = {
 };
 
 export async function createLivestockItem(payload: CreateLivestockItemPayload) {
-  return apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
-    method: "POST",
-    body: JSON.stringify({
+  const bodies = [
+    {
       productId: payload.productId,
       name: payload.name,
       itemId: payload.itemId,
@@ -296,8 +412,51 @@ export async function createLivestockItem(payload: CreateLivestockItemPayload) {
       price: payload.price,
       status: payload.status,
       isBulk: payload.isBulk,
-    }),
-  });
+    },
+    {
+      productId: payload.productId,
+      name: payload.name,
+      itemId: payload.itemId,
+      weight: payload.itemQuantityOrWeight,
+      price: payload.price,
+      status: payload.status,
+      isBulk: payload.isBulk,
+    },
+    {
+      productId: payload.productId,
+      name: payload.name,
+      itemId: payload.itemId,
+      itemQuantityOrWeight: payload.itemQuantityOrWeight,
+      weight: payload.itemQuantityOrWeight,
+      quantity: payload.itemQuantityOrWeight,
+      price: payload.price,
+      status: payload.status,
+      isBulk: payload.isBulk,
+    },
+  ];
+
+  let lastError:
+    | { ok: false; error: string; status: number }
+    | null = null;
+
+  for (const body of bodies) {
+    const result = await apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    if (result.ok) return result;
+    lastError = result;
+    if (result.status === 401) return result;
+    if (result.status >= 500) return result;
+  }
+
+  return (
+    lastError ?? {
+      ok: false,
+      status: 400,
+      error: "Failed to create livestock item.",
+    }
+  );
 }
 
 export type GetLivestockItemsByProductResponse = {
@@ -336,39 +495,68 @@ export async function getLivestockItemsByProduct(
   if (inflight) return inflight;
 
   const requestPromise: Promise<LivestockItemsResult> = (async () => {
-  // Backend endpoint supports query string GET in browser fetch environments.
-    const getResult = await apiRequest<GetLivestockItemsByProductResponse>(
+    const primary = await apiRequest<GetLivestockItemsByProductResponse>(
       `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
+      { method: "GET" }
+    );
+    if (primary.ok) {
+      const list = primary.data?.data ?? primary.data?.items ?? [];
+      const data = Array.isArray(list)
+        ? list.map((item) => ({
+            ...normalizeLivestockItem(item),
+            productId: item.productId || productId,
+          }))
+        : [];
+      livestockItemsCache.set(productId, {
+        data,
+        expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
+      });
+      return { ok: true, data };
+    }
+
+    if (primary.status === 429) {
+      livestockItemsCooldownUntil = Date.now() + LIVESTOCK_ITEMS_COOLDOWN_MS;
+      if (cached?.data) return { ok: true, data: cached.data };
+      return {
+        ok: false,
+        status: 429,
+        error: "Rate limit reached while loading livestock items. Please retry shortly.",
+      };
+    }
+    if (primary.status === 401) return primary;
+
+    // For stale/invalid category IDs, treat as empty data and cache briefly.
+    if (primary.status === 400 || primary.status === 404) {
+      livestockItemsCache.set(productId, {
+        data: [],
+        expiresAt: Date.now() + 60 * 1000,
+      });
+      return { ok: true, data: [] };
+    }
+
+    // Legacy fallback only for unexpected deployments.
+    const fallback = await apiRequest<GetLivestockItemsByProductResponse>(
+      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
       {
-        method: "GET",
+        method: "POST",
+        body: JSON.stringify({ productId }),
       }
     );
-    if (!getResult.ok) {
-      if (getResult.status === 429) {
-        livestockItemsCooldownUntil = Date.now() + LIVESTOCK_ITEMS_COOLDOWN_MS;
-        if (cached?.data) {
-          return { ok: true, data: cached.data };
-        }
-        return {
-          ok: false,
-          status: 429,
-          error: "Rate limit reached while loading livestock items. Please retry shortly.",
-        };
-      }
-      return getResult;
+    if (fallback.ok) {
+      const list = fallback.data?.data ?? fallback.data?.items ?? [];
+      const data = Array.isArray(list)
+        ? list.map((item) => ({
+            ...normalizeLivestockItem(item),
+            productId: item.productId || productId,
+          }))
+        : [];
+      livestockItemsCache.set(productId, {
+        data,
+        expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
+      });
+      return { ok: true, data };
     }
-    const list = getResult.data?.data ?? getResult.data?.items ?? [];
-    const data = Array.isArray(list)
-      ? list.map((item) => ({
-          ...normalizeLivestockItem(item),
-          productId: item.productId || productId,
-        }))
-      : [];
-    livestockItemsCache.set(productId, {
-      data,
-      expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
-    });
-    return { ok: true, data };
+    return fallback;
   })();
 
   livestockItemsInflight.set(productId, requestPromise);
@@ -384,7 +572,7 @@ export type UpdateLivestockItemPayload = {
   name: string;
   itemId: string;
   productId: string;
-  itemQuantityOrWeight: number;
+  weight: number;
   price: number;
   status: boolean;
 };
@@ -398,66 +586,29 @@ export type UpdateLivestockItemResponse = {
 };
 
 export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
-  const requestBodies = [
-    {
-      id: payload.id,
-      name: payload.name,
-      itemId: payload.itemId,
-      productId: payload.productId,
-      itemQuantityOrWeight: payload.itemQuantityOrWeight,
-      price: payload.price,
-      status: payload.status,
-    },
-    {
-      id: payload.id,
-      name: payload.name,
-      itemId: payload.itemId,
-      productId: payload.productId,
-      weight: payload.itemQuantityOrWeight,
-      price: payload.price,
-      status: payload.status,
-    },
-  ];
+  const body = JSON.stringify({
+    id: payload.id,
+    name: payload.name,
+    itemId: payload.itemId,
+    productId: payload.productId,
+    weight: payload.weight,
+    itemQuantityOrWeight: payload.weight,
+    price: payload.price,
+    status: payload.status,
+  });
 
-  const attempts = [
-    () =>
-      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
-        method: "POST",
-        body: JSON.stringify(requestBodies[0]),
-      }),
-    () =>
-      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
-        method: "POST",
-        body: JSON.stringify(requestBodies[1]),
-      }),
-    () =>
-      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
-        method: "PUT",
-        body: JSON.stringify(requestBodies[0]),
-      }),
-    () =>
-      apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
-        method: "PATCH",
-        body: JSON.stringify(requestBodies[0]),
-      }),
-  ];
+  const primary = await apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+    method: "POST",
+    body,
+  });
+  if (primary.ok) return primary;
+  if (primary.status !== 404) return primary;
 
-  let lastError:
-    | { ok: false; error: string; status: number }
-    | null = null;
-  for (const attempt of attempts) {
-    const result = await attempt();
-    if (result.ok) return result;
-    lastError = result;
-    if (result.status && ![400, 404, 405].includes(result.status)) return result;
-  }
-  return (
-    lastError ?? {
-      ok: false,
-      status: 404,
-      error: "Update route is not available on this server deployment.",
-    }
-  );
+  // Some deployments expose /update instead of /update-item.
+  return apiRequest<UpdateLivestockItemResponse>("/products/livestock/update", {
+    method: "POST",
+    body,
+  });
 }
 
 export type DeleteLivestockItemPayload = {
@@ -472,63 +623,109 @@ export type DeleteLivestockItemResponse = {
 
 export type SendLivestockToProcessingPayload = {
   livestockItemId: string;
-  quantity: string;
-  weight: string;
+  plantId: string;
+  quantity: number;
+  weight: number;
 };
 
 export type SendLivestockToProcessingResponse = {
   success?: boolean;
   message?: string;
+  data?: {
+    id?: string;
+    batchId?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+export type CompleteProcessingPayload = {
+  batchId: string;
+  outputWeight: number;
+  wasteWeight: number;
+  outletId: string;
+  outputProductId: string;
+};
+
+export type CompleteProcessingResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export type TransferProcessedStockPayload = {
+  sourceProductId: string;
+  destinationProductId: string;
+  sourceOutletId: string;
+  destinationOutletId: string;
+  weight: number;
+};
+
+export async function transferProcessedStock(payload: TransferProcessedStockPayload) {
+  const amount = Number(payload.weight);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false as const, status: 400, error: "Transfer weight must be greater than 0." };
+  }
+
+  const deductResult = await deductProduct({
+    id: payload.sourceProductId,
+    outletId: payload.sourceOutletId,
+    weight: amount,
+    quantity: amount,
+  });
+  if (!deductResult.ok) return deductResult;
+
+  const restockResult = await restockProduct({
+    id: payload.destinationProductId,
+    outletId: payload.destinationOutletId,
+    weight: amount,
+    quantity: amount,
+  });
+  if (restockResult.ok) return restockResult;
+
+  // Best-effort rollback so source stock is not left deducted when destination restock fails.
+  await restockProduct({
+    id: payload.sourceProductId,
+    outletId: payload.sourceOutletId,
+    weight: amount,
+    quantity: amount,
+  });
+
+  return {
+    ok: false as const,
+    status: restockResult.status,
+    error:
+      restockResult.error ??
+      "Transfer failed while restocking destination outlet. Source stock deduction was rolled back.",
+  };
+}
+
+export type PendingLivestockProcessingItem = {
+  batchId: string;
+  livestockItemId?: string;
+  livestockItemName?: string;
+  itemId?: string;
+  plantId?: string;
+  plantName?: string;
+  quantity?: number;
+  weight?: number;
+  sentWeight?: number;
+  [key: string]: unknown;
+};
+
+export type GetPendingLivestockProcessingResponse = {
+  success?: boolean;
+  message?: string;
+  data?: PendingLivestockProcessingItem[];
+  items?: PendingLivestockProcessingItem[];
   [key: string]: unknown;
 };
 
 export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
-  const attempts = [
-    () =>
-      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
-        method: "POST",
-        body: JSON.stringify({ id: payload.id }),
-      }),
-    () =>
-      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
-        method: "DELETE",
-        body: JSON.stringify({ id: payload.id }),
-      }),
-    () =>
-      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
-        method: "DELETE",
-        body: JSON.stringify({ id: payload.id }),
-      }),
-    () =>
-      apiRequest<DeleteLivestockItemResponse>(
-        `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?id=${encodeURIComponent(payload.id)}`,
-        {
-          method: "DELETE",
-        }
-      ),
-    () =>
-      apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
-        method: "POST",
-        body: JSON.stringify({ id: payload.id }),
-      }),
-  ];
-
-  let lastError:
-    | { ok: false; error: string; status: number }
-    | null = null;
-  for (const attempt of attempts) {
-    const result = await attempt();
-    if (result.ok) return result;
-    lastError = result;
-    if (result.status && ![400, 404, 405].includes(result.status)) return result;
-  }
-  return (
-    lastError ?? {
-      ok: false,
-      error: "Delete route is not available on this server deployment.",
-      status: 404,
-    }
-  );
+  return apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
+    method: "DELETE",
+    body: JSON.stringify({ id: payload.id }),
+  });
 }
 
 export async function sendLivestockToProcessing(payload: SendLivestockToProcessingPayload) {
@@ -537,8 +734,117 @@ export async function sendLivestockToProcessing(payload: SendLivestockToProcessi
     method: "POST",
     body: JSON.stringify({
       livestockItemId: payload.livestockItemId,
+      plantId: payload.plantId,
       quantity: payload.quantity,
       weight: payload.weight,
     }),
   });
+}
+
+export async function completeLivestockProcessing(payload: CompleteProcessingPayload) {
+  return apiRequest<CompleteProcessingResponse>(PRODUCT_ROUTES.LIVESTOCK_COMPLETE_PROCESSING, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getPendingLivestockProcessing(): Promise<
+  | { ok: true; data: PendingLivestockProcessingItem[] }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<GetPendingLivestockProcessingResponse>(
+    PRODUCT_ROUTES.LIVESTOCK_GET_PENDING_PROCESSING,
+    { method: "GET" }
+  );
+  if (!result.ok) return result;
+  const list = result.data?.data ?? result.data?.items ?? [];
+  const parseNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return undefined;
+  };
+  const getString = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() ? value : undefined;
+
+  const data = Array.isArray(list)
+    ? list
+        .map((item) => {
+          const row = item as {
+            id?: unknown;
+            batchId?: unknown;
+            livestockItemId?: unknown;
+            livestockItemName?: unknown;
+            itemId?: unknown;
+            plantId?: unknown;
+            plantName?: unknown;
+            quantity?: unknown;
+            qty?: unknown;
+            sentQuantity?: unknown;
+            inputQuantity?: unknown;
+            itemQuantityOrWeight?: unknown;
+            weight?: unknown;
+            sentWeight?: unknown;
+            inputWeight?: unknown;
+            livestockItem?: { id?: unknown; itemId?: unknown; name?: unknown };
+            processingPlant?: { id?: unknown; name?: unknown };
+            plant?: { id?: unknown; name?: unknown };
+          };
+          const batchId =
+            getString(row.batchId) ??
+            getString(row.id) ??
+            getString((item as { processingBatchId?: unknown }).processingBatchId) ??
+            getString((item as { batch?: unknown }).batch) ??
+            "";
+          if (!batchId) return null;
+
+          const livestockItemId =
+            getString(row.livestockItemId) ??
+            getString(row.livestockItem?.id) ??
+            getString((item as { item?: { id?: unknown } }).item?.id);
+          const itemId =
+            getString(row.itemId) ??
+            getString(row.livestockItem?.itemId) ??
+            getString((item as { itemCode?: unknown }).itemCode);
+          const livestockItemName =
+            getString(row.livestockItemName) ??
+            getString(row.livestockItem?.name) ??
+            getString((item as { itemName?: unknown }).itemName);
+          const plantId =
+            getString(row.plantId) ??
+            getString(row.processingPlant?.id) ??
+            getString(row.plant?.id);
+          const plantName =
+            getString(row.plantName) ??
+            getString(row.processingPlant?.name) ??
+            getString(row.plant?.name);
+          const quantity =
+            parseNumber(row.quantity) ??
+            parseNumber(row.qty) ??
+            parseNumber(row.sentQuantity) ??
+            parseNumber(row.inputQuantity);
+          const weight =
+            parseNumber(row.weight) ??
+            parseNumber(row.sentWeight) ??
+            parseNumber(row.inputWeight) ??
+            parseNumber(row.itemQuantityOrWeight);
+
+          return {
+            ...item,
+            batchId,
+            livestockItemId,
+            livestockItemName,
+            itemId,
+            plantId,
+            plantName,
+            quantity,
+            weight,
+            sentWeight: parseNumber(row.sentWeight),
+          } as PendingLivestockProcessingItem;
+        })
+        .filter((item): item is PendingLivestockProcessingItem => item !== null)
+    : [];
+  return { ok: true, data };
 }

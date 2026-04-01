@@ -44,6 +44,8 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_UPDATE_ITEM: "/products/livestock/update-item",
   LIVESTOCK_DELETE_ITEM: "/products/livestock/delete-item",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
+  LIVESTOCK_COMPLETE_PROCESSING: "/products/livestock/complete-processing",
+  LIVESTOCK_GET_PENDING_PROCESSING: "/products/livestock/get-pending-processing",
 } as const;
 
 export const ROLE_ROUTES = {
