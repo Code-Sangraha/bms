@@ -1,328 +1,375 @@
-.processingPlantPage {
-  display: grid;
-  gap: 1rem;
+/* Processing plant settings — aligned with doc/style-guide.md (dualPricing / POS patterns) */
 
-  .breadcrumb {
-    font-size: 0.8rem;
-    color: #64748b;
+.processingPlantPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: #111827;
+  font-family: "Geist", system-ui, sans-serif;
+
+  /* —— Breadcrumb (§3, §5) —— */
+  .ppBreadcrumb {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #9ca3af;
   }
 
-  .header {
+  .ppBreadcrumbMuted {
+    color: #9ca3af;
+  }
+
+  .ppBreadcrumbSep {
+    color: #9ca3af;
+    margin: 0 2px;
+  }
+
+  .ppBreadcrumbCurrent {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* —— Header (§5) —— */
+  .ppHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: 12px;
     flex-wrap: wrap;
   }
 
-  .headerText {
-    display: grid;
-    gap: 0.35rem;
+  .ppHeaderText {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
   }
 
   .pageTitle {
     margin: 0;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #0f172a;
+    font-size: 22px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.25;
   }
 
   .pageSubtitle {
     margin: 0;
-    color: #64748b;
-    font-size: 0.95rem;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.4;
   }
 
-  .addBtn {
-    border: 1px solid #9de0ca;
-    background: #dff5ec;
-    color: #00715c;
+  /* —— Cards (§4, §6.2) —— */
+  .ppCard {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ppCardTitle {
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .ppNotice {
+    margin: 0;
+    padding: 12px 14px;
     border-radius: 8px;
-    padding: 0.6rem 1rem;
-    font-weight: 700;
-    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.45;
+    border: 1px solid rgba(220, 38, 38, 0.22);
+    background: rgba(254, 242, 242, 0.85);
+    color: #b91c1c;
   }
 
-  .createRow {
+  /* —— Forms (§4, POS field pattern) —— */
+  .ppFormGrid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.6rem;
-    align-items: center;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.85fr) minmax(0, 0.85fr) auto;
+    gap: 16px;
+    align-items: end;
+    width: 100%;
   }
 
-  .createRowModal {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.7rem;
+  .ppFormGridComplete {
+    grid-template-columns:
+      minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
   }
 
-  .input {
-    border: 1px solid #d1d5db;
+  .ppField {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .ppFieldNarrow {
+    max-width: 180px;
+  }
+
+  .ppLabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .ppInput,
+  .ppSelect {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    padding: 0.65rem 0.8rem;
-    font-size: 0.95rem;
-    background: #fff;
-    color: #0f172a;
+    font-size: 13px;
+    color: #111827;
+    background: #ffffff;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
   }
 
-  .saveBtn {
-    border: 1px solid #9de0ca;
-    background: #dff5ec;
-    color: #00715c;
-    border-radius: 8px;
-    padding: 0.65rem 0.9rem;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
+  .ppInput:focus,
+  .ppSelect:focus {
+    outline: none;
+    border-color: #02955a;
+    box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.15);
   }
 
-  .saveBtn:disabled {
-    opacity: 0.65;
+  .ppInput:disabled {
+    background: #f9fafb;
+    color: #6b7280;
     cursor: not-allowed;
   }
 
-  .modalFooter {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .cancelBtn {
-    border: 1px solid #d1d5db;
-    background: #fff;
-    color: #475569;
+  /* —— Buttons (§6.3) —— */
+  .ppBtnPrimary {
+    height: 40px;
+    padding: 0 20px;
+    border: 1px solid #02955a;
     border-radius: 8px;
-    padding: 0.65rem 0.9rem;
+    font-size: 13px;
+    font-weight: 600;
+    background: #02955a;
+    color: #ffffff;
     cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
   }
 
-  .error {
+  .ppBtnPrimary:hover:not(:disabled) {
+    background: #027a4a;
+    border-color: #027a4a;
+  }
+
+  .ppBtnPrimary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .ppBtnPrimary:focus-visible {
+    outline: 2px solid #02955a;
+    outline-offset: 2px;
+  }
+
+  .ppBtnSecondary {
+    height: 40px;
+    padding: 0 18px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    background: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .ppBtnSecondary:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  .ppBtnSecondary:focus-visible {
+    outline: 2px solid #02955a;
+    outline-offset: 2px;
+  }
+
+  .ppModalFields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* —— Tables (§6.5, pos table pattern) —— */
+  .ppTableWrap {
     margin: 0;
-    color: #dc2626;
-    font-size: 0.88rem;
-  }
-
-  .tableWrap {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
     overflow-x: auto;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fff;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .sendCard {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
     background: #fff;
-    padding: 1rem;
-    display: grid;
-    gap: 0.8rem;
   }
 
-  .historyCard {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    background: #fff;
-    padding: 1rem;
-    display: grid;
-    gap: 0.8rem;
+  .ppCard .ppTableWrap {
+    border-radius: 8px;
   }
 
-  .cardTitle {
-    margin: 0;
-    font-size: 1.05rem;
-    color: #0f172a;
-  }
-
-  .sendGrid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto;
-    gap: 0.6rem;
-    align-items: end;
+  .ppTable {
     width: 100%;
-  }
-
-  .completeGrid {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) auto;
-  }
-
-  .sendGrid > .saveBtn {
-    min-height: 42px;
-  }
-
-  .field {
-    display: grid;
-    gap: 0.35rem;
-    font-size: 0.82rem;
-    color: #475569;
-    min-width: 0;
-  }
-
-  .fieldSm {
-    max-width: 180px;
-  }
-
-  .table {
-    width: 100%;
-    border-collapse: collapse;
     min-width: 620px;
+    border-collapse: collapse;
+    font-size: 13px;
   }
 
-  .table thead th {
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.7rem;
-    color: #64748b;
-    padding: 0.9rem 0.75rem;
+  .ppTable thead th {
+    padding: 12px 16px;
     text-align: left;
-    border-bottom: 1px solid #e5e7eb;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b7280;
+    background: #f9fafb;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
 
-  .table tbody td {
-    padding: 0.9rem 0.75rem;
-    border-bottom: 1px solid #f1f5f9;
-    color: #0f172a;
-    font-size: 0.92rem;
+  .ppTable tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    color: #374151;
+    vertical-align: middle;
   }
 
-  .table tbody tr:last-child td {
+  .ppTable tbody tr:last-child td {
     border-bottom: none;
   }
 
-  .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 0.8rem;
-    color: #475569;
+  .ppTableMono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+      monospace;
+    font-size: 12px;
+    color: #4b5563;
   }
 
-  .emptyCell {
+  .ppTableEmpty {
     text-align: center;
-    color: #64748b;
-    padding: 1rem 0.75rem !important;
+    color: #6b7280;
+    padding: 24px 16px !important;
+    font-size: 13px;
   }
 
-  .badge {
+  .ppBadge {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.72rem;
-    background: #e2e8f0;
-    color: #475569;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #eef2f7;
+    color: #6b7280;
   }
 
-  .badgeActive {
-    background: #d1fae5;
-    color: #047857;
+  .ppBadgeActive {
+    background: rgba(2, 149, 90, 0.12);
+    color: #027a4a;
+  }
+
+  /* —— Pagination block inside card —— */
+  .ppPaginationSlot {
+    padding-top: 4px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .ppPaginationSlot .pagination {
+    border-top: none;
+    padding-top: 12px;
+    margin-top: 0;
   }
 
   @media (max-width: 1280px) {
-    .sendGrid {
+    .ppFormGrid,
+    .ppFormGridComplete {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: stretch;
     }
 
-    .completeGrid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .fieldSm {
+    .ppFieldNarrow {
       max-width: none;
     }
 
-    .sendGrid > .saveBtn {
+    .ppFormGrid > .ppBtnPrimary {
       width: 100%;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    gap: 0.85rem;
-
-    .sendCard,
-    .historyCard {
-      padding: 0.85rem;
-    }
-
-    .cardTitle {
-      font-size: 1rem;
     }
   }
 
   @media (max-width: 900px) {
-    .pageTitle {
-      font-size: 1.65rem;
+    .ppCard {
+      padding: 20px 16px;
     }
 
-    .addBtn {
-      width: 100%;
-    }
-
-    .createRow {
+    .ppFormGrid,
+    .ppFormGridComplete {
       grid-template-columns: 1fr;
     }
 
-    .createRow .saveBtn {
+    .ppFormGrid > .ppBtnPrimary {
       width: 100%;
     }
 
-    .sendGrid {
-      grid-template-columns: 1fr;
+    .ppHeader {
+      flex-direction: column;
+      align-items: stretch;
     }
 
-    .sendGrid .saveBtn {
+    .ppBtnPrimary.ppHeaderAction {
       width: 100%;
     }
 
-    .fieldSm {
-      max-width: none;
-    }
-
-    .table {
+    .ppTable {
       min-width: 560px;
     }
   }
 
   @media (max-width: 640px) {
-    gap: 0.8rem;
-
-    .header {
-      gap: 0.75rem;
-    }
+    gap: 18px;
 
     .pageTitle {
-      font-size: 1.45rem;
-      line-height: 1.2;
+      font-size: 20px;
     }
 
     .pageSubtitle {
-      font-size: 0.86rem;
+      font-size: 12px;
     }
 
-    .createRow,
-    .sendCard,
-    .historyCard {
-      padding: 0.75rem;
+    .ppCard {
+      padding: 16px;
+      gap: 14px;
     }
 
-    .input,
-    .addBtn,
-    .saveBtn {
-      min-height: 42px;
-      font-size: 0.9rem;
+    .ppCardTitle {
+      font-size: 15px;
     }
 
-    .table {
+    .ppTable {
       min-width: 520px;
     }
 
-    .table thead th,
-    .table tbody td {
-      padding: 0.7rem 0.6rem;
-      font-size: 0.84rem;
+    .ppTable thead th,
+    .ppTable tbody td {
+      padding: 10px 12px;
+      font-size: 12px;
     }
   }
 }
