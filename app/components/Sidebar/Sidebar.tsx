@@ -1,6 +1,6 @@
 "use client";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
 import { IoBagHandleOutline } from "react-icons/io5";
@@ -189,8 +189,66 @@ const sidebarConfig = {
   ],
 };
 
+type SidebarRailItem =
+  | (typeof sidebarConfig.sections)[number]["items"][number]
+  | (typeof sidebarConfig.footer)[number]["items"][number];
+
+/** Overview is `/dashboard` only; other hrefs allow nested paths (e.g. roles/create). */
+function hrefMatchesPathname(href: string, pathname: string): boolean {
+  if (href === "/dashboard") {
+    return pathname === "/dashboard";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function longestMatchingHrefInMenu(
+  items: MenuItem[],
+  pathname: string
+): string | null {
+  const matches = items
+    .filter((entry) => hrefMatchesPathname(entry.href, pathname))
+    .map((entry) => entry.href);
+  if (matches.length === 0) return null;
+  return matches.reduce((a, b) => (a.length >= b.length ? a : b));
+}
+
+function getActivePrimaryId(
+  pathname: string,
+  railItems: SidebarRailItem[],
+  canCreate: boolean
+): string | null {
+  type Candidate = { id: string; hrefLen: number };
+  const candidates: Candidate[] = [];
+
+  for (const item of railItems) {
+    const visible = item.menu.items.filter(
+      (entry) => entry.permission !== "create" || canCreate
+    );
+    const longest = longestMatchingHrefInMenu(visible, pathname);
+    if (longest) {
+      candidates.push({ id: item.id, hrefLen: longest.length });
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  const maxLen = Math.max(...candidates.map((c) => c.hrefLen));
+  const tied = candidates.filter((c) => c.hrefLen === maxLen);
+  if (tied.length === 1) return tied[0].id;
+
+  if (pathname.startsWith("/dashboard/settings")) {
+    const settingsHit = tied.find((c) => c.id === "settings");
+    if (settingsHit) return "settings";
+  }
+
+  const order = railItems.map((i) => i.id);
+  tied.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  return tied[0].id;
+}
+
 export default function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { canCreate } = usePermissions();
   const { t, locale } = useI18n();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -202,7 +260,27 @@ export default function Sidebar() {
     []
   );
 
+  const pathname = location.pathname;
+  const primaryRailItems = useMemo(
+    () => [
+      ...sidebarConfig.sections.flatMap((section) => section.items),
+      ...sidebarConfig.footer.flatMap((section) => section.items),
+    ],
+    []
+  );
+  const activePrimaryId = useMemo(
+    () => getActivePrimaryId(pathname, primaryRailItems, canCreate),
+    [pathname, primaryRailItems, canCreate]
+  );
+
   const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
+  const activeHrefInOpenMenu = useMemo(() => {
+    if (!activeMenu) return null;
+    const visible = activeMenu.items.filter(
+      (entry) => entry.permission !== "create" || canCreate
+    );
+    return longestMatchingHrefInMenu(visible, pathname);
+  }, [activeMenu, pathname, canCreate]);
   const getSidebarLabel = useCallback(
     (key: TranslationKey) => {
       if (locale === "ne") {
@@ -284,7 +362,7 @@ export default function Sidebar() {
                 <button
                   key={item.id}
                   className={
-                    activeMenuId === item.id ? "link active" : "link"
+                    activePrimaryId === item.id ? "link active" : "link"
                   }
                   type="button"
                   aria-pressed={activeMenuId === item.id}
@@ -315,7 +393,7 @@ export default function Sidebar() {
             .map((item) => (
               <button
                 key={item.id}
-                className={activeMenuId === item.id ? "link active" : "link"}
+                className={activePrimaryId === item.id ? "link active" : "link"}
                 type="button"
                 aria-pressed={activeMenuId === item.id}
                 onClick={() => handleMenuToggle(item.id)}
@@ -354,9 +432,16 @@ export default function Sidebar() {
             .map((entry) => (
               <Link
                 key={entry.href}
-                className="drawerItem"
+                className={
+                  activeHrefInOpenMenu === entry.href
+                    ? "drawerItem active"
+                    : "drawerItem"
+                }
                 to={entry.href}
                 onClick={() => setActiveMenuId(null)}
+                aria-current={
+                  activeHrefInOpenMenu === entry.href ? "page" : undefined
+                }
               >
                 {getSidebarLabel(entry.labelKey)}
               </Link>

@@ -146,10 +146,14 @@ $mobile-breakpoint: 768px;
   background: rgba(17, 24, 39, 0.06);
 }
 
-.active {
-  background: #02955A12;
-  color: #02955A !important;
+.link.active {
+  background: #02955a12;
+  color: #02955a !important;
+}
 
+.link.active:hover {
+  background: rgba(2, 149, 90, 0.18);
+  color: #02955a !important;
 }
 
 .footer {
@@ -298,6 +302,16 @@ $mobile-breakpoint: 768px;
 
 .drawerItem:hover {
   background: rgba(17, 24, 39, 0.06);
+}
+
+.drawerItem.active {
+  background: #02955a12;
+  color: #02955a;
+}
+
+.drawerItem.active:hover {
+  background: rgba(2, 149, 90, 0.18);
+  color: #02955a;
 }
 
 .drawerItemLogout {
