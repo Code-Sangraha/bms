@@ -2,7 +2,12 @@ $mobile-breakpoint: 768px;
 
 .sidebarWrapper {
   display: flex;
-  // min-height: 100vh;
+  align-self: stretch;
+  min-height: 0;
+
+  @media (min-width: #{$mobile-breakpoint + 1px}) {
+    height: 100%;
+  }
 
   @media (max-width: $mobile-breakpoint) {
     position: absolute;
@@ -20,13 +25,17 @@ $mobile-breakpoint: 768px;
 
 .sidebar {
   display: flex;
-  min-height: 100vh;
   width: 76px;
   flex-direction: column;
+  min-height: 0;
   gap: 20px;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   background: #ffffff;
   padding: 32px 16px;
+
+  @media (min-width: #{$mobile-breakpoint + 1px}) {
+    height: 100%;
+  }
 
   @media (max-width: $mobile-breakpoint) {
     position: fixed;
@@ -188,9 +197,15 @@ $mobile-breakpoint: 768px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: #ffffff;
   border-right: 1px solid rgba(0, 0, 0, 0.06);
   transition: width 0.2s ease;
+
+  @media (min-width: #{$mobile-breakpoint + 1px}) {
+    align-self: stretch;
+    height: 100%;
+  }
 
   @media (max-width: $mobile-breakpoint) {
     position: fixed;
@@ -212,7 +227,6 @@ $mobile-breakpoint: 768px;
 
 .drawer.open {
   width: 240px;
-  min-height: 100vh;
 
   @media (max-width: $mobile-breakpoint) {
     width: 100%;
