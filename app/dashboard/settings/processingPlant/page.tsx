@@ -27,6 +27,7 @@ import {
   type ProcessingPlant,
 } from "@/handlers/processingPlant";
 import { getStoredOutletId } from "@/lib/auth/user";
+import { useToast } from "@/app/providers/ToastProvider";
 import "./processingPlant.scss";
 
 const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
@@ -66,6 +67,7 @@ export default function ProcessingPlantPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [userId, setUserId] = useState("");
@@ -85,7 +87,6 @@ export default function ProcessingPlantPage() {
   const [transferProductId, setTransferProductId] = useState("");
   const [transferWeight, setTransferWeight] = useState("");
   const [sendHistory, setSendHistory] = useState<ProcessingSendHistoryItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -303,10 +304,9 @@ export default function ProcessingPlantPage() {
           navigate("/login");
           return;
         }
-        setError(result.error ?? t("Failed to create processing plant"));
+        showToast(result.error ?? t("Failed to create processing plant"));
         return;
       }
-      setError(null);
       setName("");
       setUserId("");
       setContact("");
@@ -315,18 +315,26 @@ export default function ProcessingPlantPage() {
       queryClient.invalidateQueries({ queryKey: PROCESSING_PLANTS_QUERY_KEY });
     },
     onError: () => {
-      setError(t("Something went wrong. Please try again."));
+      showToast(t("Something went wrong. Please try again."));
     },
   });
 
   const handleCreate = () => {
     const trimmedName = name.trim();
     const trimmedContact = contact.trim();
-    if (!trimmedName) return setError(t("Processing plant name is required."));
-    if (!userId) return setError(t("Please select user."));
-    if (!trimmedContact) return setError(t("Contact is required."));
+    if (!trimmedName) {
+      showToast(t("Processing plant name is required."));
+      return;
+    }
+    if (!userId) {
+      showToast(t("Please select user."));
+      return;
+    }
+    if (!trimmedContact) {
+      showToast(t("Contact is required."));
+      return;
+    }
 
-    setError(null);
     createMutation.mutate({
       name: trimmedName,
       userId,
@@ -378,7 +386,7 @@ export default function ProcessingPlantPage() {
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.error ?? t("Failed to send livestock to processing plant."));
+        showToast(result.error ?? t("Failed to send livestock to processing plant."));
         return;
       }
       const selectedPlant = processingPlants.find((plant) => plant.id === selectedPlantId);
@@ -408,7 +416,6 @@ export default function ProcessingPlantPage() {
         localStorage.setItem(SEND_HISTORY_STORAGE_KEY, JSON.stringify(next));
         return next;
       });
-      setError(null);
       setSelectedLivestockItemId("");
       setSelectedPlantId("");
       setSendQuantity("");
@@ -418,7 +425,7 @@ export default function ProcessingPlantPage() {
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
     },
     onError: () => {
-      setError(t("Something went wrong. Please try again."));
+      showToast(t("Something went wrong. Please try again."));
     },
   });
 
@@ -503,10 +510,9 @@ export default function ProcessingPlantPage() {
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.error ?? t("Failed to complete processing."));
+        showToast(result.error ?? t("Failed to complete processing."));
         return;
       }
-      setError(null);
       setSelectedBatchId("");
       setCompleteOutputWeight("");
       setCompleteWasteWeight("");
@@ -517,7 +523,7 @@ export default function ProcessingPlantPage() {
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
     },
     onError: () => {
-      setError(t("Something went wrong. Please try again."));
+      showToast(t("Something went wrong. Please try again."));
     },
   });
 
@@ -564,10 +570,9 @@ export default function ProcessingPlantPage() {
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setError(result.error ?? t("Failed to transfer processed stock."));
+        showToast(result.error ?? t("Failed to transfer processed stock."));
         return;
       }
-      setError(null);
       setTransferSourceOutletId("");
       setTransferDestinationOutletId("");
       setTransferProductId("");
@@ -575,7 +580,7 @@ export default function ProcessingPlantPage() {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
     },
     onError: () => {
-      setError(t("Something went wrong. Please try again."));
+      showToast(t("Something went wrong. Please try again."));
     },
   });
 
@@ -595,7 +600,6 @@ export default function ProcessingPlantPage() {
           className="addBtn"
           onClick={() => {
             setIsCreateModalOpen(true);
-            setError(null);
           }}
         >
           {t("Add Processing Plant")}
@@ -608,7 +612,6 @@ export default function ProcessingPlantPage() {
         subtitle={t("Create a new processing plant")}
         onClose={() => {
           setIsCreateModalOpen(false);
-          setError(null);
           setName("");
           setUserId("");
           setContact("");
@@ -621,7 +624,6 @@ export default function ProcessingPlantPage() {
               className="cancelBtn"
               onClick={() => {
                 setIsCreateModalOpen(false);
-                setError(null);
                 setName("");
                 setUserId("");
                 setContact("");
@@ -676,8 +678,6 @@ export default function ProcessingPlantPage() {
           </select>
         </div>
       </Modal>
-
-      {error && <p className="error">{error}</p>}
 
       <div className="sendCard">
         <h2 className="cardTitle">{t("Send Livestock To Processing Plant")}</h2>
