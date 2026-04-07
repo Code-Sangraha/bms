@@ -240,7 +240,7 @@ export default function LivestockSalesPage() {
       if (result.ok) {
         const soldItemIds = [...new Set(livestockLineItems.map((item) => item.livestockItemId))];
         const deleteResults = await Promise.all(
-          soldItemIds.map((id) => deleteLivestockItem({ id }))
+          soldItemIds.map((id) => deleteLivestockItem({ productId: id }))
         );
         const hasDeleteError = deleteResults.some((res) => !res.ok);
 

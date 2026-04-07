@@ -3,7 +3,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
-import { IoBagHandleOutline } from "react-icons/io5";
+import { IoBagHandleOutline, IoBusinessOutline } from "react-icons/io5";
 import { LuDownload, LuReceiptText, LuUserCog } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
@@ -40,13 +40,35 @@ type TranslationKey =
   | "directory"
   | "settings"
   | "logout"
-  | "closeMenu";
+  | "closeMenu"
+  | "highland";
 
 type MenuItem = {
   labelKey: TranslationKey;
   href: string;
   permission?: "create";
 };
+
+type MenuSectionBlock = {
+  titleKey: TranslationKey;
+  items: MenuItem[];
+};
+
+/** Flat list (default drawer) or grouped sections (e.g. Highland). */
+type RailMenu =
+  | { titleKey: TranslationKey; items: MenuItem[] }
+  | { titleKey: TranslationKey; sections: MenuSectionBlock[] };
+
+function isGroupedRailMenu(menu: RailMenu): menu is { titleKey: TranslationKey; sections: MenuSectionBlock[] } {
+  return "sections" in menu && Array.isArray(menu.sections) && menu.sections.length > 0;
+}
+
+function getFlatMenuItems(menu: RailMenu): MenuItem[] {
+  if (isGroupedRailMenu(menu)) {
+    return menu.sections.flatMap((section) => section.items);
+  }
+  return menu.items;
+}
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -80,6 +102,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   settings: "Settings",
   logout: "Logout",
   closeMenu: "Close menu",
+  highland: "Highland",
 };
 
 const sidebarConfig = {
@@ -150,6 +173,62 @@ const sidebarConfig = {
             ] as MenuItem[],
           },
         },
+        {
+          id: "highland",
+          href: "#",
+          icon: <IoBusinessOutline size={20} />,
+          menu: {
+            titleKey: "highland" as const,
+            sections: [
+              {
+                titleKey: "dashboard",
+                items: [
+                  {
+                    labelKey: "processingPlant",
+                    href: "/dashboard/settings/processingPlant",
+                  },
+                ],
+              },
+              {
+                titleKey: "salesBilling",
+                items: [
+                  { labelKey: "analytics", href: "/dashboard/invoices" },
+                  {
+                    labelKey: "pointOfSale",
+                    href: "/dashboard/invoices/new",
+                    permission: "create" as const,
+                  },
+                  {
+                    labelKey: "livestockSales",
+                    href: "/dashboard/invoices/livestock-sales",
+                    permission: "create" as const,
+                  },
+                  { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+                  { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
+                ],
+              },
+              {
+                titleKey: "product",
+                items: [
+                  { labelKey: "products", href: "/dashboard/product" },
+                  { labelKey: "productType", href: "/dashboard/product/productType" },
+                  { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
+                  { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
+                  { labelKey: "live", href: "/dashboard/product/liveProduct" },
+                  { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+                ],
+              },
+              {
+                titleKey: "attendance",
+                items: [
+                  { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
+                  { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
+                  { labelKey: "directory", href: "/dashboard/accounts/directory" },
+                ],
+              },
+            ],
+          },
+        },
       ],
     },
   ],
@@ -212,16 +291,24 @@ function longestMatchingHrefInMenu(
   return matches.reduce((a, b) => (a.length >= b.length ? a : b));
 }
 
+/**
+ * Picks which primary rail icon is "active" for the current route.
+ * When several rails share the same matching href length (e.g. Highland vs Dashboard),
+ * prefer the rail whose drawer is open (`openMenuId`), then settings for /dashboard/settings,
+ * then first in rail order.
+ */
 function getActivePrimaryId(
   pathname: string,
   railItems: SidebarRailItem[],
-  canCreate: boolean
+  canCreate: boolean,
+  openMenuId: string | null
 ): string | null {
   type Candidate = { id: string; hrefLen: number };
   const candidates: Candidate[] = [];
 
   for (const item of railItems) {
-    const visible = item.menu.items.filter(
+    const flat = getFlatMenuItems(item.menu as RailMenu);
+    const visible = flat.filter(
       (entry) => entry.permission !== "create" || canCreate
     );
     const longest = longestMatchingHrefInMenu(visible, pathname);
@@ -240,6 +327,9 @@ function getActivePrimaryId(
     const settingsHit = tied.find((c) => c.id === "settings");
     if (settingsHit) return "settings";
   }
+
+  const openTie = openMenuId ? tied.find((c) => c.id === openMenuId) : undefined;
+  if (openTie) return openTie.id;
 
   const order = railItems.map((i) => i.id);
   tied.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
@@ -269,14 +359,14 @@ export default function Sidebar() {
     []
   );
   const activePrimaryId = useMemo(
-    () => getActivePrimaryId(pathname, primaryRailItems, canCreate),
-    [pathname, primaryRailItems, canCreate]
+    () => getActivePrimaryId(pathname, primaryRailItems, canCreate, activeMenuId),
+    [pathname, primaryRailItems, canCreate, activeMenuId]
   );
 
   const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
   const activeHrefInOpenMenu = useMemo(() => {
     if (!activeMenu) return null;
-    const visible = activeMenu.items.filter(
+    const visible = getFlatMenuItems(activeMenu as RailMenu).filter(
       (entry) => entry.permission !== "create" || canCreate
     );
     return longestMatchingHrefInMenu(visible, pathname);
@@ -288,6 +378,7 @@ export default function Sidebar() {
         if (key === "livestockCategory") return "पशुधन श्रेणी";
         if (key === "livestockSales") return "पशुधन बिक्री";
         if (key === "processingPlant") return "प्रशोधन केन्द्र";
+        if (key === "highland") return "हाइल्याण्ड";
       }
       return t(sidebarLabelMap[key]);
     },
@@ -427,25 +518,59 @@ export default function Sidebar() {
           </button>
         </div>
         <div className="drawerBody">
-          {activeMenu?.items
-            .filter((entry) => (entry.permission === "create" ? canCreate : true))
-            .map((entry) => (
-              <Link
-                key={entry.href}
-                className={
-                  activeHrefInOpenMenu === entry.href
-                    ? "drawerItem active"
-                    : "drawerItem"
-                }
-                to={entry.href}
-                onClick={() => setActiveMenuId(null)}
-                aria-current={
-                  activeHrefInOpenMenu === entry.href ? "page" : undefined
-                }
-              >
-                {getSidebarLabel(entry.labelKey)}
-              </Link>
-            ))}
+          {activeMenu &&
+            (isGroupedRailMenu(activeMenu as RailMenu)
+              ? (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections.map(
+                  (section) => (
+                    <div key={section.titleKey}>
+                      <div className="drawerSectionTitle" role="presentation">
+                        {getSidebarLabel(section.titleKey)}
+                      </div>
+                      {section.items
+                        .filter((entry) =>
+                          entry.permission === "create" ? canCreate : true
+                        )
+                        .map((entry) => (
+                          <Link
+                            key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                            className={
+                              activeHrefInOpenMenu === entry.href
+                                ? "drawerItem active"
+                                : "drawerItem"
+                            }
+                            to={entry.href}
+                            onClick={() => setActiveMenuId(null)}
+                            aria-current={
+                              activeHrefInOpenMenu === entry.href ? "page" : undefined
+                            }
+                          >
+                            {getSidebarLabel(entry.labelKey)}
+                          </Link>
+                        ))}
+                    </div>
+                  )
+                )
+              : (activeMenu as { items: MenuItem[] }).items
+                  .filter((entry) =>
+                    entry.permission === "create" ? canCreate : true
+                  )
+                  .map((entry) => (
+                    <Link
+                      key={entry.href}
+                      className={
+                        activeHrefInOpenMenu === entry.href
+                          ? "drawerItem active"
+                          : "drawerItem"
+                      }
+                      to={entry.href}
+                      onClick={() => setActiveMenuId(null)}
+                      aria-current={
+                        activeHrefInOpenMenu === entry.href ? "page" : undefined
+                      }
+                    >
+                      {getSidebarLabel(entry.labelKey)}
+                    </Link>
+                  )))}
         </div>
         <div className="drawerFooter">
           <button

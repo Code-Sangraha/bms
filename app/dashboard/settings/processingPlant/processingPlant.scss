@@ -1,14 +1,22 @@
-/* Processing plant settings — aligned with doc/style-guide.md (dualPricing / POS patterns) */
+/* Processing plant settings — dashboard / settings patterns (soft UI, operations workflow) */
 
 .processingPlantPage {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
   color: #111827;
   font-family: "Geist", system-ui, sans-serif;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 48%, #f8fafc 100%);
+  padding: 4px 0 32px;
+  box-sizing: border-box;
+  border-radius: 12px;
 
-  /* —— Breadcrumb (§3, §5) —— */
+  @media (max-width: 640px) {
+    padding: 4px 0 24px;
+  }
+
+  /* —— Breadcrumb —— */
   .ppBreadcrumb {
     font-size: 12px;
     line-height: 1.4;
@@ -29,7 +37,41 @@
     font-weight: 500;
   }
 
-  /* —— Header (§5) —— */
+  /* —— Page sections —— */
+  .ppSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ppSectionTitle {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  .ppSectionLead {
+    margin: -4px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #64748b;
+    max-width: 42rem;
+  }
+
+  .ppSectionGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ppSectionGrid--loose {
+    gap: 20px;
+  }
+
+  /* —— Header —— */
   .ppHeader {
     display: flex;
     justify-content: space-between;
@@ -60,16 +102,56 @@
     line-height: 1.4;
   }
 
-  /* —— Cards (§4, §6.2) —— */
+  /* —— Cards —— */
   .ppCard {
     background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 14px;
     padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px -8px rgba(15, 23, 42, 0.08);
     display: flex;
     flex-direction: column;
     gap: 16px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .ppCardWorkflow {
+    border-left: 3px solid #02955a;
+    padding-left: 21px;
+  }
+
+  .ppCardHead {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    margin-bottom: 0;
+  }
+
+  .ppCardHeadText {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ppStepBadge {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #027a4a;
+    background: rgba(2, 149, 90, 0.12);
+    border: 1px solid rgba(2, 149, 90, 0.2);
   }
 
   .ppCardTitle {
@@ -80,6 +162,24 @@
     font-weight: 600;
     color: #111827;
     line-height: 1.3;
+  }
+
+  .ppCardHead .ppCardTitle {
+    padding-bottom: 0;
+    border-bottom: none;
+    font-size: 16px;
+  }
+
+  .ppCardTitle--plain {
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .ppCardDesc {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #64748b;
   }
 
   .ppNotice {
@@ -93,7 +193,13 @@
     color: #b91c1c;
   }
 
-  /* —— Forms (§4, POS field pattern) —— */
+  .ppNotice--warning {
+    border-color: rgba(217, 119, 6, 0.28);
+    background: rgba(255, 251, 235, 0.95);
+    color: #b45309;
+  }
+
+  /* —— Forms —— */
   .ppFormGrid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.85fr) minmax(0, 0.85fr) auto;
@@ -105,6 +211,63 @@
   .ppFormGridComplete {
     grid-template-columns:
       minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  }
+
+  .ppCompleteForm {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+  }
+
+  .ppCompleteFormTop {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+    gap: 16px;
+    align-items: end;
+  }
+
+  .ppOutputLinesHeading {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .ppOutputLines {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .ppOutputLineRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 110px) auto;
+    gap: 16px;
+    align-items: end;
+    padding: 14px 16px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    background: #fafafa;
+  }
+
+  .ppOutputLineActions {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 2px;
+  }
+
+  .ppBtnIconish {
+    font-size: 12px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  .ppCompleteFormFooter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
   }
 
   .ppField {
@@ -163,12 +326,13 @@
     color: #ffffff;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .ppBtnPrimary:hover:not(:disabled) {
     background: #027a4a;
     border-color: #027a4a;
+    box-shadow: 0 4px 12px -2px rgba(2, 149, 90, 0.35);
   }
 
   .ppBtnPrimary:disabled {
@@ -191,7 +355,7 @@
     background: #ffffff;
     color: #374151;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
 
   .ppBtnSecondary:hover:not(:disabled) {
@@ -210,7 +374,7 @@
     gap: 16px;
   }
 
-  /* —— Tables (§6.5, pos table pattern) —— */
+  /* —— Tables —— */
   .ppTableWrap {
     margin: 0;
     border: 1px solid rgba(0, 0, 0, 0.06);
@@ -249,6 +413,14 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     color: #374151;
     vertical-align: middle;
+  }
+
+  .ppTable tbody tr {
+    transition: background-color 0.2s ease;
+  }
+
+  .ppTable tbody tr:hover td {
+    background-color: rgba(2, 149, 90, 0.04);
   }
 
   .ppTable tbody tr:last-child td {
@@ -305,6 +477,19 @@
       align-items: stretch;
     }
 
+    .ppCompleteFormTop {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ppOutputLineRow {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ppOutputLineActions {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
+    }
+
     .ppFieldNarrow {
       max-width: none;
     }
@@ -324,7 +509,20 @@
       grid-template-columns: 1fr;
     }
 
+    .ppCompleteFormTop {
+      grid-template-columns: 1fr;
+    }
+
+    .ppOutputLineRow {
+      grid-template-columns: 1fr;
+    }
+
     .ppFormGrid > .ppBtnPrimary {
+      width: 100%;
+    }
+
+    .ppCompleteFormFooter .ppBtnPrimary,
+    .ppCompleteFormFooter .ppBtnSecondary {
       width: 100%;
     }
 
@@ -362,6 +560,10 @@
       font-size: 15px;
     }
 
+    .ppCardWorkflow {
+      padding-left: 17px;
+    }
+
     .ppTable {
       min-width: 520px;
     }
@@ -370,6 +572,19 @@
     .ppTable tbody td {
       padding: 10px 12px;
       font-size: 12px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ppCard,
+    .ppBtnPrimary,
+    .ppBtnSecondary,
+    .ppTable tbody tr {
+      transition: none;
+    }
+
+    .ppBtnPrimary:hover:not(:disabled) {
+      box-shadow: none;
     }
   }
 }

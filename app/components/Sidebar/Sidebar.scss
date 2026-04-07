@@ -298,6 +298,21 @@ $mobile-breakpoint: 768px;
   }
 }
 
+.drawerSectionTitle {
+  margin-top: 12px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.drawerSectionTitle:first-child {
+  margin-top: 0;
+}
+
 .drawerFooter {
   margin-top: auto;
   padding: 16px 20px;

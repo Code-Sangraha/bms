@@ -477,6 +477,11 @@ const livestockItemsCache = new Map<string, { data: LivestockItem[]; expiresAt: 
 const livestockItemsInflight = new Map<string, Promise<LivestockItemsResult>>();
 let livestockItemsCooldownUntil = 0;
 
+/** Clears in-memory livestock item lists so the next fetch hits the API (use after restock/deduct/delete). */
+export function clearLivestockItemsCache(): void {
+  livestockItemsCache.clear();
+}
+
 export async function getLivestockItemsByProduct(
   productId: string
 ): Promise<LivestockItemsResult> {
@@ -567,14 +572,17 @@ export async function getLivestockItemsByProduct(
   }
 }
 
+/** POST /products/livestock/update-item — enable on backend before relying on this. */
 export type UpdateLivestockItemPayload = {
   id: string;
   name: string;
   itemId: string;
   productId: string;
-  weight: number;
+  outletId: string;
+  itemQuantityOrWeight: number;
   price: number;
   status: boolean;
+  isBulk: boolean;
 };
 
 export type UpdateLivestockItemResponse = {
@@ -586,33 +594,46 @@ export type UpdateLivestockItemResponse = {
 };
 
 export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
-  const body = JSON.stringify({
-    id: payload.id,
-    name: payload.name,
-    itemId: payload.itemId,
-    productId: payload.productId,
-    weight: payload.weight,
-    itemQuantityOrWeight: payload.weight,
-    price: payload.price,
-    status: payload.status,
-  });
-
-  const primary = await apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
+  return apiRequest<UpdateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_UPDATE_ITEM, {
     method: "POST",
-    body,
-  });
-  if (primary.ok) return primary;
-  if (primary.status !== 404) return primary;
-
-  // Some deployments expose /update instead of /update-item.
-  return apiRequest<UpdateLivestockItemResponse>("/products/livestock/update", {
-    method: "POST",
-    body,
+    body: JSON.stringify(payload),
   });
 }
 
+export type LivestockRestockDeductPayload = {
+  livestockItemId: string;
+  isBulk: boolean;
+  amount: number;
+};
+
+export type LivestockRestockDeductResponse = {
+  success?: boolean;
+  message?: string;
+  data?: LivestockItem;
+  item?: LivestockItem;
+  [key: string]: unknown;
+};
+
+export async function restockLivestockItem(payload: LivestockRestockDeductPayload) {
+  return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_RESTOCK, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deductLivestockItem(payload: LivestockRestockDeductPayload) {
+  return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_DEDUCT, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * POST /products/livestock/delete-item
+ * Backend reads the livestock line id from JSON field `productId` (naming as implemented server-side).
+ */
 export type DeleteLivestockItemPayload = {
-  id: string;
+  productId: string;
 };
 
 export type DeleteLivestockItemResponse = {
@@ -639,12 +660,16 @@ export type SendLivestockToProcessingResponse = {
   [key: string]: unknown;
 };
 
+export type CompleteProcessingOutputLine = {
+  productId: string;
+  weight: number;
+  outletId: string;
+};
+
 export type CompleteProcessingPayload = {
   batchId: string;
-  outputWeight: number;
   wasteWeight: number;
-  outletId: string;
-  outputProductId: string;
+  outputs: CompleteProcessingOutputLine[];
 };
 
 export type CompleteProcessingResponse = {
@@ -722,9 +747,9 @@ export type GetPendingLivestockProcessingResponse = {
 };
 
 export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
-  return apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT, {
-    method: "DELETE",
-    body: JSON.stringify({ id: payload.id }),
+  return apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
+    method: "POST",
+    body: JSON.stringify({ productId: payload.productId }),
   });
 }
 
@@ -742,9 +767,14 @@ export async function sendLivestockToProcessing(payload: SendLivestockToProcessi
 }
 
 export async function completeLivestockProcessing(payload: CompleteProcessingPayload) {
+  const body = {
+    batchId: payload.batchId,
+    wasteWeight: payload.wasteWeight,
+    outputs: payload.outputs,
+  };
   return apiRequest<CompleteProcessingResponse>(PRODUCT_ROUTES.LIVESTOCK_COMPLETE_PROCESSING, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 

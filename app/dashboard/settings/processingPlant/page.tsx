@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
@@ -12,7 +12,6 @@ import {
   getPendingLivestockProcessing,
   getLivestockItemsByProduct,
   getProducts,
-  restockProduct,
   transferProcessedStock,
   type PendingLivestockProcessingItem,
   sendLivestockToProcessing,
@@ -40,6 +39,24 @@ const PENDING_PROCESSING_QUERY_KEY = ["pendingLivestockProcessing"];
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 const PROCESSED_PRODUCT_TYPE_NAMES = ["processed"];
 const SEND_HISTORY_STORAGE_KEY = "processingPlantSendHistory";
+
+type CompleteOutputLineDraft = {
+  id: string;
+  outletId: string;
+  productId: string;
+  weight: string;
+};
+
+function newCompleteOutputLineId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `col-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function createEmptyCompleteOutputLine(): CompleteOutputLineDraft {
+  return { id: newCompleteOutputLineId(), outletId: "", productId: "", weight: "" };
+}
 
 type ProcessingSendHistoryItem = {
   id: string;
@@ -78,10 +95,10 @@ export default function ProcessingPlantPage() {
   const [sendQuantity, setSendQuantity] = useState("");
   const [sendWeight, setSendWeight] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState("");
-  const [completeOutputWeight, setCompleteOutputWeight] = useState("");
   const [completeWasteWeight, setCompleteWasteWeight] = useState("");
-  const [completeOutletId, setCompleteOutletId] = useState("");
-  const [completeOutputProductId, setCompleteOutputProductId] = useState("");
+  const [completeOutputLines, setCompleteOutputLines] = useState<CompleteOutputLineDraft[]>(() => [
+    createEmptyCompleteOutputLine(),
+  ]);
   const [transferSourceOutletId, setTransferSourceOutletId] = useState("");
   const [transferDestinationOutletId, setTransferDestinationOutletId] = useState("");
   const [transferProductId, setTransferProductId] = useState("");
@@ -283,10 +300,27 @@ export default function ProcessingPlantPage() {
     [processedProducts, transferDestinationOutletId]
   );
 
-  const completeOutletProcessedProducts = useMemo(() => {
-    if (!completeOutletId) return processedProducts;
-    return processedProducts.filter((product) => product.outletId === completeOutletId);
-  }, [processedProducts, completeOutletId]);
+  const processedProductsForOutlet = useCallback(
+    (outletId: string) =>
+      outletId ? processedProducts.filter((product) => product.outletId === outletId) : [],
+    [processedProducts]
+  );
+
+  const completeFormCanSubmit = useMemo(() => {
+    if (!selectedBatchId || !canManageMainFlow) return false;
+    const waste = Number(completeWasteWeight);
+    if (!Number.isFinite(waste) || waste < 0) return false;
+    let hasValidLine = false;
+    for (const line of completeOutputLines) {
+      const touched =
+        Boolean(line.outletId) || Boolean(line.productId) || line.weight.trim() !== "";
+      if (!touched) continue;
+      const w = Number(line.weight);
+      if (!line.outletId || !line.productId || !Number.isFinite(w) || w < 0) return false;
+      hasValidLine = true;
+    }
+    return hasValidLine;
+  }, [selectedBatchId, canManageMainFlow, completeWasteWeight, completeOutputLines]);
 
   const selectedLivestockItem = useMemo(
     () =>
@@ -423,6 +457,7 @@ export default function ProcessingPlantPage() {
       if (batchId) setSelectedBatchId(batchId);
       queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
+      showToast(t("Livestock sent to processing plant successfully."), "success");
     },
     onError: () => {
       showToast(t("Something went wrong. Please try again."));
@@ -459,54 +494,44 @@ export default function ProcessingPlantPage() {
 
   const completeProcessingMutation = useMutation({
     mutationFn: async () => {
-      const outputWeight = Number(completeOutputWeight);
       const wasteWeight = Number(completeWasteWeight);
       if (!selectedBatchId) {
         return { ok: false as const, error: t("Please select batch.") };
-      }
-      if (!completeOutletId) {
-        return { ok: false as const, error: t("Please select outlet.") };
-      }
-      if (!completeOutputProductId) {
-        return { ok: false as const, error: t("Please select output product.") };
-      }
-      if (!Number.isFinite(outputWeight) || outputWeight < 0) {
-        return { ok: false as const, error: t("Output weight must be 0 or greater.") };
       }
       if (!Number.isFinite(wasteWeight) || wasteWeight < 0) {
         return { ok: false as const, error: t("Waste weight must be 0 or greater.") };
       }
 
-      const completeResult = await completeLivestockProcessing({
-        batchId: selectedBatchId,
-        outputWeight,
-        wasteWeight,
-        outletId: completeOutletId,
-        outputProductId: completeOutputProductId,
-      });
-      if (!completeResult.ok) return completeResult;
-
-      // Some deployments mark batch complete but do not reliably add output
-      // stock to the processed product record. We map it explicitly here.
-      if (outputWeight > 0) {
-        const restockResult = await restockProduct({
-          id: completeOutputProductId,
-          outletId: completeOutletId,
-          weight: outputWeight,
-          quantity: outputWeight,
-        });
-        if (!restockResult.ok) {
+      const outputs: { productId: string; weight: number; outletId: string }[] = [];
+      for (const line of completeOutputLines) {
+        const touched =
+          Boolean(line.outletId) || Boolean(line.productId) || line.weight.trim() !== "";
+        if (!touched) continue;
+        const w = Number(line.weight);
+        if (!line.outletId || !line.productId) {
           return {
             ok: false as const,
-            status: restockResult.status,
-            error:
-              restockResult.error ??
-              t("Processing completed, but failed to update processed stock weight."),
+            error: t("Each output line needs outlet and product, or remove empty rows."),
           };
         }
+        if (!Number.isFinite(w) || w < 0) {
+          return { ok: false as const, error: t("Output weight must be 0 or greater.") };
+        }
+        outputs.push({
+          outletId: line.outletId,
+          productId: line.productId,
+          weight: w,
+        });
+      }
+      if (outputs.length === 0) {
+        return { ok: false as const, error: t("Add at least one valid output line.") };
       }
 
-      return completeResult;
+      return completeLivestockProcessing({
+        batchId: selectedBatchId,
+        wasteWeight,
+        outputs,
+      });
     },
     onSuccess: (result) => {
       if (!result.ok) {
@@ -514,10 +539,8 @@ export default function ProcessingPlantPage() {
         return;
       }
       setSelectedBatchId("");
-      setCompleteOutputWeight("");
       setCompleteWasteWeight("");
-      setCompleteOutletId("");
-      setCompleteOutputProductId("");
+      setCompleteOutputLines([createEmptyCompleteOutputLine()]);
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
@@ -648,49 +671,91 @@ export default function ProcessingPlantPage() {
         }
       >
         <div className="ppModalFields">
-          <input
-            className="ppInput"
-            placeholder={t("Enter processing plant name")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <select
-            className="ppInput"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-          >
-            <option value="">{t("Select user")}</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.fullName}
-              </option>
-            ))}
-          </select>
-          <input
-            className="ppInput"
-            placeholder={t("Enter contact")}
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-          />
-          <select
-            className="ppInput"
-            value={status ? "active" : "inactive"}
-            onChange={(e) => setStatus(e.target.value === "active")}
-          >
-            <option value="active">{t("Active")}</option>
-            <option value="inactive">{t("Inactive")}</option>
-          </select>
+          <div className="ppField">
+            <label className="ppLabel" htmlFor="pp-modal-plant-name">
+              {t("Name")}
+            </label>
+            <input
+              id="pp-modal-plant-name"
+              className="ppInput"
+              autoComplete="organization"
+              placeholder={t("Enter processing plant name")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="ppField">
+            <label className="ppLabel" htmlFor="pp-modal-plant-user">
+              {t("User")}
+            </label>
+            <select
+              id="pp-modal-plant-user"
+              className="ppInput"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+            >
+              <option value="">{t("Select user")}</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ppField">
+            <label className="ppLabel" htmlFor="pp-modal-plant-contact">
+              {t("Contact")}
+            </label>
+            <input
+              id="pp-modal-plant-contact"
+              className="ppInput"
+              autoComplete="tel"
+              placeholder={t("Enter contact")}
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+            />
+          </div>
+          <div className="ppField">
+            <label className="ppLabel" htmlFor="pp-modal-plant-status">
+              {t("Status")}
+            </label>
+            <select
+              id="pp-modal-plant-status"
+              className="ppInput"
+              value={status ? "active" : "inactive"}
+              onChange={(e) => setStatus(e.target.value === "active")}
+            >
+              <option value="active">{t("Active")}</option>
+              <option value="inactive">{t("Inactive")}</option>
+            </select>
+          </div>
         </div>
       </Modal>
 
-      <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Send Livestock To Processing Plant")}</h2>
+      <section className="ppSection" aria-labelledby="pp-section-operations-heading">
+        <h2 id="pp-section-operations-heading" className="ppSectionTitle">
+          {t("Operations workflow")}
+        </h2>
+        <p className="ppSectionLead">{t("Send, complete, and move stock through processing.")}</p>
+        <div className="ppSectionGrid">
+      <div className="ppCard ppCardWorkflow">
+        <div className="ppCardHead">
+          <span className="ppStepBadge" aria-hidden>
+            1
+          </span>
+          <div className="ppCardHeadText">
+            <h3 className="ppCardTitle" id="pp-card-send-title">
+              {t("Send Livestock To Processing Plant")}
+            </h3>
+            <p className="ppCardDesc">{t("Queue livestock from inventory to a processing plant.")}</p>
+          </div>
+        </div>
         {!canManageMainFlow && (
-          <p className="ppNotice" role="status">
+          <p className="ppNotice ppNotice--warning" role="status">
             {t("Only Main Outlet can send livestock to processing and complete processing.")}
           </p>
         )}
-        <div className="ppFormGrid">
+        <div className="ppFormGrid" role="group" aria-labelledby="pp-card-send-title">
           <label className="ppField">
             <span className="ppLabel">{t("Processing Plant")}</span>
             <select
@@ -767,106 +832,192 @@ export default function ProcessingPlantPage() {
         </div>
       </div>
 
-      <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Complete Processing")}</h2>
+      <div className="ppCard ppCardWorkflow">
+        <div className="ppCardHead">
+          <span className="ppStepBadge" aria-hidden>
+            2
+          </span>
+          <div className="ppCardHeadText">
+            <h3 className="ppCardTitle" id="pp-card-complete-title">
+              {t("Complete Processing")}
+            </h3>
+            <p className="ppCardDesc">
+              {t("Record output, waste, and post stock to one or more outlets.")}
+            </p>
+          </div>
+        </div>
         {!canManageMainFlow && (
-          <p className="ppNotice" role="status">
+          <p className="ppNotice ppNotice--warning" role="status">
             {t("Only Main Outlet can send livestock to processing and complete processing.")}
           </p>
         )}
-        <div className="ppFormGrid ppFormGridComplete">
-          <label className="ppField">
-            <span className="ppLabel">{t("Batch")}</span>
-            <select
-              className="ppInput"
-              value={selectedBatchId}
-              onChange={(e) => setSelectedBatchId(e.target.value)}
+        <div className="ppCompleteForm" role="group" aria-labelledby="pp-card-complete-title">
+          <div className="ppCompleteFormTop">
+            <label className="ppField">
+              <span className="ppLabel">{t("Batch")}</span>
+              <select
+                className="ppInput"
+                value={selectedBatchId}
+                onChange={(e) => setSelectedBatchId(e.target.value)}
+              >
+                <option value="">{t("Select batch")}</option>
+                {pendingBatches.map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ppField ppFieldNarrow">
+              <span className="ppLabel">{t("Waste Weight")}</span>
+              <input
+                className="ppInput"
+                type="number"
+                min={0}
+                step="any"
+                value={completeWasteWeight}
+                onChange={(e) => setCompleteWasteWeight(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <p className="ppOutputLinesHeading">{t("Output lines")}</p>
+          <div className="ppOutputLines">
+            {completeOutputLines.map((line) => (
+              <div key={line.id} className="ppOutputLineRow">
+                <label className="ppField">
+                  <span className="ppLabel">{t("Outlet")}</span>
+                  <select
+                    className="ppInput"
+                    value={line.outletId}
+                    onChange={(e) => {
+                      const nextOutlet = e.target.value;
+                      setCompleteOutputLines((prev) =>
+                        prev.map((row) =>
+                          row.id === line.id
+                            ? {
+                                ...row,
+                                outletId: nextOutlet,
+                                productId: processedProductsForOutlet(nextOutlet).some(
+                                  (p) => p.id === row.productId
+                                )
+                                  ? row.productId
+                                  : "",
+                              }
+                            : row
+                        )
+                      );
+                    }}
+                  >
+                    <option value="">{t("Select outlet")}</option>
+                    {outlets.map((outlet) => (
+                      <option key={outlet.id} value={outlet.id}>
+                        {outlet.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ppField">
+                  <span className="ppLabel">{t("Output Product")}</span>
+                  <select
+                    className="ppInput"
+                    value={line.productId}
+                    onChange={(e) =>
+                      setCompleteOutputLines((prev) =>
+                        prev.map((row) =>
+                          row.id === line.id ? { ...row, productId: e.target.value } : row
+                        )
+                      )
+                    }
+                    disabled={!line.outletId}
+                  >
+                    <option value="">{t("Select processed product")}</option>
+                    {processedProductsForOutlet(line.outletId).map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ppField ppFieldNarrow">
+                  <span className="ppLabel">{t("Weight")}</span>
+                  <input
+                    className="ppInput"
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={line.weight}
+                    onChange={(e) =>
+                      setCompleteOutputLines((prev) =>
+                        prev.map((row) =>
+                          row.id === line.id ? { ...row, weight: e.target.value } : row
+                        )
+                      )
+                    }
+                  />
+                </label>
+                <div className="ppOutputLineActions">
+                  <button
+                    type="button"
+                    className="ppBtnSecondary ppBtnIconish"
+                    onClick={() =>
+                      setCompleteOutputLines((prev) => {
+                        if (prev.length <= 1) {
+                          return [createEmptyCompleteOutputLine()];
+                        }
+                        return prev.filter((row) => row.id !== line.id);
+                      })
+                    }
+                    aria-label={t("Remove line")}
+                    title={t("Remove line")}
+                  >
+                    {t("Remove line")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="ppCompleteFormFooter">
+            <button
+              type="button"
+              className="ppBtnSecondary"
+              onClick={() =>
+                setCompleteOutputLines((prev) => [...prev, createEmptyCompleteOutputLine()])
+              }
             >
-              <option value="">{t("Select batch")}</option>
-              {pendingBatches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {batch.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ppField ppFieldNarrow">
-            <span className="ppLabel">{t("Output Weight")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={0}
-              step="any"
-              value={completeOutputWeight}
-              onChange={(e) => setCompleteOutputWeight(e.target.value)}
-            />
-          </label>
-          <label className="ppField ppFieldNarrow">
-            <span className="ppLabel">{t("Waste Weight")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={0}
-              step="any"
-              value={completeWasteWeight}
-              onChange={(e) => setCompleteWasteWeight(e.target.value)}
-            />
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("Outlet")}</span>
-            <select
-              className="ppInput"
-              value={completeOutletId}
-              onChange={(e) => setCompleteOutletId(e.target.value)}
+              {t("Add output line")}
+            </button>
+            <button
+              type="button"
+              className="ppBtnPrimary"
+              onClick={() => completeProcessingMutation.mutate()}
+              disabled={completeProcessingMutation.isPending || !completeFormCanSubmit}
             >
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("Output Product")}</span>
-            <select
-              className="ppInput"
-              value={completeOutputProductId}
-              onChange={(e) => setCompleteOutputProductId(e.target.value)}
-            >
-              <option value="">{t("Select processed product")}</option>
-              {completeOutletProcessedProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="ppBtnPrimary"
-            onClick={() => completeProcessingMutation.mutate()}
-            disabled={
-              completeProcessingMutation.isPending ||
-              !canManageMainFlow ||
-              !selectedBatchId ||
-              !completeOutletId ||
-              !completeOutputProductId
-            }
-          >
-            {completeProcessingMutation.isPending ? t("Saving...") : t("Complete")}
-          </button>
+              {completeProcessingMutation.isPending ? t("Saving...") : t("Complete")}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Transfer Processed Stock Between Outlets")}</h2>
+      <div className="ppCard ppCardWorkflow">
+        <div className="ppCardHead">
+          <span className="ppStepBadge" aria-hidden>
+            3
+          </span>
+          <div className="ppCardHeadText">
+            <h3 className="ppCardTitle" id="pp-card-transfer-title">
+              {t("Transfer Processed Stock Between Outlets")}
+            </h3>
+            <p className="ppCardDesc">{t("Move processed inventory from one outlet to another.")}</p>
+          </div>
+        </div>
         {!canManageMainFlow && (
-          <p className="ppNotice" role="status">
+          <p className="ppNotice ppNotice--warning" role="status">
             {t("Only Main Outlet can transfer processed stock between outlets.")}
           </p>
         )}
-        <div className="ppFormGrid">
+        <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
           <label className="ppField">
             <span className="ppLabel">{t("From Outlet")}</span>
             <select
@@ -943,18 +1094,26 @@ export default function ProcessingPlantPage() {
           </button>
         </div>
       </div>
+        </div>
+      </section>
 
+      <section className="ppSection" aria-labelledby="pp-section-registers-heading">
+        <h2 id="pp-section-registers-heading" className="ppSectionTitle">
+          {t("Registers and activity")}
+        </h2>
+        <p className="ppSectionLead">{t("Monitor queues, plants, and recent sends.")}</p>
+        <div className="ppSectionGrid ppSectionGrid--loose">
       <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Pending processing")}</h2>
+        <h3 className="ppCardTitle ppCardTitle--plain">{t("Pending processing")}</h3>
         <div className="ppTableWrap">
           <table className="ppTable">
             <thead>
               <tr>
-                <th>{t("Batch ID")}</th>
-                <th>{t("Processing Plant")}</th>
-                <th>{t("Livestock Item")}</th>
-                <th>{t("Quantity")}</th>
-                <th>{t("Weight")}</th>
+                <th scope="col">{t("Batch ID")}</th>
+                <th scope="col">{t("Processing Plant")}</th>
+                <th scope="col">{t("Livestock Item")}</th>
+                <th scope="col">{t("Quantity")}</th>
+                <th scope="col">{t("Weight")}</th>
               </tr>
             </thead>
             <tbody>
@@ -996,15 +1155,15 @@ export default function ProcessingPlantPage() {
       </div>
 
       <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Registered plants")}</h2>
+        <h3 className="ppCardTitle ppCardTitle--plain">{t("Registered plants")}</h3>
         <div className="ppTableWrap">
           <table className="ppTable">
             <thead>
               <tr>
-                <th>{t("Name")}</th>
-                <th>{t("User ID")}</th>
-                <th>{t("Contact")}</th>
-                <th>{t("Status")}</th>
+                <th scope="col">{t("Name")}</th>
+                <th scope="col">{t("User ID")}</th>
+                <th scope="col">{t("Contact")}</th>
+                <th scope="col">{t("Status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1064,21 +1223,22 @@ export default function ProcessingPlantPage() {
       </div>
 
       <div className="ppCard">
-        <h2 className="ppCardTitle">{t("Send History")}</h2>
+        <h3 className="ppCardTitle ppCardTitle--plain">{t("Send History")}</h3>
         <div className="ppTableWrap">
           <table className="ppTable">
             <thead>
               <tr>
-                <th>{t("Processing Plant")}</th>
-                <th>{t("Livestock Item")}</th>
-                <th>{t("Quantity")}</th>
-                <th>{t("Date")}</th>
+                <th scope="col">{t("Processing Plant")}</th>
+                <th scope="col">{t("Livestock Item")}</th>
+                <th scope="col">{t("Quantity")}</th>
+                <th scope="col">{t("Weight")}</th>
+                <th scope="col">{t("Date")}</th>
               </tr>
             </thead>
             <tbody>
               {sendHistory.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="ppTableEmpty">
+                  <td colSpan={5} className="ppTableEmpty">
                     {t("No send history yet.")}
                   </td>
                 </tr>
@@ -1088,6 +1248,7 @@ export default function ProcessingPlantPage() {
                     <td>{entry.plantName}</td>
                     <td>{entry.livestockItemLabel}</td>
                     <td>{entry.quantity}</td>
+                    <td>{typeof entry.weight === "number" ? entry.weight : "-"}</td>
                     <td>{new Date(entry.createdAt).toLocaleString()}</td>
                   </tr>
                 ))
@@ -1096,6 +1257,8 @@ export default function ProcessingPlantPage() {
           </table>
         </div>
       </div>
+        </div>
+      </section>
     </section>
   );
 }

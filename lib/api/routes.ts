@@ -41,6 +41,8 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_GET_CATEGORY: "/products/livestock/get-category",
   LIVESTOCK_CREATE_ITEM: "/products/livestock/create-item",
   LIVESTOCK_GET_ITEMS_BY_PRODUCT: "/products/livestock/get-items-by-product",
+  LIVESTOCK_RESTOCK: "/products/livestock/restock",
+  LIVESTOCK_DEDUCT: "/products/livestock/deduct",
   LIVESTOCK_UPDATE_ITEM: "/products/livestock/update-item",
   LIVESTOCK_DELETE_ITEM: "/products/livestock/delete-item",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",

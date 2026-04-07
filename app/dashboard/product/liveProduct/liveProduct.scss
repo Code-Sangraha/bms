@@ -144,14 +144,19 @@
 
 .rowActionMenu {
   position: relative;
-  z-index: 5;
+  z-index: 1;
+}
+
+.rowActionMenu.rowActionMenuOpen {
+  z-index: 12000;
 }
 
 .rowMenuTrigger {
   width: 30px;
   height: 30px;
+  padding: 0;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: none;
   background: #ffffff;
   color: #111827;
   font-size: 18px;
@@ -160,6 +165,16 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.rowMenuTrigger:focus-visible {
+  outline: 2px solid rgba(2, 149, 90, 0.5);
+  outline-offset: 2px;
+}
+
+.rowMenuTrigger svg {
+  display: block;
+  pointer-events: none;
 }
 
 .rowMenuTrigger:hover:not(:disabled) {
@@ -173,18 +188,18 @@
 
 .rowMenuDropdown {
   position: absolute;
-  top: 50%;
-  bottom: auto;
-  right: calc(100% + 8px);
+  top: calc(100% + 6px);
+  right: 0;
   left: auto;
-  transform: translateY(-50%);
-  min-width: 120px;
+  bottom: auto;
+  transform: none;
+  min-width: 140px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
   padding: 8px 0;
-  z-index: 999;
+  z-index: 12100;
 }
 
 .rowActionMenuUp .rowMenuDropdown {
@@ -209,6 +224,16 @@
 
 .rowMenuItemDelete {
   color: #dc2626;
+}
+
+.rowMenuItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.rowMenuItem:disabled:hover {
+  background: transparent;
 }
 
 .productActionBtn {
@@ -244,6 +269,34 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.stockAdjustModalItemSummary {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.stockAdjustFieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stockAdjustFieldset legend {
+  margin-bottom: 4px;
+}
+
+.stockAdjustRadioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
 }
 
 .productActionModalError {
@@ -412,8 +465,9 @@
   padding-right: 0;
 }
 
+/* Must stay position: relative so .rowMenuDropdown anchors to this row’s trigger, not .productsTable */
 .rowActionFloating {
-  position: static;
+  position: relative;
   transform: none;
   justify-self: end;
 }
@@ -519,7 +573,7 @@
   }
 
   .rowActionFloating {
-    position: static;
+    position: relative;
     transform: none;
     margin-left: auto;
   }

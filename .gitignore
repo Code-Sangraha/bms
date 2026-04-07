@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Cursor — UI/UX Pro Max skill (not tracked)
+.cursor/skills/ui-ux-pro-max/
+
+# Local project documentation
+doc/

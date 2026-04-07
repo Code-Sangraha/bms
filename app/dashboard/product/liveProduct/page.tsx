@@ -2,19 +2,23 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
+  clearLivestockItemsCache,
   createLivestockItem,
+  deductLivestockItem,
   deleteLivestockItem,
   getLivestockCategories,
   getLivestockItemsByProduct,
+  restockLivestockItem,
   updateLivestockItem,
   type LivestockItem,
 } from "@/handlers/product";
+import { MdMoreHoriz } from "react-icons/md";
 import "./liveProduct.scss";
 
 const LIVESTOCK_CATEGORY_QUERY_KEY = ["livestockCategories"];
@@ -27,6 +31,7 @@ type LivestockFormState = {
   weight: string;
   price: string;
   status: "Active" | "Inactive";
+  isBulk: boolean;
 };
 
 const defaultLivestockForm: LivestockFormState = {
@@ -36,7 +41,10 @@ const defaultLivestockForm: LivestockFormState = {
   weight: "",
   price: "",
   status: "Active",
+  isBulk: false,
 };
+
+type StockAdjustModalState = { item: LivestockItem; mode: "restock" | "deduct" } | null;
 
 function resolveLivestockItemId(item: LivestockItem): string | null {
   const withUnderscore = item as unknown as { _id?: unknown };
@@ -55,6 +63,13 @@ function resolveLivestockRowActionKey(item: LivestockItem, index: number): strin
   return `fallback:${item.productId}:${item.itemId}:${index}`;
 }
 
+function resolveLivestockOutletId(item: LivestockItem): string {
+  const row = item as { outletId?: unknown; outlet?: { id?: unknown } };
+  if (typeof row.outletId === "string" && row.outletId.trim()) return row.outletId.trim();
+  if (row.outlet && typeof row.outlet.id === "string" && row.outlet.id.trim()) return row.outlet.id.trim();
+  return "";
+}
+
 function toFormState(item: LivestockItem): LivestockFormState {
   return {
     productId: item.productId,
@@ -63,6 +78,7 @@ function toFormState(item: LivestockItem): LivestockFormState {
     weight: item.weight != null ? String(item.weight) : "",
     price: item.price != null ? String(item.price) : "",
     status: item.status ? "Active" : "Inactive",
+    isBulk: item.isBulk === true,
   };
 }
 
@@ -88,6 +104,12 @@ export default function LiveProductPage() {
   const [livestockForm, setLivestockForm] = useState<LivestockFormState>(defaultLivestockForm);
   const [editLivestockForm, setEditLivestockForm] = useState<LivestockFormState>(defaultLivestockForm);
   const [editingLivestockId, setEditingLivestockId] = useState<string | null>(null);
+  const [stockAdjustModal, setStockAdjustModal] = useState<StockAdjustModalState>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustIsBulk, setAdjustIsBulk] = useState(false);
+  const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
+  const [openRowMenuKey, setOpenRowMenuKey] = useState<string | null>(null);
+  const rowMenuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: livestockCategories = [],
@@ -114,6 +136,11 @@ export default function LiveProductPage() {
     () => livestockCategories.map((category) => category.id).sort(),
     [livestockCategories]
   );
+
+  const refreshLivestockItems = useCallback(() => {
+    clearLivestockItemsCache();
+    void queryClient.invalidateQueries({ queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds] });
+  }, [queryClient, liveStockProductIds]);
 
   const {
     data: livestockItems = [],
@@ -214,6 +241,25 @@ export default function LiveProductPage() {
     setCurrentPage(1);
   }, [selectedCategoryId, searchQuery, setCurrentPage]);
 
+  useEffect(() => {
+    if (!openRowMenuKey) return;
+    const handlePointerDownOutside = (e: PointerEvent) => {
+      if (
+        rowMenuButtonRef.current &&
+        !rowMenuButtonRef.current.contains(e.target as Node)
+      ) {
+        setOpenRowMenuKey(null);
+      }
+    };
+    const scheduleId = window.setTimeout(() => {
+      document.addEventListener("pointerdown", handlePointerDownOutside);
+    }, 0);
+    return () => {
+      window.clearTimeout(scheduleId);
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+    };
+  }, [openRowMenuKey]);
+
   const paginatedLivestockItems = useMemo(
     () => paginate(orderedLivestockItems, startIndex, endIndex),
     [orderedLivestockItems, startIndex, endIndex]
@@ -224,7 +270,7 @@ export default function LiveProductPage() {
 
   const livestockMutation = useMutation({
     mutationFn: createLivestockItem,
-    onSuccess: (result, variables) => {
+    onSuccess: (result) => {
       setLivestockError(null);
       if (!result.ok) {
         if (result.status === 401) {
@@ -234,67 +280,60 @@ export default function LiveProductPage() {
         setLivestockError(result.error ?? t("Failed to add live stock item"));
         return;
       }
-      const optimisticItem: LivestockItem = {
-        id: result.data?.data?.id ?? result.data?.item?.id ?? `${variables.productId}-${variables.itemId}-${Date.now()}`,
-        productId: variables.productId,
-        name: variables.name,
-        itemId: variables.itemId,
-        weight: variables.itemQuantityOrWeight,
-        itemQuantityOrWeight: variables.itemQuantityOrWeight,
-        isBulk: variables.isBulk,
-        price: variables.price,
-        status: variables.status,
-      };
-      queryClient.setQueryData<LivestockItem[]>(
-        [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
-        (old) => [optimisticItem, ...(old ?? [])]
-      );
       setIsLivestockModalOpen(false);
       setLivestockForm(defaultLivestockForm);
+      refreshLivestockItems();
     },
     onError: () => {
       setLivestockError(t("Something went wrong. Please try again."));
     },
   });
 
-  const updateLivestockMutation = useMutation({
-    mutationFn: updateLivestockItem,
-    onSuccess: (result, variables) => {
-      setEditLivestockError(null);
+  const restockLivestockMutation = useMutation({
+    mutationFn: restockLivestockItem,
+    onSuccess: (result) => {
       if (!result.ok) {
         if (result.status === 401) {
           navigate("/login");
           return;
         }
-        setEditLivestockError(result.error ?? t("Failed to update live stock item"));
+        setStockAdjustError(result.error ?? t("Failed to restock livestock item."));
         return;
       }
-      queryClient.setQueryData<LivestockItem[]>(
-        [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
-        (old) =>
-          (old ?? []).map((item) => {
-            const id = resolveLivestockItemId(item);
-            if (id !== variables.id) return item;
-            return {
-              ...item,
-              ...variables,
-              weight: variables.weight,
-              itemQuantityOrWeight: variables.weight,
-            };
-          })
-      );
-      setIsEditLivestockModalOpen(false);
-      setEditingLivestockId(null);
-      setEditLivestockForm(defaultLivestockForm);
+      setStockAdjustError(null);
+      setStockAdjustModal(null);
+      setAdjustAmount("");
+      refreshLivestockItems();
     },
     onError: () => {
-      setEditLivestockError(t("Something went wrong. Please try again."));
+      setStockAdjustError(t("Something went wrong. Please try again."));
+    },
+  });
+
+  const deductLivestockMutation = useMutation({
+    mutationFn: deductLivestockItem,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        if (result.status === 401) {
+          navigate("/login");
+          return;
+        }
+        setStockAdjustError(result.error ?? t("Failed to deduct livestock item."));
+        return;
+      }
+      setStockAdjustError(null);
+      setStockAdjustModal(null);
+      setAdjustAmount("");
+      refreshLivestockItems();
+    },
+    onError: () => {
+      setStockAdjustError(t("Something went wrong. Please try again."));
     },
   });
 
   const deleteLivestockMutation = useMutation({
-    mutationFn: (id: string) => deleteLivestockItem({ id }),
-    onSuccess: (result, id) => {
+    mutationFn: (productId: string) => deleteLivestockItem({ productId }),
+    onSuccess: (result) => {
       if (!result.ok) {
         if (result.status === 401) {
           navigate("/login");
@@ -304,13 +343,32 @@ export default function LiveProductPage() {
         return;
       }
       setRowActionError(null);
-      queryClient.setQueryData<LivestockItem[]>(
-        [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
-        (old) => (old ?? []).filter((item) => resolveLivestockItemId(item) !== id)
-      );
+      refreshLivestockItems();
     },
     onError: () => {
       setRowActionError(t("Something went wrong. Please try again."));
+    },
+  });
+
+  const updateLivestockMutation = useMutation({
+    mutationFn: updateLivestockItem,
+    onSuccess: (result) => {
+      setEditLivestockError(null);
+      if (!result.ok) {
+        if (result.status === 401) {
+          navigate("/login");
+          return;
+        }
+        setEditLivestockError(result.error ?? t("Failed to update live stock item"));
+        return;
+      }
+      setIsEditLivestockModalOpen(false);
+      setEditingLivestockId(null);
+      setEditLivestockForm(defaultLivestockForm);
+      refreshLivestockItems();
+    },
+    onError: () => {
+      setEditLivestockError(t("Something went wrong. Please try again."));
     },
   });
 
@@ -347,8 +405,24 @@ export default function LiveProductPage() {
     livestockMutation.mutate(payload);
   };
 
+  const handleOpenEdit = (item: LivestockItem) => {
+    const id = resolveLivestockItemId(item);
+    if (!id) {
+      setRowActionError(t("Unable to edit this row because item ID is missing from API response."));
+      return;
+    }
+    setEditingLivestockId(id);
+    setEditLivestockForm(toFormState(item));
+    setEditLivestockError(null);
+    setRowActionError(null);
+    setOpenRowMenuKey(null);
+    setIsEditLivestockModalOpen(true);
+  };
+
   const handleSubmitEditLivestock = () => {
     if (!editingLivestockId) return;
+    const sourceItem = livestockItems.find((row) => resolveLivestockItemId(row) === editingLivestockId);
+    const outletId = sourceItem ? resolveLivestockOutletId(sourceItem) : "";
     const trimmedName = editLivestockForm.name.trim();
     const trimmedItemId = editLivestockForm.itemId.trim();
     const weight = Number(editLivestockForm.weight);
@@ -366,35 +440,71 @@ export default function LiveProductPage() {
       name: trimmedName,
       itemId: trimmedItemId,
       productId: editLivestockForm.productId,
-      weight,
+      outletId,
+      itemQuantityOrWeight: weight,
       price,
       status: editLivestockForm.status === "Active",
+      isBulk: editLivestockForm.isBulk,
     });
   };
 
-  const handleOpenEdit = (item: LivestockItem) => {
+  const openStockAdjustModal = (item: LivestockItem, mode: "restock" | "deduct") => {
     const id = resolveLivestockItemId(item);
     if (!id) {
-      setRowActionError(t("Unable to edit this row because item ID is missing from API response."));
+      setRowActionError(t("Unable to adjust this row because item ID is missing from API response."));
       return;
     }
-    setEditingLivestockId(id);
-    setEditLivestockForm(toFormState(item));
-    setEditLivestockError(null);
     setRowActionError(null);
-    setIsEditLivestockModalOpen(true);
+    setStockAdjustError(null);
+    setStockAdjustModal({ item, mode });
+    setAdjustAmount("");
+    setAdjustIsBulk(item.isBulk === true);
+    setOpenRowMenuKey(null);
+  };
+
+  const closeStockAdjustModal = () => {
+    setStockAdjustModal(null);
+    setAdjustAmount("");
+    setStockAdjustError(null);
+  };
+
+  const handleSubmitStockAdjust = () => {
+    if (!stockAdjustModal) return;
+    const id = resolveLivestockItemId(stockAdjustModal.item);
+    if (!id) {
+      setStockAdjustError(t("Unable to adjust this row because item ID is missing from API response."));
+      return;
+    }
+    const amount = Number(adjustAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setStockAdjustError(t("Amount must be greater than 0."));
+      return;
+    }
+    setStockAdjustError(null);
+    const payload = { livestockItemId: id, isBulk: adjustIsBulk, amount };
+    if (stockAdjustModal.mode === "restock") {
+      restockLivestockMutation.mutate(payload);
+    } else {
+      deductLivestockMutation.mutate(payload);
+    }
   };
 
   const handleDelete = (item: LivestockItem) => {
-    const id = resolveLivestockItemId(item);
-    if (!id) {
+    const productId = resolveLivestockItemId(item);
+    if (!productId) {
       setRowActionError(t("Unable to delete this row because item ID is missing from API response."));
       return;
     }
     const confirmed = window.confirm(t("Are you sure you want to delete this live stock item?"));
     if (!confirmed) return;
-    deleteLivestockMutation.mutate(id);
+    deleteLivestockMutation.mutate(productId);
   };
+
+  const rowActionMutationsPending =
+    updateLivestockMutation.isPending ||
+    deleteLivestockMutation.isPending ||
+    restockLivestockMutation.isPending ||
+    deductLivestockMutation.isPending;
 
   return (
     <section className="liveProductPage">
@@ -525,22 +635,84 @@ export default function LiveProductPage() {
               <span>{item.weight}</span>
               <span>{item.price}</span>
               <div className="productsRowActions">
-                <button
-                  type="button"
-                  className="productActionBtn productActionRestock"
-                  onClick={() => handleOpenEdit(item)}
-                  disabled={updateLivestockMutation.isPending || deleteLivestockMutation.isPending}
+                <div
+                  className={`rowActionMenu rowActionFloating${openRowMenuKey === rowKey ? " rowActionMenuOpen" : ""}`}
+                  ref={openRowMenuKey === rowKey ? rowMenuButtonRef : undefined}
                 >
-                  {t("Edit")}
-                </button>
-                <button
-                  type="button"
-                  className="productActionBtn productActionDeduct"
-                  onClick={() => handleDelete(item)}
-                  disabled={updateLivestockMutation.isPending || deleteLivestockMutation.isPending}
-                >
-                  {t("Delete")}
-                </button>
+                  <button
+                    type="button"
+                    className="rowMenuTrigger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenRowMenuKey((k) => (k === rowKey ? null : rowKey));
+                    }}
+                    aria-label={t("More options")}
+                    aria-expanded={openRowMenuKey === rowKey}
+                    aria-haspopup="menu"
+                  >
+                    <MdMoreHoriz aria-hidden size={22} />
+                  </button>
+                  {openRowMenuKey === rowKey && (
+                    <div className="rowMenuDropdown" role="menu">
+                      <button
+                        type="button"
+                        className="rowMenuItem"
+                        role="menuitem"
+                        disabled={rowActionMutationsPending}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (rowActionMutationsPending) return;
+                          setOpenRowMenuKey(null);
+                          handleOpenEdit(item);
+                        }}
+                      >
+                        {t("Edit")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rowMenuItem"
+                        role="menuitem"
+                        disabled={rowActionMutationsPending}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (rowActionMutationsPending) return;
+                          setOpenRowMenuKey(null);
+                          openStockAdjustModal(item, "restock");
+                        }}
+                      >
+                        {t("Restock")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rowMenuItem"
+                        role="menuitem"
+                        disabled={rowActionMutationsPending}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (rowActionMutationsPending) return;
+                          setOpenRowMenuKey(null);
+                          openStockAdjustModal(item, "deduct");
+                        }}
+                      >
+                        {t("Deduct")}
+                      </button>
+                      <button
+                        type="button"
+                        className="rowMenuItem rowMenuItemDelete"
+                        role="menuitem"
+                        disabled={rowActionMutationsPending}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (rowActionMutationsPending) return;
+                          setOpenRowMenuKey(null);
+                          handleDelete(item);
+                        }}
+                      >
+                        {t("Delete")}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -786,6 +958,110 @@ export default function LiveProductPage() {
               <option value="Active">{t("Active")}</option>
               <option value="Inactive">{t("Inactive")}</option>
             </select>
+          </label>
+          <fieldset className="stockAdjustFieldset">
+            <legend className="productActionModalLabel">{t("Amount measures")}</legend>
+            <label className="stockAdjustRadioLabel">
+              <input
+                type="radio"
+                name="editIsBulk"
+                checked={editLivestockForm.isBulk}
+                onChange={() => setEditLivestockForm((prev) => ({ ...prev, isBulk: true }))}
+              />
+              {t("Head count (bulk)")}
+            </label>
+            <label className="stockAdjustRadioLabel">
+              <input
+                type="radio"
+                name="editIsBulk"
+                checked={!editLivestockForm.isBulk}
+                onChange={() => setEditLivestockForm((prev) => ({ ...prev, isBulk: false }))}
+              />
+              {t("Weight (kg)")}
+            </label>
+          </fieldset>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={stockAdjustModal != null}
+        title={
+          stockAdjustModal?.mode === "deduct"
+            ? t("Deduct livestock stock")
+            : t("Restock livestock item")
+        }
+        subtitle={
+          stockAdjustModal?.mode === "deduct"
+            ? t("Amount is subtracted using the same unit rules as restock (head count vs kg).")
+            : t("Amount is added as head count when bulk, or as kg when not bulk.")
+        }
+        onClose={closeStockAdjustModal}
+        footer={
+          <div className="productActionModalFooter">
+            <button type="button" className="productActionModalCancel" onClick={closeStockAdjustModal}>
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              className="productActionModalSubmit"
+              onClick={handleSubmitStockAdjust}
+              disabled={
+                restockLivestockMutation.isPending ||
+                deductLivestockMutation.isPending ||
+                !adjustAmount.trim() ||
+                Number(adjustAmount) <= 0
+              }
+            >
+              {restockLivestockMutation.isPending || deductLivestockMutation.isPending
+                ? t("Saving…")
+                : stockAdjustModal?.mode === "deduct"
+                  ? t("Deduct")
+                  : t("Restock")}
+            </button>
+          </div>
+        }
+      >
+        <div className="productActionModalBody">
+          {stockAdjustModal && (
+            <p className="stockAdjustModalItemSummary">
+              <strong>{stockAdjustModal.item.name}</strong>
+              {" · "}
+              {t("Item ID")}: {stockAdjustModal.item.itemId}
+            </p>
+          )}
+          {stockAdjustError && <p className="productActionModalError">{stockAdjustError}</p>}
+          <fieldset className="stockAdjustFieldset">
+            <legend className="productActionModalLabel">{t("Amount measures")}</legend>
+            <label className="stockAdjustRadioLabel">
+              <input
+                type="radio"
+                name="adjustIsBulk"
+                checked={adjustIsBulk}
+                onChange={() => setAdjustIsBulk(true)}
+              />
+              {t("Head count (bulk)")}
+            </label>
+            <label className="stockAdjustRadioLabel">
+              <input
+                type="radio"
+                name="adjustIsBulk"
+                checked={!adjustIsBulk}
+                onChange={() => setAdjustIsBulk(false)}
+              />
+              {t("Weight (kg)")}
+            </label>
+          </fieldset>
+          <label className="productActionModalLabel">
+            {t("Amount")}
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={adjustAmount}
+              onChange={(e) => setAdjustAmount(e.target.value)}
+              className="productActionModalInput"
+              placeholder={adjustIsBulk ? t("Head count") : t("Kilograms")}
+            />
           </label>
         </div>
       </Modal>
