@@ -9,6 +9,7 @@ import {
   deleteLivestockItem,
   getLivestockItemsByProduct,
   getProducts,
+  resolveLivestockDeleteKey,
   type LivestockItem,
   type Product,
 } from "@/handlers/product";
@@ -31,6 +32,8 @@ type LivestockLineItem = {
   name: string;
   contact: string;
   livestockItemId: string;
+  /** Human-readable itemId for POST delete-item `productId` field. */
+  livestockStockDeleteKey: string;
   livestockItemLabel: string;
   weight: number;
   amount: number;
@@ -212,12 +215,24 @@ export default function LivestockSalesPage() {
       return;
     }
 
+    const selectedRow = livestockItems.find(
+      (row) => resolveLivestockItemId(row) === selectedLivestockItemId.trim()
+    );
+    const stockDeleteKey = selectedRow ? resolveLivestockDeleteKey(selectedRow) : null;
+    if (!stockDeleteKey) {
+      setLivestockError(
+        t("Selected livestock item has no item ID code; it cannot be removed from stock after sale.")
+      );
+      return;
+    }
+
     setLivestockLineItems((prev) => [
       ...prev,
       {
         name: customerName.trim(),
         contact: customerContact.trim(),
         livestockItemId: selectedLivestockItemId.trim(),
+        livestockStockDeleteKey: stockDeleteKey,
         livestockItemLabel:
           livestockOptionMap.get(selectedLivestockItemId.trim()) ?? selectedLivestockItemId.trim(),
         weight: parsedWeight,
@@ -238,9 +253,9 @@ export default function LivestockSalesPage() {
     mutationFn: (items: LivestockSalePayload[]) => createLivestockSale(items),
     onSuccess: async (result) => {
       if (result.ok) {
-        const soldItemIds = [...new Set(livestockLineItems.map((item) => item.livestockItemId))];
+        const soldDeleteKeys = [...new Set(livestockLineItems.map((item) => item.livestockStockDeleteKey))];
         const deleteResults = await Promise.all(
-          soldItemIds.map((id) => deleteLivestockItem({ productId: id }))
+          soldDeleteKeys.map((key) => deleteLivestockItem({ productId: key }))
         );
         const hasDeleteError = deleteResults.some((res) => !res.ok);
 

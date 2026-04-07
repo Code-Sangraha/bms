@@ -202,6 +202,13 @@
   z-index: 12100;
 }
 
+/* Portaled to document.body — escapes .productsTable overflow clipping */
+.rowMenuDropdownPortal {
+  left: auto;
+  bottom: auto;
+  transform: none;
+}
+
 .rowActionMenuUp .rowMenuDropdown {
   top: 50%;
   bottom: auto;

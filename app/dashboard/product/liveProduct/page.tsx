@@ -2,9 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
+import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
@@ -14,6 +16,7 @@ import {
   deleteLivestockItem,
   getLivestockCategories,
   getLivestockItemsByProduct,
+  resolveLivestockDeleteKey,
   restockLivestockItem,
   updateLivestockItem,
   type LivestockItem,
@@ -45,6 +48,63 @@ const defaultLivestockForm: LivestockFormState = {
 };
 
 type StockAdjustModalState = { item: LivestockItem; mode: "restock" | "deduct" } | null;
+
+const ROW_MENU_GAP_PX = 6;
+/** Used before the portaled menu is measured; keeps last rows from opening downward into the fold. */
+const ROW_MENU_HEIGHT_ESTIMATE_PX = 200;
+
+type OpenRowMenuState = {
+  rowKey: string;
+  item: LivestockItem;
+  placement: "above" | "below";
+  top: number;
+  bottom: number;
+  right: number;
+};
+
+function computeRowMenuPosition(
+  rect: DOMRect,
+  menuHeight: number
+): Pick<OpenRowMenuState, "placement" | "top" | "bottom" | "right"> {
+  const viewportH = window.innerHeight;
+  const right = document.documentElement.clientWidth - rect.right;
+  const spaceBelow = viewportH - rect.bottom - ROW_MENU_GAP_PX;
+  const spaceAbove = rect.top - ROW_MENU_GAP_PX;
+
+  const fitsBelow = spaceBelow >= menuHeight;
+  const fitsAbove = spaceAbove >= menuHeight;
+
+  if (fitsBelow) {
+    return {
+      placement: "below",
+      top: rect.bottom + ROW_MENU_GAP_PX,
+      bottom: 0,
+      right,
+    };
+  }
+  if (fitsAbove) {
+    return {
+      placement: "above",
+      top: 0,
+      bottom: viewportH - rect.top + ROW_MENU_GAP_PX,
+      right,
+    };
+  }
+  if (spaceAbove > spaceBelow) {
+    return {
+      placement: "above",
+      top: 0,
+      bottom: viewportH - rect.top + ROW_MENU_GAP_PX,
+      right,
+    };
+  }
+  return {
+    placement: "below",
+    top: rect.bottom + ROW_MENU_GAP_PX,
+    bottom: 0,
+    right,
+  };
+}
 
 function resolveLivestockItemId(item: LivestockItem): string | null {
   const withUnderscore = item as unknown as { _id?: unknown };
@@ -108,8 +168,10 @@ export default function LiveProductPage() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustIsBulk, setAdjustIsBulk] = useState(false);
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
-  const [openRowMenuKey, setOpenRowMenuKey] = useState<string | null>(null);
+  const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
+  const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
+  const rowMenuPortalRef = useRef<HTMLDivElement>(null);
 
   const {
     data: livestockCategories = [],
@@ -241,15 +303,51 @@ export default function LiveProductPage() {
     setCurrentPage(1);
   }, [selectedCategoryId, searchQuery, setCurrentPage]);
 
+  const closeRowMenu = useCallback(() => {
+    setOpenRowMenu(null);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!openRowMenu) return;
+    const syncMenuPosition = () => {
+      const wrap = rowMenuButtonRef.current;
+      const btn = wrap?.querySelector<HTMLButtonElement>(".rowMenuTrigger");
+      if (!wrap || !btn) return;
+      const rect = btn.getBoundingClientRect();
+      const menuEl = rowMenuPortalRef.current;
+      const measured = menuEl?.offsetHeight ?? 0;
+      const h = Math.max(measured, ROW_MENU_HEIGHT_ESTIMATE_PX);
+      const pos = computeRowMenuPosition(rect, h);
+      setOpenRowMenu((prev) =>
+        prev
+          ? {
+              ...prev,
+              placement: pos.placement,
+              top: pos.top,
+              bottom: pos.bottom,
+              right: pos.right,
+            }
+          : null
+      );
+    };
+    syncMenuPosition();
+    const raf = requestAnimationFrame(() => syncMenuPosition());
+    window.addEventListener("scroll", syncMenuPosition, true);
+    window.addEventListener("resize", syncMenuPosition);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", syncMenuPosition, true);
+      window.removeEventListener("resize", syncMenuPosition);
+    };
+  }, [openRowMenu?.rowKey]);
+
   useEffect(() => {
-    if (!openRowMenuKey) return;
+    if (!openRowMenu) return;
     const handlePointerDownOutside = (e: PointerEvent) => {
-      if (
-        rowMenuButtonRef.current &&
-        !rowMenuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenRowMenuKey(null);
-      }
+      const target = e.target as Node;
+      if (rowMenuButtonRef.current?.contains(target)) return;
+      if (rowMenuPortalRef.current?.contains(target)) return;
+      closeRowMenu();
     };
     const scheduleId = window.setTimeout(() => {
       document.addEventListener("pointerdown", handlePointerDownOutside);
@@ -258,7 +356,7 @@ export default function LiveProductPage() {
       window.clearTimeout(scheduleId);
       document.removeEventListener("pointerdown", handlePointerDownOutside);
     };
-  }, [openRowMenuKey]);
+  }, [openRowMenu, closeRowMenu]);
 
   const paginatedLivestockItems = useMemo(
     () => paginate(orderedLivestockItems, startIndex, endIndex),
@@ -332,7 +430,7 @@ export default function LiveProductPage() {
   });
 
   const deleteLivestockMutation = useMutation({
-    mutationFn: (productId: string) => deleteLivestockItem({ productId }),
+    mutationFn: (deleteKey: string) => deleteLivestockItem({ productId: deleteKey }),
     onSuccess: (result) => {
       if (!result.ok) {
         if (result.status === 401) {
@@ -343,6 +441,7 @@ export default function LiveProductPage() {
         return;
       }
       setRowActionError(null);
+      setItemPendingDelete(null);
       refreshLivestockItems();
     },
     onError: () => {
@@ -415,7 +514,7 @@ export default function LiveProductPage() {
     setEditLivestockForm(toFormState(item));
     setEditLivestockError(null);
     setRowActionError(null);
-    setOpenRowMenuKey(null);
+    closeRowMenu();
     setIsEditLivestockModalOpen(true);
   };
 
@@ -459,7 +558,7 @@ export default function LiveProductPage() {
     setStockAdjustModal({ item, mode });
     setAdjustAmount("");
     setAdjustIsBulk(item.isBulk === true);
-    setOpenRowMenuKey(null);
+    closeRowMenu();
   };
 
   const closeStockAdjustModal = () => {
@@ -489,15 +588,29 @@ export default function LiveProductPage() {
     }
   };
 
-  const handleDelete = (item: LivestockItem) => {
-    const productId = resolveLivestockItemId(item);
-    if (!productId) {
-      setRowActionError(t("Unable to delete this row because item ID is missing from API response."));
+  const requestDeleteItem = (item: LivestockItem) => {
+    const deleteKey = resolveLivestockDeleteKey(item);
+    if (!deleteKey) {
+      setRowActionError(
+        t("Unable to delete: this item has no item ID code in the API response.")
+      );
       return;
     }
-    const confirmed = window.confirm(t("Are you sure you want to delete this live stock item?"));
-    if (!confirmed) return;
-    deleteLivestockMutation.mutate(productId);
+    setRowActionError(null);
+    setItemPendingDelete(item);
+    closeRowMenu();
+  };
+
+  const confirmDeleteItem = () => {
+    if (!itemPendingDelete) return;
+    const deleteKey = resolveLivestockDeleteKey(itemPendingDelete);
+    if (!deleteKey) return;
+    deleteLivestockMutation.mutate(deleteKey);
+  };
+
+  const closeDeleteConfirmModal = () => {
+    if (deleteLivestockMutation.isPending) return;
+    setItemPendingDelete(null);
   };
 
   const rowActionMutationsPending =
@@ -636,88 +749,125 @@ export default function LiveProductPage() {
               <span>{item.price}</span>
               <div className="productsRowActions">
                 <div
-                  className={`rowActionMenu rowActionFloating${openRowMenuKey === rowKey ? " rowActionMenuOpen" : ""}`}
-                  ref={openRowMenuKey === rowKey ? rowMenuButtonRef : undefined}
+                  className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
+                  ref={openRowMenu?.rowKey === rowKey ? rowMenuButtonRef : undefined}
                 >
                   <button
                     type="button"
                     className="rowMenuTrigger"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOpenRowMenuKey((k) => (k === rowKey ? null : rowKey));
+                      const trigger = e.currentTarget;
+                      const rect = trigger.getBoundingClientRect();
+                      setOpenRowMenu((prev) => {
+                        if (prev?.rowKey === rowKey) return null;
+                        const pos = computeRowMenuPosition(rect, ROW_MENU_HEIGHT_ESTIMATE_PX);
+                        return {
+                          rowKey,
+                          item,
+                          placement: pos.placement,
+                          top: pos.top,
+                          bottom: pos.bottom,
+                          right: pos.right,
+                        };
+                      });
                     }}
                     aria-label={t("More options")}
-                    aria-expanded={openRowMenuKey === rowKey}
+                    aria-expanded={openRowMenu?.rowKey === rowKey}
                     aria-haspopup="menu"
                   >
                     <MdMoreHoriz aria-hidden size={22} />
                   </button>
-                  {openRowMenuKey === rowKey && (
-                    <div className="rowMenuDropdown" role="menu">
-                      <button
-                        type="button"
-                        className="rowMenuItem"
-                        role="menuitem"
-                        disabled={rowActionMutationsPending}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          if (rowActionMutationsPending) return;
-                          setOpenRowMenuKey(null);
-                          handleOpenEdit(item);
-                        }}
-                      >
-                        {t("Edit")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rowMenuItem"
-                        role="menuitem"
-                        disabled={rowActionMutationsPending}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          if (rowActionMutationsPending) return;
-                          setOpenRowMenuKey(null);
-                          openStockAdjustModal(item, "restock");
-                        }}
-                      >
-                        {t("Restock")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rowMenuItem"
-                        role="menuitem"
-                        disabled={rowActionMutationsPending}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          if (rowActionMutationsPending) return;
-                          setOpenRowMenuKey(null);
-                          openStockAdjustModal(item, "deduct");
-                        }}
-                      >
-                        {t("Deduct")}
-                      </button>
-                      <button
-                        type="button"
-                        className="rowMenuItem rowMenuItemDelete"
-                        role="menuitem"
-                        disabled={rowActionMutationsPending}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          if (rowActionMutationsPending) return;
-                          setOpenRowMenuKey(null);
-                          handleDelete(item);
-                        }}
-                      >
-                        {t("Delete")}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           );
           })}
       </div>
+
+      {openRowMenu &&
+        createPortal(
+          <div
+            ref={rowMenuPortalRef}
+            className="rowMenuDropdown rowMenuDropdownPortal"
+            style={
+              openRowMenu.placement === "below"
+                ? {
+                    position: "fixed",
+                    top: openRowMenu.top,
+                    right: openRowMenu.right,
+                    bottom: "auto",
+                    zIndex: 20000,
+                  }
+                : {
+                    position: "fixed",
+                    bottom: openRowMenu.bottom,
+                    right: openRowMenu.right,
+                    top: "auto",
+                    zIndex: 20000,
+                  }
+            }
+            role="menu"
+          >
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowActionMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowActionMutationsPending) return;
+                closeRowMenu();
+                handleOpenEdit(openRowMenu.item);
+              }}
+            >
+              {t("Edit")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowActionMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowActionMutationsPending) return;
+                closeRowMenu();
+                openStockAdjustModal(openRowMenu.item, "restock");
+              }}
+            >
+              {t("Restock")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowActionMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowActionMutationsPending) return;
+                closeRowMenu();
+                openStockAdjustModal(openRowMenu.item, "deduct");
+              }}
+            >
+              {t("Deduct")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem rowMenuItemDelete"
+              role="menuitem"
+              disabled={rowActionMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowActionMutationsPending) return;
+                closeRowMenu();
+                requestDeleteItem(openRowMenu.item);
+              }}
+            >
+              {t("Delete")}
+            </button>
+          </div>,
+          document.body
+        )}
 
       {!categoryLoading &&
         !categoryError &&
@@ -1065,6 +1215,22 @@ export default function LiveProductPage() {
           </label>
         </div>
       </Modal>
+
+      <ConfirmModal
+        isOpen={itemPendingDelete != null}
+        title={t("Delete live stock item")}
+        message={
+          itemPendingDelete
+            ? `${t("Are you sure you want to delete this live stock item?")} "${itemPendingDelete.name}" (${t("Item ID")}: ${itemPendingDelete.itemId}). ${t("This action cannot be undone.")}`
+            : ""
+        }
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
+        variant="danger"
+        loading={deleteLivestockMutation.isPending}
+        onClose={closeDeleteConfirmModal}
+        onConfirm={confirmDeleteItem}
+      />
     </section>
   );
 }

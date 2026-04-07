@@ -40,6 +40,11 @@ type I18nContextValue = {
   "Unable to edit this row because item ID is missing from API response.": "API response मा item ID नभएकाले यो पंक्ति सम्पादन गर्न सकिएन।",
   "Unable to delete this row because item ID is missing from API response.": "API response मा item ID नभएकाले यो पंक्ति मेटाउन सकिएन।",
   "Are you sure you want to delete this live stock item?": "के तपाईं यो लाइभ स्टक आइटम मेटाउन निश्चित हुनुहुन्छ?",
+  "Delete live stock item": "लाइभ स्टक आइटम मेटाउनुहोस्",
+  "Unable to delete: this item has no item ID code in the API response.":
+    "मेटाउन सकिएन: API response मा यस आइटमको item ID कोड छैन।",
+  "Selected livestock item has no item ID code; it cannot be removed from stock after sale.":
+    "छानिएको लाइभस्टक आइटममा item ID कोड छैन; बिक्री पछि स्टकबाट हटाउन सकिँदैन।",
   "Update Live Stock Item": "लाइभ स्टक आइटम अपडेट गर्नुहोस्",
   "Update selected live stock item details": "छानिएको लाइभ स्टक आइटमको विवरण अपडेट गर्नुहोस्",
   "Create a live stock item and map it to product category": "लाइभ स्टक आइटम सिर्जना गरी उत्पादन कोटीसँग जोड्नुहोस्",
@@ -485,6 +490,11 @@ const translations: Record<string, string> = {
   "No live products yet.": "अहिलेसम्म कुनै ताजा उत्पादन छैन।",
   Restock: "पुनः भण्डारण",
   Deduct: "कटौती",
+  "Delete live stock item": "लाइभ स्टक आइटम मेटाउनुहोस्",
+  "Unable to delete: this item has no item ID code in the API response.":
+    "मेटाउन सकिएन: API response मा यस आइटमको item ID कोड छैन।",
+  "Selected livestock item has no item ID code; it cannot be removed from stock after sale.":
+    "छानिएको लाइभस्टक आइटममा item ID कोड छैन; बिक्री पछि स्टकबाट हटाउन सकिँदैन।",
   "Enter quantity": "परिमाण प्रविष्ट गर्नुहोस्",
   "Processed Products": "प्रशोधित उत्पादनहरू",
   "Products of type Processed": "प्रशोधित प्रकारका उत्पादनहरू",

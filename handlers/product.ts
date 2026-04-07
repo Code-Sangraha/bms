@@ -630,11 +630,18 @@ export async function deductLivestockItem(payload: LivestockRestockDeductPayload
 
 /**
  * POST /products/livestock/delete-item
- * Backend reads the livestock line id from JSON field `productId` (naming as implemented server-side).
+ * JSON field is named `productId`, but the backend uses its value as the human-readable **itemId**
+ * string (e.g. "ITEM-001") for the DB query — not the record UUID.
  */
 export type DeleteLivestockItemPayload = {
   productId: string;
 };
+
+/** Value to send as `productId` on delete-item: trimmed `item.itemId` from the list API. */
+export function resolveLivestockDeleteKey(item: LivestockItem): string | null {
+  if (typeof item.itemId === "string" && item.itemId.trim()) return item.itemId.trim();
+  return null;
+}
 
 export type DeleteLivestockItemResponse = {
   success?: boolean;
