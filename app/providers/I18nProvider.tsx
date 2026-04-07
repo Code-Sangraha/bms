@@ -544,6 +544,7 @@ const translations: Record<string, string> = {
   "Output weight must be 0 or greater.": "आउटपुट तौल ० वा सोभन्दा बढी हुनुपर्छ।",
   "Waste weight must be 0 or greater.": "फोहोर तौल ० वा सोभन्दा बढी हुनुपर्छ।",
   "Failed to complete processing.": "प्रशोधन पूरा गर्न सकिएन।",
+  "Processing completed successfully.": "प्रशोधन सफलतापूर्वक पूरा भयो।",
   "Processing completed, but failed to update processed stock weight.":
     "प्रशोधन पूरा भयो, तर प्रशोधित स्टक तौल अद्यावधिक गर्न सकिएन।",
   "Please select source outlet.": "कृपया स्रोत आउटलेट छान्नुहोस्।",

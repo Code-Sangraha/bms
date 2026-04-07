@@ -538,6 +538,7 @@ export default function ProcessingPlantPage() {
         showToast(result.error ?? t("Failed to complete processing."));
         return;
       }
+      showToast(t("Processing completed successfully."), "success");
       setSelectedBatchId("");
       setCompleteWasteWeight("");
       setCompleteOutputLines([createEmptyCompleteOutputLine()]);
@@ -1000,6 +1001,11 @@ export default function ProcessingPlantPage() {
         </div>
       </div>
 
+      {/*
+      Transfer Processed Stock Between Outlets — UI disabled; restore by replacing the block below with this card.
+      <div className="ppCard ppCardWorkflow"> ... </div>
+      */}
+      {false && (
       <div className="ppCard ppCardWorkflow">
         <div className="ppCardHead">
           <span className="ppStepBadge" aria-hidden>
@@ -1094,6 +1100,7 @@ export default function ProcessingPlantPage() {
           </button>
         </div>
       </div>
+      )}
         </div>
       </section>
 
