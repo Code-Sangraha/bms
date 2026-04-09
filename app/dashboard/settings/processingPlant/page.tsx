@@ -400,7 +400,6 @@ export default function ProcessingPlantPage() {
       }
       const availableAmount = Number(currentItem.itemQuantityOrWeight ?? currentItem.weight ?? 0);
       if (
-        currentItem.isBulk &&
         Number.isFinite(availableAmount) &&
         availableAmount > 0 &&
         qty > availableAmount
@@ -414,7 +413,7 @@ export default function ProcessingPlantPage() {
       return sendLivestockToProcessing({
         livestockItemId: selectedLivestockItemId,
         plantId: selectedPlantId,
-        quantity: currentItem.isBulk ? qty : 1,
+        quantity: qty,
         weight,
       });
     },
@@ -441,7 +440,7 @@ export default function ProcessingPlantPage() {
         livestockItemLabel: selectedItem
           ? `${selectedItem.itemId} - ${selectedItem.name}`
           : selectedLivestockItemId,
-        quantity: selectedLivestockItem?.isBulk ? Number(sendQuantity) : 1,
+        quantity: Number(sendQuantity),
         weight: Number(sendWeight),
         createdAt: new Date().toISOString(),
       };
@@ -466,14 +465,10 @@ export default function ProcessingPlantPage() {
 
   useEffect(() => {
     if (!selectedLivestockItem) return;
-    if (selectedLivestockItem.isBulk) {
-      const available = Number(
-        selectedLivestockItem.itemQuantityOrWeight ?? selectedLivestockItem.weight ?? 0
-      );
-      setSendQuantity(available > 0 ? String(available) : "");
-    } else {
-      setSendQuantity("1");
-    }
+    const available = Number(
+      selectedLivestockItem.itemQuantityOrWeight ?? selectedLivestockItem.weight ?? 0
+    );
+    setSendQuantity(available > 0 ? String(available) : "");
   }, [selectedLivestockItem]);
 
   const pendingBatches = useMemo(
@@ -801,7 +796,6 @@ export default function ProcessingPlantPage() {
               step="any"
               value={sendQuantity}
               onChange={(e) => setSendQuantity(e.target.value)}
-              disabled={!!selectedLivestockItem && !selectedLivestockItem.isBulk}
             />
           </label>
           <label className="ppField ppFieldNarrow">

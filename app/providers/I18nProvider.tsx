@@ -31,7 +31,7 @@ type I18nContextValue = {
   "No live stock items yet.": "अहिलेसम्म कुनै लाइभ स्टक आइटम छैन।",
   "Failed to load live stock items": "लाइभ स्टक आइटम लोड गर्न सकिएन",
   "Failed to add live stock item": "लाइभ स्टक आइटम थप्न सकिएन",
-  "Restock Live Stock": "जीवित पशुधन पुनः भण्डारण",
+  "Add Live Stock": "जीवित पशुधन पुनः भण्डारण",
   "Failed to update live stock item": "लाइभ स्टक आइटम अपडेट गर्न सकिएन",
   "Failed to delete live stock item": "लाइभ स्टक आइटम मेटाउन सकिएन",
   "Please select live stock product category.": "कृपया लाइभ स्टक उत्पादन कोटी छान्नुहोस्।",

@@ -370,6 +370,7 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
     ...item,
     weight: quantityOrWeight,
     itemQuantityOrWeight: quantityOrWeight,
+    isBulk: true,
   };
 }
 

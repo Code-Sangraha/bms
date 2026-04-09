@@ -627,7 +627,7 @@ export default function LiveProductPage() {
               setIsLivestockModalOpen(true);
             }}
           >
-            {t("Restock Live Stock")}
+            {t("Add Live Stock")}
           </button>
           <select
             className="liveProductCategoryFilter"
@@ -956,7 +956,7 @@ export default function LiveProductPage() {
 
       <Modal
         isOpen={isLivestockModalOpen}
-        title={t("Restock Live Stock")}
+        title={t("Add Live Stock")}
         subtitle={t("Create a live stock item and map it to product category")}
         onClose={() => {
           setIsLivestockModalOpen(false);
