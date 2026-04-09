@@ -119,7 +119,6 @@ export default function LiveProductPage() {
   const [editingLivestockId, setEditingLivestockId] = useState<string | null>(null);
   const [stockAdjustModal, setStockAdjustModal] = useState<StockAdjustModalState>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
-  const [adjustIsBulk, setAdjustIsBulk] = useState(false);
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
@@ -510,7 +509,6 @@ export default function LiveProductPage() {
     setStockAdjustError(null);
     setStockAdjustModal({ item, mode });
     setAdjustAmount("");
-    setAdjustIsBulk(item.isBulk === true);
     closeRowMenu();
   };
 
@@ -528,12 +526,12 @@ export default function LiveProductPage() {
       return;
     }
     const amount = Number(adjustAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setStockAdjustError(t("Amount must be greater than 0."));
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
+      setStockAdjustError(t("Head count must be a whole number greater than 0."));
       return;
     }
     setStockAdjustError(null);
-    const payload = { livestockItemId: id, isBulk: adjustIsBulk, amount };
+    const payload = { livestockItemId: id, isBulk: true, amount };
     if (stockAdjustModal.mode === "restock") {
       restockLivestockMutation.mutate(payload);
     } else {
@@ -1095,8 +1093,8 @@ export default function LiveProductPage() {
         }
         subtitle={
           stockAdjustModal?.mode === "deduct"
-            ? t("Amount is subtracted using the same unit rules as restock (head count vs kg).")
-            : t("Amount is added as head count when bulk, or as kg when not bulk.")
+            ? t("Enter how many head to deduct from stock.")
+            : t("Enter how many head to add to stock.")
         }
         onClose={closeStockAdjustModal}
         footer={
@@ -1112,7 +1110,8 @@ export default function LiveProductPage() {
                 restockLivestockMutation.isPending ||
                 deductLivestockMutation.isPending ||
                 !adjustAmount.trim() ||
-                Number(adjustAmount) <= 0
+                Number(adjustAmount) <= 0 ||
+                !Number.isInteger(Number(adjustAmount))
               }
             >
               {restockLivestockMutation.isPending || deductLivestockMutation.isPending
@@ -1133,37 +1132,16 @@ export default function LiveProductPage() {
             </p>
           )}
           {stockAdjustError && <p className="productActionModalError">{stockAdjustError}</p>}
-          <fieldset className="stockAdjustFieldset">
-            <legend className="productActionModalLabel">{t("Amount measures")}</legend>
-            <label className="stockAdjustRadioLabel">
-              <input
-                type="radio"
-                name="adjustIsBulk"
-                checked={adjustIsBulk}
-                onChange={() => setAdjustIsBulk(true)}
-              />
-              {t("Head count (bulk)")}
-            </label>
-            <label className="stockAdjustRadioLabel">
-              <input
-                type="radio"
-                name="adjustIsBulk"
-                checked={!adjustIsBulk}
-                onChange={() => setAdjustIsBulk(false)}
-              />
-              {t("Weight (kg)")}
-            </label>
-          </fieldset>
           <label className="productActionModalLabel">
-            {t("Amount")}
+            {t("Head count")}
             <input
               type="number"
-              min={0}
-              step="any"
+              min={1}
+              step={1}
               value={adjustAmount}
               onChange={(e) => setAdjustAmount(e.target.value)}
               className="productActionModalInput"
-              placeholder={adjustIsBulk ? t("Head count") : t("Kilograms")}
+              placeholder={t("Enter head count")}
             />
           </label>
         </div>

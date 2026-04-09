@@ -473,6 +473,13 @@ const translations: Record<string, string> = {
   "Failed to deduct livestock item.": "लाइभस्टक आइटम कटौती गर्न सकिएन।",
   "Restock livestock item": "लाइभस्टक आइटम पुनः भण्डारण",
   "Deduct livestock stock": "लाइभस्टक स्टक कटौती",
+  "Enter how many head to add to stock.":
+    "स्टकमा कति टाउको थप्ने हो प्रविष्ट गर्नुहोस्।",
+  "Enter how many head to deduct from stock.":
+    "स्टकबाट कति टाउको कटौती गर्ने हो प्रविष्ट गर्नुहोस्।",
+  "Head count must be a whole number greater than 0.":
+    "टाउको गणना ० भन्दा ठूलो पूर्ण संख्या हुनुपर्छ।",
+  "Enter head count": "टाउको गणना प्रविष्ट गर्नुहोस्",
   "Amount is subtracted using the same unit rules as restock (head count vs kg).":
     "पुनः भण्डारण जस्तै इकाइ नियम (टाउको गणना वा केजी) अनुसार रकम घटाइन्छ।",
   "Amount is added as head count when bulk, or as kg when not bulk.":
