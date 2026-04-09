@@ -309,16 +309,16 @@ export default function ProductPage() {
               <div className="cardTop">
                 <div className="cardTitleBlock">
                   <h2 className="cardTitle">{product.name}</h2>
-                  <span className="cardId">{product.id}</span>
+                  {/* <span className="cardId">{product.id}</span> */}
                 </div>
                 <div className="badgeGroup">
-                  <span
+                  {/* <span
                     className={
                       product.status ? "badge badgeActive" : "badge"
                     }
                   >
                     {product.status ? t("Active") : t("Inactive")}
-                  </span>
+                  </span> */}
                   <div
                     className="cardMenuWrap"
                     ref={openMenuId === product.id ? menuButtonRef : undefined}

@@ -1,9 +1,9 @@
 "use client";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
-import { IoBagHandleOutline, IoBusinessOutline } from "react-icons/io5";
+import { IoBagHandleOutline, IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload, LuReceiptText, LuUserCog } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
@@ -30,6 +30,7 @@ type TranslationKey =
   | "customerTypes"
   | "product"
   | "products"
+  | "processedProductsOutlet"
   | "productType"
   | "pricelist"
   | "livestockCategory"
@@ -91,6 +92,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   customerTypes: "Customer Types",
   product: "Product",
   products: "Products",
+  processedProductsOutlet: "Processed Products",
   productType: "Product Type",
   pricelist: "Pricelist",
   livestockCategory: "Livestock Category",
@@ -210,12 +212,12 @@ const sidebarConfig = {
               {
                 titleKey: "product",
                 items: [
-                  { labelKey: "products", href: "/dashboard/product" },
                   { labelKey: "productType", href: "/dashboard/product/productType" },
-                  { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
                   { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
                   { labelKey: "live", href: "/dashboard/product/liveProduct" },
+                  { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
                   { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+                  { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
                 ],
               },
               {
@@ -399,6 +401,32 @@ export default function Sidebar() {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  /** Grouped drawer (e.g. Highland): which section accordion is expanded. */
+  const [groupedDrawerAccordionKey, setGroupedDrawerAccordionKey] =
+    useState<TranslationKey | null>(null);
+
+  useLayoutEffect(() => {
+    if (!activeMenuId) return;
+    const menu = allItems.find((item) => item.id === activeMenuId)?.menu;
+    if (!menu || !isGroupedRailMenu(menu as RailMenu)) return;
+
+    const sections = (menu as RailMenu & { sections: MenuSectionBlock[] }).sections;
+    const visibleBlocks = sections
+      .map((section) => ({
+        section,
+        items: section.items.filter((entry) =>
+          entry.permission === "create" ? canCreate : true
+        ),
+      }))
+      .filter((b) => b.items.length > 0);
+
+    const withActive = visibleBlocks.find((b) =>
+      b.items.some((entry) => activeHrefInOpenMenu === entry.href)
+    );
+    const nextKey = (withActive ?? visibleBlocks[0])?.section.titleKey ?? null;
+    setGroupedDrawerAccordionKey(nextKey);
+  }, [activeMenuId, pathname, canCreate, activeHrefInOpenMenu, allItems]);
+
   useEffect(() => {
     setShowInstallButton(true);
     const mq = window.matchMedia("(max-width: 768px)");
@@ -521,34 +549,74 @@ export default function Sidebar() {
           {activeMenu &&
             (isGroupedRailMenu(activeMenu as RailMenu)
               ? (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections.map(
-                  (section) => (
-                    <div key={section.titleKey}>
-                      <div className="drawerSectionTitle" role="presentation">
-                        {getSidebarLabel(section.titleKey)}
-                      </div>
-                      {section.items
-                        .filter((entry) =>
-                          entry.permission === "create" ? canCreate : true
-                        )
-                        .map((entry) => (
-                          <Link
-                            key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                  (section) => {
+                    const visibleItems = section.items.filter((entry) =>
+                      entry.permission === "create" ? canCreate : true
+                    );
+                    if (visibleItems.length === 0) return null;
+
+                    const panelId = `drawer-section-${section.titleKey}`;
+                    const isAccordionOpen =
+                      groupedDrawerAccordionKey === section.titleKey;
+
+                    return (
+                      <div key={section.titleKey} className="drawerAccordionSection">
+                        <button
+                          type="button"
+                          className="drawerAccordionTrigger"
+                          aria-expanded={isAccordionOpen}
+                          aria-controls={panelId}
+                          id={`drawer-trigger-${section.titleKey}`}
+                          onClick={() =>
+                            setGroupedDrawerAccordionKey((current) =>
+                              current === section.titleKey ? null : section.titleKey
+                            )
+                          }
+                        >
+                          <span className="drawerAccordionTriggerLabel">
+                            {getSidebarLabel(section.titleKey)}
+                          </span>
+                          <IoChevronDown
                             className={
-                              activeHrefInOpenMenu === entry.href
-                                ? "drawerItem active"
-                                : "drawerItem"
+                              isAccordionOpen
+                                ? "drawerAccordionChevron open"
+                                : "drawerAccordionChevron"
                             }
-                            to={entry.href}
-                            onClick={() => setActiveMenuId(null)}
-                            aria-current={
-                              activeHrefInOpenMenu === entry.href ? "page" : undefined
-                            }
+                            aria-hidden
+                            size={20}
+                          />
+                        </button>
+                        {isAccordionOpen && (
+                          <div
+                            className="drawerAccordionPanel"
+                            id={panelId}
+                            role="region"
+                            aria-labelledby={`drawer-trigger-${section.titleKey}`}
                           >
-                            {getSidebarLabel(entry.labelKey)}
-                          </Link>
-                        ))}
-                    </div>
-                  )
+                            {visibleItems.map((entry) => (
+                              <Link
+                                key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                                className={
+                                  activeHrefInOpenMenu === entry.href
+                                    ? "drawerItem drawerItemNested active"
+                                    : "drawerItem drawerItemNested"
+                                }
+                                to={entry.href}
+                                onClick={() => setActiveMenuId(null)}
+                                aria-current={
+                                  activeHrefInOpenMenu === entry.href
+                                    ? "page"
+                                    : undefined
+                                }
+                              >
+                                {getSidebarLabel(entry.labelKey)}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                 )
               : (activeMenu as { items: MenuItem[] }).items
                   .filter((entry) =>

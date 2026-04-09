@@ -313,6 +313,93 @@ $mobile-breakpoint: 768px;
   margin-top: 0;
 }
 
+/* Grouped menu (e.g. Highland): accordion in drawer (all breakpoints) */
+.drawerAccordionSection {
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(17, 24, 39, 0.02);
+  overflow: hidden;
+}
+
+.drawerAccordionSection + .drawerAccordionSection {
+  margin-top: 8px;
+}
+
+.drawerAccordionTrigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  transition: background 0.15s ease;
+
+  @media (max-width: $mobile-breakpoint) {
+    gap: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+}
+
+.drawerAccordionTrigger:hover {
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.drawerAccordionTrigger:focus-visible {
+  outline: 2px solid #02955a;
+  outline-offset: -2px;
+}
+
+.drawerAccordionTriggerLabel {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.drawerAccordionChevron {
+  flex-shrink: 0;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.drawerAccordionChevron.open {
+  transform: rotate(180deg);
+}
+
+.drawerAccordionPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+
+  @media (max-width: $mobile-breakpoint) {
+    padding: 4px 8px 10px;
+  }
+}
+
+.drawerItemNested {
+  padding-left: 12px;
+  padding-right: 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
+
+  @media (max-width: $mobile-breakpoint) {
+    padding-left: 14px;
+    padding-right: 12px;
+    font-size: 14px;
+  }
+}
+
 .drawerFooter {
   margin-top: auto;
   padding: 16px 20px;
