@@ -106,6 +106,17 @@
 
 .productsTable {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  overflow-y: visible;
+  border-radius: 10px;
+  background: #ffffff;
+  width: 100%;
+  position: relative;
+}
+
+.productsRow > span {
+  min-width: 0;
+  word-break: break-word;
 }
 
 .productsRow {
@@ -120,8 +131,116 @@
 
 .productsRowActions {
   display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  justify-self: stretch;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.rowActionMenu {
+  position: relative;
+  z-index: 1;
+}
+
+.rowActionMenu.rowActionMenuOpen {
+  z-index: 12000;
+}
+
+.rowMenuTrigger {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  background: #ffffff;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rowMenuTrigger:focus-visible {
+  outline: 2px solid rgba(2, 149, 90, 0.5);
+  outline-offset: 2px;
+}
+
+.rowMenuTrigger svg {
+  display: block;
+  pointer-events: none;
+}
+
+.rowMenuTrigger:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.rowMenuTrigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rowMenuDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  min-width: 140px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+  padding: 8px 0;
+  z-index: 12100;
+}
+
+.rowMenuDropdownPortal {
+  left: auto;
+  bottom: auto;
+  transform: none;
+}
+
+.rowMenuItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.rowMenuItem:hover {
+  background: #f8fafc;
+}
+
+.rowMenuItemDelete {
+  color: #dc2626;
+}
+
+.rowMenuItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.rowMenuItem:disabled:hover {
+  background: transparent;
+}
+
+.rowActionFloating {
+  position: relative;
+  transform: none;
+}
+
+.processedRowWithActions .productsRowActions {
+  justify-self: stretch;
 }
 
 .productActionBtn {
@@ -162,6 +281,12 @@
 .productActionModalError {
   font-size: 13px;
   color: #dc2626;
+  margin: 0;
+}
+
+.productActionModalHint {
+  font-size: 13px;
+  color: #6b7280;
   margin: 0;
 }
 
@@ -223,6 +348,10 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+}
+
+.productsRow.productsRowHeader > span:last-child {
+  text-align: center;
 }
 
 .badge {

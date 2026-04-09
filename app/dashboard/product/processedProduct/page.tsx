@@ -2,18 +2,46 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
+import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
-import { getProducts, deductProduct, type Product } from "@/handlers/product";
+import {
+  deleteProduct as deleteProductApi,
+  deductProduct,
+  getProducts,
+  restockProduct,
+  updateProduct as updateProductApi,
+  type Product,
+} from "@/handlers/product";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
+import { type CreateProductFormValues } from "@/schema/product";
+import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
+import ProductEditModal from "../ProductEditModal";
 import "./processedProduct.scss";
 
 const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
+
+function getProcessedStock(product: Product): number {
+  const raw = product.weight ?? product.quantity;
+  const num = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(num) ? num : 0;
+}
+
+type OpenRowMenuState = {
+  rowKey: string;
+  product: Product;
+  placement: "above" | "below";
+  top: number;
+  bottom: number;
+  right: number;
+};
 
 export default function ProcessedProductPage() {
   const navigate = useNavigate();
@@ -21,9 +49,20 @@ export default function ProcessedProductPage() {
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOutletId, setSelectedOutletId] = useState("all");
-  const [actionModal, setActionModal] = useState<Product | null>(null);
-  const [weight, setWeight] = useState("");
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
+  const rowMenuButtonRef = useRef<HTMLDivElement>(null);
+  const rowMenuPortalRef = useRef<HTMLDivElement>(null);
+
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [restockTarget, setRestockTarget] = useState<Product | null>(null);
+  const [restockWeight, setRestockWeight] = useState("");
+  const [restockError, setRestockError] = useState<string | null>(null);
+
+  const [deductTarget, setDeductTarget] = useState<Product | null>(null);
+  const [deductWeight, setDeductWeight] = useState("");
+  const [deductError, setDeductError] = useState<string | null>(null);
+
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const { data: products = [], isLoading: productsLoading, isError: productsError, error: productsErrorDetail } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -98,37 +137,164 @@ export default function ProcessedProductPage() {
     [filteredProducts, startIndex, endIndex]
   );
 
-  const deductMutation = useMutation({
-    mutationFn: deductProduct,
+  const closeRowMenu = useCallback(() => {
+    setOpenRowMenu(null);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!openRowMenu) return;
+    const syncMenuPosition = () => {
+      const wrap = rowMenuButtonRef.current;
+      const btn = wrap?.querySelector<HTMLButtonElement>(".rowMenuTrigger");
+      if (!wrap || !btn) return;
+      const rect = btn.getBoundingClientRect();
+      const menuEl = rowMenuPortalRef.current;
+      const measured = menuEl?.offsetHeight ?? 0;
+      const h = Math.max(measured, ROW_MENU_HEIGHT_ESTIMATE_PX);
+      const pos = computeRowMenuPosition(rect, h);
+      setOpenRowMenu((prev) =>
+        prev
+          ? {
+              ...prev,
+              placement: pos.placement,
+              top: pos.top,
+              bottom: pos.bottom,
+              right: pos.right,
+            }
+          : null
+      );
+    };
+    syncMenuPosition();
+    const raf = requestAnimationFrame(() => syncMenuPosition());
+    window.addEventListener("scroll", syncMenuPosition, true);
+    window.addEventListener("resize", syncMenuPosition);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", syncMenuPosition, true);
+      window.removeEventListener("resize", syncMenuPosition);
+    };
+  }, [openRowMenu?.rowKey]);
+
+  useEffect(() => {
+    if (!openRowMenu) return;
+    const handlePointerDownOutside = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (rowMenuButtonRef.current?.contains(target)) return;
+      if (rowMenuPortalRef.current?.contains(target)) return;
+      closeRowMenu();
+    };
+    const scheduleId = window.setTimeout(() => {
+      document.addEventListener("pointerdown", handlePointerDownOutside);
+    }, 0);
+    return () => {
+      window.clearTimeout(scheduleId);
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+    };
+  }, [openRowMenu, closeRowMenu]);
+
+  const invalidateProducts = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+  }, [queryClient]);
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, values }: { id: string; values: CreateProductFormValues }) =>
+      updateProductApi(id, values, { isProcessed: true }),
     onSuccess: (result) => {
-      setActionError(null);
       if (result.ok) {
-        setActionModal(null);
-        setWeight("");
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
-        queryClient.refetchQueries({ queryKey: PRODUCTS_QUERY_KEY });
-      } else {
-        setActionError(result.error ?? t("Deduct failed"));
+        setProductToEdit(null);
+        invalidateProducts();
+      } else if (result.status === 401) {
+        navigate("/login");
       }
     },
   });
 
-  const handleOpenAction = (product: Product) => {
-    setActionModal(product);
-    setWeight("");
-    setActionError(null);
+  const restockMutation = useMutation({
+    mutationFn: restockProduct,
+    onSuccess: (result) => {
+      setRestockError(null);
+      if (result.ok) {
+        setRestockTarget(null);
+        setRestockWeight("");
+        invalidateProducts();
+      } else {
+        if (result.status === 401) {
+          navigate("/login");
+          return;
+        }
+        setRestockError(result.error ?? t("Restock failed"));
+      }
+    },
+  });
+
+  const deductMutation = useMutation({
+    mutationFn: deductProduct,
+    onSuccess: (result) => {
+      setDeductError(null);
+      if (result.ok) {
+        setDeductTarget(null);
+        setDeductWeight("");
+        invalidateProducts();
+      } else {
+        if (result.status === 401) {
+          navigate("/login");
+          return;
+        }
+        setDeductError(result.error ?? t("Deduct failed"));
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteProductApi(id),
+    onSuccess: (result) => {
+      if (result.ok) {
+        setProductToDelete(null);
+        invalidateProducts();
+      } else if (result.status === 401) {
+        navigate("/login");
+      }
+    },
+  });
+
+  const rowMutationsPending =
+    updateMutation.isPending ||
+    restockMutation.isPending ||
+    deductMutation.isPending ||
+    deleteMutation.isPending;
+
+  const handleEditSave = (values: CreateProductFormValues) => {
+    if (productToEdit) {
+      updateMutation.mutate({ id: productToEdit.id, values });
+    }
   };
-  const handleSubmitAction = () => {
-    if (!actionModal) return;
-    const enteredWeight = Number(weight);
-    if (!Number.isFinite(enteredWeight) || enteredWeight <= 0) return;
-    const payload = {
-      id: actionModal.id,
-      outletId: actionModal.outletId,
-      weight: enteredWeight,
-      quantity: enteredWeight,
-    };
-    deductMutation.mutate(payload);
+
+  const handleSubmitRestock = () => {
+    if (!restockTarget) return;
+    const w = Number(restockWeight);
+    if (!Number.isFinite(w) || w <= 0) return;
+    restockMutation.mutate({
+      id: restockTarget.id,
+      outletId: restockTarget.outletId,
+      weight: w,
+    });
+  };
+
+  const handleSubmitDeduct = () => {
+    if (!deductTarget) return;
+    const w = Number(deductWeight);
+    if (!Number.isFinite(w) || w <= 0) return;
+    const cap = getProcessedStock(deductTarget);
+    if (w > cap) {
+      setDeductError(t("Deduct amount cannot exceed current stock."));
+      return;
+    }
+    setDeductError(null);
+    deductMutation.mutate({ id: deductTarget.id, weight: w });
+  };
+
+  const handleConfirmDelete = () => {
+    if (productToDelete) deleteMutation.mutate(productToDelete.id);
   };
 
   return (
@@ -163,18 +329,18 @@ export default function ProcessedProductPage() {
             </select>
           </label>
           <div className="processedProductSearch">
-          <span className="searchIcon">🔍</span>
-          <input
-            className="searchInput"
-            placeholder={t("Search")}
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            aria-label={t("Search processed products")}
-          />
-        </div>
+            <span className="searchIcon">🔍</span>
+            <input
+              className="searchInput"
+              placeholder={t("Search")}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              aria-label={t("Search processed products")}
+            />
+          </div>
         </div>
       </div>
 
@@ -210,9 +376,7 @@ export default function ProcessedProductPage() {
         )}
         {!productsLoading && !productsError && !processedTypeId && productTypes.length > 0 && (
           <div className="productsRow">
-            <span className="productsMessage">
-              {t('No product type named "Processed" found.')}
-            </span>
+            <span className="productsMessage">{t('No product type named "Processed" found.')}</span>
             <span />
             <span />
             <span />
@@ -233,30 +397,144 @@ export default function ProcessedProductPage() {
               <span />
               <span />
               <span />
-              <span />
             </div>
           )}
         {!productsLoading &&
           !productsError &&
           filteredProducts.length > 0 &&
-          paginatedProducts.map((product) => (
-            <div key={product.id} className="productsRow">
-              <span>{product.name}</span>
-              <span>{getTypeName(product.productTypeId)}</span>
-              <span>{getOutletName(product.outletId)}</span>
-              <span>{product.weight ?? product.quantity}</span>
-              <span className="productsRowActions">
-                <button
-                  type="button"
-                  className="productActionBtn productActionDeduct"
-                  onClick={() => handleOpenAction(product)}
-                >
-                  {t("Deduct")}
-                </button>
-              </span>
-            </div>
-          ))}
+          paginatedProducts.map((product) => {
+            const rowKey = product.id;
+            return (
+              <div key={rowKey} className="productsRow processedRowWithActions">
+                <span>{product.name}</span>
+                <span>{getTypeName(product.productTypeId)}</span>
+                <span>{getOutletName(product.outletId)}</span>
+                <span>{product.weight ?? product.quantity}</span>
+                <div className="productsRowActions">
+                  <div
+                    className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
+                    ref={openRowMenu?.rowKey === rowKey ? rowMenuButtonRef : undefined}
+                  >
+                    <button
+                      type="button"
+                      className="rowMenuTrigger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const trigger = e.currentTarget;
+                        const rect = trigger.getBoundingClientRect();
+                        setOpenRowMenu((prev) => {
+                          if (prev?.rowKey === rowKey) return null;
+                          const pos = computeRowMenuPosition(rect, ROW_MENU_HEIGHT_ESTIMATE_PX);
+                          return {
+                            rowKey,
+                            product,
+                            placement: pos.placement,
+                            top: pos.top,
+                            bottom: pos.bottom,
+                            right: pos.right,
+                          };
+                        });
+                      }}
+                      aria-label={t("More options")}
+                      aria-expanded={openRowMenu?.rowKey === rowKey}
+                      aria-haspopup="menu"
+                    >
+                      <MdMoreHoriz aria-hidden size={22} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
       </div>
+
+      {openRowMenu &&
+        createPortal(
+          <div
+            ref={rowMenuPortalRef}
+            className="rowMenuDropdown rowMenuDropdownPortal"
+            style={
+              openRowMenu.placement === "below"
+                ? {
+                    position: "fixed",
+                    top: openRowMenu.top,
+                    right: openRowMenu.right,
+                    bottom: "auto",
+                    zIndex: 20000,
+                  }
+                : {
+                    position: "fixed",
+                    bottom: openRowMenu.bottom,
+                    right: openRowMenu.right,
+                    top: "auto",
+                    zIndex: 20000,
+                  }
+            }
+            role="menu"
+          >
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowMutationsPending) return;
+                closeRowMenu();
+                setProductToEdit(openRowMenu.product);
+              }}
+            >
+              {t("Edit")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowMutationsPending) return;
+                closeRowMenu();
+                setRestockTarget(openRowMenu.product);
+                setRestockWeight("");
+                setRestockError(null);
+              }}
+            >
+              {t("Restock")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowMutationsPending) return;
+                closeRowMenu();
+                setDeductTarget(openRowMenu.product);
+                setDeductWeight("");
+                setDeductError(null);
+              }}
+            >
+              {t("Deduct")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem rowMenuItemDelete"
+              role="menuitem"
+              disabled={rowMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowMutationsPending) return;
+                closeRowMenu();
+                setProductToDelete(openRowMenu.product);
+              }}
+            >
+              {t("Delete")}
+            </button>
+          </div>,
+          document.body
+        )}
 
       {!productsLoading && !productsError && filteredProducts.length > 0 && (
         <Pagination
@@ -270,23 +548,37 @@ export default function ProcessedProductPage() {
         />
       )}
 
+      {productToEdit && (
+        <ProductEditModal
+          isOpen
+          product={productToEdit}
+          productTypes={productTypes}
+          outlets={outlets}
+          onClose={() => setProductToEdit(null)}
+          onSave={handleEditSave}
+          loading={updateMutation.isPending}
+        />
+      )}
+
       <Modal
-        isOpen={!!actionModal}
-        title={actionModal ? t("Deduct") : ""}
-        subtitle={actionModal ? actionModal.name : ""}
+        isOpen={!!restockTarget}
+        title={t("Restock processed product")}
+        subtitle={restockTarget?.name ?? ""}
         onClose={() => {
-          setActionModal(null);
-          setWeight("");
+          setRestockTarget(null);
+          setRestockWeight("");
+          setRestockError(null);
         }}
         footer={
-          actionModal ? (
+          restockTarget ? (
             <div className="productActionModalFooter">
               <button
                 type="button"
                 className="productActionModalCancel"
                 onClick={() => {
-                  setActionModal(null);
-                  setWeight("");
+                  setRestockTarget(null);
+                  setRestockWeight("");
+                  setRestockError(null);
                 }}
               >
                 {t("Cancel")}
@@ -294,33 +586,31 @@ export default function ProcessedProductPage() {
               <button
                 type="button"
                 className="productActionModalSubmit"
-                onClick={handleSubmitAction}
+                onClick={handleSubmitRestock}
                 disabled={
-                  !weight ||
-                  !Number.isFinite(Number(weight)) ||
-                  Number(weight) <= 0 ||
-                  deductMutation.isPending
+                  !restockWeight ||
+                  !Number.isFinite(Number(restockWeight)) ||
+                  Number(restockWeight) <= 0 ||
+                  restockMutation.isPending
                 }
               >
-                {deductMutation.isPending
-                  ? t("Saving…")
-                  : t("Deduct")}
+                {restockMutation.isPending ? t("Saving…") : t("Restock")}
               </button>
             </div>
           ) : null
         }
       >
-        {actionModal && (
+        {restockTarget && (
           <div className="productActionModalBody">
-            {actionError && <p className="productActionModalError">{actionError}</p>}
+            {restockError && <p className="productActionModalError">{restockError}</p>}
             <label className="productActionModalLabel">
               {t("Weight")}
               <input
                 type="number"
                 min={1}
                 step="any"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
+                value={restockWeight}
+                onChange={(e) => setRestockWeight(e.target.value)}
                 className="productActionModalInput"
                 placeholder={t("Enter weight")}
               />
@@ -328,6 +618,88 @@ export default function ProcessedProductPage() {
           </div>
         )}
       </Modal>
+
+      <Modal
+        isOpen={!!deductTarget}
+        title={t("Deduct processed stock")}
+        subtitle={deductTarget?.name ?? ""}
+        onClose={() => {
+          setDeductTarget(null);
+          setDeductWeight("");
+          setDeductError(null);
+        }}
+        footer={
+          deductTarget ? (
+            <div className="productActionModalFooter">
+              <button
+                type="button"
+                className="productActionModalCancel"
+                onClick={() => {
+                  setDeductTarget(null);
+                  setDeductWeight("");
+                  setDeductError(null);
+                }}
+              >
+                {t("Cancel")}
+              </button>
+              <button
+                type="button"
+                className="productActionModalSubmit"
+                onClick={handleSubmitDeduct}
+                disabled={
+                  !deductWeight ||
+                  !Number.isFinite(Number(deductWeight)) ||
+                  Number(deductWeight) <= 0 ||
+                  (deductTarget !== null && Number(deductWeight) > getProcessedStock(deductTarget)) ||
+                  deductMutation.isPending
+                }
+              >
+                {deductMutation.isPending ? t("Saving…") : t("Deduct")}
+              </button>
+            </div>
+          ) : null
+        }
+      >
+        {deductTarget && (
+          <div className="productActionModalBody">
+            {deductError && <p className="productActionModalError">{deductError}</p>}
+            <p className="productActionModalHint">
+              {t("Current stock")}: {getProcessedStock(deductTarget)}
+            </p>
+            <label className="productActionModalLabel">
+              {t("Weight")}
+              <input
+                type="number"
+                min={1}
+                step="any"
+                value={deductWeight}
+                onChange={(e) => {
+                  setDeductWeight(e.target.value);
+                  setDeductError(null);
+                }}
+                className="productActionModalInput"
+                placeholder={t("Enter weight")}
+              />
+            </label>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmModal
+        isOpen={!!productToDelete}
+        title={t("Delete processed product")}
+        message={
+          productToDelete
+            ? `${t("Are you sure you want to delete this processed product?")} (${productToDelete.name}). ${t("This cannot be undone.")}`
+            : ""
+        }
+        confirmLabel={t("Delete")}
+        cancelLabel={t("Cancel")}
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </section>
   );
 }

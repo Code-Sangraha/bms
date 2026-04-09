@@ -503,6 +503,15 @@ const translations: Record<string, string> = {
     '"Processed" नामको कुनै उत्पादन प्रकार फेला परेन।',
   "No processed products match": "कुनै प्रशोधित उत्पादन मिलेन",
   "No processed products yet.": "अहिलेसम्म कुनै प्रशोधित उत्पादन छैन।",
+  "Restock processed product": "प्रशोधित उत्पादन पुनः भण्डारण",
+  "Deduct processed stock": "प्रशोधित स्टक कटौती",
+  "Delete processed product": "प्रशोधित उत्पादन मेटाउनुहोस्",
+  "Are you sure you want to delete this processed product?":
+    "के तपाईं यो प्रशोधित उत्पादन मेटाउन निश्चित हुनुहुन्छ?",
+  "This cannot be undone.": "यो पूर्ववत गर्न सकिँदैन।",
+  "Deduct amount cannot exceed current stock.":
+    "कटौती रकम हालको स्टकभन्दा बढी हुन सक्दैन।",
+  "Current stock": "हालको स्टक",
   "Pending processing": "विचराधीन प्रशोधन",
   "Registered plants": "दर्ता भएका प्रशोधन केन्द्रहरू",
   "Only Main Outlet can send livestock to processing and complete processing.":

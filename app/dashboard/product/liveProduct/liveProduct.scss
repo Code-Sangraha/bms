@@ -135,11 +135,12 @@
 
 .productsRowActions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  width: auto;
-  justify-self: end;
+  width: 100%;
+  justify-self: stretch;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .rowActionMenu {
@@ -454,14 +455,13 @@
 
 .productsRow.livestockRowWithActions > span:nth-child(6) {
   grid-column: 6;
-  justify-self: end;
-  text-align: right;
+  justify-self: stretch;
+  text-align: center;
 }
 
 .productsRow.livestockRowWithActions .productsRowActions {
   grid-column: 6;
-  justify-self: end;
-  margin-left: auto;
+  justify-self: stretch;
 }
 
 .livestockRowHeader {
@@ -476,7 +476,6 @@
 .rowActionFloating {
   position: relative;
   transform: none;
-  justify-self: end;
 }
 
 @media (max-width: 1280px) {
@@ -522,7 +521,7 @@
   }
 
   .productsRowActions {
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .productsTable {
@@ -582,7 +581,6 @@
   .rowActionFloating {
     position: relative;
     transform: none;
-    margin-left: auto;
   }
 
   .productsRow.livestockRowWithActions span {
@@ -598,7 +596,7 @@
 
   .productsRow.livestockRowWithActions .productsRowActions {
     grid-column: 1 / -1 !important;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 8px;
     margin-top: 2px;
     justify-self: stretch;

@@ -159,12 +159,15 @@ export async function deleteProduct(id: string) {
   });
 }
 
-export type RestockDeductPayload = {
+export type RestockProductPayload = {
   id: string;
-  productTypeId?: string;
   outletId: string;
-  quantity?: number;
-  weight?: number;
+  weight: number;
+};
+
+export type DeductProductPayload = {
+  id: string;
+  weight: number;
 };
 
 export type RestockDeductResponse = {
@@ -173,17 +176,23 @@ export type RestockDeductResponse = {
   [key: string]: unknown;
 };
 
-export async function restockProduct(payload: RestockDeductPayload) {
+export async function restockProduct(payload: RestockProductPayload) {
+  const body = {
+    id: payload.id,
+    outletId: payload.outletId,
+    weight: payload.weight,
+  };
   return apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.RESTOCK, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
-export async function deductProduct(payload: RestockDeductPayload) {
+export async function deductProduct(payload: DeductProductPayload) {
+  const body = { id: payload.id, weight: payload.weight };
   return apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.DEDUCT, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -701,9 +710,7 @@ export async function transferProcessedStock(payload: TransferProcessedStockPayl
 
   const deductResult = await deductProduct({
     id: payload.sourceProductId,
-    outletId: payload.sourceOutletId,
     weight: amount,
-    quantity: amount,
   });
   if (!deductResult.ok) return deductResult;
 
@@ -711,7 +718,6 @@ export async function transferProcessedStock(payload: TransferProcessedStockPayl
     id: payload.destinationProductId,
     outletId: payload.destinationOutletId,
     weight: amount,
-    quantity: amount,
   });
   if (restockResult.ok) return restockResult;
 
@@ -720,7 +726,6 @@ export async function transferProcessedStock(payload: TransferProcessedStockPayl
     id: payload.sourceProductId,
     outletId: payload.sourceOutletId,
     weight: amount,
-    quantity: amount,
   });
 
   return {
