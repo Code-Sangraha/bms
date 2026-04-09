@@ -85,7 +85,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   roles: "Roles",
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
-  pointOfSale: "Point of Sale",
+  pointOfSale: "Processed Sale",
   livestockSales: "Livestock Sales",
   transactions: "Transactions",
   customerTypes: "Customer Types",
@@ -94,8 +94,8 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   productType: "Product Type",
   pricelist: "Pricelist",
   livestockCategory: "Livestock Category",
-  live: "Live Stock",
-  processed: "Processed",
+  live: "Live Stock Inventory",
+  processed: "Processed Inventory",
   attendance: "Attendance",
   clockInOut: "Clock In/Out",
   directory: "Directory",
@@ -374,7 +374,7 @@ export default function Sidebar() {
   const getSidebarLabel = useCallback(
     (key: TranslationKey) => {
       if (locale === "ne") {
-        if (key === "live") return "जीवित पशुधन";
+        if (key === "live") return "लाइभ स्टक इन्वेन्टरी";
         if (key === "livestockCategory") return "पशुधन श्रेणी";
         if (key === "livestockSales") return "पशुधन बिक्री";
         if (key === "processingPlant") return "प्रशोधन केन्द्र";
