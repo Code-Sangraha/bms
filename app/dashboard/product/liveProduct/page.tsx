@@ -16,11 +16,14 @@ import {
   deleteLivestockItem,
   getLivestockCategories,
   getLivestockItemsByProduct,
+  getOpeningStock,
   resolveLivestockDeleteKey,
   restockLivestockItem,
   updateLivestockItem,
   type LivestockItem,
 } from "@/handlers/product";
+import OpeningStockTable from "./components/OpeningStockTable";
+import ClosingStockTable from "./components/ClosingStockTable";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
 import { MdMoreHoriz } from "react-icons/md";
 import "./liveProduct.scss";
@@ -103,6 +106,13 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
   };
 }
 
+function toIsoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function LiveProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -124,6 +134,35 @@ export default function LiveProductPage() {
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
+
+  const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
+  const [openingStockTo, setOpeningStockTo] = useState(() => toIsoDateLocal(new Date()));
+  const openingStockRangeInvalid = openingStockFrom > openingStockTo;
+
+  const {
+    data: openingStockData,
+    isPending: openingStockPending,
+    isError: openingStockError,
+    error: openingStockErrorDetail,
+  } = useQuery({
+    queryKey: ["livestockOpeningStock", openingStockFrom, openingStockTo],
+    enabled: !openingStockRangeInvalid,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const result = await getOpeningStock(openingStockFrom, openingStockTo);
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const openingStockErrorMessage = openingStockError
+    ? openingStockErrorDetail instanceof Error && openingStockErrorDetail.message.trim()
+      ? openingStockErrorDetail.message
+      : t("Opening stock data is not available yet.")
+    : null;
 
   const {
     data: livestockCategories = [],
@@ -835,6 +874,74 @@ export default function LiveProductPage() {
             onPageSizeChange={setPageSize}
           />
         )}
+
+      <section className="openingClosingStockSection" aria-labelledby="opening-closing-stock-heading">
+        <h2 id="opening-closing-stock-heading" className="pageTitle" style={{ fontSize: "18px", margin: 0 }}>
+          {t("Live stock opening and closing")}
+        </h2>
+        <div className="openingClosingStockDateRow">
+          <div className="openingClosingStockDateField">
+            <label className="openingClosingStockDateLabel" htmlFor="opening-stock-from">
+              {t("Date from")}
+            </label>
+            <input
+              id="opening-stock-from"
+              type="date"
+              className="openingClosingStockDateInput"
+              value={openingStockFrom}
+              onChange={(e) => setOpeningStockFrom(e.target.value)}
+            />
+          </div>
+          <div className="openingClosingStockDateField">
+            <label className="openingClosingStockDateLabel" htmlFor="opening-stock-to">
+              {t("Date to")}
+            </label>
+            <input
+              id="opening-stock-to"
+              type="date"
+              className="openingClosingStockDateInput"
+              value={openingStockTo}
+              onChange={(e) => setOpeningStockTo(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            className="openingClosingStockTodayBtn"
+            onClick={() => {
+              const todayLocal = toIsoDateLocal(new Date());
+              setOpeningStockFrom(todayLocal);
+              setOpeningStockTo(todayLocal);
+            }}
+          >
+            {t("Today")}
+          </button>
+          {openingStockRangeInvalid && (
+            <p className="openingClosingStockRangeError" role="alert">
+              {t("End date must be on or after start date.")}
+            </p>
+          )}
+        </div>
+        {!openingStockRangeInvalid && (
+          <div className="openingClosingStockGrid">
+            <OpeningStockTable
+              from={openingStockFrom}
+              to={openingStockTo}
+              openingStockData={openingStockData}
+              isPending={openingStockPending}
+              isError={openingStockError}
+              errorMessage={openingStockErrorMessage}
+            />
+            <ClosingStockTable
+              from={openingStockFrom}
+              to={openingStockTo}
+              openingStockData={openingStockData}
+              isPending={openingStockPending}
+              isError={openingStockError}
+              errorMessage={openingStockErrorMessage}
+            />
+          </div>
+        )}
+      </section>
 
       <Modal
         isOpen={isLivestockModalOpen}

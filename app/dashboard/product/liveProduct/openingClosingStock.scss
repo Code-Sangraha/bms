@@ -1,0 +1,311 @@
+.openingClosingStockSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.openingClosingStockDateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.openingClosingStockDateField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.openingClosingStockDateLabel {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.openingClosingStockDateInput {
+  height: 38px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.openingClosingStockTodayBtn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(2, 149, 90, 0.35);
+  background: rgba(2, 149, 90, 0.08);
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.openingClosingStockTodayBtn:hover {
+  background: rgba(2, 149, 90, 0.14);
+}
+
+.openingClosingStockRangeError {
+  font-size: 13px;
+  color: #dc2626;
+  margin: 0;
+  width: 100%;
+}
+
+.openingClosingStockGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1100px) {
+  .openingClosingStockGrid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.openingClosingStockCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.openingClosingStockCardTitle {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.openingClosingStockPeriod {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.openingClosingStockPeriodLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 4px;
+}
+
+.openingClosingStockPeriodValue {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.openingClosingStockLoader {
+  display: flex;
+  justify-content: center;
+  padding: 36px 16px;
+  color: #6b7280;
+}
+
+.openingClosingStockSpinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(2, 149, 90, 0.2);
+  border-top-color: #02955a;
+  border-radius: 50%;
+  animation: openingClosingStockSpin 0.75s linear infinite;
+}
+
+@keyframes openingClosingStockSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.openingClosingStockBanner {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.openingClosingStockBannerError {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.openingClosingStockEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+}
+
+.openingClosingStockEmptyIcon {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 10px;
+  opacity: 0.35;
+}
+
+.openingClosingStockDay {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.openingClosingStockDay:last-child {
+  margin-bottom: 0;
+}
+
+.openingClosingStockDayHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.openingClosingStockDayHeader:hover {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.openingClosingStockDayHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.openingClosingStockDayDate {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+}
+
+.openingClosingStockDayBadge {
+  font-size: 11px;
+  background: #ffffff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #4b5563;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.openingClosingStockDayTotals {
+  display: none;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+@media (min-width: 768px) {
+  .openingClosingStockDayTotals {
+    display: flex;
+  }
+}
+
+.openingClosingStockDayTotalsMobile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+@media (min-width: 768px) {
+  .openingClosingStockDayTotalsMobile {
+    display: none;
+  }
+}
+
+.openingClosingStockTotalOpening {
+  color: #4b5563;
+}
+
+.openingClosingStockTotalAdded {
+  color: #047857;
+}
+
+.openingClosingStockTotalConsumed {
+  color: #b91c1c;
+}
+
+.openingClosingStockTotalClosing {
+  color: #111827;
+  font-weight: 700;
+}
+
+.openingClosingStockChevron {
+  flex-shrink: 0;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+}
+
+.openingClosingStockTableWrap {
+  overflow-x: auto;
+  background: #ffffff;
+}
+
+.openingClosingStockTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.openingClosingStockTable thead {
+  background: #f8fafc;
+  color: #111827;
+}
+
+.openingClosingStockTable th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.openingClosingStockTable th.openingClosingStockThNumeric {
+  text-align: center;
+}
+
+.openingClosingStockTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: #374151;
+}
+
+.openingClosingStockTable td.openingClosingStockTdNumeric {
+  text-align: center;
+}
+
+.openingClosingStockTable tbody tr:last-child td {
+  border-bottom: none;
+}

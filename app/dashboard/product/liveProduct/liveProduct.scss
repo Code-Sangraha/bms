@@ -1,3 +1,5 @@
+@import "./openingClosingStock.scss";
+
 .liveProductPage {
   width: 100%;
   display: flex;
@@ -116,6 +118,13 @@
   background: #ffffff;
   width: 100%;
   position: relative;
+}
+
+/* Taller table region on desktop so the grid does not feel cramped above opening/closing stock */
+@media (min-width: 901px) {
+  .liveProductPage .productsTable {
+    min-height: clamp(380px, 52vh, 720px);
+  }
 }
 
 .productsRow {

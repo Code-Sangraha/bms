@@ -890,3 +890,144 @@ export async function getPendingLivestockProcessing(): Promise<
     : [];
   return { ok: true, data };
 }
+
+// --- Livestock opening / closing stock (single API, doc-aligned shape) ---
+
+export type OpeningStockItem = {
+  inventoryId: string;
+  productName: string;
+  productNumber: string;
+  unit: string;
+  openingQuantity: number;
+  addedQuantity: number;
+  consumedQuantity: number;
+  closingQuantity: number;
+  buyingPrice?: number;
+  totalPrice?: number;
+};
+
+export type OpeningStockByDate = {
+  date: string;
+  totalOpening: number;
+  totalAdded: number;
+  totalConsumed: number;
+  totalClosing: number;
+  items: OpeningStockItem[];
+};
+
+export type OpeningStockData = {
+  from: string;
+  to: string;
+  totalQuantity: number;
+  totalPrice: number;
+  totalRecords: number;
+  openingStockByDate: OpeningStockByDate[];
+};
+
+export type OpeningStockApiResponse = {
+  success?: boolean;
+  message?: string;
+  data?: OpeningStockData;
+  [key: string]: unknown;
+};
+
+function parseOpeningStockNum(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
+}
+
+function parseOpeningStockItem(raw: unknown): OpeningStockItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const inventoryId =
+    typeof row.inventoryId === "string"
+      ? row.inventoryId
+      : typeof row.id === "string"
+        ? row.id
+        : "";
+  const productName = typeof row.productName === "string" ? row.productName : "";
+  const productNumber =
+    typeof row.productNumber === "string"
+      ? row.productNumber
+      : typeof row.productId === "string"
+        ? row.productId
+        : "";
+  const unit = typeof row.unit === "string" ? row.unit : "";
+  if (!inventoryId && !productName) return null;
+  return {
+    inventoryId: inventoryId || productNumber || "unknown",
+    productName: productName || productNumber || "—",
+    productNumber,
+    unit,
+    openingQuantity: parseOpeningStockNum(row.openingQuantity),
+    addedQuantity: parseOpeningStockNum(row.addedQuantity),
+    consumedQuantity: parseOpeningStockNum(row.consumedQuantity),
+    closingQuantity: parseOpeningStockNum(row.closingQuantity),
+    buyingPrice: parseOpeningStockNum(row.buyingPrice) || undefined,
+    totalPrice: parseOpeningStockNum(row.totalPrice) || undefined,
+  };
+}
+
+function parseOpeningStockByDate(raw: unknown): OpeningStockByDate | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const date = typeof row.date === "string" ? row.date : "";
+  if (!date) return null;
+  const itemsRaw = row.items;
+  const items: OpeningStockItem[] = Array.isArray(itemsRaw)
+    ? itemsRaw.map(parseOpeningStockItem).filter((x): x is OpeningStockItem => x !== null)
+    : [];
+  return {
+    date,
+    totalOpening: parseOpeningStockNum(row.totalOpening),
+    totalAdded: parseOpeningStockNum(row.totalAdded),
+    totalConsumed: parseOpeningStockNum(row.totalConsumed),
+    totalClosing: parseOpeningStockNum(row.totalClosing),
+    items,
+  };
+}
+
+function normalizeOpeningStockPayload(payload: unknown): OpeningStockData | null {
+  if (!payload || typeof payload !== "object") return null;
+  const root = payload as Record<string, unknown>;
+  const inner = (root.data ?? root) as Record<string, unknown>;
+  const from = typeof inner.from === "string" ? inner.from : "";
+  const to = typeof inner.to === "string" ? inner.to : "";
+  const byDateRaw = inner.openingStockByDate;
+  const openingStockByDate: OpeningStockByDate[] = Array.isArray(byDateRaw)
+    ? byDateRaw.map(parseOpeningStockByDate).filter((x): x is OpeningStockByDate => x !== null)
+    : [];
+  return {
+    from,
+    to,
+    totalQuantity: parseOpeningStockNum(inner.totalQuantity),
+    totalPrice: parseOpeningStockNum(inner.totalPrice),
+    totalRecords: parseOpeningStockNum(inner.totalRecords),
+    openingStockByDate,
+  };
+}
+
+export async function getOpeningStock(
+  from: string,
+  to: string
+): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
+  const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const result = await apiRequest<OpeningStockApiResponse>(
+    `${PRODUCT_ROUTES.LIVESTOCK_OPENING_STOCK}${qs}`,
+    { method: "GET" }
+  );
+  if (!result.ok) return result;
+  const normalized = normalizeOpeningStockPayload(result.data);
+  if (!normalized) {
+    return {
+      ok: false,
+      status: 422,
+      error: "Invalid opening stock response shape.",
+    };
+  }
+  return { ok: true, data: normalized };
+}

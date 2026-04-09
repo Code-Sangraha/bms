@@ -495,6 +495,26 @@ const translations: Record<string, string> = {
     '"Live" नामको कुनै उत्पादन प्रकार फेला परेन।',
   "No live products match": "कुनै ताजा उत्पादन मिलेन",
   "No live products yet.": "अहिलेसम्म कुनै ताजा उत्पादन छैन।",
+  "Live stock opening and closing": "लाइभ स्टक खुल्ला र बन्द स्टक",
+  "Date from": "मिति देखि",
+  "Date to": "मिति सम्म",
+  Today: "आज",
+  "End date must be on or after start date.":
+    "अन्तिम मिति सुरु मिति वा सोभन्दा पछि हुनुपर्छ।",
+  "Opening stock data is not available yet.":
+    "खुल्ला स्टक डाटा अहिले उपलब्ध छैन।",
+  "Opening Stock Details": "खुल्ला स्टक विवरण",
+  "Closing Stock Details": "बन्द स्टक विवरण",
+  Period: "अवधि",
+  "No opening stock data for this period":
+    "यस अवधिको लागि कुनै खुल्ला स्टक डाटा छैन।",
+  "No closing stock data for this period":
+    "यस अवधिको लागि कुनै बन्द स्टक डाटा छैन।",
+  Opening: "खुल्ला",
+  Added: "थपिएको",
+  Consumed: "खपत",
+  Closing: "बन्द",
+  "Product #": "उत्पादन #",
   Restock: "पुनः भण्डारण",
   Deduct: "कटौती",
   "Delete live stock item": "लाइभ स्टक आइटम मेटाउनुहोस्",
