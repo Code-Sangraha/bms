@@ -52,6 +52,10 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_GET_PENDING_PROCESSING: "/products/livestock/get-pending-processing",
   /** GET ?from=YYYY-MM-DD&to=YYYY-MM-DD — placeholder until backend matches doc shape */
   LIVESTOCK_OPENING_STOCK: "/products/livestock/opening-stock",
+  /** GET ?from=&to= — processed products opening/closing stock (same payload shape as livestock) */
+  PROCESSED_OPENING_STOCK: "/products/processed/opening-stock",
+  /** GET ?productId= — waste history for a processed product row */
+  PROCESSED_WASTE_HISTORY: "/products/processed/waste-history",
 } as const;
 
 export const ROLE_ROUTES = {

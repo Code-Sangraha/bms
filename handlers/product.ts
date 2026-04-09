@@ -1108,15 +1108,13 @@ function normalizeOpeningStockPayload(payload: unknown): OpeningStockData | null
   };
 }
 
-export async function getOpeningStock(
+async function getOpeningStockByRoute(
+  route: string,
   from: string,
   to: string
 ): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
   const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-  const result = await apiRequest<OpeningStockApiResponse>(
-    `${PRODUCT_ROUTES.LIVESTOCK_OPENING_STOCK}${qs}`,
-    { method: "GET" }
-  );
+  const result = await apiRequest<OpeningStockApiResponse>(`${route}${qs}`, { method: "GET" });
   if (!result.ok) return result;
   const normalized = normalizeOpeningStockPayload(result.data);
   if (!normalized) {
@@ -1127,4 +1125,47 @@ export async function getOpeningStock(
     };
   }
   return { ok: true, data: normalized };
+}
+
+export async function getOpeningStock(
+  from: string,
+  to: string
+): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
+  return getOpeningStockByRoute(PRODUCT_ROUTES.LIVESTOCK_OPENING_STOCK, from, to);
+}
+
+export async function getProcessedOpeningStock(
+  from: string,
+  to: string
+): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
+  return getOpeningStockByRoute(PRODUCT_ROUTES.PROCESSED_OPENING_STOCK, from, to);
+}
+
+type ProcessedWasteHistoryApiResponse = LivestockWasteHistoryApiResponse;
+
+export async function getProcessedProductWasteHistory(
+  productId: string
+): Promise<
+  { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
+> {
+  const qs = `?productId=${encodeURIComponent(productId)}`;
+  const result = await apiRequest<ProcessedWasteHistoryApiResponse>(
+    `${PRODUCT_ROUTES.PROCESSED_WASTE_HISTORY}${qs}`,
+    { method: "GET" }
+  );
+  if (!result.ok) return result;
+  const payload = result.data;
+  let list: unknown[] = [];
+  const nested = payload?.data;
+  if (Array.isArray(nested)) {
+    list = nested;
+  } else if (nested && typeof nested === "object" && Array.isArray((nested as { items?: unknown[] }).items)) {
+    list = (nested as { items: unknown[] }).items;
+  } else if (Array.isArray(payload?.items)) {
+    list = payload.items as unknown[];
+  }
+  const data = list
+    .map((row, i) => parseWasteHistoryEntry(row, i))
+    .filter((x): x is LivestockWasteHistoryEntry => x !== null);
+  return { ok: true, data };
 }

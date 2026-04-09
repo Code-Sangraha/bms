@@ -13,11 +13,15 @@ import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   deleteProduct as deleteProductApi,
   deductProduct,
+  getProcessedOpeningStock,
   getProducts,
   restockProduct,
   updateProduct as updateProductApi,
   type Product,
 } from "@/handlers/product";
+import OpeningStockTable from "../liveProduct/components/OpeningStockTable";
+import ClosingStockTable from "../liveProduct/components/ClosingStockTable";
+import ProcessedProductViewModal from "./components/ProcessedProductViewModal";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
@@ -32,6 +36,13 @@ function getProcessedStock(product: Product): number {
   const raw = product.weight ?? product.quantity;
   const num = typeof raw === "number" ? raw : Number(raw);
   return Number.isFinite(num) ? num : 0;
+}
+
+function toIsoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 type OpenRowMenuState = {
@@ -63,6 +74,10 @@ export default function ProcessedProductPage() {
   const [deductError, setDeductError] = useState<string | null>(null);
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [viewProduct, setViewProduct] = useState<Product | null>(null);
+  const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
+  const [openingStockTo, setOpeningStockTo] = useState(() => toIsoDateLocal(new Date()));
+  const openingStockRangeInvalid = openingStockFrom > openingStockTo;
 
   const { data: products = [], isLoading: productsLoading, isError: productsError, error: productsErrorDetail } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -195,6 +210,31 @@ export default function ProcessedProductPage() {
   const invalidateProducts = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
   }, [queryClient]);
+
+  const {
+    data: processedOpeningStockData,
+    isPending: processedOpeningStockPending,
+    isError: processedOpeningStockError,
+    error: processedOpeningStockErrorDetail,
+  } = useQuery({
+    queryKey: ["processedOpeningStock", openingStockFrom, openingStockTo],
+    enabled: !openingStockRangeInvalid,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const result = await getProcessedOpeningStock(openingStockFrom, openingStockTo);
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const processedOpeningStockErrorMessage = processedOpeningStockError
+    ? processedOpeningStockErrorDetail instanceof Error && processedOpeningStockErrorDetail.message.trim()
+      ? processedOpeningStockErrorDetail.message
+      : t("Opening stock data is not available yet.")
+    : null;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: CreateProductFormValues }) =>
@@ -495,6 +535,20 @@ export default function ProcessedProductPage() {
                 e.preventDefault();
                 if (rowMutationsPending) return;
                 closeRowMenu();
+                setViewProduct(openRowMenu.product);
+              }}
+            >
+              {t("View")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowMutationsPending) return;
+                closeRowMenu();
                 setRestockTarget(openRowMenu.product);
                 setRestockWeight("");
                 setRestockError(null);
@@ -547,6 +601,74 @@ export default function ProcessedProductPage() {
           onPageSizeChange={setPageSize}
         />
       )}
+
+      <section className="openingClosingStockSection" aria-labelledby="processed-opening-closing-heading">
+        <h2 id="processed-opening-closing-heading" className="pageTitle" style={{ fontSize: "18px", margin: 0 }}>
+          {t("Processed products opening and closing")}
+        </h2>
+        <div className="openingClosingStockDateRow">
+          <div className="openingClosingStockDateField">
+            <label className="openingClosingStockDateLabel" htmlFor="processed-opening-stock-from">
+              {t("Date from")}
+            </label>
+            <input
+              id="processed-opening-stock-from"
+              type="date"
+              className="openingClosingStockDateInput"
+              value={openingStockFrom}
+              onChange={(e) => setOpeningStockFrom(e.target.value)}
+            />
+          </div>
+          <div className="openingClosingStockDateField">
+            <label className="openingClosingStockDateLabel" htmlFor="processed-opening-stock-to">
+              {t("Date to")}
+            </label>
+            <input
+              id="processed-opening-stock-to"
+              type="date"
+              className="openingClosingStockDateInput"
+              value={openingStockTo}
+              onChange={(e) => setOpeningStockTo(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            className="openingClosingStockTodayBtn"
+            onClick={() => {
+              const todayLocal = toIsoDateLocal(new Date());
+              setOpeningStockFrom(todayLocal);
+              setOpeningStockTo(todayLocal);
+            }}
+          >
+            {t("Today")}
+          </button>
+          {openingStockRangeInvalid && (
+            <p className="openingClosingStockRangeError" role="alert">
+              {t("End date must be on or after start date.")}
+            </p>
+          )}
+        </div>
+        {!openingStockRangeInvalid && (
+          <div className="openingClosingStockGrid">
+            <OpeningStockTable
+              from={openingStockFrom}
+              to={openingStockTo}
+              openingStockData={processedOpeningStockData}
+              isPending={processedOpeningStockPending}
+              isError={processedOpeningStockError}
+              errorMessage={processedOpeningStockErrorMessage}
+            />
+            <ClosingStockTable
+              from={openingStockFrom}
+              to={openingStockTo}
+              openingStockData={processedOpeningStockData}
+              isPending={processedOpeningStockPending}
+              isError={processedOpeningStockError}
+              errorMessage={processedOpeningStockErrorMessage}
+            />
+          </div>
+        )}
+      </section>
 
       {productToEdit && (
         <ProductEditModal
@@ -684,6 +806,14 @@ export default function ProcessedProductPage() {
           </div>
         )}
       </Modal>
+
+      <ProcessedProductViewModal
+        isOpen={viewProduct != null}
+        product={viewProduct}
+        typeName={viewProduct ? getTypeName(viewProduct.productTypeId) : ""}
+        outletName={viewProduct ? getOutletName(viewProduct.outletId) : ""}
+        onClose={() => setViewProduct(null)}
+      />
 
       <ConfirmModal
         isOpen={!!productToDelete}

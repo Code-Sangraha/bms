@@ -552,6 +552,12 @@ const translations: Record<string, string> = {
   "Deduct amount cannot exceed current stock.":
     "कटौती रकम हालको स्टकभन्दा बढी हुन सक्दैन।",
   "Current stock": "हालको स्टक",
+  "Processed products opening and closing":
+    "प्रशोधित उत्पादन खुल्ला र बन्द स्टक",
+  "Processed product details": "प्रशोधित उत्पादन विवरण",
+  "Product ID": "उत्पादन आईडी",
+  "Unable to load waste history: missing product ID.":
+    "फोहोर इतिहास लोड गर्न सकिएन: उत्पादन आईडी छैन।",
   "Pending processing": "विचराधीन प्रशोधन",
   "Registered plants": "दर्ता भएका प्रशोधन केन्द्रहरू",
   "Only Main Outlet can send livestock to processing and complete processing.":
