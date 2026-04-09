@@ -498,6 +498,16 @@ const translations: Record<string, string> = {
     '"Live" नामको कुनै उत्पादन प्रकार फेला परेन।',
   "No live products match": "कुनै ताजा उत्पादन मिलेन",
   "No live products yet.": "अहिलेसम्म कुनै ताजा उत्पादन छैन।",
+  View: "हेर्नुहोस्",
+  "Live stock details": "लाइभ स्टक विवरण",
+  "Waste history": "फोहोर इतिहास",
+  "Loading waste history…": "फोहोर इतिहास लोड हुँदैछ…",
+  "Waste history is not available yet.":
+    "फोहोर इतिहास अहिले उपलब्ध छैन।",
+  "No waste history records.": "कुनै फोहोर इतिहास रेकर्ड छैन।",
+  "Record ID": "रेकर्ड आईडी",
+  "Unable to load waste history: missing item record ID from API.":
+    "फोहोर इतिहास लोड गर्न सकिएन: API बाट आइटम रेकर्ड आईडी छैन।",
   "Live stock opening and closing": "लाइभ स्टक खुल्ला र बन्द स्टक",
   "Date from": "मिति देखि",
   "Date to": "मिति सम्म",

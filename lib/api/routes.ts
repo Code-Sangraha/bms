@@ -45,6 +45,8 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_DEDUCT: "/products/livestock/deduct",
   LIVESTOCK_UPDATE_ITEM: "/products/livestock/update-item",
   LIVESTOCK_DELETE_ITEM: "/products/livestock/delete-item",
+  /** GET ?livestockItemId= — waste / consumption lines for a live stock row (placeholder until backend exists) */
+  LIVESTOCK_WASTE_HISTORY: "/products/livestock/waste-history",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
   LIVESTOCK_COMPLETE_PROCESSING: "/products/livestock/complete-processing",
   LIVESTOCK_GET_PENDING_PROCESSING: "/products/livestock/get-pending-processing",

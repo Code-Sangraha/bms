@@ -219,6 +219,103 @@ export type LivestockItem = {
   [key: string]: unknown;
 };
 
+/** Resolves stable record id for API calls (id, _id, or livestockItemId). */
+export function resolveLivestockItemId(item: LivestockItem): string | null {
+  const withUnderscore = item as unknown as { _id?: unknown };
+  const withLivestockItemId = item as unknown as { livestockItemId?: unknown };
+  const fromId = typeof item.id === "string" ? item.id : null;
+  const fromUnderscore = typeof withUnderscore._id === "string" ? withUnderscore._id : null;
+  const fromLivestockItemId =
+    typeof withLivestockItemId.livestockItemId === "string" ? withLivestockItemId.livestockItemId : null;
+  return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
+}
+
+export type LivestockWasteHistoryEntry = {
+  id: string;
+  date: string;
+  quantity: number;
+  remarks: string;
+};
+
+type LivestockWasteHistoryApiResponse = {
+  success?: boolean;
+  message?: string;
+  data?: unknown;
+  items?: unknown;
+  [key: string]: unknown;
+};
+
+function parseWasteHistoryEntry(raw: unknown, index: number): LivestockWasteHistoryEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const id =
+    typeof row.id === "string"
+      ? row.id
+      : typeof row._id === "string"
+        ? row._id
+        : `waste-row-${index}`;
+  const dateRaw =
+    row.date ??
+    row.createdAt ??
+    row.updatedAt ??
+    (row as { created_at?: unknown }).created_at;
+  const date =
+    typeof dateRaw === "string"
+      ? dateRaw.slice(0, 10)
+      : dateRaw instanceof Date
+        ? dateRaw.toISOString().slice(0, 10)
+        : "";
+  const qtyRaw =
+    row.quantity ??
+    row.consumedQuantity ??
+    row.amount ??
+    row.itemQuantityOrWeight ??
+    row.weight;
+  let quantity = 0;
+  if (typeof qtyRaw === "number" && Number.isFinite(qtyRaw)) quantity = qtyRaw;
+  else if (typeof qtyRaw === "string" && qtyRaw.trim()) {
+    const n = Number(qtyRaw);
+    if (Number.isFinite(n)) quantity = n;
+  }
+  const remarks =
+    typeof row.remarks === "string"
+      ? row.remarks
+      : typeof row.note === "string"
+        ? row.note
+        : typeof row.reason === "string"
+          ? row.reason
+          : "";
+  if (!date && quantity === 0 && !remarks.trim()) return null;
+  return { id, date: date || "—", quantity, remarks: remarks.trim() ? remarks : "—" };
+}
+
+export async function getLivestockWasteHistory(
+  livestockItemId: string
+): Promise<
+  { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
+> {
+  const qs = `?livestockItemId=${encodeURIComponent(livestockItemId)}`;
+  const result = await apiRequest<LivestockWasteHistoryApiResponse>(
+    `${PRODUCT_ROUTES.LIVESTOCK_WASTE_HISTORY}${qs}`,
+    { method: "GET" }
+  );
+  if (!result.ok) return result;
+  const payload = result.data;
+  let list: unknown[] = [];
+  const nested = payload?.data;
+  if (Array.isArray(nested)) {
+    list = nested;
+  } else if (nested && typeof nested === "object" && Array.isArray((nested as { items?: unknown[] }).items)) {
+    list = (nested as { items: unknown[] }).items;
+  } else if (Array.isArray(payload?.items)) {
+    list = payload.items as unknown[];
+  }
+  const data = list
+    .map((row, i) => parseWasteHistoryEntry(row, i))
+    .filter((x): x is LivestockWasteHistoryEntry => x !== null);
+  return { ok: true, data };
+}
+
 export type LivestockCategory = {
   id: string;
   name: string;

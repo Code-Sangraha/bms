@@ -18,12 +18,14 @@ import {
   getLivestockItemsByProduct,
   getOpeningStock,
   resolveLivestockDeleteKey,
+  resolveLivestockItemId,
   restockLivestockItem,
   updateLivestockItem,
   type LivestockItem,
 } from "@/handlers/product";
 import OpeningStockTable from "./components/OpeningStockTable";
 import ClosingStockTable from "./components/ClosingStockTable";
+import LivestockItemViewModal from "./components/LivestockItemViewModal";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
 import { MdMoreHoriz } from "react-icons/md";
 import "./liveProduct.scss";
@@ -61,16 +63,6 @@ type OpenRowMenuState = {
   bottom: number;
   right: number;
 };
-
-function resolveLivestockItemId(item: LivestockItem): string | null {
-  const withUnderscore = item as unknown as { _id?: unknown };
-  const withLivestockItemId = item as unknown as { livestockItemId?: unknown };
-  const fromId = typeof item.id === "string" ? item.id : null;
-  const fromUnderscore = typeof withUnderscore._id === "string" ? withUnderscore._id : null;
-  const fromLivestockItemId =
-    typeof withLivestockItemId.livestockItemId === "string" ? withLivestockItemId.livestockItemId : null;
-  return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
-}
 
 function resolveLivestockRowActionKey(item: LivestockItem, index: number): string {
   const withUnderscore = item as unknown as { _id?: unknown };
@@ -132,6 +124,7 @@ export default function LiveProductPage() {
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
+  const [viewLivestockItem, setViewLivestockItem] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
 
@@ -495,6 +488,10 @@ export default function LiveProductPage() {
     livestockMutation.mutate(payload);
   };
 
+  const handleOpenView = (item: LivestockItem) => {
+    setViewLivestockItem(item);
+  };
+
   const handleOpenEdit = (item: LivestockItem) => {
     const id = resolveLivestockItemId(item);
     if (!id) {
@@ -812,6 +809,20 @@ export default function LiveProductPage() {
               }}
             >
               {t("Edit")}
+            </button>
+            <button
+              type="button"
+              className="rowMenuItem"
+              role="menuitem"
+              disabled={rowActionMutationsPending}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (rowActionMutationsPending) return;
+                closeRowMenu();
+                handleOpenView(openRowMenu.item);
+              }}
+            >
+              {t("View")}
             </button>
             <button
               type="button"
@@ -1253,6 +1264,15 @@ export default function LiveProductPage() {
           </label>
         </div>
       </Modal>
+
+      <LivestockItemViewModal
+        isOpen={viewLivestockItem != null}
+        item={viewLivestockItem}
+        categoryName={
+          viewLivestockItem ? getLiveProductName(viewLivestockItem.productId) : ""
+        }
+        onClose={() => setViewLivestockItem(null)}
+      />
 
       <ConfirmModal
         isOpen={itemPendingDelete != null}
