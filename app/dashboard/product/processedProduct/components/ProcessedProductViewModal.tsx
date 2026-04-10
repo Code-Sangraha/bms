@@ -98,14 +98,14 @@ export default function ProcessedProductViewModal({
             <dt>{t("Weight")}</dt>
             <dd>{stockDisplay}</dd>
           </div>
-          <div className="processedProductViewDlRow">
+          {/* <div className="processedProductViewDlRow">
             <dt>{t("Status")}</dt>
             <dd>{product.status ? t("Active") : t("Inactive")}</dd>
           </div>
           <div className="processedProductViewDlRow">
             <dt>{t("Product ID")}</dt>
             <dd className="processedProductViewMono">{product.id}</dd>
-          </div>
+          </div> */}
         </dl>
 
         <div className="processedProductViewWasteSection">

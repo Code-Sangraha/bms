@@ -100,7 +100,7 @@ export default function LivestockItemViewModal({
             <dt>{quantityLabel}</dt>
             <dd>{item.weight}</dd>
           </div>
-          <div className="livestockViewDlRow">
+          {/* <div className="livestockViewDlRow">
             <dt>{t("Price")}</dt>
             <dd>{item.price}</dd>
           </div>
@@ -113,7 +113,7 @@ export default function LivestockItemViewModal({
               <dt>{t("Record ID")}</dt>
               <dd className="livestockViewMono">{recordId}</dd>
             </div>
-          )}
+          )} */}
         </dl>
 
         <div className="livestockViewWasteSection">

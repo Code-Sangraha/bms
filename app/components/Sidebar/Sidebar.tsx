@@ -3,8 +3,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { CiSettings } from "react-icons/ci";
-import { IoBagHandleOutline, IoBusinessOutline, IoChevronDown } from "react-icons/io5";
-import { LuDownload, LuReceiptText, LuUserCog } from "react-icons/lu";
+import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
+import { LuDownload } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -123,58 +123,58 @@ const sidebarConfig = {
               { labelKey: "outlets", href: "/dashboard/settings/outlet" },
               { labelKey: "users", href: "/dashboard/settings/users" },
               { labelKey: "departments", href: "/dashboard/settings/departments" },
-              { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
+              // { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
               // { label: "Analytics", href: "/dashboard/analytics" },
               // { label: "Reports", href: "/dashboard/reports" },
             ] as MenuItem[],
           },
         },
-        {
-          id: "Sales & Billing",
-          href: "#",
-          icon: <LuReceiptText size={20} />,
-          menu: {
-            titleKey: "salesBilling" as const,
-            items: [
-              { labelKey: "analytics", href: "/dashboard/invoices" },
-              { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" as const },
-              { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", permission: "create" as const },
-              { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
-              { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
-            ] as MenuItem[],
-          },
-        },
-        {
-          id: "orders",
-          href: "#",
-          icon: <IoBagHandleOutline size={20} />,
-          menu: {
-            titleKey: "product" as const,
-            items: [
-              { labelKey: "products", href: "/dashboard/product" },
-              { labelKey: "productType", href: "/dashboard/product/productType" },
-              { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
-              { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
-              { labelKey: "live", href: "/dashboard/product/liveProduct" },
-              { labelKey: "processed", href: "/dashboard/product/processedProduct" },
-
-            ] as MenuItem[],
-          },
-        },
-        {
-          id: "accounts",
-          href: "#",
-          icon: <LuUserCog size={20} />,
-          menu: {
-            titleKey: "attendance" as const,
-            items: [
-              { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
-              { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
-              { labelKey: "directory", href: "/dashboard/accounts/directory" },
-            ] as MenuItem[],
-          },
-        },
+        // {
+        //   id: "Sales & Billing",
+        //   href: "#",
+        //   icon: <LuReceiptText size={20} />,
+        //   menu: {
+        //     titleKey: "salesBilling" as const,
+        //     items: [
+        //       { labelKey: "analytics", href: "/dashboard/invoices" },
+        //       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" as const },
+        //       { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", permission: "create" as const },
+        //       { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+        //       { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
+        //     ] as MenuItem[],
+        //   },
+        // },
+        // {
+        //   id: "orders",
+        //   href: "#",
+        //   icon: <IoBagHandleOutline size={20} />,
+        //   menu: {
+        //     titleKey: "product" as const,
+        //     items: [
+        //       { labelKey: "products", href: "/dashboard/product" },
+        //       { labelKey: "productType", href: "/dashboard/product/productType" },
+        //       { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
+        //       { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
+        //       { labelKey: "live", href: "/dashboard/product/liveProduct" },
+        //       { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+        //
+        //     ] as MenuItem[],
+        //   },
+        // },
+        // {
+        //   id: "accounts",
+        //   href: "#",
+        //   icon: <LuUserCog size={20} />,
+        //   menu: {
+        //     titleKey: "attendance" as const,
+        //     items: [
+        //       { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
+        //       { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
+        //       { labelKey: "directory", href: "/dashboard/accounts/directory" },
+        //     ] as MenuItem[],
+        //   },
+        // },
         {
           id: "highland",
           href: "#",
@@ -182,15 +182,15 @@ const sidebarConfig = {
           menu: {
             titleKey: "highland" as const,
             sections: [
-              {
-                titleKey: "dashboard",
-                items: [
-                  {
-                    labelKey: "processingPlant",
-                    href: "/dashboard/settings/processingPlant",
-                  },
-                ],
-              },
+              // {
+              //   titleKey: "dashboard",
+              //   items: [
+              //     {
+              //       labelKey: "processingPlant",
+              //       href: "/dashboard/settings/processingPlant",
+              //     },
+              //   ],
+              // },
               {
                 titleKey: "salesBilling",
                 items: [
