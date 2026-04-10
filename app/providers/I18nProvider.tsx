@@ -615,6 +615,8 @@ const translations: Record<string, string> = {
   "Contact is required.": "सम्पर्क आवश्यक छ।",
   "Create": "सिर्जना गर्नुहोस्",
   "Batch": "ब्याच",
+  "Last updated": "अन्तिम अद्यावधिक",
+  "No attendance records yet.": "अहिलेसम्म कुनै हाजिरी रेकर्ड छैन।",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
