@@ -2,7 +2,6 @@
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { CiSettings } from "react-icons/ci";
 import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbLayoutDashboard } from "react-icons/tb";
@@ -250,21 +249,21 @@ const sidebarConfig = {
         //     ] as MenuItem[],
         //   },
         // },
-        {
-          id: "settings",
-          href: "#",
-          icon: <CiSettings size={20} />,
-          menu: {
-            titleKey: "settings" as const,
-            items: [
-              { labelKey: "outlets", href: "/dashboard/settings/outlet" },
-              { labelKey: "users", href: "/dashboard/settings/users" },
-              { labelKey: "departments", href: "/dashboard/settings/departments" },
-              { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
-              { labelKey: "roles", href: "/dashboard/accounts/roles" },
-            ] as MenuItem[],
-          },
-        },
+        // {
+        //   id: "settings",
+        //   href: "#",
+        //   icon: <CiSettings size={20} />,
+        //   menu: {
+        //     titleKey: "settings" as const,
+        //     items: [
+        //       { labelKey: "outlets", href: "/dashboard/settings/outlet" },
+        //       { labelKey: "users", href: "/dashboard/settings/users" },
+        //       { labelKey: "departments", href: "/dashboard/settings/departments" },
+        //       { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
+        //       { labelKey: "roles", href: "/dashboard/accounts/roles" },
+        //     ] as MenuItem[],
+        //   },
+        // },
       ],
     },
   ],
