@@ -182,15 +182,15 @@ const sidebarConfig = {
           menu: {
             titleKey: "highland" as const,
             sections: [
-              // {
-              //   titleKey: "dashboard",
-              //   items: [
-              //     {
-              //       labelKey: "processingPlant",
-              //       href: "/dashboard/settings/processingPlant",
-              //     },
-              //   ],
-              // },
+              {
+                titleKey: "dashboard",
+                items: [
+                  {
+                    labelKey: "processingPlant",
+                    href: "/dashboard/settings/processingPlant",
+                  },
+                ],
+              },
               {
                 titleKey: "salesBilling",
                 items: [
