@@ -119,10 +119,10 @@ const sidebarConfig = {
             titleKey: "dashboard" as const,
             items: [
               { labelKey: "overview", href: "/dashboard" },
-              { labelKey: "outlets", href: "/dashboard/settings/outlet" },
-              { labelKey: "users", href: "/dashboard/settings/users" },
-              { labelKey: "departments", href: "/dashboard/settings/departments" },
-              // { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
+              { labelKey: "outlets", href: "/dashboard/outlet" },
+              { labelKey: "users", href: "/dashboard/users" },
+              { labelKey: "departments", href: "/dashboard/departments" },
+              // { labelKey: "processingPlant", href: "/dashboard/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
               // { label: "Analytics", href: "/dashboard/analytics" },
               // { label: "Reports", href: "/dashboard/reports" },
@@ -153,7 +153,7 @@ const sidebarConfig = {
         //     items: [
         //       { labelKey: "products", href: "/dashboard/product" },
         //       { labelKey: "productType", href: "/dashboard/product/productType" },
-        //       { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
+        //       { labelKey: "pricelist", href: "/dashboard/dualPricing" },
         //       { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
         //       { labelKey: "live", href: "/dashboard/product/liveProduct" },
         //       { labelKey: "processed", href: "/dashboard/product/processedProduct" },
@@ -184,9 +184,10 @@ const sidebarConfig = {
               {
                 titleKey: "dashboard",
                 items: [
+                  { labelKey: "overview", href: "/dashboard" },
                   {
                     labelKey: "processingPlant",
-                    href: "/dashboard/settings/processingPlant",
+                    href: "/dashboard/processingPlant",
                   },
                 ],
               },
@@ -216,7 +217,7 @@ const sidebarConfig = {
                   { labelKey: "live", href: "/dashboard/product/liveProduct" },
                   { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
                   { labelKey: "processed", href: "/dashboard/product/processedProduct" },
-                  { labelKey: "pricelist", href: "/dashboard/settings/dualPricing" },
+                  { labelKey: "pricelist", href: "/dashboard/dualPricing" },
                 ],
               },
               {
@@ -256,10 +257,10 @@ const sidebarConfig = {
         //   menu: {
         //     titleKey: "settings" as const,
         //     items: [
-        //       { labelKey: "outlets", href: "/dashboard/settings/outlet" },
-        //       { labelKey: "users", href: "/dashboard/settings/users" },
-        //       { labelKey: "departments", href: "/dashboard/settings/departments" },
-        //       { labelKey: "processingPlant", href: "/dashboard/settings/processingPlant" },
+        //       { labelKey: "outlets", href: "/dashboard/outlet" },
+        //       { labelKey: "users", href: "/dashboard/users" },
+        //       { labelKey: "departments", href: "/dashboard/departments" },
+        //       { labelKey: "processingPlant", href: "/dashboard/processingPlant" },
         //       { labelKey: "roles", href: "/dashboard/accounts/roles" },
         //     ] as MenuItem[],
         //   },
@@ -295,7 +296,7 @@ function longestMatchingHrefInMenu(
 /**
  * Picks which primary rail icon is "active" for the current route.
  * When several rails share the same matching href length (e.g. Highland vs Dashboard),
- * prefer the rail whose drawer is open (`openMenuId`), then settings for /dashboard/settings,
+ * prefer the rail whose drawer is open (`openMenuId`), then dashboard rail for org settings paths,
  * then first in rail order.
  */
 function getActivePrimaryId(
@@ -324,9 +325,20 @@ function getActivePrimaryId(
   const tied = candidates.filter((c) => c.hrefLen === maxLen);
   if (tied.length === 1) return tied[0].id;
 
-  if (pathname.startsWith("/dashboard/settings")) {
-    const settingsHit = tied.find((c) => c.id === "settings");
-    if (settingsHit) return "settings";
+  const dashboardOrgPaths = [
+    "/dashboard/outlet",
+    "/dashboard/users",
+    "/dashboard/departments",
+    "/dashboard/dualPricing",
+    "/dashboard/processingPlant",
+  ];
+  if (
+    dashboardOrgPaths.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`)
+    )
+  ) {
+    const dashboardHit = tied.find((c) => c.id === "dashboard");
+    if (dashboardHit) return "dashboard";
   }
 
   const openTie = openMenuId ? tied.find((c) => c.id === openMenuId) : undefined;

@@ -1109,6 +1109,115 @@ function normalizeOpeningStockPayload(payload: unknown): OpeningStockData | null
   };
 }
 
+const DUMMY_OPENING_STOCK_MAX_DAYS = 31;
+
+function parseCalendarDateParts(isoDate: string): { y: number; m: number; d: number } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const day = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(day)) return null;
+  return { y, m: mo, d: day };
+}
+
+function calendarDateToUtcMidnight(parts: { y: number; m: number; d: number }): number {
+  return Date.UTC(parts.y, parts.m - 1, parts.d);
+}
+
+function utcMidnightToIsoDate(utcMs: number): string {
+  const x = new Date(utcMs);
+  const y = x.getUTCFullYear();
+  const m = String(x.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(x.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Placeholder rows when the opening-stock API is not deployed yet (404 / route messages). */
+function buildDummyOpeningStockData(from: string, to: string): OpeningStockData {
+  const startParts = parseCalendarDateParts(from);
+  const endParts = parseCalendarDateParts(to);
+  if (!startParts || !endParts) {
+    return {
+      from,
+      to,
+      totalQuantity: 0,
+      totalPrice: 0,
+      totalRecords: 0,
+      openingStockByDate: [],
+    };
+  }
+  const startMs = calendarDateToUtcMidnight(startParts);
+  const endMs = calendarDateToUtcMidnight(endParts);
+  const dayMs = 86400000;
+  const openingStockByDate: OpeningStockByDate[] = [];
+  let totalQuantity = 0;
+  let totalPrice = 0;
+  let totalRecords = 0;
+
+  for (let i = 0, ms = startMs; ms <= endMs && i < DUMMY_OPENING_STOCK_MAX_DAYS; i++, ms += dayMs) {
+    const dateStr = utcMidnightToIsoDate(ms);
+    const items: OpeningStockItem[] = [
+      {
+        inventoryId: "demo-inv-1",
+        productName: "Sample stock item A",
+        productNumber: "DEMO-001",
+        unit: "kg",
+        openingQuantity: 120,
+        addedQuantity: 25,
+        consumedQuantity: 18,
+        closingQuantity: 127,
+        buyingPrice: 4.5,
+        totalPrice: 571.5,
+      },
+      {
+        inventoryId: "demo-inv-2",
+        productName: "Sample stock item B",
+        productNumber: "DEMO-002",
+        unit: "head",
+        openingQuantity: 8,
+        addedQuantity: 1,
+        consumedQuantity: 0,
+        closingQuantity: 9,
+        buyingPrice: 220,
+        totalPrice: 1980,
+      },
+    ];
+    const totalOpening = items.reduce((s, x) => s + x.openingQuantity, 0);
+    const totalAdded = items.reduce((s, x) => s + x.addedQuantity, 0);
+    const totalConsumed = items.reduce((s, x) => s + x.consumedQuantity, 0);
+    const totalClosing = items.reduce((s, x) => s + x.closingQuantity, 0);
+    totalQuantity += totalClosing;
+    totalPrice += items.reduce((s, x) => s + (x.totalPrice ?? 0), 0);
+    totalRecords += items.length;
+    openingStockByDate.push({
+      date: dateStr,
+      totalOpening,
+      totalAdded,
+      totalConsumed,
+      totalClosing,
+      items,
+    });
+  }
+
+  return {
+    from,
+    to,
+    totalQuantity,
+    totalPrice,
+    totalRecords,
+    openingStockByDate,
+  };
+}
+
+function shouldUseDummyOpeningStockFallback(error: string, status: number): boolean {
+  if (status === 401) return false;
+  if (status === 404 || status === 405) return true;
+  const e = error.toLowerCase();
+  if (e.includes("route not found") || e.includes("wrong api method")) return true;
+  return false;
+}
+
 async function getOpeningStockByRoute(
   route: string,
   from: string,
@@ -1116,7 +1225,13 @@ async function getOpeningStockByRoute(
 ): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
   const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const result = await apiRequest<OpeningStockApiResponse>(`${route}${qs}`, { method: "GET" });
-  if (!result.ok) return result;
+  if (!result.ok) {
+    if (result.status === 401) return result;
+    if (shouldUseDummyOpeningStockFallback(result.error, result.status)) {
+      return { ok: true, data: buildDummyOpeningStockData(from, to) };
+    }
+    return result;
+  }
   const normalized = normalizeOpeningStockPayload(result.data);
   if (!normalized) {
     return {

@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
-import Modal from "../../../components/Modal/Modal";
+import Modal from "../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { getRoles } from "@/handlers/role";
 import {

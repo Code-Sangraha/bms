@@ -6,11 +6,11 @@ import QueryProvider from "./providers/QueryProvider";
 import LoginPage from "./(auth)/login/page";
 import RegisterPage from "./(auth)/register/page";
 import DashboardPage from "./dashboard/page";
-import OutletPage from "./dashboard/settings/outlet/page";
-import UsersPage from "./dashboard/settings/users/page";
-import DualPricingPage from "./dashboard/settings/dualPricing/page";
-import DepartmentsPage from "./dashboard/settings/departments/page";
-import ProcessingPlantPage from "./dashboard/settings/processingPlant/page";
+import OutletPage from "./dashboard/outlet/page";
+import UsersPage from "./dashboard/users/page";
+import DualPricingPage from "./dashboard/dualPricing/page";
+import DepartmentsPage from "./dashboard/departments/page";
+import ProcessingPlantPage from "./dashboard/processingPlant/page";
 import ProductTypePage from "./dashboard/product/productType/page";
 import ProductPage from "./dashboard/product/page";
 import LiveProductPage from "./dashboard/product/liveProduct/page";
@@ -40,11 +40,11 @@ export default function App() {
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="dashboard/settings/outlet" element={<OutletPage />} />
-            <Route path="dashboard/settings/users" element={<UsersPage />} />
-            <Route path="dashboard/settings/dualPricing" element={<DualPricingPage />} />
-            <Route path="dashboard/settings/departments" element={<DepartmentsPage />} />
-            <Route path="dashboard/settings/processingPlant" element={<ProcessingPlantPage />} />
+            <Route path="dashboard/outlet" element={<OutletPage />} />
+            <Route path="dashboard/users" element={<UsersPage />} />
+            <Route path="dashboard/dualPricing" element={<DualPricingPage />} />
+            <Route path="dashboard/departments" element={<DepartmentsPage />} />
+            <Route path="dashboard/processingPlant" element={<ProcessingPlantPage />} />
             <Route path="dashboard/product" element={<ProductPage />} />
             <Route path="dashboard/product/productType" element={<ProductTypePage />} />
             <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />

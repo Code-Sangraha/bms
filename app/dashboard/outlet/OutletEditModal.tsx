@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
-import Modal from "../../../components/Modal/Modal";
+import Modal from "../../components/Modal/Modal";
 import {
   updateOutlet,
   type Outlet,

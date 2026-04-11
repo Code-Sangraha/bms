@@ -8,8 +8,8 @@ import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
-import ConfirmModal from "../../../components/Modal/ConfirmModal";
-import Modal from "../../../components/Modal/Modal";
+import ConfirmModal from "../../components/Modal/ConfirmModal";
+import Modal from "../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createDualPricing as createDualPricingApi,
