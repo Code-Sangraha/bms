@@ -171,6 +171,7 @@ const translations: Record<string, string> = {
   Edit: "सम्पादन गर्नुहोस्",
   "Delete outlet": "आउटलेट मेटाउनुहोस्",
   Cancel: "रद्द गर्नुहोस्",
+  Back: "पछि",
   "Quickly add a new outlet to your organization":
     "आफ्नो संस्थामा छिटो नयाँ आउटलेट थप्नुहोस्",
   Discard: "रद्द गर्नुहोस्",
