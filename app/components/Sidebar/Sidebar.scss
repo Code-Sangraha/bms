@@ -48,13 +48,12 @@ $mobile-breakpoint: 768px;
     height: 64px;
     flex-direction: row;
     flex-wrap: nowrap;
-    justify-content: space-around;
-    align-items: center;
-    padding: 0 8px;
+    align-items: stretch;
+    padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0);
     border-right: none;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
-    gap: 0;
+    gap: 2px;
     box-shadow: 0 -1px 0 0 rgba(0, 0, 0, 0.06);
   }
 }
@@ -88,25 +87,15 @@ $mobile-breakpoint: 768px;
   gap: 10px;
 
   @media (max-width: $mobile-breakpoint) {
-    flex-direction: row;
-    flex: 1;
-    justify-content: space-around;
-    align-items: center;
-    gap: 0;
-    min-width: 0;
+    /* Flatten so each rail control is a direct flex child of .sidebar (even spacing) */
+    display: contents;
   }
 }
 
-/* Section wrapper divs inside .nav – on mobile make them a single row so icons don't stack */
+/* Section wrapper divs inside .nav – on mobile flatten with nav (see .nav mobile) */
 .nav > div {
   @media (max-width: $mobile-breakpoint) {
-    display: flex;
-    flex-direction: row;
-    flex: 1;
-    justify-content: space-around;
-    align-items: center;
-    gap: 0;
-    min-width: 0;
+    display: contents;
   }
 }
 
@@ -138,12 +127,36 @@ $mobile-breakpoint: 768px;
 
   @media (max-width: $mobile-breakpoint) {
     margin-bottom: 0;
-    min-width: 44px;
+    min-width: 0;
     min-height: 44px;
-    padding: 10px;
-    flex-shrink: 0;
+    padding: 8px 4px;
+    flex: 1 1 0;
+    max-width: 100%;
     outline: none;
   }
+}
+
+.mobileRailIcon,
+.languageToggleContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.languageToggleContent {
+  gap: 0.35rem;
+}
+
+.mobileRailLabel,
+.languageToggleLabel {
+  line-height: 1;
+}
+
+/* Narrow primary rail: icon-only (labels live in drawer, title, aria-label). Applies to desktop + mobile. */
+.sidebar .mobileRailLabel,
+.sidebar .languageToggleLabel {
+  display: none;
 }
 
 .link:focus-visible {
@@ -177,13 +190,20 @@ $mobile-breakpoint: 768px;
 
   @media (max-width: $mobile-breakpoint) {
     margin-top: 0;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
+    display: contents;
     border-bottom: none;
-    padding: 0 40px 0 40px;
-    flex: 0;
+    padding: 0;
     min-width: 0;
+  }
+}
+
+@media (max-width: $mobile-breakpoint) {
+  .sidebar .link {
+    gap: 0;
+  }
+
+  .sidebar .languageToggleContent {
+    gap: 0;
   }
 }
 

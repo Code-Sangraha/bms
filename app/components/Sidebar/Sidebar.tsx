@@ -495,10 +495,17 @@ export default function Sidebar() {
                     activePrimaryId === item.id ? "link active" : "link"
                   }
                   type="button"
+                  aria-label={getSidebarLabel(item.menu.titleKey)}
                   aria-pressed={activeMenuId === item.id}
+                  title={getSidebarLabel(item.menu.titleKey)}
                   onClick={() => handleMenuToggle(item.id)}
                 >
-                  {item.icon}
+                  <span className="mobileRailIcon" aria-hidden>
+                    {item.icon}
+                  </span>
+                  <span className="mobileRailLabel">
+                    {getSidebarLabel(item.menu.titleKey)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -515,7 +522,10 @@ export default function Sidebar() {
               aria-label={t("Install App")}
               title={t("Install App")}
             >
-              <LuDownload size={20} />
+              <span className="mobileRailIcon" aria-hidden>
+                <LuDownload size={20} />
+              </span>
+              <span className="mobileRailLabel">{t("Install")}</span>
             </button>
           )}
           {sidebarConfig.footer[0].items
@@ -525,10 +535,17 @@ export default function Sidebar() {
                 key={item.id}
                 className={activePrimaryId === item.id ? "link active" : "link"}
                 type="button"
+                aria-label={getSidebarLabel(item.menu.titleKey)}
                 aria-pressed={activeMenuId === item.id}
+                title={getSidebarLabel(item.menu.titleKey)}
                 onClick={() => handleMenuToggle(item.id)}
               >
-                {item.icon}
+                <span className="mobileRailIcon" aria-hidden>
+                  {item.icon}
+                </span>
+                <span className="mobileRailLabel">
+                  {getSidebarLabel(item.menu.titleKey)}
+                </span>
               </button>
             ))}
         </div>

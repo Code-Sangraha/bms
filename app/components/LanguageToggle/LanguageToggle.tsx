@@ -20,17 +20,9 @@ export default function LanguageToggle({
       aria-label={locale === "en" ? t("Switch to Nepali") : t("Switch to English")}
       title={locale === "en" ? "EN / नेपाली" : "NEP / English"}
     >
-      <span
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          lineHeight: 1,
-        }}
-      >
+      <span className="languageToggleContent">
         <LuLanguages size={18} />
-        <span style={{ fontSize: "0.6rem", fontWeight: 700 }}>
+        <span className="languageToggleLabel">
           {locale === "en" ? "EN" : "NEP"}
         </span>
       </span>
