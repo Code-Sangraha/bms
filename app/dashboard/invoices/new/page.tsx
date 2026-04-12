@@ -13,6 +13,11 @@ import { getOutlets } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { createSale } from "@/handlers/sale";
+import {
+  DEFAULT_SALE_PAYMENT_METHOD,
+  SALE_PAYMENT_METHOD_OPTIONS,
+  type SalePaymentMethod,
+} from "@/lib/salePaymentMethods";
 import "./pos.scss";
 
 const PRODUCTS_QUERY_KEY = ["products"];
@@ -58,6 +63,9 @@ export default function PointOfSalePage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
+    DEFAULT_SALE_PAYMENT_METHOD
+  );
   const productSelectRef = useRef<HTMLSelectElement>(null);
 
   const { data: products = [] } = useQuery({
@@ -209,6 +217,7 @@ export default function PointOfSalePage() {
       outletId: string;
       weight?: number;
       quantity?: number;
+      paymentMethod: string;
     }[]) =>
       createSale(items),
     onSuccess: (result) => {
@@ -216,6 +225,7 @@ export default function PointOfSalePage() {
         setLineItems([]);
         setCustomerName("");
         setCustomerContact("");
+        setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
         setError(null);
         navigate("/dashboard/invoices/transaction");
       } else {
@@ -242,6 +252,7 @@ export default function PointOfSalePage() {
       outletId,
       // For processed sales backend stock checks align better with weight.
       weight: item.quantity,
+      paymentMethod,
     }));
     createSaleMutation.mutate(items);
     setCheckoutConfirmOpen(false);
@@ -314,6 +325,23 @@ export default function PointOfSalePage() {
               {outletsForSelect.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="posField">
+            <span className="posLabel">{t("Payment method")}</span>
+            <select
+              className="posSelect"
+              value={paymentMethod}
+              onChange={(e) =>
+                setPaymentMethod(e.target.value as SalePaymentMethod)
+              }
+              aria-label={t("Payment method")}
+            >
+              {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.label)}
                 </option>
               ))}
             </select>

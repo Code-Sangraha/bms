@@ -20,6 +20,11 @@ import {
   type LivestockSale,
   type LivestockSalePayload,
 } from "@/handlers/sale";
+import {
+  DEFAULT_SALE_PAYMENT_METHOD,
+  SALE_PAYMENT_METHOD_OPTIONS,
+  type SalePaymentMethod,
+} from "@/lib/salePaymentMethods";
 import "./livestock-sales.scss";
 
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
@@ -61,6 +66,9 @@ export default function LivestockSalesPage() {
   const [livestockAmount, setLivestockAmount] = useState<number>(0);
   const [livestockLineItems, setLivestockLineItems] = useState<LivestockLineItem[]>([]);
   const [livestockError, setLivestockError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
+    DEFAULT_SALE_PAYMENT_METHOD
+  );
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -265,6 +273,7 @@ export default function LivestockSalesPage() {
         setSelectedLivestockItemId("");
         setLivestockWeight("");
         setLivestockAmount(0);
+        setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
         setLivestockError(null);
         queryClient.invalidateQueries({ queryKey: LIVESTOCK_SALES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
@@ -300,8 +309,9 @@ export default function LivestockSalesPage() {
         name: item.name,
         contact: item.contact,
         livestockItemId: item.livestockItemId,
-        weight: item.weight,
+        itemQuantityOrWeight: item.weight,
         amount: item.amount,
+        paymentMethod,
       }))
     );
   };
@@ -338,6 +348,26 @@ export default function LivestockSalesPage() {
               value={customerContact}
               onChange={(e) => setCustomerContact(e.target.value)}
             />
+          </label>
+        </div>
+
+        <div className="formGridTwo">
+          <label className="field">
+            <span>{t("Payment method")}</span>
+            <select
+              className="select"
+              value={paymentMethod}
+              onChange={(e) =>
+                setPaymentMethod(e.target.value as SalePaymentMethod)
+              }
+              aria-label={t("Payment method")}
+            >
+              {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.label)}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 

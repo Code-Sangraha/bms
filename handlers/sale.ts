@@ -11,6 +11,7 @@ export type SaleItemPayload = {
   weight?: number;
   /** For Processed products: quantity (units) */
   quantity?: number;
+  paymentMethod: string;
 };
 
 /** Transaction/sale record for list view. API may return type/customerType/customer as { id, name }. */
@@ -116,6 +117,7 @@ export type LivestockSalePayload = {
   livestockItemId: string;
   itemQuantityOrWeight: number;
   amount: number;
+  paymentMethod: string;
 };
 
 export type LivestockSale = {
