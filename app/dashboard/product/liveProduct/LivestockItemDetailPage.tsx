@@ -108,9 +108,9 @@ export default function LivestockItemDetailPage() {
         <span>{t("Live stock details")}</span>
       </div>
 
-      <Link to="/dashboard/product/liveProduct" className="inventoryDetailBackLink">
+      {/* <Link to="/dashboard/product/liveProduct" className="inventoryDetailBackLink">
         {t("Back to live inventory")}
-      </Link>
+      </Link> */}
 
       {invalidParams && (
         <div className="inventoryDetailNotFound" role="alert">

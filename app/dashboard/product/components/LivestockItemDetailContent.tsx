@@ -23,10 +23,10 @@ export default function LivestockItemDetailContent({
           <dt>{t("Product Category")}</dt>
           <dd>{categoryName}</dd>
         </div>
-        <div className="livestockViewDlRow">
+        {/* <div className="livestockViewDlRow">
           <dt>{t("Name of Livestock Item")}</dt>
           <dd>{item.name}</dd>
-        </div>
+        </div> */}
         <div className="livestockViewDlRow">
           <dt>{t("Item ID")}</dt>
           <dd>{item.itemId}</dd>

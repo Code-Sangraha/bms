@@ -21,10 +21,10 @@ export default function ProcessedProductDetailContent({
   return (
     <div className="processedProductViewModalBody">
       <dl className="processedProductViewDl">
-        <div className="processedProductViewDlRow">
+        {/* <div className="processedProductViewDlRow">
           <dt>{t("Name")}</dt>
           <dd>{product.name}</dd>
-        </div>
+        </div> */}
         <div className="processedProductViewDlRow">
           <dt>{t("Product Type")}</dt>
           <dd>{typeName}</dd>

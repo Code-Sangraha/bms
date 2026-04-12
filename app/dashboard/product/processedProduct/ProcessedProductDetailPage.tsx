@@ -107,9 +107,7 @@ export default function ProcessedProductDetailPage() {
         <span>{t("Processed product details")}</span>
       </div>
 
-      <Link to="/dashboard/product/processedProduct" className="inventoryDetailBackLink">
-        {t("Back to processed inventory")}
-      </Link>
+  
 
       {invalidParams && (
         <div className="inventoryDetailNotFound" role="alert">
