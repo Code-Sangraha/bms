@@ -334,147 +334,200 @@ export default function LivestockSalesPage() {
         <p className="pageSubtitle">{t("Create and track livestock sales")}</p>
       </div>
 
-      <div className="salesCard">
-        <h2 className="cardTitle">{t("Livestock Sales")}</h2>
+      <div className="salesCard salesCard--primary">
+        <header className="salesCardHeader">
+          <h2 className="cardTitle">{t("Livestock Sales")}</h2>
+          <p className="cardDescription">
+            {t("Add customer details, choose how they paid, then add each livestock line before submitting.")}
+          </p>
+        </header>
 
-        <div className="formGridTwo">
-          <label className="field">
-            <span>{t("Customer Name")}</span>
-            <input
-              className="input"
-              placeholder={t("Enter customer name")}
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{t("Contact")}</span>
-            <input
-              className="input"
-              placeholder={t("Phone or email")}
-              value={customerContact}
-              onChange={(e) => setCustomerContact(e.target.value)}
-            />
-          </label>
-        </div>
+        <section className="livestockSection" aria-labelledby="livestock-section-customer">
+          <h3 id="livestock-section-customer" className="livestockSectionTitle">
+            {t("Customer & payment")}
+          </h3>
+          <div className="formGridCustomer">
+            <label className="field">
+              <span className="fieldLabel">{t("Customer Name")}</span>
+              <input
+                className="input"
+                placeholder={t("Enter customer name")}
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                autoComplete="name"
+              />
+            </label>
+            <label className="field">
+              <span className="fieldLabel">{t("Contact")}</span>
+              <input
+                className="input"
+                placeholder={t("Phone or email")}
+                value={customerContact}
+                onChange={(e) => setCustomerContact(e.target.value)}
+                autoComplete="tel"
+              />
+            </label>
+            <div className="field field--payment">
+              <span className="fieldLabel" id="payment-method-label">
+                {t("Payment method")}
+              </span>
+              <div
+                className="paymentMethodGroup"
+                role="radiogroup"
+                aria-labelledby="payment-method-label"
+              >
+                {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => {
+                  const selected = paymentMethod === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={`paymentMethodBtn${selected ? " paymentMethodBtn--active" : ""}`}
+                      onClick={() => setPaymentMethod(opt.value)}
+                    >
+                      {t(opt.label)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <div className="formGridTwo">
-          <label className="field">
-            <span>{t("Payment method")}</span>
-            <select
-              className="select"
-              value={paymentMethod}
-              onChange={(e) =>
-                setPaymentMethod(e.target.value as SalePaymentMethod)
-              }
-              aria-label={t("Payment method")}
-            >
-              {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {t(opt.label)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <section className="livestockSection" aria-labelledby="livestock-section-lines">
+          <h3 id="livestock-section-lines" className="livestockSectionTitle">
+            {t("Add livestock line")}
+          </h3>
+          <div className="formGridAdd">
+            <label className="field">
+              <span className="fieldLabel">{t("Livestock Item ID")}</span>
+              <select
+                className="select"
+                value={selectedLivestockItemId}
+                onFocus={() => setLoadLivestockItems(true)}
+                onClick={() => setLoadLivestockItems(true)}
+                onChange={(e) => setSelectedLivestockItemId(e.target.value)}
+              >
+                <option value="">{t("Select livestock item")}</option>
+                {livestockOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field fieldSm">
+              <span className="fieldLabel">{t("Quantity")}</span>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                step="any"
+                value={livestockWeight}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => setLivestockWeight(e.target.value)}
+              />
+            </label>
+            <label className="field fieldSm">
+              <span className="fieldLabel">{t("Amount")}</span>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                step="any"
+                value={livestockAmount || ""}
+                onChange={(e) => setLivestockAmount(Number(e.target.value) || 0)}
+              />
+            </label>
+            <button type="button" className="addBtn" onClick={handleAddLivestockLine}>
+              {t("+ Add Livestock")}
+            </button>
+          </div>
+        </section>
 
-        <div className="formGridAdd">
-          <label className="field">
-            <span>{t("Livestock Item ID")}</span>
-            <select
-              className="select"
-              value={selectedLivestockItemId}
-              onFocus={() => setLoadLivestockItems(true)}
-              onClick={() => setLoadLivestockItems(true)}
-              onChange={(e) => setSelectedLivestockItemId(e.target.value)}
-            >
-              <option value="">{t("Select livestock item")}</option>
-              {livestockOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field fieldSm">
-            <span>{t("Quantity")}</span>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              step="any"
-              value={livestockWeight}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => setLivestockWeight(e.target.value)}
-            />
-          </label>
-          <label className="field fieldSm">
-            <span>{t("Amount")}</span>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              step="any"
-              value={livestockAmount || ""}
-              onChange={(e) => setLivestockAmount(Number(e.target.value) || 0)}
-            />
-          </label>
-          <button type="button" className="addBtn" onClick={handleAddLivestockLine}>
-            {t("+ Add Livestock")}
-          </button>
-        </div>
+        {livestockError && (
+          <p className="error" role="alert">
+            {livestockError}
+          </p>
+        )}
 
-        {livestockError && <p className="error">{livestockError}</p>}
-
-        <div className="tableWrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t("Name")}</th>
-                <th>{t("Contact")}</th>
-                <th>{t("Livestock Item ID")}</th>
-                <th>{t("Quantity")}</th>
-                <th>{t("Amount")}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {livestockLineItems.length === 0 ? (
+        <section className="livestockSection livestockSection--flush" aria-labelledby="livestock-section-cart">
+          <div className="livestockTableHead">
+            <h3 id="livestock-section-cart" className="livestockSectionTitle livestockSectionTitle--inline">
+              {t("Current sale")}
+            </h3>
+            {livestockLineItems.length > 0 && (
+              <span
+                className="livestockLineCount"
+                title={t("Number of lines in this sale")}
+              >
+                {livestockLineItems.length}
+              </span>
+            )}
+          </div>
+          <div className="tableWrap">
+            <table className="table table--stack">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="emptyCell">{t("No livestock lines added yet.")}</td>
+                  <th>{t("Name")}</th>
+                  <th>{t("Contact")}</th>
+                  <th>{t("Livestock Item ID")}</th>
+                  <th>{t("Quantity")}</th>
+                  <th>{t("Amount")}</th>
+                  <th>{t("Actions")}</th>
                 </tr>
-              ) : (
-                livestockLineItems.map((item, index) => (
-                  <tr key={`${item.livestockItemId}-${index}`}>
-                    <td>{item.name}</td>
-                    <td>{item.contact}</td>
-                    <td>{item.livestockItemLabel}</td>
-                    <td>{item.weight}</td>
-                    <td>{item.amount}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="removeBtn"
-                        onClick={() => removeLivestockLine(index)}
-                      >
-                        {t("Delete")}
-                      </button>
+              </thead>
+              <tbody>
+                {livestockLineItems.length === 0 ? (
+                  <tr className="tableRow--empty">
+                    <td colSpan={6} className="emptyCell">
+                      <div className="emptyState">
+                        <p className="emptyStateTitle">{t("No lines in this sale yet")}</p>
+                        <p className="emptyStateHint">
+                          {t(
+                            "Choose an item, quantity, and amount above, then use Add Livestock."
+                          )}
+                        </p>
+                      </div>
                     </td>
                   </tr>
-                ))
+                ) : (
+                  livestockLineItems.map((item, index) => (
+                    <tr key={`${item.livestockItemId}-${index}`}>
+                      <td data-label={t("Name")}>{item.name}</td>
+                      <td data-label={t("Contact")}>{item.contact}</td>
+                      <td data-label={t("Livestock Item ID")}>{item.livestockItemLabel}</td>
+                      <td data-label={t("Quantity")}>{item.weight}</td>
+                      <td data-label={t("Amount")}>{item.amount}</td>
+                      <td data-label={t("Actions")} className="tableCell--action">
+                        <button
+                          type="button"
+                          className="removeBtn"
+                          onClick={() => removeLivestockLine(index)}
+                        >
+                          {t("Delete")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {livestockLineItems.length > 0 && (
+                <tfoot>
+                  <tr className="tableFootRow">
+                    <td colSpan={4} className="totalLabel">
+                      {t("Total")}
+                    </td>
+                    <td className="totalValue">{livestockTotal}</td>
+                    <td className="tableFootSpacer" aria-hidden />
+                  </tr>
+                </tfoot>
               )}
-            </tbody>
-            {livestockLineItems.length > 0 && (
-              <tfoot>
-                <tr>
-                  <td colSpan={4} className="totalLabel">{t("Total")}</td>
-                  <td className="totalValue">{livestockTotal}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+            </table>
+          </div>
+        </section>
 
         <button
           type="button"
@@ -487,9 +540,12 @@ export default function LivestockSalesPage() {
       </div>
 
       <div className="salesCard">
-        <h2 className="cardTitle">{t("Live Stock Sale Details")}</h2>
-        <div className="tableWrap">
-          <table className="table">
+        <header className="salesCardHeader salesCardHeader--compact">
+          <h2 className="cardTitle">{t("Live Stock Sale Details")}</h2>
+          <p className="cardDescription">{t("Recent livestock sales from your account.")}</p>
+        </header>
+        <div className="tableWrap tableWrap--tight">
+          <table className="table table--stack">
             <thead>
               <tr>
                 <th>{t("Name")}</th>
@@ -502,12 +558,12 @@ export default function LivestockSalesPage() {
             </thead>
             <tbody>
               {livestockSalesLoading && (
-                <tr>
+                <tr className="tableRow--empty">
                   <td colSpan={6} className="emptyCell">{t("Loading livestock sales...")}</td>
                 </tr>
               )}
               {livestockSalesIsError && (
-                <tr>
+                <tr className="tableRow--empty">
                   <td colSpan={6} className="emptyCell">
                     {livestockSalesErrorDetail instanceof Error
                       ? livestockSalesErrorDetail.message
@@ -516,7 +572,7 @@ export default function LivestockSalesPage() {
                 </tr>
               )}
               {!livestockSalesLoading && !livestockSalesIsError && livestockSales.length === 0 && (
-                <tr>
+                <tr className="tableRow--empty">
                   <td colSpan={6} className="emptyCell">{t("No livestock sales yet.")}</td>
                 </tr>
               )}
@@ -524,12 +580,14 @@ export default function LivestockSalesPage() {
                 !livestockSalesIsError &&
                 livestockSales.map((sale: LivestockSale, index: number) => (
                   <tr key={sale.id ?? sale.transactionId ?? `${sale.livestockItemId ?? "item"}-${index}`}>
-                    <td>{String(sale.name ?? "-")}</td>
-                    <td>{String(sale.contact ?? "-")}</td>
-                    <td>{getLivestockDisplay(sale)}</td>
-                    <td>{sale.quantity ?? sale.itemQuantityOrWeight ?? sale.weight ?? "-"}</td>
-                    <td>{sale.amount ?? "-"}</td>
-                    <td>{String(sale.createdAt ?? "-")}</td>
+                    <td data-label={t("Name")}>{String(sale.name ?? "-")}</td>
+                    <td data-label={t("Contact")}>{String(sale.contact ?? "-")}</td>
+                    <td data-label={t("Livestock Item ID")}>{getLivestockDisplay(sale)}</td>
+                    <td data-label={t("Quantity")}>
+                      {sale.quantity ?? sale.itemQuantityOrWeight ?? sale.weight ?? "-"}
+                    </td>
+                    <td data-label={t("Amount")}>{sale.amount ?? "-"}</td>
+                    <td data-label={t("Date")}>{String(sale.createdAt ?? "-")}</td>
                   </tr>
                 ))}
             </tbody>

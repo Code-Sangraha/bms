@@ -618,6 +618,21 @@ const translations: Record<string, string> = {
   "Batch": "ब्याच",
   "Last updated": "अन्तिम अद्यावधिक",
   "No attendance records yet.": "अहिलेसम्म कुनै हाजिरी रेकर्ड छैन।",
+  "Add customer details, choose how they paid, then add each livestock line before submitting.":
+    "ग्राहक विवरण थप्नुहोस्, भुक्तानी छान्नुहोस्, र बुझाउनु अघि लाइभस्टक लाइनहरू थप्नुहोस्।",
+  "Customer & payment": "ग्राहक र भुक्तानी",
+  "Add livestock line": "लाइभस्टक लाइन थप्नुहोस्",
+  "Current sale": "हालको बिक्री",
+  "Number of lines in this sale": "यस बिक्रीमा लाइनहरूको संख्या",
+  "No lines in this sale yet": "यस बिक्रीमा अझै कुनै लाइन छैन",
+  "Choose an item, quantity, and amount above, then use Add Livestock.":
+    "माथि वस्तु, परिमाण र रकम भर्नुहोस्, अनि लाइभस्टक थप्नुहोस्।",
+  "Recent livestock sales from your account.": "तपाईंको खाताबाट हालैका लाइभस्टक बिक्रीहरू।",
+  "Payment method": "भुक्तानी विधि",
+  "Cash": "नगद",
+  "Online": "अनलाइन",
+  "Cheque": "चेक",
+  "Actions": "कार्यहरू",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
