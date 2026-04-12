@@ -70,7 +70,7 @@ export default function CreateRolePage() {
   return (
     <section className="createRolePage">
       <div className="breadcrumb">
-        <span>{t("Accounts")}</span> {"›"} <span>{t("Roles")}</span> {"›"}{" "}
+        <span>{t("Dashboard")}</span> {"›"} <span>{t("Roles")}</span> {"›"}{" "}
         {t("Create role")}
       </div>
 

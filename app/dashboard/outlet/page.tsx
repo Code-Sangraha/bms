@@ -185,7 +185,7 @@ export default function OutletPage() {
   return (
     <section className="outletPage">
       <div className="breadcrumb">
-        <span>{t("Settings")}</span> {"›"} {t("Outlet Management")}
+        <span>{t("Dashboard")}</span> {"›"} {t("Outlet Management")}
       </div>
 
       <div className="outletHeader">

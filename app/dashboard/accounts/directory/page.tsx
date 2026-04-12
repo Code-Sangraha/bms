@@ -219,7 +219,7 @@ export default function DirectoryPage() {
   return (
     <section className="directoryPage">
       <div className="breadcrumb">
-        <span>{t("Staff Management")}</span> {"›"} {t("Directory")}
+        <span>{t("Attendance")}</span> {"›"} {t("Directory")}
       </div>
 
       <div className="directoryHeader">

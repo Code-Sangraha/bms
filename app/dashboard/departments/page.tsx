@@ -198,7 +198,7 @@ export default function DepartmentsPage() {
   return (
     <section className="departmentsPage">
       <div className="breadcrumb">
-        <span>{t("Settings")}</span> {"›"} {t("Department")}
+        <span>{t("Dashboard")}</span> {"›"} {t("Department")}
       </div>
 
       <div className="departmentsHeader">

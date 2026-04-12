@@ -215,7 +215,7 @@ export default function ClockInOutPage() {
   return (
     <section className="clockInOutPage">
       <div className="breadcrumb">
-        <span>{t("Staff Management")}</span> {"›"} {t("Clock-IN/OUT")}
+        <span>{t("Attendance")}</span> {"›"} {t("Clock-IN/OUT")}
       </div>
 
       <div className="clockInOutHeader">

@@ -113,7 +113,7 @@ export default function AccountsAnalyticsPage() {
   return (
     <section className="analyticsPage">
       <div className="breadcrumb">
-        <span>{t("Accounts")}</span>
+        <span>{t("Attendance")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
         <span>{t("Analytics")}</span>
       </div>

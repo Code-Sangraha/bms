@@ -157,7 +157,7 @@ export default function RolesPage() {
   return (
     <section className="rolesPage">
       <div className="breadcrumb">
-        <span>{t("Accounts")}</span> {"›"} {t("Roles")}
+        <span>{t("Dashboard")}</span> {"›"} {t("Roles")}
       </div>
 
       <div className="rolesHeader">

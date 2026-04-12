@@ -233,7 +233,7 @@ export default function DualPricingPage() {
   return (
     <section className="dualPricingPage">
       <div className="breadcrumb">
-        <span>{t("Sales & Billing")}</span> {"›"} {t("Pricelist")}
+        <span>{t("Product")}</span> {"›"} {t("Pricelist")}
       </div>
 
       <div className="dualPricingHeader">

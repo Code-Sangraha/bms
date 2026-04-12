@@ -606,7 +606,7 @@ export default function ProcessingPlantPage() {
   return (
     <section className="processingPlantPage">
       <div className="ppBreadcrumb">
-        <span className="ppBreadcrumbMuted">{t("Settings")}</span>
+        <span className="ppBreadcrumbMuted">{t("Dashboard")}</span>
         <span className="ppBreadcrumbSep" aria-hidden>
           {" / "}
         </span>

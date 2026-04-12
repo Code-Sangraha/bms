@@ -274,7 +274,7 @@ export default function PointOfSalePage() {
   return (
     <section className="posPage">
       <div className="breadcrumb">
-        <span>{t("Sales & Billing")}</span> {" > "} {t("Transaction")}
+        <span>{t("Sales & Billing")}</span> {" > "} {t("Point of Sale")}
       </div>
 
       <div className="posHeader">

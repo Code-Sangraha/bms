@@ -248,7 +248,7 @@ export default function UsersPage() {
   return (
     <section className="usersPage">
       <div className="breadcrumb">
-        <span>{t("Settings")}</span> {"›"} {t("User Management")}
+        <span>{t("Dashboard")}</span> {"›"} {t("User Management")}
       </div>
 
       <div className="usersHeader">
