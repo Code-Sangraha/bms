@@ -286,123 +286,146 @@ export default function PointOfSalePage() {
         </div>
       </div>
 
-      <div className="posCard">
-        <h2 className="posCardTitle">{t("Current Sale")}</h2>
+      <div className="posCard posCard--primary">
+        <header className="posCardHeader">
+          <h2 className="posCardTitle">{t("Current Sale")}</h2>
+          <p className="posCardDescription">
+            {t(
+              "Choose outlet and payment, add processed product lines, then checkout to record the sale."
+            )}
+          </p>
+        </header>
 
-        <div className="posFormRow">
-          <label className="posField">
-            <span className="posLabel">{t("Customer Details")}</span>
-            <input
-              className="posInput"
-              placeholder={t("Enter customer details")}
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              aria-label={t("Customer name")}
-            />
-          </label>
-          <label className="posField">
-            <span className="posLabel">{t("Contact")}</span>
-            <input
-              className="posInput"
-              placeholder={t("Phone or email")}
-              value={customerContact}
-              onChange={(e) => setCustomerContact(e.target.value)}
-              aria-label={t("Customer contact")}
-            />
-          </label>
-        </div>
+        <section className="posSection" aria-labelledby="pos-section-customer">
+          <h3 id="pos-section-customer" className="posSectionTitle">
+            {t("Customer & outlet")}
+          </h3>
+          <div className="posFormRow posFormRow--customer">
+            <label className="posField">
+              <span className="posLabel">{t("Customer Details")}</span>
+              <input
+                className="posInput"
+                placeholder={t("Enter customer details")}
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                aria-label={t("Customer name")}
+                autoComplete="name"
+              />
+            </label>
+            <label className="posField">
+              <span className="posLabel">{t("Contact")}</span>
+              <input
+                className="posInput"
+                placeholder={t("Phone or email")}
+                value={customerContact}
+                onChange={(e) => setCustomerContact(e.target.value)}
+                aria-label={t("Customer contact")}
+                autoComplete="tel"
+              />
+            </label>
+          </div>
+          <div className="posFormRow posFormRow--outletPayment">
+            <label className="posField">
+              <span className="posLabel">{t("Outlet")}</span>
+              <select
+                className="posSelect"
+                value={outletId}
+                onChange={(e) => setOutletId(e.target.value)}
+                aria-label={t("Outlet")}
+              >
+                <option value="">{t("Select outlet")}</option>
+                {outletsForSelect.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="posField posField--payment">
+              <span className="posLabel" id="pos-payment-method-label">
+                {t("Payment method")}
+              </span>
+              <div
+                className="posPaymentMethodGroup"
+                role="radiogroup"
+                aria-labelledby="pos-payment-method-label"
+              >
+                {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => {
+                  const selected = paymentMethod === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={`posPaymentMethodBtn${selected ? " posPaymentMethodBtn--active" : ""}`}
+                      onClick={() => setPaymentMethod(opt.value)}
+                    >
+                      {t(opt.label)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <div className="posFormRow">
-          <label className="posField">
-            <span className="posLabel">{t("Outlet")}</span>
-            <select
-              className="posSelect"
-              value={outletId}
-              onChange={(e) => setOutletId(e.target.value)}
-              aria-label={t("Outlet")}
-            >
-              <option value="">{t("Select outlet")}</option>
-              {outletsForSelect.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="posField">
-            <span className="posLabel">{t("Payment method")}</span>
-            <select
-              className="posSelect"
-              value={paymentMethod}
-              onChange={(e) =>
-                setPaymentMethod(e.target.value as SalePaymentMethod)
-              }
-              aria-label={t("Payment method")}
-            >
-              {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {t(opt.label)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="posFormRow posFormRowAdd">
-          <label className="posField">
-            <span className="posLabel">{t("Product Name")}</span>
-            <select
-              ref={productSelectRef}
-              className="posSelect"
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              aria-label={t("Product")}
-            >
-              <option value="">{t("Select product")}</option>
-              {processedProducts.map((p: Product) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="posField">
-            <span className="posLabel">{t("Type")}</span>
-            <select
-              className="posSelect"
-              value={lineTypeId}
-              onChange={(e) => setLineTypeId(e.target.value)}
-              aria-label={t("Price type for this line (Retail/Wholesale)")}
-            >
-              <option value="">{t("Retail / Wholesale")}</option>
-              {customerTypes.map((ct) => (
-                <option key={ct.id} value={ct.id}>
-                  {ct.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="posField posFieldQty">
-            <span className="posLabel">{t("Quantity")}</span>
-            <input
-              className="posInput"
-              type="number"
-              min={1}
-              step={1}
-              value={quantity}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => setQuantity(e.target.value)}
-              aria-label={t("Quantity")}
-            />
-          </label>
-          <button
-            type="button"
-            className="posAddBtn"
-            onClick={handleAddProduct}
-          >
-            {t("+ Add Product")}
-          </button>
-        </div>
+        <section className="posSection" aria-labelledby="pos-section-add-line">
+          <h3 id="pos-section-add-line" className="posSectionTitle">
+            {t("Add product line")}
+          </h3>
+          <div className="posFormRow posFormRowAdd">
+            <label className="posField">
+              <span className="posLabel">{t("Product Name")}</span>
+              <select
+                ref={productSelectRef}
+                className="posSelect"
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                aria-label={t("Product")}
+              >
+                <option value="">{t("Select product")}</option>
+                {processedProducts.map((p: Product) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="posField">
+              <span className="posLabel">{t("Type")}</span>
+              <select
+                className="posSelect"
+                value={lineTypeId}
+                onChange={(e) => setLineTypeId(e.target.value)}
+                aria-label={t("Price type for this line (Retail/Wholesale)")}
+              >
+                <option value="">{t("Retail / Wholesale")}</option>
+                {customerTypes.map((ct) => (
+                  <option key={ct.id} value={ct.id}>
+                    {ct.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="posField posFieldQty">
+              <span className="posLabel">{t("Quantity")}</span>
+              <input
+                className="posInput"
+                type="number"
+                min={1}
+                step={1}
+                value={quantity}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => setQuantity(e.target.value)}
+                aria-label={t("Quantity")}
+              />
+            </label>
+            <button type="button" className="posAddBtn" onClick={handleAddProduct}>
+              {t("+ Add Product")}
+            </button>
+          </div>
+        </section>
 
         {error && (
           <p className="posError" role="alert">
@@ -410,67 +433,85 @@ export default function PointOfSalePage() {
           </p>
         )}
 
-        <div className="posTableWrap">
-          <table className="posTable">
-            <thead>
-              <tr>
-                <th>{t("PRODUCT NAME")}</th>
-                <th>{t("TYPE")}</th>
-                <th>{t("QUANTITY")}</th>
-                <th>{t("SUB-TOTAL")}</th>
-                {/* explicit header so mobile users can see there is a delete column */}
-                <th className="posRemoveHeader">{t("Remove")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.length === 0 ? (
+        <section className="posSection posSection--flush" aria-labelledby="pos-section-cart">
+          <div className="posTableHead">
+            <h3 id="pos-section-cart" className="posSectionTitle posSectionTitle--inline">
+              {t("Line items")}
+            </h3>
+            {lineItems.length > 0 && (
+              <span className="posLineCount" title={t("Number of lines in this sale")}>
+                {lineItems.length}
+              </span>
+            )}
+          </div>
+          <div className="posTableWrap">
+            <table className="posTable posTable--stack">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="posTableEmpty">
-                    {t(
-                      "No products added. Select product, type (Retail/Wholesale), and quantity above."
-                    )}
-                  </td>
+                  <th>{t("PRODUCT NAME")}</th>
+                  <th>{t("TYPE")}</th>
+                  <th>{t("QUANTITY")}</th>
+                  <th>{t("SUB-TOTAL")}</th>
+                  <th className="posRemoveHeader">{t("Actions")}</th>
                 </tr>
-              ) : (
-                lineItems.map((item, index) => (
-                  <tr key={`${item.productId}-${index}`}>
-                    <td>{item.productName}</td>
-                    <td>
-                      <span className="posLineTypeBadge">{item.typeName}</span>
-                    </td>
-                    <td>{item.quantity}</td>
-                    <td>
-                      {item.quantity !== 1
-                        ? `${item.unitPrice}x${item.quantity}`
-                        : String(item.unitPrice * item.quantity)}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="posRemoveBtn"
-                        onClick={() => removeLine(index)}
-                        aria-label={t("Remove line")}
-                      >
-                        {t("Delete")}
-                      </button>
+              </thead>
+              <tbody>
+                {lineItems.length === 0 ? (
+                  <tr className="posTableRow--empty">
+                    <td colSpan={5} className="posTableEmpty">
+                      <div className="posEmptyState">
+                        <p className="posEmptyStateTitle">{t("No products in this sale yet")}</p>
+                        <p className="posEmptyStateHint">
+                          {t(
+                            "Select product, retail or wholesale type, and quantity above, then use Add Product."
+                          )}
+                        </p>
+                      </div>
                     </td>
                   </tr>
-                ))
+                ) : (
+                  lineItems.map((item, index) => {
+                    const subTotal =
+                      item.quantity !== 1
+                        ? `${item.unitPrice}x${item.quantity}`
+                        : String(item.unitPrice * item.quantity);
+                    return (
+                      <tr key={`${item.productId}-${index}`}>
+                        <td data-label={t("PRODUCT NAME")}>{item.productName}</td>
+                        <td data-label={t("TYPE")}>
+                          <span className="posLineTypeBadge">{item.typeName}</span>
+                        </td>
+                        <td data-label={t("QUANTITY")}>{item.quantity}</td>
+                        <td data-label={t("SUB-TOTAL")}>{subTotal}</td>
+                        <td data-label={t("Actions")} className="posTableCell--action">
+                          <button
+                            type="button"
+                            className="posRemoveBtn"
+                            onClick={() => removeLine(index)}
+                            aria-label={t("Remove line")}
+                          >
+                            {t("Delete")}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+              {lineItems.length > 0 && (
+                <tfoot>
+                  <tr className="posTableFootRow">
+                    <td colSpan={3} className="posTotalLabel">
+                      {t("Total")}
+                    </td>
+                    <td className="posTotalValue">{total}</td>
+                    <td className="posTableFootSpacer" aria-hidden />
+                  </tr>
+                </tfoot>
               )}
-            </tbody>
-            {lineItems.length > 0 && (
-              <tfoot>
-                <tr>
-                  <td colSpan={3} className="posTotalLabel">
-                    {t("Total")}
-                  </td>
-                  <td className="posTotalValue">{total}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+            </table>
+          </div>
+        </section>
 
         <button
           type="button"

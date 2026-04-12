@@ -1,24 +1,39 @@
+/* Point of Sale — full-width layout + mobile patterns (aligned with livestock sales) */
+
+$brand: #02955a;
+$brand-muted: rgba(2, 149, 90, 0.1);
+$brand-ring: rgba(2, 149, 90, 0.18);
+$text: #111827;
+$muted: #6b7280;
+$border: rgba(0, 0, 0, 0.08);
+$radius-card: 14px;
+$radius-control: 10px;
+$radius-pill: 9999px;
+
 .posPage {
   width: 100%;
+  min-width: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  color: #111827;
+  gap: 20px;
+  color: $text;
 }
 
 .breadcrumb {
   font-size: 12px;
   color: #9ca3af;
+  letter-spacing: 0.01em;
 }
 
 .breadcrumb span {
-  color: #6b7280;
+  color: $muted;
 }
 
 .posHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -29,56 +44,174 @@
 }
 
 .pageTitle {
-  font-size: 22px;
-  font-weight: 600;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .pageSubtitle {
-  font-size: 13px;
-  color: #6b7280;
+  margin: 0;
+  font-size: 14px;
+  color: $muted;
+  line-height: 1.45;
 }
 
 .posCard {
+  width: 100%;
+  min-width: 0;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 24px;
+  border: 1px solid $border;
+  border-radius: $radius-card;
+  padding: 24px 24px 22px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  @media (max-width: 479px) {
+    padding: 18px 14px 16px;
+    border-radius: 12px;
+  }
+}
+
+.posCard--primary {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(2, 149, 90, 0.04);
+}
+
+.posCardHeader {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .posCardTitle {
-  font-size: 16px;
+  margin: 0 0 8px;
+  font-size: 17px;
   font-weight: 600;
-  margin: 0 0 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: $text;
+}
+
+.posCardDescription {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: $muted;
+  max-width: none;
+}
+
+.posSection {
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+
+  &:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+.posSection--flush {
+  padding-top: 20px;
+}
+
+.posSectionTitle {
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.posSectionTitle--inline {
+  margin-bottom: 0;
+}
+
+.posTableHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.posLineCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: $brand;
+  background: $brand-muted;
+  border-radius: $radius-pill;
 }
 
 .posFormRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 16px;
 }
 
-.posFormRowAdd {
-  grid-template-columns: 1fr 120px auto;
-  align-items: end;
+.posFormRow--customer {
+  @media (min-width: 640px) {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.posFormRowLivestockAdd {
-  grid-template-columns: 1fr 120px 120px auto;
-  align-items: end;
+.posFormRow--outletPayment {
+  @media (min-width: 640px) {
+    grid-template-columns: 1fr minmax(220px, 1.1fr);
+    align-items: start;
+  }
+}
+
+.posFormRowAdd {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+
+  @media (min-width: 480px) and (max-width: 719px) {
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+
+    .posField:first-of-type {
+      grid-column: 1 / -1;
+    }
+
+    .posAddBtn {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: 720px) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 110px auto;
+    align-items: end;
+  }
 }
 
 .posField {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .posFieldQty {
-  max-width: 120px;
+  @media (min-width: 720px) {
+    max-width: 120px;
+  }
+}
+
+.posField--payment {
+  @media (min-width: 640px) {
+    align-self: stretch;
+  }
 }
 
 .posLabel {
@@ -89,50 +222,127 @@
 
 .posInput,
 .posSelect {
-  height: 40px;
-  padding: 0 12px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 14px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 13px;
-  color: #111827;
+  border-radius: $radius-control;
+  font-size: 14px;
+  color: $text;
   background: #ffffff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  @media (max-width: 479px) {
+    font-size: 16px;
+  }
+}
+
+.posSelect {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
 }
 
 .posInput:focus,
 .posSelect:focus {
   outline: none;
-  border-color: #02955a;
-  box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.15);
+  border-color: $brand;
+  box-shadow: 0 0 0 3px $brand-ring;
+}
+
+.posPaymentMethodGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+  border-radius: $radius-control;
+  background: #f9fafb;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.posPaymentMethodBtn {
+  flex: 1 1 auto;
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: $radius-control;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px $brand;
+  }
+}
+
+.posPaymentMethodBtn--active {
+  background: #ffffff;
+  color: $brand;
+  border-color: rgba(2, 149, 90, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .posAddBtn {
-  height: 40px;
-  padding: 0 20px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 20px;
+  border: 1px solid rgba(2, 149, 90, 0.35);
+  border-radius: $radius-control;
   font-size: 13px;
-  font-weight: 500;
-  background: #ffffff;
-  color: #374151;
+  font-weight: 600;
+  background: $brand-muted;
+  color: #047857;
   cursor: pointer;
-}
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 
-.posAddBtn:hover {
-  background: #f9fafb;
-  border-color: #02955a;
-  color: #02955a;
+  &:hover {
+    background: rgba(2, 149, 90, 0.14);
+    border-color: rgba(2, 149, 90, 0.5);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px $brand-ring;
+  }
 }
 
 .posError {
-  font-size: 12px;
-  color: #dc2626;
-  margin: 0 0 12px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: $radius-control;
 }
 
 .posTableWrap {
-  margin: 20px 0;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
+  margin: 0;
+  border: 1px solid $border;
+  border-radius: 12px;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -140,9 +350,15 @@
 
 .posTable {
   width: 100%;
-  min-width: 760px;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.posTable--stack {
+  @media (max-width: 639px) {
+    min-width: 0;
+  }
 }
 
 .posTable th {
@@ -150,9 +366,9 @@
   text-align: left;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: $muted;
   background: #f9fafb;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
@@ -161,11 +377,12 @@
   padding: 12px 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   color: #374151;
+  vertical-align: middle;
 }
 
 .posTable th:last-child,
 .posTable td:last-child {
-  width: 86px;
+  width: 88px;
   text-align: center;
   white-space: nowrap;
 }
@@ -178,29 +395,159 @@
   border-bottom: none;
 }
 
+.posTable tbody tr:hover td {
+  background: rgba(249, 250, 251, 0.85);
+}
+
+@media (max-width: 639px) {
+  .posTable.posTable--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .posTable.posTable--stack tbody tr:not(.posTableRow--empty) {
+    display: block;
+    padding: 4px 0 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .posTable.posTable--stack tbody tr:not(.posTableRow--empty):last-child {
+    border-bottom: none;
+  }
+
+  .posTable.posTable--stack tbody tr:not(.posTableRow--empty) td {
+    display: grid;
+    grid-template-columns: minmax(108px, 38%) 1fr;
+    gap: 4px 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: none;
+    text-align: left;
+  }
+
+  .posTable.posTable--stack tbody tr:not(.posTableRow--empty) td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: $muted;
+  }
+
+  .posTable.posTable--stack tbody tr.posTableRow--empty td {
+    display: block;
+    padding: 24px 16px !important;
+  }
+
+  .posTable.posTable--stack tbody tr.posTableRow--empty td::before {
+    content: none;
+  }
+
+  .posTable.posTable--stack tbody tr:not(.posTableRow--empty):hover td {
+    background: transparent;
+  }
+
+  .posTable.posTable--stack .posTableCell--action .posRemoveBtn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .posTable.posTable--stack tfoot .posTableFootRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 12px;
+    background: #fafafa;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .posTable.posTable--stack tfoot .posTableFootRow td {
+    display: block;
+    border: none;
+    padding: 0;
+    background: transparent !important;
+  }
+
+  .posTable.posTable--stack tfoot .posTotalLabel {
+    flex: 1 1 auto;
+    text-align: left;
+    font-size: 15px;
+    border-top: none !important;
+  }
+
+  .posTable.posTable--stack tfoot .posTotalValue {
+    font-size: 16px;
+    font-weight: 700;
+    border-top: none !important;
+  }
+
+  .posTable.posTable--stack tfoot .posTableFootSpacer {
+    display: none;
+  }
+}
+
 .posTableEmpty {
-  color: #6b7280;
+  color: $muted;
   text-align: center;
-  padding: 24px !important;
+  vertical-align: middle;
+}
+
+.posEmptyState {
+  max-width: 36rem;
+  margin: 0 auto;
+
+  @media (max-width: 479px) {
+    max-width: none;
+  }
+}
+
+.posEmptyStateTitle {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.posEmptyStateHint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: $muted;
 }
 
 .posRemoveBtn {
-  min-width: 70px;
-  height: 30px;
+  min-width: 72px;
+  min-height: 32px;
+  height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(220, 38, 38, 0.28);
-  border-radius: 8px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: $radius-control;
   background: rgba(220, 38, 38, 0.06);
   color: #b91c1c;
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
-}
+  transition: background 0.15s ease;
 
-.posRemoveBtn:hover {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  &:hover {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+  }
 }
 
 .posLineTypeBadge {
@@ -221,12 +568,14 @@
 
 .posTotalLabel {
   text-align: right;
-  color: #111827;
+  color: $text;
 }
 
 .posTotalValue {
   font-size: 15px;
-  color: #111827;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: $text;
 }
 
 .posAddMoreBtn {
@@ -252,40 +601,66 @@
 
 .posCheckoutBtn {
   width: 100%;
-  height: 48px;
-  margin-top: 0;
+  min-height: 48px;
+  height: auto;
+  padding: 12px 16px;
+  margin-top: 20px;
   border: none;
-  border-radius: 10px;
+  border-radius: $radius-pill;
   font-size: 15px;
-  font-weight: 600;
-  background: #02955a;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: $brand;
   color: #ffffff;
   cursor: pointer;
-  transition: background 0.15s;
-}
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(2, 149, 90, 0.25);
 
-.posCheckoutBtn:hover:not(:disabled) {
-  background: #027a4a;
+  &:hover:not(:disabled) {
+    background: #027d4d;
+    box-shadow: 0 2px 8px rgba(2, 149, 90, 0.28);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px $brand-ring;
+  }
 }
 
 .posCheckoutBtn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-@media (max-width: 900px) {
-  .posFormRow,
-  .posFormRowAdd,
-  .posFormRowLivestockAdd {
-    grid-template-columns: 1fr;
+@media (max-width: 719px) {
+  .posFormRowAdd .posAddBtn {
+    width: 100%;
   }
 
-  .posFieldQty {
-    max-width: none;
+  .posPaymentMethodBtn {
+    min-height: 44px;
   }
 
-  .posTable {
-    min-width: 760px;
+  .pageTitle {
+    font-size: 21px;
   }
 }
 
+@media (max-width: 379px) {
+  .posPaymentMethodGroup {
+    flex-direction: column;
+  }
+
+  .posPaymentMethodBtn {
+    width: 100%;
+    min-width: 0;
+  }
+}

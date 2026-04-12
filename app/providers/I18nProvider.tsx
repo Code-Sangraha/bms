@@ -624,6 +624,14 @@ const translations: Record<string, string> = {
   "Add livestock line": "लाइभस्टक लाइन थप्नुहोस्",
   "Current sale": "हालको बिक्री",
   "Number of lines in this sale": "यस बिक्रीमा लाइनहरूको संख्या",
+  "Choose outlet and payment, add processed product lines, then checkout to record the sale.":
+    "आउटलेट र भुक्तानी छान्नुहोस्, प्रशोधित उत्पादन लाइनहरू थप्नुहोस्, अनि बिक्री दर्ता गर्न चेकआउट गर्नुहोस्।",
+  "Customer & outlet": "ग्राहक र आउटलेट",
+  "Add product line": "उत्पादन लाइन थप्नुहोस्",
+  "Line items": "लाइन वस्तुहरू",
+  "No products in this sale yet": "यस बिक्रीमा अझै कुनै उत्पादन छैन",
+  "Select product, retail or wholesale type, and quantity above, then use Add Product.":
+    "माथि उत्पादन, खुद्रा वा थोक प्रकार र परिमाण छान्नुहोस्, अनि उत्पादन थप्नुहोस्।",
   "No lines in this sale yet": "यस बिक्रीमा अझै कुनै लाइन छैन",
   "Choose an item, quantity, and amount above, then use Add Livestock.":
     "माथि वस्तु, परिमाण र रकम भर्नुहोस्, अनि लाइभस्टक थप्नुहोस्।",
