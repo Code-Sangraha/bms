@@ -289,12 +289,19 @@ function parseWasteHistoryEntry(raw: unknown, index: number): LivestockWasteHist
   return { id, date: date || "—", quantity, remarks: remarks.trim() ? remarks : "—" };
 }
 
+export type WasteHistoryDateRange = { from?: string; to?: string };
+
 export async function getLivestockWasteHistory(
-  livestockItemId: string
+  livestockItemId: string,
+  range?: WasteHistoryDateRange
 ): Promise<
   { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
 > {
-  const qs = `?livestockItemId=${encodeURIComponent(livestockItemId)}`;
+  const sp = new URLSearchParams();
+  sp.set("livestockItemId", livestockItemId);
+  if (range?.from) sp.set("from", range.from);
+  if (range?.to) sp.set("to", range.to);
+  const qs = `?${sp.toString()}`;
   const result = await apiRequest<LivestockWasteHistoryApiResponse>(
     `${PRODUCT_ROUTES.LIVESTOCK_WASTE_HISTORY}${qs}`,
     { method: "GET" }
@@ -1260,11 +1267,16 @@ export async function getProcessedOpeningStock(
 type ProcessedWasteHistoryApiResponse = LivestockWasteHistoryApiResponse;
 
 export async function getProcessedProductWasteHistory(
-  productId: string
+  productId: string,
+  range?: WasteHistoryDateRange
 ): Promise<
   { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
 > {
-  const qs = `?productId=${encodeURIComponent(productId)}`;
+  const sp = new URLSearchParams();
+  sp.set("productId", productId);
+  if (range?.from) sp.set("from", range.from);
+  if (range?.to) sp.set("to", range.to);
+  const qs = `?${sp.toString()}`;
   const result = await apiRequest<ProcessedWasteHistoryApiResponse>(
     `${PRODUCT_ROUTES.PROCESSED_WASTE_HISTORY}${qs}`,
     { method: "GET" }

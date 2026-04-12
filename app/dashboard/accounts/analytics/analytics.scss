@@ -200,3 +200,20 @@
   background: rgba(0, 0, 0, 0.06);
   color: #374151;
 }
+
+$analytics-mobile-breakpoint: 768px;
+
+@media (max-width: $analytics-mobile-breakpoint) {
+  .analyticsTableWrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .analyticsTable {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+  }
+}

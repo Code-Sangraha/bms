@@ -23,9 +23,9 @@ import {
   updateLivestockItem,
   type LivestockItem,
 } from "@/handlers/product";
+import type { LivestockDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import OpeningStockTable from "./components/OpeningStockTable";
 import ClosingStockTable from "./components/ClosingStockTable";
-import LivestockItemViewModal from "./components/LivestockItemViewModal";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
 import { MdMoreHoriz } from "react-icons/md";
 import "./liveProduct.scss";
@@ -124,7 +124,6 @@ export default function LiveProductPage() {
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
-  const [viewLivestockItem, setViewLivestockItem] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
 
@@ -301,7 +300,9 @@ export default function LiveProductPage() {
       const menuEl = rowMenuPortalRef.current;
       const measured = menuEl?.offsetHeight ?? 0;
       const h = Math.max(measured, ROW_MENU_HEIGHT_ESTIMATE_PX);
-      const pos = computeRowMenuPosition(rect, h);
+      const menuWidth =
+        menuEl && menuEl.offsetWidth > 0 ? menuEl.offsetWidth : undefined;
+      const pos = computeRowMenuPosition(rect, h, { menuWidth });
       setOpenRowMenu((prev) =>
         prev
           ? {
@@ -486,10 +487,6 @@ export default function LiveProductPage() {
     const payload = validateLivestockForm(livestockForm, setLivestockError);
     if (!payload) return;
     livestockMutation.mutate(payload);
-  };
-
-  const handleOpenView = (item: LivestockItem) => {
-    setViewLivestockItem(item);
   };
 
   const handleOpenEdit = (item: LivestockItem) => {
@@ -819,7 +816,14 @@ export default function LiveProductPage() {
                 e.preventDefault();
                 if (rowActionMutationsPending) return;
                 closeRowMenu();
-                handleOpenView(openRowMenu.item);
+                navigate(
+                  `/dashboard/product/liveProduct/${encodeURIComponent(openRowMenu.item.productId)}/item/${encodeURIComponent(openRowMenu.item.itemId)}`,
+                  {
+                    state: {
+                      itemSnapshot: openRowMenu.item,
+                    } satisfies LivestockDetailLocationState,
+                  }
+                );
               }}
             >
               {t("View")}
@@ -1264,15 +1268,6 @@ export default function LiveProductPage() {
           </label>
         </div>
       </Modal>
-
-      <LivestockItemViewModal
-        isOpen={viewLivestockItem != null}
-        item={viewLivestockItem}
-        categoryName={
-          viewLivestockItem ? getLiveProductName(viewLivestockItem.productId) : ""
-        }
-        onClose={() => setViewLivestockItem(null)}
-      />
 
       <ConfirmModal
         isOpen={itemPendingDelete != null}

@@ -106,6 +106,27 @@ type I18nContextValue = {
   "Show password": "पासवर्ड देखाउनुहोस्",
   "Hide password": "पासवर्ड लुकाउनुहोस्",
   "Enter your password": "आफ्नो पासवर्ड प्रविष्ट गर्नुहोस्",
+  "Sample data (API pending)": "नमूना डाटा (API बाँकी)",
+  "Back to live inventory": "लाइभ इन्वेन्टरीमा फर्कनुहोस्",
+  "Back to processed inventory": "प्रशोधित इन्वेन्टरीमा फर्कनुहोस्",
+  "Live stock item not found.": "लाइभ स्टक आइटम फेला परेन।",
+  "Processed product not found.": "प्रशोधित उत्पादन फेला परेन।",
+  "Storage history (sample)": "भण्डारण इतिहास (नमूना)",
+  "Consumed and waste (sample)": "खपत र फोहोर (नमूना)",
+  "Sample waste entries shown until API returns data.":
+    "API ले डाटा नफर्काउँदासम्म नमूना फोहोर प्रविष्टिहरू देखाइन्छ।",
+  "Showing cached row; could not verify with server.":
+    "क्यास गरिएको पंक्ति देखाइँदै; सर्भरबाट प्रमाणित गर्न सकिएन।",
+  "Column date": "मिति",
+  "Column type": "प्रकार",
+  "Column quantity": "परिमाण",
+  "Column note": "टिप्पणी",
+  "Storage history": "भण्डारण इतिहास",
+  "Consumed history": "खपत इतिहास",
+  Filter: "फिल्टर",
+  "History tabs": "इतिहास ट्याबहरू",
+  "No rows in this date range.": "यस मिति दायरामा कुनै पंक्ति छैन।",
+  Remarks: "कैफियत",
 };
 
 const STORAGE_KEY = "app-locale";
@@ -640,7 +661,27 @@ const translations: Record<string, string> = {
   "Cash": "नगद",
   "Online": "अनलाइन",
   "Cheque": "चेक",
-  "Actions": "कार्यहरू",
+  "Sample data (API pending)": "नमूना डाटा (API बाँकी)",
+  "Back to live inventory": "लाइभ इन्वेन्टरीमा फर्कनुहोस्",
+  "Back to processed inventory": "प्रशोधित इन्वेन्टरीमा फर्कनुहोस्",
+  "Live stock item not found.": "लाइभ स्टक आइटम फेला परेन।",
+  "Processed product not found.": "प्रशोधित उत्पादन फेला परेन।",
+  "Storage history (sample)": "भण्डारण इतिहास (नमूना)",
+  "Consumed and waste (sample)": "खपत र फोहोर (नमूना)",
+  "Sample waste entries shown until API returns data.":
+    "API ले डाटा नफर्काउँदासम्म नमूना फोहोर प्रविष्टिहरू देखाइन्छ।",
+  "Showing cached row; could not verify with server.":
+    "क्यास गरिएको पंक्ति देखाइँदै; सर्भरबाट प्रमाणित गर्न सकिएन।",
+  "Column date": "मिति",
+  "Column type": "प्रकार",
+  "Column quantity": "परिमाण",
+  "Column note": "टिप्पणी",
+  "Storage history": "भण्डारण इतिहास",
+  "Consumed history": "खपत इतिहास",
+  Filter: "फिल्टर",
+  "History tabs": "इतिहास ट्याबहरू",
+  "No rows in this date range.": "यस मिति दायरामा कुनै पंक्ति छैन।",
+  Remarks: "कैफियत",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

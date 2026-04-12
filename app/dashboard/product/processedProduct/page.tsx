@@ -21,7 +21,7 @@ import {
 } from "@/handlers/product";
 import OpeningStockTable from "../liveProduct/components/OpeningStockTable";
 import ClosingStockTable from "../liveProduct/components/ClosingStockTable";
-import ProcessedProductViewModal from "./components/ProcessedProductViewModal";
+import type { ProcessedDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
@@ -74,7 +74,6 @@ export default function ProcessedProductPage() {
   const [deductError, setDeductError] = useState<string | null>(null);
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
   const [openingStockTo, setOpeningStockTo] = useState(() => toIsoDateLocal(new Date()));
   const openingStockRangeInvalid = openingStockFrom > openingStockTo;
@@ -166,7 +165,9 @@ export default function ProcessedProductPage() {
       const menuEl = rowMenuPortalRef.current;
       const measured = menuEl?.offsetHeight ?? 0;
       const h = Math.max(measured, ROW_MENU_HEIGHT_ESTIMATE_PX);
-      const pos = computeRowMenuPosition(rect, h);
+      const menuWidth =
+        menuEl && menuEl.offsetWidth > 0 ? menuEl.offsetWidth : undefined;
+      const pos = computeRowMenuPosition(rect, h, { menuWidth });
       setOpenRowMenu((prev) =>
         prev
           ? {
@@ -535,7 +536,14 @@ export default function ProcessedProductPage() {
                 e.preventDefault();
                 if (rowMutationsPending) return;
                 closeRowMenu();
-                setViewProduct(openRowMenu.product);
+                navigate(
+                  `/dashboard/product/processedProduct/${encodeURIComponent(openRowMenu.product.id)}`,
+                  {
+                    state: {
+                      productSnapshot: openRowMenu.product,
+                    } satisfies ProcessedDetailLocationState,
+                  }
+                );
               }}
             >
               {t("View")}
@@ -806,14 +814,6 @@ export default function ProcessedProductPage() {
           </div>
         )}
       </Modal>
-
-      <ProcessedProductViewModal
-        isOpen={viewProduct != null}
-        product={viewProduct}
-        typeName={viewProduct ? getTypeName(viewProduct.productTypeId) : ""}
-        outletName={viewProduct ? getOutletName(viewProduct.outletId) : ""}
-        onClose={() => setViewProduct(null)}
-      />
 
       <ConfirmModal
         isOpen={!!productToDelete}

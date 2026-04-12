@@ -14,7 +14,9 @@ import ProcessingPlantPage from "./dashboard/processingPlant/page";
 import ProductTypePage from "./dashboard/product/productType/page";
 import ProductPage from "./dashboard/product/page";
 import LiveProductPage from "./dashboard/product/liveProduct/page";
+import LivestockItemDetailPage from "./dashboard/product/liveProduct/LivestockItemDetailPage";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
+import ProcessedProductDetailPage from "./dashboard/product/processedProduct/ProcessedProductDetailPage";
 import LivestockCategoryPage from "./dashboard/product/livestockCategoryV2/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
@@ -48,7 +50,15 @@ export default function App() {
             <Route path="dashboard/product" element={<ProductPage />} />
             <Route path="dashboard/product/productType" element={<ProductTypePage />} />
             <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />
+            <Route
+              path="dashboard/product/liveProduct/:productId/item/:itemId"
+              element={<LivestockItemDetailPage />}
+            />
             <Route path="dashboard/product/liveProduct" element={<LiveProductPage />} />
+            <Route
+              path="dashboard/product/processedProduct/:productId"
+              element={<ProcessedProductDetailPage />}
+            />
             <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
             <Route path="dashboard/invoices" element={<InvoicesPage />} />
             <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />

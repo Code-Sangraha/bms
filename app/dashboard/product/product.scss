@@ -322,7 +322,9 @@
     width: 100%;
   }
 
+  /* Push the ⋮ control to the end of the row (main axis). flex-end here only
+     affected the cross axis, so the menu stayed left and the dropdown clipped off-screen. */
   .cardMenuWrap {
-    align-self: flex-end;
+    margin-inline-start: auto;
   }
 }
