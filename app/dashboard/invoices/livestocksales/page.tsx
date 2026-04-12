@@ -337,9 +337,9 @@ export default function LivestockSalesPage() {
       <div className="salesCard salesCard--primary">
         <header className="salesCardHeader">
           <h2 className="cardTitle">{t("Livestock Sales")}</h2>
-          <p className="cardDescription">
+          {/* <p className="cardDescription">
             {t("Add customer details, choose how they paid, then add each livestock line before submitting.")}
-          </p>
+          </p> */}
         </header>
 
         <section className="livestockSection" aria-labelledby="livestock-section-customer">

@@ -618,8 +618,8 @@ const translations: Record<string, string> = {
   "Batch": "ब्याच",
   "Last updated": "अन्तिम अद्यावधिक",
   "No attendance records yet.": "अहिलेसम्म कुनै हाजिरी रेकर्ड छैन।",
-  "Add customer details, choose how they paid, then add each livestock line before submitting.":
-    "ग्राहक विवरण थप्नुहोस्, भुक्तानी छान्नुहोस्, र बुझाउनु अघि लाइभस्टक लाइनहरू थप्नुहोस्।",
+  // "Add customer details, choose how they paid, then add each livestock line before submitting.":
+  //   "ग्राहक विवरण थप्नुहोस्, भुक्तानी छान्नुहोस्, र बुझाउनु अघि लाइभस्टक लाइनहरू थप्नुहोस्।",
   "Customer & payment": "ग्राहक र भुक्तानी",
   "Add livestock line": "लाइभस्टक लाइन थप्नुहोस्",
   "Current sale": "हालको बिक्री",
