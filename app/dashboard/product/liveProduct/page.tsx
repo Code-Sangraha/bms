@@ -426,7 +426,7 @@ export default function LiveProductPage() {
   });
 
   const deleteLivestockMutation = useMutation({
-    mutationFn: (deleteKey: string) => deleteLivestockItem({ productId: deleteKey }),
+    mutationFn: (deleteId: string) => deleteLivestockItem({ id: deleteId }),
     onSuccess: (result) => {
       if (!result.ok) {
         if (result.status === 401) {
@@ -587,7 +587,7 @@ export default function LiveProductPage() {
     const deleteKey = resolveLivestockDeleteKey(item);
     if (!deleteKey) {
       setRowActionError(
-        t("Unable to delete: this item has no item ID code in the API response.")
+        t("Unable to delete: this item has no record id in the API response.")
       );
       return;
     }

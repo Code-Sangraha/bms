@@ -229,7 +229,7 @@ export default function LivestockSalesPage() {
     const stockDeleteKey = selectedRow ? resolveLivestockDeleteKey(selectedRow) : null;
     if (!stockDeleteKey) {
       setLivestockError(
-        t("Selected livestock item has no item ID code; it cannot be removed from stock after sale.")
+        t("Selected livestock item has no record id; it cannot be removed from stock after sale.")
       );
       return;
     }
@@ -263,7 +263,7 @@ export default function LivestockSalesPage() {
       if (result.ok) {
         const soldDeleteKeys = [...new Set(livestockLineItems.map((item) => item.livestockStockDeleteKey))];
         const deleteResults = await Promise.all(
-          soldDeleteKeys.map((key) => deleteLivestockItem({ productId: key }))
+          soldDeleteKeys.map((key) => deleteLivestockItem({ id: key }))
         );
         const hasDeleteError = deleteResults.some((res) => !res.ok);
 

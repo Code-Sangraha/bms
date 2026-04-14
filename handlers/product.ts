@@ -62,6 +62,24 @@ export type DeleteProductResponse = {
   [key: string]: unknown;
 };
 
+/**
+ * Backend may return HTTP 2xx (e.g. 201) with `{ success: false, message }` for failed deletes.
+ * Treat that as failure regardless of status code.
+ */
+function normalizeProductDeleteApiResult<T extends DeleteProductResponse>(
+  result: { ok: true; data: T } | { ok: false; error: string; status: number }
+): { ok: true; data: T } | { ok: false; error: string; status: number } {
+  if (!result.ok) return result;
+  if (result.data.success === false) {
+    const msg =
+      typeof result.data.message === "string" && result.data.message.trim()
+        ? result.data.message.trim()
+        : "Delete failed.";
+    return { ok: false, error: msg, status: 200 };
+  }
+  return result;
+}
+
 export async function getProducts(): Promise<
   | { ok: true; data: Product[] }
   | { ok: false; error: string; status: number }
@@ -153,10 +171,12 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string) {
-  return apiRequest<DeleteProductResponse>(PRODUCT_ROUTES.DELETE, {
-    method: "DELETE",
-    body: JSON.stringify({ id }),
-  });
+  return normalizeProductDeleteApiResult(
+    await apiRequest<DeleteProductResponse>(PRODUCT_ROUTES.DELETE, {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+    })
+  );
 }
 
 export type RestockProductPayload = {
@@ -750,25 +770,19 @@ export async function deductLivestockItem(payload: LivestockRestockDeductPayload
 }
 
 /**
- * POST /products/livestock/delete-item
- * JSON field is named `productId`, but the backend uses its value as the human-readable **itemId**
- * string (e.g. "ITEM-001") for the DB query — not the record UUID.
+ * Same as catalog delete: `DELETE PRODUCT_ROUTES.DELETE` with JSON body `{ id }` (e.g. `DELETE /v1/products/delete`).
+ * For livestock list rows, `id` is the row record id (`id` / `_id` / `livestockItemId` from the API).
  */
 export type DeleteLivestockItemPayload = {
-  productId: string;
+  id: string;
 };
 
-/** Value to send as `productId` on delete-item: trimmed `item.itemId` from the list API. */
+/** Record id to send as `id` on delete (same resolution as update/restock). */
 export function resolveLivestockDeleteKey(item: LivestockItem): string | null {
-  if (typeof item.itemId === "string" && item.itemId.trim()) return item.itemId.trim();
-  return null;
+  return resolveLivestockItemId(item);
 }
 
-export type DeleteLivestockItemResponse = {
-  success?: boolean;
-  message?: string;
-  [key: string]: unknown;
-};
+export type DeleteLivestockItemResponse = DeleteProductResponse;
 
 export type SendLivestockToProcessingPayload = {
   livestockItemId: string;
@@ -871,10 +885,16 @@ export type GetPendingLivestockProcessingResponse = {
 };
 
 export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
-  return apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
-    method: "POST",
-    body: JSON.stringify({ productId: payload.productId }),
-  });
+  const id = payload.id.trim();
+  if (!id) {
+    return { ok: false as const, status: 400, error: "Livestock item id is required." };
+  }
+  return normalizeProductDeleteApiResult(
+    await apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.DELETE, {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+    })
+  );
 }
 
 export async function sendLivestockToProcessing(payload: SendLivestockToProcessingPayload) {

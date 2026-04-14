@@ -80,6 +80,14 @@ function resolveLivestockItemId(item: LivestockItem): string | null {
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
+/** Head count / units from API `quantity` only — never body weight (kg). */
+function resolveLivestockHeadCount(item: LivestockItem): number | null {
+  if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
+    return item.quantity;
+  }
+  return null;
+}
+
 export default function ProcessingPlantPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -398,11 +406,11 @@ export default function ProcessingPlantPage() {
       if (!currentItem) {
         return { ok: false as const, error: t("Selected livestock item not found.") };
       }
-      const availableAmount = Number(currentItem.itemQuantityOrWeight ?? currentItem.weight ?? 0);
+      const availableHeads = resolveLivestockHeadCount(currentItem);
       if (
-        Number.isFinite(availableAmount) &&
-        availableAmount > 0 &&
-        qty > availableAmount
+        availableHeads !== null &&
+        availableHeads >= 0 &&
+        qty > availableHeads
       ) {
         return {
           ok: false as const,
@@ -465,10 +473,8 @@ export default function ProcessingPlantPage() {
 
   useEffect(() => {
     if (!selectedLivestockItem) return;
-    const available = Number(
-      selectedLivestockItem.itemQuantityOrWeight ?? selectedLivestockItem.weight ?? 0
-    );
-    setSendQuantity(available > 0 ? String(available) : "");
+    const heads = resolveLivestockHeadCount(selectedLivestockItem);
+    setSendQuantity(heads !== null && heads > 0 ? String(heads) : "");
   }, [selectedLivestockItem]);
 
   const pendingBatches = useMemo(
@@ -778,10 +784,11 @@ export default function ProcessingPlantPage() {
               {livestockItems.map((item) => {
                 const resolvedId = resolveLivestockItemId(item);
                 if (!resolvedId) return null;
-                const available = Number(item.itemQuantityOrWeight ?? item.weight ?? 0);
+                const heads = resolveLivestockHeadCount(item);
+                const qtyLabel = heads !== null ? String(heads) : "\u2014";
                 return (
                   <option key={`${item.productId}-${resolvedId}`} value={resolvedId}>
-                    {`${item.itemId} - ${item.name} (${Number.isFinite(available) ? available : 0})`}
+                    {`${item.itemId} - ${item.name} (${qtyLabel})`}
                   </option>
                 );
               })}
