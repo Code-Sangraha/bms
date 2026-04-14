@@ -1,6 +1,11 @@
 import type { CreateProductFormValues } from "@/schema/product";
 import { apiRequest } from "@/lib/api/client";
 import { PRODUCT_ROUTES } from "@/lib/api/routes";
+import {
+  formatLivestockHistoryAmount,
+  getLivestockInventoryHistory as requestLivestockInventoryHistory,
+  type LivestockInventoryHistoryEntry,
+} from "@/lib/api/livestockInventoryHistory";
 
 export type Product = {
   id: string;
@@ -314,37 +319,51 @@ function parseWasteHistoryEntry(raw: unknown, index: number): LivestockWasteHist
 
 export type WasteHistoryDateRange = { from?: string; to?: string };
 
+function mapInventoryHistoryToWasteEntry(
+  row: LivestockInventoryHistoryEntry
+): LivestockWasteHistoryEntry {
+  const amt = formatLivestockHistoryAmount(row);
+  const parsed = amt.display === "\u2014" ? NaN : Number(amt.display);
+  const quantity = Number.isFinite(parsed) ? parsed : 0;
+  const date =
+    typeof row.createdAt === "string" && row.createdAt.length >= 10
+      ? row.createdAt.slice(0, 10)
+      : row.createdAt;
+  const remarks =
+    row.type === "RESTOCK" || row.type === "DEDUCT"
+      ? row.type
+      : "\u2014";
+  return {
+    id: row.id,
+    date: date || "—",
+    quantity,
+    remarks,
+  };
+}
+
+/** Same GET `/products/livestock/history` + JSON body as stock history; maps rows to waste table shape. */
 export async function getLivestockWasteHistory(
   livestockItemId: string,
   range?: WasteHistoryDateRange
 ): Promise<
   { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
 > {
-  const sp = new URLSearchParams();
-  sp.set("livestockItemId", livestockItemId);
-  if (range?.from) sp.set("from", range.from);
-  if (range?.to) sp.set("to", range.to);
-  const qs = `?${sp.toString()}`;
-  const result = await apiRequest<LivestockWasteHistoryApiResponse>(
-    `${PRODUCT_ROUTES.LIVESTOCK_WASTE_HISTORY}${qs}`,
-    { method: "GET" }
-  );
+  const result = await requestLivestockInventoryHistory({
+    livestockItemId,
+    fromDate: range?.from,
+    toDate: range?.to,
+  });
   if (!result.ok) return result;
-  const payload = result.data;
-  let list: unknown[] = [];
-  const nested = payload?.data;
-  if (Array.isArray(nested)) {
-    list = nested;
-  } else if (nested && typeof nested === "object" && Array.isArray((nested as { items?: unknown[] }).items)) {
-    list = (nested as { items: unknown[] }).items;
-  } else if (Array.isArray(payload?.items)) {
-    list = payload.items as unknown[];
-  }
-  const data = list
-    .map((row, i) => parseWasteHistoryEntry(row, i))
-    .filter((x): x is LivestockWasteHistoryEntry => x !== null);
-  return { ok: true, data };
+  return { ok: true, data: result.data.map(mapInventoryHistoryToWasteEntry) };
 }
+
+export type {
+  LivestockInventoryHistoryType,
+  LivestockInventoryHistoryFilters,
+  LivestockInventoryHistoryEntry,
+  LivestockInventoryHistoryItemSnapshot,
+} from "@/lib/api/livestockInventoryHistory";
+export { getLivestockInventoryHistory, formatLivestockHistoryAmount } from "@/lib/api/livestockInventoryHistory";
 
 export type LivestockCategory = {
   id: string;
@@ -641,29 +660,32 @@ export async function getLivestockItemsByProduct(
   if (inflight) return inflight;
 
   const requestPromise: Promise<LivestockItemsResult> = (async () => {
-    const primary = await apiRequest<GetLivestockItemsByProductResponse>(
-      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
-      {
-        method: "GET",
-        body: JSON.stringify({ productId }),
-      }
-    );
-    if (primary.ok) {
-      const list = primary.data?.data ?? primary.data?.items ?? [];
-      const data = Array.isArray(list)
-        ? list.map((item) => ({
-            ...normalizeLivestockItem(item),
-            productId: item.productId || productId,
-          }))
-        : [];
+    const mapListToRows = (list: unknown[]): LivestockItem[] =>
+      list.map((item) => ({
+        ...normalizeLivestockItem(item as LivestockItem),
+        productId: (item as LivestockItem).productId || productId,
+      }));
+
+    const cacheAndReturn = (list: unknown[]) => {
+      const data = Array.isArray(list) ? mapListToRows(list) : [];
       livestockItemsCache.set(productId, {
         data,
         expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
       });
-      return { ok: true, data };
+      return { ok: true as const, data };
+    };
+
+    // 1) GET + query — reliable in browsers/proxies (GET bodies are often stripped).
+    const queryGet = await apiRequest<GetLivestockItemsByProductResponse>(
+      `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
+      { method: "GET" }
+    );
+    if (queryGet.ok) {
+      const list = queryGet.data?.data ?? queryGet.data?.items ?? [];
+      return cacheAndReturn(Array.isArray(list) ? list : []);
     }
 
-    if (primary.status === 429) {
+    if (queryGet.status === 429) {
       livestockItemsCooldownUntil = Date.now() + LIVESTOCK_ITEMS_COOLDOWN_MS;
       if (cached?.data) return { ok: true, data: cached.data };
       return {
@@ -672,10 +694,9 @@ export async function getLivestockItemsByProduct(
         error: "Rate limit reached while loading livestock items. Please retry shortly.",
       };
     }
-    if (primary.status === 401) return primary;
+    if (queryGet.status === 401) return queryGet;
 
-    // For stale/invalid category IDs, treat as empty data and cache briefly.
-    if (primary.status === 400 || primary.status === 404) {
+    if (queryGet.status === 400 || queryGet.status === 404) {
       livestockItemsCache.set(productId, {
         data: [],
         expiresAt: Date.now() + 60 * 1000,
@@ -683,7 +704,33 @@ export async function getLivestockItemsByProduct(
       return { ok: true, data: [] };
     }
 
-    return primary;
+    // 2) Optional GET + JSON body (some backends read req.body on GET).
+    const bodyGet = await apiRequest<GetLivestockItemsByProductResponse>(
+      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
+      {
+        method: "GET",
+        body: JSON.stringify({ productId }),
+      }
+    );
+    if (bodyGet.ok) {
+      const list = bodyGet.data?.data ?? bodyGet.data?.items ?? [];
+      return cacheAndReturn(Array.isArray(list) ? list : []);
+    }
+    if (bodyGet.status === 401) return bodyGet;
+
+    // 3) POST fallback for deployments that only accept a body.
+    const post = await apiRequest<GetLivestockItemsByProductResponse>(
+      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
+      {
+        method: "POST",
+        body: JSON.stringify({ productId }),
+      }
+    );
+    if (post.ok) {
+      const list = post.data?.data ?? post.data?.items ?? [];
+      return cacheAndReturn(Array.isArray(list) ? list : []);
+    }
+    return post;
   })();
 
   livestockItemsInflight.set(productId, requestPromise);
@@ -728,18 +775,36 @@ export type LivestockRestockDeductPayload = {
   amount: number;
 };
 
+/** Body for livestock restock — `isBulk` is always sent as `true` by `restockLivestockItem` (quantity). */
+export type LivestockRestockPayload = {
+  livestockItemId: string;
+  amount: number;
+};
+
 export type LivestockRestockDeductResponse = {
   success?: boolean;
   message?: string;
-  data?: LivestockItem;
+  /** Backend returns a RESTOCK history row (`quantity` / `weight`), not the full item. */
+  data?: {
+    livestockItemId?: string;
+    type?: string;
+    quantity?: number | null;
+    weight?: number | null;
+    [key: string]: unknown;
+  };
   item?: LivestockItem;
   [key: string]: unknown;
 };
 
-export async function restockLivestockItem(payload: LivestockRestockDeductPayload) {
+export async function restockLivestockItem(payload: LivestockRestockPayload) {
+  const body: LivestockRestockDeductPayload = {
+    livestockItemId: payload.livestockItemId,
+    isBulk: true,
+    amount: payload.amount,
+  };
   return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_RESTOCK, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -751,14 +816,17 @@ export async function deductLivestockItem(payload: LivestockRestockDeductPayload
 }
 
 /**
- * POST `PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM` — body `{ productId }` where the value is the business **itemId**
- * (custom identifier), not the row UUID `id`.
+ * POST `/products/livestock/delete-item` — matches `router.post('.../delete-item', ...)`.
+ * JSON body is `{ productId: string }` but the server passes that string to Prisma as **`itemId`**
+ * (`where: { itemId }`), not the parent product UUID and not the row primary key `id`.
+ * Always send the **`itemId`** field from `get-items-by-product` (see `resolveLivestockDeleteKey`).
  */
 export type DeleteLivestockItemPayload = {
+  /** Must be the livestock row's **itemId**; JSON key stays `productId` for the API. */
   productId: string;
 };
 
-/** Value for `productId` on delete-item: trimmed `item.itemId`. */
+/** Resolves the value to send as `productId` in the delete body: trimmed **`item.itemId`**. */
 export function resolveLivestockDeleteKey(item: LivestockItem): string | null {
   if (typeof item.itemId === "string" && item.itemId.trim()) return item.itemId.trim();
   return null;
@@ -867,14 +935,14 @@ export type GetPendingLivestockProcessingResponse = {
 };
 
 export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
-  const productId = payload.productId.trim();
-  if (!productId) {
+  const itemIdForBody = payload.productId.trim();
+  if (!itemIdForBody) {
     return { ok: false as const, status: 400, error: "Livestock itemId is required." };
   }
   return normalizeProductDeleteApiResult(
     await apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
       method: "POST",
-      body: JSON.stringify({ productId }),
+      body: JSON.stringify({ productId: itemIdForBody }),
     })
   );
 }
@@ -1259,10 +1327,26 @@ async function getOpeningStockByRoute(
   return { ok: true, data: normalized };
 }
 
+/** Set to true when GET `/products/livestock/opening-stock` is implemented on the backend. */
+const LIVESTOCK_OPENING_STOCK_API_ENABLED = false;
+
 export async function getOpeningStock(
   from: string,
   to: string
 ): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
+  if (!LIVESTOCK_OPENING_STOCK_API_ENABLED) {
+    return {
+      ok: true,
+      data: {
+        from,
+        to,
+        totalQuantity: 0,
+        totalPrice: 0,
+        totalRecords: 0,
+        openingStockByDate: [],
+      },
+    };
+  }
   return getOpeningStockByRoute(PRODUCT_ROUTES.LIVESTOCK_OPENING_STOCK, from, to);
 }
 

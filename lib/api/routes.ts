@@ -40,14 +40,19 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_CREATE_CATEGORY: "/products/livestock/create-category",
   LIVESTOCK_GET_CATEGORY: "/products/livestock/get-category",
   LIVESTOCK_CREATE_ITEM: "/products/livestock/create-item",
-  /** GET with JSON body `{ productId }` (parent category UUID) — backend reads `req.body`. */
+  /** List livestock rows for a category: try `GET ?productId=` first; some stacks also accept `POST` with `{ productId }`. */
   LIVESTOCK_GET_ITEMS_BY_PRODUCT: "/products/livestock/get-items-by-product",
   LIVESTOCK_RESTOCK: "/products/livestock/restock",
   LIVESTOCK_DEDUCT: "/products/livestock/deduct",
   LIVESTOCK_UPDATE_ITEM: "/products/livestock/update-item",
-  /** POST body `{ productId }` — value is business **itemId** (DB key), not row UUID. */
+  /** POST `livestock/delete-item` — body `{ productId }` (misnamed: value is row **itemId**, not parent product id). */
   LIVESTOCK_DELETE_ITEM: "/products/livestock/delete-item",
-  /** GET ?livestockItemId= — waste / consumption lines for a live stock row (placeholder until backend exists) */
+  /**
+   * GET restock/deduct movement history. Server reads JSON body; SPA uses axios GET + `data` (fetch cannot send GET body).
+   * Prefer backend reading query params so this can move to `apiRequest` without axios.
+   */
+  LIVESTOCK_INVENTORY_HISTORY: "/products/livestock/history",
+  /** @deprecated Unused: livestock waste UI calls LIVESTOCK_INVENTORY_HISTORY with JSON body instead. */
   LIVESTOCK_WASTE_HISTORY: "/products/livestock/waste-history",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
   LIVESTOCK_COMPLETE_PROCESSING: "/products/livestock/complete-processing",

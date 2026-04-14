@@ -6,6 +6,9 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
+  optimizeDeps: {
+    include: ["react", "react-dom", "@tanstack/react-query"],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -62,6 +65,8 @@ export default defineConfig(({ mode }) => {
     alias: {
       "@": path.resolve(__dirname, "."),
     },
+    /** Avoid "Invalid hook call" / null dispatcher when a transitive dep bundles another React copy. */
+    dedupe: ["react", "react-dom"],
   },
   build: {
     outDir: "dist",

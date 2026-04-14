@@ -30,7 +30,7 @@ async function doRequest<T>(
 }
 
 /** Call refresh endpoint; returns new access token or null. Does not use apiRequest to avoid 401 loop. */
-async function tryRefresh(): Promise<string | null> {
+export async function tryRefresh(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const baseUrl = getBaseUrl();
   if (!baseUrl) return null;

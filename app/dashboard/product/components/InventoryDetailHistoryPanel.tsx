@@ -5,8 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import {
+  formatLivestockHistoryAmount,
+  getLivestockInventoryHistory,
   getLivestockWasteHistory,
   getProcessedProductWasteHistory,
+  type LivestockInventoryHistoryEntry,
   type LivestockWasteHistoryEntry,
 } from "@/handlers/product";
 import {
@@ -30,12 +33,19 @@ type InventoryDetailHistoryPanelProps = {
 
 type HistoryTabId = "storage" | "consumed" | "waste";
 
+function formatHistoryDateTime(iso: string): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return iso;
+  return new Date(ms).toLocaleString();
+}
+
 export default function InventoryDetailHistoryPanel({
   variant,
   wasteHistoryId,
 }: InventoryDetailHistoryPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const isLivestock = variant === "livestock";
 
   const defaultTo = useMemo(() => toIsoDateLocal(new Date()), []);
   const defaultFrom = useMemo(() => {
@@ -50,6 +60,52 @@ export default function InventoryDetailHistoryPanel({
   const [appliedTo, setAppliedTo] = useState(defaultTo);
   const [activeTab, setActiveTab] = useState<HistoryTabId>("storage");
   const [rangeInvalid, setRangeInvalid] = useState(false);
+
+  const {
+    data: restockHistory = [],
+    isPending: restockHistoryPending,
+    isError: restockHistoryError,
+  } = useQuery({
+    queryKey: ["livestockInventoryHistory", "RESTOCK", wasteHistoryId, appliedFrom, appliedTo],
+    enabled: isLivestock,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const result = await getLivestockInventoryHistory({
+        livestockItemId: wasteHistoryId ?? undefined,
+        type: "RESTOCK",
+        fromDate: appliedFrom,
+        toDate: appliedTo,
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const {
+    data: deductHistory = [],
+    isPending: deductHistoryPending,
+    isError: deductHistoryError,
+  } = useQuery({
+    queryKey: ["livestockInventoryHistory", "DEDUCT", wasteHistoryId, appliedFrom, appliedTo],
+    enabled: isLivestock,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const result = await getLivestockInventoryHistory({
+        livestockItemId: wasteHistoryId ?? undefined,
+        type: "DEDUCT",
+        fromDate: appliedFrom,
+        toDate: appliedTo,
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
 
   const {
     data: wasteEntriesRaw = [],
@@ -155,6 +211,34 @@ export default function InventoryDetailHistoryPanel({
     { id: "waste", label: t("Waste history") },
   ];
 
+  const renderLivestockMovementRows = (rows: LivestockInventoryHistoryEntry[]) =>
+    rows.map((row) => {
+      const amt = formatLivestockHistoryAmount(row);
+      return (
+        <tr key={row.id}>
+          <td>{formatHistoryDateTime(row.createdAt)}</td>
+          <td>
+            <span
+              className={
+                row.type === "RESTOCK"
+                  ? "inventoryDetailTypeBadge inventoryDetailTypeBadgeRestock"
+                  : "inventoryDetailTypeBadge inventoryDetailTypeBadgeDeduct"
+              }
+            >
+              {row.type === "RESTOCK" ? t("Restock") : t("Deduct")}
+            </span>
+          </td>
+          <td>{row.livestockItem.name}</td>
+          <td>
+            {amt.display}
+            <span className="inventoryDetailAmountUnit">
+              {amt.isBulk ? t("Head count") : t("Qty (kg)")}
+            </span>
+          </td>
+        </tr>
+      );
+    });
+
   return (
     <div className="inventoryDetailHistoryPanel">
       <div className="inventoryDetailDateRow">
@@ -230,32 +314,60 @@ export default function InventoryDetailHistoryPanel({
           aria-labelledby="inv-tab-storage"
           className="inventoryDetailTabPanel"
         >
-          <p className="inventoryDetailSampleBanner" role="status">
-            {t("Sample data (API pending)")}
-          </p>
-          {storageRows.length === 0 ? (
-            <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
-          ) : (
-            <div className="inventoryDetailSampleTableWrap">
-              <table className="inventoryDetailSampleTable">
-                <thead>
-                  <tr>
-                    <th>{t("Column date")}</th>
-                    <th>{t("Column quantity")}</th>
-                    <th>{t("Column note")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {storageRows.map((row) => (
-                    <tr key={row.date + row.note}>
-                      <td>{row.date}</td>
-                      <td>{row.quantity}</td>
-                      <td>{row.note}</td>
+          {isLivestock ? (
+            restockHistoryPending ? (
+              <p className="productsMessage">{t("Loading stock history…")}</p>
+            ) : restockHistoryError ? (
+              <p className="inventoryDetailRangeError" role="alert">
+                {t("Failed to load stock history")}
+              </p>
+            ) : restockHistory.length === 0 ? (
+              <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+            ) : (
+              <div className="inventoryDetailSampleTableWrap">
+                <table className="inventoryDetailSampleTable">
+                  <thead>
+                    <tr>
+                      <th>{t("Column date")}</th>
+                      <th>{t("Column type")}</th>
+                      <th>{t("Column item")}</th>
+                      <th>{t("Column amount")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>{renderLivestockMovementRows(restockHistory)}</tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            <>
+              <p className="inventoryDetailSampleBanner" role="status">
+                {t("Sample data (API pending)")}
+              </p>
+              {storageRows.length === 0 ? (
+                <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
+              ) : (
+                <div className="inventoryDetailSampleTableWrap">
+                  <table className="inventoryDetailSampleTable">
+                    <thead>
+                      <tr>
+                        <th>{t("Column date")}</th>
+                        <th>{t("Column quantity")}</th>
+                        <th>{t("Column note")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {storageRows.map((row) => (
+                        <tr key={row.date + row.note}>
+                          <td>{row.date}</td>
+                          <td>{row.quantity}</td>
+                          <td>{row.note}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -267,30 +379,58 @@ export default function InventoryDetailHistoryPanel({
           aria-labelledby="inv-tab-consumed"
           className="inventoryDetailTabPanel"
         >
-          <p className="inventoryDetailSampleBanner" role="status">
-            {t("Sample data (API pending)")}
-          </p>
-          {consumedRows.length === 0 ? (
-            <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
-          ) : (
-            <div className="inventoryDetailSampleTableWrap">
-              <table className="inventoryDetailSampleTable">
-                <thead>
-                  <tr>
-                    <th>{t("Column date")}</th>
-                    <th>{t("Column quantity")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {consumedRows.map((row) => (
-                    <tr key={row.date + row.type}>
-                      <td>{row.date}</td>
-                      <td>{row.quantity}</td>
+          {isLivestock ? (
+            deductHistoryPending ? (
+              <p className="productsMessage">{t("Loading stock history…")}</p>
+            ) : deductHistoryError ? (
+              <p className="inventoryDetailRangeError" role="alert">
+                {t("Failed to load stock history")}
+              </p>
+            ) : deductHistory.length === 0 ? (
+              <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+            ) : (
+              <div className="inventoryDetailSampleTableWrap">
+                <table className="inventoryDetailSampleTable">
+                  <thead>
+                    <tr>
+                      <th>{t("Column date")}</th>
+                      <th>{t("Column type")}</th>
+                      <th>{t("Column item")}</th>
+                      <th>{t("Column amount")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>{renderLivestockMovementRows(deductHistory)}</tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            <>
+              <p className="inventoryDetailSampleBanner" role="status">
+                {t("Sample data (API pending)")}
+              </p>
+              {consumedRows.length === 0 ? (
+                <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
+              ) : (
+                <div className="inventoryDetailSampleTableWrap">
+                  <table className="inventoryDetailSampleTable">
+                    <thead>
+                      <tr>
+                        <th>{t("Column date")}</th>
+                        <th>{t("Column quantity")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {consumedRows.map((row) => (
+                        <tr key={row.date + row.type}>
+                          <td>{row.date}</td>
+                          <td>{row.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

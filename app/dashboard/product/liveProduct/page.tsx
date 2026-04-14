@@ -398,6 +398,7 @@ export default function LiveProductPage() {
       setStockAdjustModal(null);
       setAdjustAmount("");
       refreshLivestockItems();
+      void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
     },
     onError: () => {
       setStockAdjustError(t("Something went wrong. Please try again."));
@@ -419,6 +420,7 @@ export default function LiveProductPage() {
       setStockAdjustModal(null);
       setAdjustAmount("");
       refreshLivestockItems();
+      void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
     },
     onError: () => {
       setStockAdjustError(t("Something went wrong. Please try again."));
@@ -575,11 +577,10 @@ export default function LiveProductPage() {
       return;
     }
     setStockAdjustError(null);
-    const payload = { livestockItemId: id, isBulk: true, amount };
     if (stockAdjustModal.mode === "restock") {
-      restockLivestockMutation.mutate(payload);
+      restockLivestockMutation.mutate({ livestockItemId: id, amount });
     } else {
-      deductLivestockMutation.mutate(payload);
+      deductLivestockMutation.mutate({ livestockItemId: id, isBulk: true, amount });
     }
   };
 
