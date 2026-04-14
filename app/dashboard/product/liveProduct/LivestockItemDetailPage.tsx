@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { MdAddCircleOutline, MdRemoveCircleOutline } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import {
   getLivestockCategories,
@@ -10,11 +11,13 @@ import {
   resolveLivestockItemId,
   type LivestockItem,
 } from "@/handlers/product";
-import LivestockItemDetailContent from "@/app/dashboard/product/components/LivestockItemDetailContent";
 import InventoryDetailHistoryPanel from "@/app/dashboard/product/components/InventoryDetailHistoryPanel";
 import type { LivestockDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
+import LivestockConsumptionDetailModal from "./LivestockConsumptionDetailModal";
+import LivestockRestockDetailModal from "./LivestockRestockDetailModal";
 import "../inventoryDetailPage.scss";
 import "./liveProduct.scss";
+import "./livestockDetailShell.scss";
 
 const LIVESTOCK_CATEGORY_QUERY_KEY = ["livestockCategories"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
@@ -27,6 +30,9 @@ export default function LivestockItemDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useI18n();
+
+  const [openRestockModal, setOpenRestockModal] = useState(false);
+  const [openConsumptionModal, setOpenConsumptionModal] = useState(false);
 
   const productId = productIdParam ? decodeURIComponent(productIdParam) : "";
   const lineItemId = itemIdParam ? decodeURIComponent(itemIdParam) : "";
@@ -96,6 +102,9 @@ export default function LivestockItemDetailPage() {
 
   const invalidParams = !productId || !lineItemId;
 
+  const livestockRowId = item ? resolveLivestockItemId(item) : null;
+  const canMutate = Boolean(livestockRowId);
+
   return (
     <section className="inventoryDetailPage liveProductPage">
       <div className="breadcrumb">
@@ -107,10 +116,6 @@ export default function LivestockItemDetailPage() {
         <span className="separator">&nbsp;&gt;&nbsp;</span>
         <span>{t("Live stock details")}</span>
       </div>
-
-      {/* <Link to="/dashboard/product/liveProduct" className="inventoryDetailBackLink">
-        {t("Back to live inventory")}
-      </Link> */}
 
       {invalidParams && (
         <div className="inventoryDetailNotFound" role="alert">
@@ -130,22 +135,100 @@ export default function LivestockItemDetailPage() {
 
       {!invalidParams && item != null && (
         <>
-          <header className="inventoryDetailHeader">
-            <h1 className="inventoryDetailTitle">{t("Live stock details")}</h1>
-            <p className="inventoryDetailSubtitle">{item.name}</p>
-            {itemsError && snapshot && (
-              <p className="pageSubtitle" role="status">
-                {t("Showing cached row; could not verify with server.")}
-              </p>
-            )}
-          </header>
+          {itemsError && snapshot && (
+            <p className="pageSubtitle" role="status">
+              {t("Showing cached row; could not verify with server.")}
+            </p>
+          )}
 
-          <LivestockItemDetailContent item={item} categoryName={categoryName} />
+          <div className="livestockDetailCard">
+            <div className="livestockDetailShellTop">
+              <div className="livestockDetailFacts">
+                <h1 className="livestockDetailName">{item.name}</h1>
+                <dl className="livestockDetailDl">
+                  <div className="livestockDetailDlRow">
+                    <dt>{t("Product Category")}</dt>
+                    <dd>{categoryName}</dd>
+                  </div>
+                  <div className="livestockDetailDlRow">
+                    <dt>{t("Item ID")}</dt>
+                    <dd>{item.itemId}</dd>
+                  </div>
+                  <div className="livestockDetailDlRow">
+                    <dt>{item.isBulk === true ? t("Head count (bulk)") : t("Quantity")}</dt>
+                    <dd>
+                      {typeof item.quantity === "number" && Number.isFinite(item.quantity)
+                        ? item.quantity
+                        : "\u2014"}
+                    </dd>
+                  </div>
+                  <div className="livestockDetailDlRow">
+                    <dt>{t("Unit")}</dt>
+                    <dd>{item.isBulk === true ? t("Head count") : t("Qty (kg)")}</dd>
+                  </div>
+                  <div className="livestockDetailDlRow">
+                    <dt>{t("Selling price")}</dt>
+                    <dd>
+                      {typeof item.price === "number" && Number.isFinite(item.price)
+                        ? item.price.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "\u2014"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="livestockDetailActions">
+                <button
+                  type="button"
+                  className="livestockDetailBtnGhost"
+                  disabled={!canMutate}
+                  onClick={() => setOpenRestockModal(true)}
+                >
+                  <MdAddCircleOutline aria-hidden />
+                  {t("Restock Storage")}
+                </button>
+                <button
+                  type="button"
+                  className="livestockDetailBtnGhost livestockDetailBtnReduce"
+                  disabled={!canMutate}
+                  onClick={() => setOpenConsumptionModal(true)}
+                >
+                  <MdRemoveCircleOutline aria-hidden />
+                  {t("Reduce Storage")}
+                </button>
+              </div>
+            </div>
+          </div>
 
           <InventoryDetailHistoryPanel
             variant="livestock"
-            wasteHistoryId={resolveLivestockItemId(item)}
+            wasteHistoryId={livestockRowId}
+            dateFilterAffectsStorage={false}
+            productShellStyle
+            storagePriceFallback={
+              typeof item.price === "number" && Number.isFinite(item.price) ? item.price : undefined
+            }
           />
+
+          {openRestockModal && canMutate && livestockRowId && (
+            <LivestockRestockDetailModal
+              isOpen
+              item={item}
+              livestockItemId={livestockRowId}
+              onClose={() => setOpenRestockModal(false)}
+            />
+          )}
+
+          {openConsumptionModal && canMutate && livestockRowId && (
+            <LivestockConsumptionDetailModal
+              isOpen
+              item={item}
+              livestockItemId={livestockRowId}
+              onClose={() => setOpenConsumptionModal(false)}
+            />
+          )}
         </>
       )}
     </section>

@@ -10,6 +10,8 @@ type ModalProps = {
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Extra class on the inner dialog (e.g. wider forms). */
+  modalClassName?: string;
 };
 
 export default function Modal({
@@ -19,6 +21,7 @@ export default function Modal({
   onClose,
   children,
   footer,
+  modalClassName,
 }: ModalProps) {
   const { t } = useI18n();
 
@@ -29,7 +32,7 @@ export default function Modal({
   return (
     <div className="modalOverlay" onClick={onClose} aria-hidden="true">
       <div
-        className="modal"
+        className={["modal", modalClassName].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

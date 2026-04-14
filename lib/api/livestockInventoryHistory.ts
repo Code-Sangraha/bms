@@ -28,6 +28,9 @@ export type LivestockInventoryHistoryEntry = {
   weight: number | null;
   type: LivestockInventoryHistoryType;
   createdAt: string;
+  /** Present when API sends pricing on history rows (storage table). */
+  buyingPrice?: number | null;
+  sellingPrice?: number | null;
 };
 
 type LivestockInventoryHistoryApiResponse = {
@@ -107,6 +110,14 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
   if (!createdAt) return null;
   const quantity = row.quantity === null ? null : parseNum(row.quantity);
   const weight = row.weight === null ? null : parseNum(row.weight);
+  const buyingPrice =
+    parseNum(row.buyingPrice) ??
+    parseNum(row.buyPrice) ??
+    parseNum((row as { buying_price?: unknown }).buying_price);
+  const sellingPrice =
+    parseNum(row.sellingPrice) ??
+    parseNum(row.salePrice) ??
+    parseNum((row as { selling_price?: unknown }).selling_price);
   return {
     id,
     livestockItemId: livestockItemId || id,
@@ -115,6 +126,8 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
     weight,
     type,
     createdAt,
+    buyingPrice: buyingPrice ?? null,
+    sellingPrice: sellingPrice ?? null,
   };
 }
 

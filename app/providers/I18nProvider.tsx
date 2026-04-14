@@ -133,6 +133,28 @@ type I18nContextValue = {
   "History tabs": "इतिहास ट्याबहरू",
   "No rows in this date range.": "यस मिति दायरामा कुनै पंक्ति छैन।",
   Remarks: "कैफियत",
+  "Storage History": "भण्डारण इतिहास",
+  "Consumed History": "खपत इतिहास",
+  "Waste History": "फोहोर इतिहास",
+  "Date range applies to Consumed and Waste history only.":
+    "मिति दायरा खपत र फोहोर इतिहासमा मात्र लागू हुन्छ।",
+  "No storage history records.": "कुनै भण्डारण इतिहास रेकर्ड छैन।",
+  "Restock Storage": "भण्डारण पुनः भर्नुहोस्",
+  "Reduce Storage": "भण्डारण घटाउनुहोस्",
+  "Restock live stock": "लाइभ स्टक पुनः भण्डारण",
+  "Add quantity to this line item.": "यस लाइन वस्तुमा परिमाण थप्नुहोस्।",
+  "Buying price": "खरिद मूल्य",
+  "Selling price": "बिक्री मूल्य",
+  "Only the quantity is submitted to the server; buying and selling prices are optional local notes.":
+    "सर्भरमा मात्र परिमाण पठाइन्छ; खरिद र बिक्री मूल्य वैकल्पिक स्थानीय टिप्पणी हुन्।",
+  "Confirm Consumption": "खपत पुष्टि गर्नुहोस्",
+  "Reduce stored quantity for this line item.": "यस लाइन वस्तुको भण्डारित परिमाण घटाउनुहोस्।",
+  "Consumption type": "खपत प्रकार",
+  "Only the quantity is submitted to the server; remarks are optional local notes.":
+    "सर्भरमा मात्र परिमाण पठाइन्छ; कैफियत वैकल्पिक स्थानीय टिप्पणी हो।",
+  "Consumption recorded successfully.": "खपत सफलतापूर्वक दर्ता भयो।",
+  "Restock completed successfully.": "पुनः भण्डारण सफल भयो।",
+  Unit: "एकाइ",
 };
 
 const STORAGE_KEY = "app-locale";
@@ -275,6 +297,7 @@ const translations: Record<string, string> = {
   "Amount (Rs.)": "रकम (रु.)",
   "Weight (kg)": "तौल (केजी)",
   Quantity: "परिमाण",
+  Unit: "एकाइ",
   "Sales by Customer": "ग्राहक अनुसार बिक्री",
   Customer: "ग्राहक",
   "Select product and outlet.": "उत्पादन र आउटलेट छान्नुहोस्।",
@@ -695,6 +718,27 @@ const translations: Record<string, string> = {
   "History tabs": "इतिहास ट्याबहरू",
   "No rows in this date range.": "यस मिति दायरामा कुनै पंक्ति छैन।",
   Remarks: "कैफियत",
+  "Storage History": "भण्डारण इतिहास",
+  "Consumed History": "खपत इतिहास",
+  "Waste History": "फोहोर इतिहास",
+  "Date range applies to Consumed and Waste history only.":
+    "मिति दायरा खपत र फोहोर इतिहासमा मात्र लागू हुन्छ।",
+  "No storage history records.": "कुनै भण्डारण इतिहास रेकर्ड छैन।",
+  "Restock Storage": "भण्डारण पुनः भर्नुहोस्",
+  "Reduce Storage": "भण्डारण घटाउनुहोस्",
+  "Restock live stock": "लाइभ स्टक पुनः भण्डारण",
+  "Add quantity to this line item.": "यस लाइन वस्तुमा परिमाण थप्नुहोस्।",
+  "Buying price": "खरिद मूल्य",
+  "Selling price": "बिक्री मूल्य",
+  "Only the quantity is submitted to the server; buying and selling prices are optional local notes.":
+    "सर्भरमा मात्र परिमाण पठाइन्छ; खरिद र बिक्री मूल्य वैकल्पिक स्थानीय टिप्पणी हुन्।",
+  "Confirm Consumption": "खपत पुष्टि गर्नुहोस्",
+  "Reduce stored quantity for this line item.": "यस लाइन वस्तुको भण्डारित परिमाण घटाउनुहोस्।",
+  "Consumption type": "खपत प्रकार",
+  "Only the quantity is submitted to the server; remarks are optional local notes.":
+    "सर्भरमा मात्र परिमाण पठाइन्छ; कैफियत वैकल्पिक स्थानीय टिप्पणी हो।",
+  "Consumption recorded successfully.": "खपत सफलतापूर्वक दर्ता भयो।",
+  "Restock completed successfully.": "पुनः भण्डारण सफल भयो।",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import {
+  MdInventory2,
+  MdRemoveCircleOutline,
+  MdSearch,
+  MdTrendingDown,
+} from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import {
   formatLivestockHistoryAmount,
@@ -29,9 +35,21 @@ type InventoryDetailHistoryPanelProps = {
   variant: InventoryDetailHistoryVariant;
   /** Livestock record id or processed product id for waste API. */
   wasteHistoryId: string | null;
+  /**
+   * When false (live stock detail shell), Storage history omits fromDate/toDate on the API;
+   * Consumed and Waste still use the date filter.
+   * @default true
+   */
+  dateFilterAffectsStorage?: boolean;
+  /** Product-detail-style: tab icons, scrollable tables, 4-col storage, filter hint. */
+  productShellStyle?: boolean;
+  /** Shown in storage “selling price” column when a row has no sellingPrice from the API. */
+  storagePriceFallback?: number;
 };
 
 type HistoryTabId = "storage" | "consumed" | "waste";
+
+type TabDef = { id: HistoryTabId; label: string; Icon?: typeof MdInventory2 };
 
 function formatHistoryDateTime(iso: string): string {
   const ms = Date.parse(iso);
@@ -39,9 +57,17 @@ function formatHistoryDateTime(iso: string): string {
   return new Date(ms).toLocaleString();
 }
 
+function formatPriceCell(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "\u2014";
+  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export default function InventoryDetailHistoryPanel({
   variant,
   wasteHistoryId,
+  dateFilterAffectsStorage = true,
+  productShellStyle = false,
+  storagePriceFallback,
 }: InventoryDetailHistoryPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -61,20 +87,24 @@ export default function InventoryDetailHistoryPanel({
   const [activeTab, setActiveTab] = useState<HistoryTabId>("storage");
   const [rangeInvalid, setRangeInvalid] = useState(false);
 
+  const storageUsesDateRange = !isLivestock || dateFilterAffectsStorage;
+  const storageDateKey = storageUsesDateRange ? `${appliedFrom}_${appliedTo}` : "all";
+
   const {
     data: restockHistory = [],
     isPending: restockHistoryPending,
     isError: restockHistoryError,
   } = useQuery({
-    queryKey: ["livestockInventoryHistory", "RESTOCK", wasteHistoryId, appliedFrom, appliedTo],
+    queryKey: ["livestockInventoryHistory", "RESTOCK", wasteHistoryId, storageDateKey],
     enabled: isLivestock,
     staleTime: 30_000,
     queryFn: async () => {
       const result = await getLivestockInventoryHistory({
         livestockItemId: wasteHistoryId ?? undefined,
         type: "RESTOCK",
-        fromDate: appliedFrom,
-        toDate: appliedTo,
+        ...(storageUsesDateRange
+          ? { fromDate: appliedFrom, toDate: appliedTo }
+          : {}),
       });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
@@ -205,11 +235,26 @@ export default function InventoryDetailHistoryPanel({
     setAppliedTo(toInput);
   };
 
-  const tabs: { id: HistoryTabId; label: string }[] = [
-    { id: "storage", label: t("Storage history") },
-    { id: "consumed", label: t("Consumed history") },
-    { id: "waste", label: t("Waste history") },
-  ];
+  const tabs: TabDef[] = useMemo(
+    () => [
+      {
+        id: "storage",
+        label: t("Storage History"),
+        Icon: productShellStyle ? MdInventory2 : undefined,
+      },
+      {
+        id: "consumed",
+        label: t("Consumed History"),
+        Icon: productShellStyle ? MdTrendingDown : undefined,
+      },
+      {
+        id: "waste",
+        label: t("Waste History"),
+        Icon: productShellStyle ? MdRemoveCircleOutline : undefined,
+      },
+    ],
+    [t, productShellStyle]
+  );
 
   const renderLivestockMovementRows = (rows: LivestockInventoryHistoryEntry[]) =>
     rows.map((row) => {
@@ -239,8 +284,50 @@ export default function InventoryDetailHistoryPanel({
       );
     });
 
+  const renderLivestockStorageProductShellRows = (rows: LivestockInventoryHistoryEntry[]) =>
+    rows.map((row) => {
+      const amt = formatLivestockHistoryAmount(row);
+      const selling =
+        row.sellingPrice != null && Number.isFinite(row.sellingPrice)
+          ? row.sellingPrice
+          : storagePriceFallback;
+      return (
+        <tr key={row.id} className="inventoryDetailTableRowFixed">
+          <td>{formatHistoryDateTime(row.createdAt)}</td>
+          <td>
+            {amt.display}
+            <span className="inventoryDetailAmountUnit">
+              {amt.isBulk ? t("Head count") : t("Qty (kg)")}
+            </span>
+          </td>
+          <td>{formatPriceCell(row.buyingPrice)}</td>
+          <td>{formatPriceCell(selling ?? null)}</td>
+        </tr>
+      );
+    });
+
+  const tableScrollClass =
+    productShellStyle && isLivestock ? "inventoryDetailTableScroll" : "";
+
+  const storageEmptyMessage =
+    isLivestock && productShellStyle && !storageUsesDateRange
+      ? t("No storage history records.")
+      : t("No stock history in this range.");
+
+  const panelClass = [
+    "inventoryDetailHistoryPanel",
+    productShellStyle && isLivestock ? "inventoryDetailHistoryPanelProductShell" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className="inventoryDetailHistoryPanel">
+    <div className={panelClass}>
+      {productShellStyle && isLivestock && !dateFilterAffectsStorage && (
+        <p className="inventoryDetailDateScopeHint" role="note">
+          {t("Date range applies to Consumed and Waste history only.")}
+        </p>
+      )}
       <div className="inventoryDetailDateRow">
         <div className="inventoryDetailDateField">
           <label className="inventoryDetailDateLabel" htmlFor="inv-detail-from">
@@ -277,7 +364,14 @@ export default function InventoryDetailHistoryPanel({
           className="inventoryDetailFilterBtn"
           onClick={handleApplyFilter}
         >
-          {t("Filter")}
+          {productShellStyle && isLivestock ? (
+            <span className="inventoryDetailFilterBtnInner">
+              <MdSearch className="inventoryDetailFilterIcon" aria-hidden />
+              {t("Filter")}
+            </span>
+          ) : (
+            t("Filter")
+          )}
         </button>
       </div>
       {rangeInvalid && (
@@ -286,25 +380,37 @@ export default function InventoryDetailHistoryPanel({
         </p>
       )}
 
-      <div className="inventoryDetailTabs" role="tablist" aria-label={t("History tabs")}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`inv-tab-${tab.id}`}
-            aria-selected={activeTab === tab.id}
-            aria-controls={`inv-panel-${tab.id}`}
-            className={
-              activeTab === tab.id
-                ? "inventoryDetailTab inventoryDetailTabActive"
-                : "inventoryDetailTab"
-            }
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div
+        className={
+          productShellStyle && isLivestock
+            ? "inventoryDetailTabs inventoryDetailTabsProductShell"
+            : "inventoryDetailTabs"
+        }
+        role="tablist"
+        aria-label={t("History tabs")}
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.Icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`inv-tab-${tab.id}`}
+              aria-selected={activeTab === tab.id}
+              aria-controls={`inv-panel-${tab.id}`}
+              className={
+                activeTab === tab.id
+                  ? "inventoryDetailTab inventoryDetailTabActive"
+                  : "inventoryDetailTab"
+              }
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {Icon && <Icon className="inventoryDetailTabIcon" aria-hidden />}
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "storage" && (
@@ -322,19 +428,41 @@ export default function InventoryDetailHistoryPanel({
                 {t("Failed to load stock history")}
               </p>
             ) : restockHistory.length === 0 ? (
-              <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+              productShellStyle ? (
+                <div className="inventoryDetailEmptyWithIcon" role="status">
+                  <MdInventory2 className="inventoryDetailEmptyIcon" aria-hidden />
+                  <p className="inventoryDetailEmptyTab">{storageEmptyMessage}</p>
+                </div>
+              ) : (
+                <p className="inventoryDetailEmptyTab">{storageEmptyMessage}</p>
+              )
             ) : (
-              <div className="inventoryDetailSampleTableWrap">
+              <div className={`inventoryDetailSampleTableWrap ${tableScrollClass}`.trim()}>
                 <table className="inventoryDetailSampleTable">
                   <thead>
                     <tr>
-                      <th>{t("Column date")}</th>
-                      <th>{t("Column type")}</th>
-                      <th>{t("Column item")}</th>
-                      <th>{t("Column amount")}</th>
+                      {productShellStyle ? (
+                        <>
+                          <th>{t("Column date")}</th>
+                          <th>{t("Column quantity")}</th>
+                          <th>{t("Buying price")}</th>
+                          <th>{t("Selling price")}</th>
+                        </>
+                      ) : (
+                        <>
+                          <th>{t("Column date")}</th>
+                          <th>{t("Column type")}</th>
+                          <th>{t("Column item")}</th>
+                          <th>{t("Column amount")}</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
-                  <tbody>{renderLivestockMovementRows(restockHistory)}</tbody>
+                  <tbody>
+                    {productShellStyle
+                      ? renderLivestockStorageProductShellRows(restockHistory)
+                      : renderLivestockMovementRows(restockHistory)}
+                  </tbody>
                 </table>
               </div>
             )
@@ -387,9 +515,16 @@ export default function InventoryDetailHistoryPanel({
                 {t("Failed to load stock history")}
               </p>
             ) : deductHistory.length === 0 ? (
-              <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+              productShellStyle ? (
+                <div className="inventoryDetailEmptyWithIcon" role="status">
+                  <MdTrendingDown className="inventoryDetailEmptyIcon" aria-hidden />
+                  <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+                </div>
+              ) : (
+                <p className="inventoryDetailEmptyTab">{t("No stock history in this range.")}</p>
+              )
             ) : (
-              <div className="inventoryDetailSampleTableWrap">
+              <div className={`inventoryDetailSampleTableWrap ${tableScrollClass}`.trim()}>
                 <table className="inventoryDetailSampleTable">
                   <thead>
                     <tr>
@@ -451,7 +586,14 @@ export default function InventoryDetailHistoryPanel({
           ) : wastePending ? (
             <p className="productsMessage">{t("Loading waste history…")}</p>
           ) : wasteTableRows.length === 0 ? (
-            <p className="inventoryDetailEmptyTab">{t("No waste history records.")}</p>
+            productShellStyle && isLivestock ? (
+              <div className="inventoryDetailEmptyWithIcon" role="status">
+                <MdRemoveCircleOutline className="inventoryDetailEmptyIcon inventoryDetailEmptyIconWaste" aria-hidden />
+                <p className="inventoryDetailEmptyTab">{t("No waste history records.")}</p>
+              </div>
+            ) : (
+              <p className="inventoryDetailEmptyTab">{t("No waste history records.")}</p>
+            )
           ) : (
             <>
               {(wasteError || (wasteEntriesFiltered.length === 0 && SHOW_DUMMY_WASTE_WHEN_EMPTY)) && (
@@ -461,7 +603,7 @@ export default function InventoryDetailHistoryPanel({
                     : t("Sample waste entries shown until API returns data.")}
                 </p>
               )}
-              <div className="inventoryDetailSampleTableWrap">
+              <div className={`inventoryDetailSampleTableWrap ${tableScrollClass}`.trim()}>
                 <table className="inventoryDetailSampleTable">
                   <thead>
                     <tr>
@@ -472,7 +614,7 @@ export default function InventoryDetailHistoryPanel({
                   </thead>
                   <tbody>
                     {wasteTableRows.map((row) => (
-                      <tr key={row.id}>
+                      <tr key={row.id} className="inventoryDetailTableRowFixed">
                         <td>{row.date}</td>
                         <td>{row.quantity}</td>
                         <td>{row.remarks}</td>
