@@ -98,6 +98,14 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
   };
 }
 
+/** Table "Quantity" column: only API `quantity` (head count / units), never body weight (kg). */
+function formatLivestockTableQuantity(item: LivestockItem): string {
+  if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
+    return String(item.quantity);
+  }
+  return "\u2014";
+}
+
 function toIsoDateLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -240,9 +248,12 @@ export default function LiveProductPage() {
     return categoryFiltered.filter((item) => {
       const productName =
         livestockCategories.find((product) => product.id === item.productId)?.name.toLowerCase() ?? "";
+      const qtySearch =
+        typeof item.quantity === "number" && Number.isFinite(item.quantity) ? String(item.quantity) : "";
       return (
         item.name.toLowerCase().includes(q) ||
         item.itemId.toLowerCase().includes(q) ||
+        qtySearch.includes(q) ||
         String(item.weight).includes(q) ||
         String(item.price).includes(q) ||
         productName.includes(q)
@@ -729,7 +740,7 @@ export default function LiveProductPage() {
               <span>{getLiveProductName(item.productId)}</span>
               <span>{item.name}</span>
               <span>{item.itemId}</span>
-              <span>{item.weight}</span>
+              <span>{formatLivestockTableQuantity(item)}</span>
               <span>{item.price}</span>
               <div className="productsRowActions">
                 <div

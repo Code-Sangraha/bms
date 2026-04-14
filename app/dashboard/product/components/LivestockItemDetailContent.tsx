@@ -33,7 +33,11 @@ export default function LivestockItemDetailContent({
         </div>
         <div className="livestockViewDlRow">
           <dt>{quantityLabel}</dt>
-          <dd>{item.weight}</dd>
+          <dd>
+            {typeof item.quantity === "number" && Number.isFinite(item.quantity)
+              ? item.quantity
+              : "\u2014"}
+          </dd>
         </div>
       </dl>
     </div>

@@ -211,7 +211,10 @@ export type LivestockItem = {
   productId: string;
   name: string;
   itemId: string;
+  /** Stock / legacy scalar used by restock and older APIs (may mirror quantity or weight). */
   weight: number;
+  /** Head count or unit quantity from the API — never derived from body `weight` (kg). */
+  quantity?: number | null;
   itemQuantityOrWeight?: number;
   isBulk?: boolean;
   price: number;
@@ -368,15 +371,19 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
     }
     return null;
   };
-  const quantityOrWeight =
-    parseNum(item.itemQuantityOrWeight) ??
-    parseNum((item as { quantity?: unknown }).quantity) ??
-    parseNum(item.weight) ??
-    0;
+
+  const explicitQuantity = parseNum((item as { quantity?: unknown }).quantity);
+  const explicitWeight = parseNum(item.weight);
+  const iqw = parseNum(item.itemQuantityOrWeight);
+
+  const itemQuantityOrWeightResolved = iqw ?? explicitQuantity ?? explicitWeight ?? 0;
+  const weightScalar = explicitWeight ?? iqw ?? explicitQuantity ?? 0;
+
   return {
     ...item,
-    weight: quantityOrWeight,
-    itemQuantityOrWeight: quantityOrWeight,
+    quantity: explicitQuantity,
+    weight: weightScalar,
+    itemQuantityOrWeight: itemQuantityOrWeightResolved,
     isBulk: true,
   };
 }
