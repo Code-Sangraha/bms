@@ -642,8 +642,11 @@ export async function getLivestockItemsByProduct(
 
   const requestPromise: Promise<LivestockItemsResult> = (async () => {
     const primary = await apiRequest<GetLivestockItemsByProductResponse>(
-      `${PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT}?productId=${encodeURIComponent(productId)}`,
-      { method: "GET" }
+      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
+      {
+        method: "GET",
+        body: JSON.stringify({ productId }),
+      }
     );
     if (primary.ok) {
       const list = primary.data?.data ?? primary.data?.items ?? [];
@@ -680,29 +683,7 @@ export async function getLivestockItemsByProduct(
       return { ok: true, data: [] };
     }
 
-    // Legacy fallback only for unexpected deployments.
-    const fallback = await apiRequest<GetLivestockItemsByProductResponse>(
-      PRODUCT_ROUTES.LIVESTOCK_GET_ITEMS_BY_PRODUCT,
-      {
-        method: "POST",
-        body: JSON.stringify({ productId }),
-      }
-    );
-    if (fallback.ok) {
-      const list = fallback.data?.data ?? fallback.data?.items ?? [];
-      const data = Array.isArray(list)
-        ? list.map((item) => ({
-            ...normalizeLivestockItem(item),
-            productId: item.productId || productId,
-          }))
-        : [];
-      livestockItemsCache.set(productId, {
-        data,
-        expiresAt: Date.now() + LIVESTOCK_ITEMS_CACHE_MS,
-      });
-      return { ok: true, data };
-    }
-    return fallback;
+    return primary;
   })();
 
   livestockItemsInflight.set(productId, requestPromise);
@@ -770,16 +751,17 @@ export async function deductLivestockItem(payload: LivestockRestockDeductPayload
 }
 
 /**
- * Same as catalog delete: `DELETE PRODUCT_ROUTES.DELETE` with JSON body `{ id }` (e.g. `DELETE /v1/products/delete`).
- * For livestock list rows, `id` is the row record id (`id` / `_id` / `livestockItemId` from the API).
+ * POST `PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM` — body `{ productId }` where the value is the business **itemId**
+ * (custom identifier), not the row UUID `id`.
  */
 export type DeleteLivestockItemPayload = {
-  id: string;
+  productId: string;
 };
 
-/** Record id to send as `id` on delete (same resolution as update/restock). */
+/** Value for `productId` on delete-item: trimmed `item.itemId`. */
 export function resolveLivestockDeleteKey(item: LivestockItem): string | null {
-  return resolveLivestockItemId(item);
+  if (typeof item.itemId === "string" && item.itemId.trim()) return item.itemId.trim();
+  return null;
 }
 
 export type DeleteLivestockItemResponse = DeleteProductResponse;
@@ -885,14 +867,14 @@ export type GetPendingLivestockProcessingResponse = {
 };
 
 export async function deleteLivestockItem(payload: DeleteLivestockItemPayload) {
-  const id = payload.id.trim();
-  if (!id) {
-    return { ok: false as const, status: 400, error: "Livestock item id is required." };
+  const productId = payload.productId.trim();
+  if (!productId) {
+    return { ok: false as const, status: 400, error: "Livestock itemId is required." };
   }
   return normalizeProductDeleteApiResult(
-    await apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.DELETE, {
-      method: "DELETE",
-      body: JSON.stringify({ id }),
+    await apiRequest<DeleteLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_DELETE_ITEM, {
+      method: "POST",
+      body: JSON.stringify({ productId }),
     })
   );
 }
