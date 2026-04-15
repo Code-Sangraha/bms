@@ -6,7 +6,7 @@ $brand-ring: rgba(2, 149, 90, 0.18);
 $text: #111827;
 $muted: #6b7280;
 $border: rgba(0, 0, 0, 0.08);
-$radius-card: 14px;
+$radius-card: 12px;
 $radius-control: 10px;
 $radius-pill: 9999px;
 
@@ -38,8 +38,8 @@ $radius-pill: 9999px;
 
 .pageTitle {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -168,6 +168,14 @@ $radius-pill: 9999px;
   }
 }
 
+.formGridQtyPair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  align-items: end;
+  min-width: 0;
+}
+
 .formGridAdd {
   display: grid;
   grid-template-columns: 1fr;
@@ -178,7 +186,11 @@ $radius-pill: 9999px;
     grid-template-columns: 1fr 1fr;
     align-items: end;
 
-    .field:first-of-type {
+    .fieldLivestockSelect {
+      grid-column: 1 / -1;
+    }
+
+    .formGridQtyPair {
       grid-column: 1 / -1;
     }
 
@@ -188,8 +200,9 @@ $radius-pill: 9999px;
   }
 
   @media (min-width: 720px) {
-    grid-template-columns: minmax(0, 1.4fr) 110px 110px auto;
+    grid-template-columns: minmax(0, 1.45fr) minmax(200px, 1fr) auto;
     align-items: end;
+    gap: 14px 16px;
   }
 }
 
@@ -209,6 +222,10 @@ $radius-pill: 9999px;
 .fieldSm {
   @media (min-width: 720px) {
     max-width: 120px;
+  }
+
+  .formGridQtyPair & {
+    max-width: none;
   }
 }
 
@@ -345,6 +362,7 @@ $radius-pill: 9999px;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  background: #ffffff;
 }
 
 .tableWrap--tight {
@@ -382,15 +400,30 @@ $radius-pill: 9999px;
   vertical-align: middle;
 }
 
-.table tbody tr:last-child td {
-  border-bottom: none;
-}
+@media (min-width: 640px) {
+  .table tbody tr:last-child td {
+    border-bottom: none;
+  }
 
-.table tbody tr:hover td {
-  background: rgba(249, 250, 251, 0.85);
+  .table tbody tr:hover td {
+    background: rgba(249, 250, 251, 0.85);
+  }
 }
 
 @media (max-width: 639px) {
+  .tableWrap--mobileCards {
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .table.table--stack {
+    border-collapse: separate;
+    border-spacing: 0 10px;
+  }
+
   .table.table--stack thead {
     position: absolute;
     width: 1px;
@@ -405,22 +438,28 @@ $radius-pill: 9999px;
 
   .table.table--stack tbody tr:not(.tableRow--empty) {
     display: block;
-    padding: 4px 0 14px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .table.table--stack tbody tr:not(.tableRow--empty):last-child {
-    border-bottom: none;
+    padding: 0;
+    margin-bottom: 0;
+    background: #ffffff;
+    border: 1px solid $border;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
   }
 
   .table.table--stack tbody tr:not(.tableRow--empty) td {
     display: grid;
-    grid-template-columns: minmax(108px, 38%) 1fr;
-    gap: 4px 12px;
-    align-items: center;
-    padding: 10px 12px;
+    grid-template-columns: minmax(100px, 34%) 1fr;
+    gap: 6px 12px;
+    align-items: start;
+    padding: 12px 14px;
     border: none;
     text-align: left;
+    word-break: break-word;
+  }
+
+  .table.table--stack tbody tr:not(.tableRow--empty) td:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
 
   .table.table--stack tbody tr:not(.tableRow--empty) td::before {
@@ -430,11 +469,36 @@ $radius-pill: 9999px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: $muted;
+    padding-top: 2px;
+  }
+
+  .table.table--stack tbody tr:not(.tableRow--empty) td.tableCell--action {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    border-bottom: none;
+  }
+
+  .table.table--stack tbody tr:not(.tableRow--empty) td.tableCell--action::before {
+    flex: 0 0 auto;
+  }
+
+  .table.table--stack tbody tr.tableRow--empty {
+    display: block;
+    background: #ffffff;
+    border: 1px solid $border;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .table.table--stack tbody tr.tableRow--empty td {
     display: block;
     padding: 24px 16px !important;
+    border: none;
   }
 
   .table.table--stack tbody tr.tableRow--empty td::before {
@@ -450,15 +514,22 @@ $radius-pill: 9999px;
     min-height: 44px;
   }
 
+  .table.table--stack tfoot {
+    display: block;
+    margin-top: 4px;
+  }
+
   .table.table--stack tfoot .tableFootRow {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 14px 12px;
-    background: #fafafa;
-    border-radius: 0 0 10px 10px;
+    gap: 10px;
+    padding: 16px 14px;
+    background: #f9fafb;
+    border: 1px solid $border;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .table.table--stack tfoot .tableFootRow td {
@@ -471,7 +542,9 @@ $radius-pill: 9999px;
   .table.table--stack tfoot .totalLabel {
     flex: 1 1 auto;
     text-align: left;
-    font-size: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
   }
 
   .table.table--stack tfoot .totalLabel::before {
@@ -479,12 +552,82 @@ $radius-pill: 9999px;
   }
 
   .table.table--stack tfoot .totalValue {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
+    color: $text;
   }
 
   .table.table--stack tfoot .tableFootSpacer {
     display: none;
+  }
+
+  .table.table--stack th:last-child,
+  .table.table--stack td:last-child {
+    width: auto;
+    min-width: 0;
+    text-align: left;
+    white-space: normal;
+  }
+
+  /* Live Stock Sale Details — mobile-only (desktop table layout unchanged) */
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td {
+    grid-template-columns: minmax(88px, 30%) 1fr;
+    padding: 11px 13px;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(4),
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(5) {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  /* Show date first, then name → amount (DOM order unchanged for accessibility) */
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(6) {
+    order: 1;
+    padding-top: 14px;
+    padding-bottom: 12px;
+    background: #f9fafb;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(1) {
+    order: 2;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(2) {
+    order: 3;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(3) {
+    order: 4;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(4) {
+    order: 5;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(5) {
+    order: 6;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(6)::before {
+    color: #374151;
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:not(:nth-child(5)) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .table.table--stack.table--saleDetails tbody tr:not(.tableRow--empty) td:nth-child(5) {
+    border-bottom: none;
+    padding-bottom: 14px;
   }
 }
 
@@ -621,8 +764,17 @@ $radius-pill: 9999px;
     width: 100%;
   }
 
-  .pageTitle {
-    font-size: 21px;
+  .livestockSection {
+    padding-top: 16px;
+  }
+
+  .livestockSectionTitle {
+    margin-bottom: 12px;
+  }
+
+  .salesCardHeader {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
   }
 }
 

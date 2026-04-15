@@ -335,13 +335,6 @@ export default function LivestockSalesPage() {
       </div>
 
       <div className="salesCard salesCard--primary">
-        <header className="salesCardHeader">
-          <h2 className="cardTitle">{t("Livestock Sales")}</h2>
-          {/* <p className="cardDescription">
-            {t("Add customer details, choose how they paid, then add each livestock line before submitting.")}
-          </p> */}
-        </header>
-
         <section className="livestockSection" aria-labelledby="livestock-section-customer">
           <h3 id="livestock-section-customer" className="livestockSectionTitle">
             {t("Customer & payment")}
@@ -401,7 +394,7 @@ export default function LivestockSalesPage() {
             {t("Add livestock line")}
           </h3>
           <div className="formGridAdd">
-            <label className="field">
+            <label className="field fieldLivestockSelect">
               <span className="fieldLabel">{t("Livestock Item ID")}</span>
               <select
                 className="select"
@@ -418,29 +411,33 @@ export default function LivestockSalesPage() {
                 ))}
               </select>
             </label>
-            <label className="field fieldSm">
-              <span className="fieldLabel">{t("Quantity")}</span>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                step="any"
-                value={livestockWeight}
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => setLivestockWeight(e.target.value)}
-              />
-            </label>
-            <label className="field fieldSm">
-              <span className="fieldLabel">{t("Amount")}</span>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                step="any"
-                value={livestockAmount || ""}
-                onChange={(e) => setLivestockAmount(Number(e.target.value) || 0)}
-              />
-            </label>
+            <div className="formGridQtyPair">
+              <label className="field fieldSm">
+                <span className="fieldLabel">{t("Quantity")}</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={livestockWeight}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setLivestockWeight(e.target.value)}
+                  inputMode="decimal"
+                />
+              </label>
+              <label className="field fieldSm">
+                <span className="fieldLabel">{t("Amount")}</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={livestockAmount || ""}
+                  onChange={(e) => setLivestockAmount(Number(e.target.value) || 0)}
+                  inputMode="decimal"
+                />
+              </label>
+            </div>
             <button type="button" className="addBtn" onClick={handleAddLivestockLine}>
               {t("+ Add Livestock")}
             </button>
@@ -467,7 +464,7 @@ export default function LivestockSalesPage() {
               </span>
             )}
           </div>
-          <div className="tableWrap">
+          <div className="tableWrap tableWrap--mobileCards">
             <table className="table table--stack">
               <thead>
                 <tr>
@@ -544,8 +541,8 @@ export default function LivestockSalesPage() {
           <h2 className="cardTitle">{t("Live Stock Sale Details")}</h2>
           <p className="cardDescription">{t("Recent livestock sales from your account.")}</p>
         </header>
-        <div className="tableWrap tableWrap--tight">
-          <table className="table table--stack">
+        <div className="tableWrap tableWrap--tight tableWrap--mobileCards">
+          <table className="table table--stack table--saleDetails">
             <thead>
               <tr>
                 <th>{t("Name")}</th>
