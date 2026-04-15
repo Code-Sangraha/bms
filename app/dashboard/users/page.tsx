@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
+import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { getRoles } from "@/handlers/role";
@@ -41,6 +42,7 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [openActionUserId, setOpenActionUserId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editModalUser, setEditModalUser] = useState<User | null>(null);
   const [editFullName, setEditFullName] = useState("");
@@ -123,16 +125,20 @@ export default function UsersPage() {
     onSuccess: (result) => {
       if (result.ok) {
         setDeleteError(null);
+        setUserToDelete(null);
         setOpenActionUserId(null);
         queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       } else if (result.status === 401) {
+        setUserToDelete(null);
         navigate("/login");
       } else {
         setDeleteError(result.error ?? t("Failed to delete user"));
+        setUserToDelete(null);
       }
     },
     onError: () => {
       setDeleteError(t("Something went wrong. Please try again."));
+      setUserToDelete(null);
     },
   });
 
@@ -202,10 +208,13 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = (user: User) => {
-    const label = user.fullName?.trim() || user.email?.trim() || user.id;
-    const confirmed = window.confirm(`${t("Delete user")} "${label}"?`);
-    if (!confirmed) return;
-    deleteMutation.mutate(user.id);
+    setOpenActionUserId(null);
+    setUserToDelete(user);
+  };
+
+  const handleConfirmDeleteUser = () => {
+    if (!userToDelete) return;
+    deleteMutation.mutate(userToDelete.id);
   };
 
   const loading = isSubmitting || createMutation.isPending;
@@ -285,96 +294,88 @@ export default function UsersPage() {
           <span>{t("Name")}</span>
           <span>{t("Role")}</span>
           <span>{t("Contact")}</span>
-          <span />
         </div>
         {usersLoading && (
-          <div className="usersRow">
+          <div className="usersRow usersRowMessage">
             <span className="usersMessage">{t("Loading users…")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {usersError && (
-          <div className="usersRow">
+          <div className="usersRow usersRowMessage">
             <span className="usersMessage usersError">
               {usersErrorDetail instanceof Error
                 ? usersErrorDetail.message
                 : t("Failed to load users")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!usersLoading && !usersError && users.length === 0 && (
-          <div className="usersRow">
+          <div className="usersRow usersRowMessage">
             <span className="usersMessage">{t("No users yet. Add one to get started.")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!usersLoading &&
           !usersError &&
           users.length > 0 &&
           filteredUsers.length === 0 && (
-            <div className="usersRow">
+            <div className="usersRow usersRowMessage">
               <span className="usersMessage">
                 {t("No users match")} &quot;{searchQuery.trim()}&quot;.
               </span>
-              <span />
-              <span />
-              <span />
-              <span />
             </div>
           )}
         {!usersLoading &&
           !usersError &&
           paginatedUsers.map((user) => (
-            <div key={user.id} className="usersRow">
-              <span>{user.id}</span>
-              <span>{user.fullName ?? "—"}</span>
-              <span>{getRoleName(user)}</span>
-              <span>{user.contact ?? user.email ?? "—"}</span>
-              <span className="usersActionsCell">
-                <button
-                  type="button"
-                  className="moreButton"
-                  aria-label={t("Open actions")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenActionUserId((prev) => (prev === user.id ? null : user.id));
-                  }}
-                >
-                  ⋮
-                </button>
-                {openActionUserId === user.id && (
-                  <div
-                    className="usersActionsMenu"
-                    role="menu"
-                    onClick={(e) => e.stopPropagation()}
+            <div key={user.id} className="usersRow usersRowData">
+              <span className="usersCellId">{user.id}</span>
+              <span className="usersCellName" data-field-label={t("Name")}>
+                {user.fullName ?? "—"}
+              </span>
+              <div className="usersRoleActions">
+                <div>
+                <span className="usersRoleLabelMobile">{t("Role")}</span>
+                <span className="usersRoleValue">{getRoleName(user)}</span>
+                </div>
+                <span className="usersActionsCell">
+                  <button
+                    type="button"
+                    className="moreButton"
+                    aria-label={t("Open actions")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenActionUserId((prev) => (prev === user.id ? null : user.id));
+                    }}
                   >
-                    <button
-                      type="button"
-                      className="usersActionItem"
-                      onClick={() => handleOpenEdit(user)}
+                    ⋮
+                  </button>
+                  {openActionUserId === user.id && (
+                    <div
+                      className="usersActionsMenu"
+                      role="menu"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {t("Edit")}
-                    </button>
-                    <button
-                      type="button"
-                      className="usersActionItem usersActionDelete"
-                      onClick={() => handleDeleteUser(user)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? t("Deleting…") : t("Delete")}
-                    </button>
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        className="usersActionItem"
+                        onClick={() => handleOpenEdit(user)}
+                      >
+                        {t("Edit")}
+                      </button>
+                      <button
+                        type="button"
+                        className="usersActionItem usersActionDelete"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        {deleteMutation.isPending ? t("Deleting…") : t("Delete")}
+                      </button>
+                    </div>
+                  )}
+                </span>
+              </div>
+              <span className="usersCellContact" data-field-label={t("Contact")}>
+                {user.contact ?? user.email ?? "—"}
               </span>
             </div>
           ))}
@@ -478,6 +479,22 @@ export default function UsersPage() {
           </label>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!userToDelete}
+        title={t("Delete user")}
+        message={
+          userToDelete
+            ? `${t("Are you sure you want to delete")} "${userToDelete.fullName?.trim() || userToDelete.email?.trim() || userToDelete.id}"? ${t("This action cannot be undone.")}`
+            : ""
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDeleteUser}
+      />
 
       <Modal
         isOpen={!!editModalUser}

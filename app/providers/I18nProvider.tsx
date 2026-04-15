@@ -231,6 +231,7 @@ const translations: Record<string, string> = {
   "User Management": "प्रयोगकर्ता व्यवस्थापन",
   "Manage system users and permissions": "सिस्टम प्रयोगकर्ता र अनुमतिहरू व्यवस्थापन गर्नुहोस्",
   "Add User": "प्रयोगकर्ता थप्नुहोस्",
+  "Delete user": "प्रयोगकर्ता मेटाउनुहोस्",
   "Search users": "प्रयोगकर्ताहरू खोज्नुहोस्",
   "Employee ID": "कर्मचारी आईडी",
   Role: "भूमिका",
@@ -685,6 +686,9 @@ const translations: Record<string, string> = {
   "No lines in this sale yet": "यस बिक्रीमा अझै कुनै लाइन छैन",
   "Choose an item, quantity, and amount above, then use Add Livestock.":
     "माथि वस्तु, परिमाण र रकम भर्नुहोस्, अनि लाइभस्टक थप्नुहोस्।",
+  "Remove sale line": "बिक्री लाइन हटाउनुहोस्",
+  "Are you sure you want to remove this livestock sale line?":
+    "के तपाईं यो लाइभस्टक बिक्री लाइन हटाउन निश्चित हुनुहुन्छ?",
   "Recent livestock sales from your account.": "तपाईंको खाताबाट हालैका लाइभस्टक बिक्रीहरू।",
   "Payment method": "भुक्तानी विधि",
   "Cash": "नगद",

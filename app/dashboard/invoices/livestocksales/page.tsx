@@ -23,6 +23,7 @@ import {
   SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
+import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import "./livestock-sales.scss";
 
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
@@ -87,6 +88,7 @@ export default function LivestockSalesPage() {
   const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
     DEFAULT_SALE_PAYMENT_METHOD
   );
+  const [lineIndexToDelete, setLineIndexToDelete] = useState<number | null>(null);
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -273,6 +275,18 @@ export default function LivestockSalesPage() {
 
   const removeLivestockLine = (index: number) => {
     setLivestockLineItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const linePendingDelete = useMemo(() => {
+    if (lineIndexToDelete === null) return null;
+    return livestockLineItems[lineIndexToDelete] ?? null;
+  }, [lineIndexToDelete, livestockLineItems]);
+
+  const handleConfirmRemoveLine = () => {
+    if (lineIndexToDelete === null) return;
+    const index = lineIndexToDelete;
+    setLineIndexToDelete(null);
+    removeLivestockLine(index);
   };
 
   const createLivestockSaleMutation = useMutation({
@@ -502,7 +516,7 @@ export default function LivestockSalesPage() {
                         <button
                           type="button"
                           className="removeBtn"
-                          onClick={() => removeLivestockLine(index)}
+                          onClick={() => setLineIndexToDelete(index)}
                         >
                           {t("Delete")}
                         </button>
@@ -591,6 +605,21 @@ export default function LivestockSalesPage() {
           </table>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={lineIndexToDelete !== null && linePendingDelete !== null}
+        title={t("Remove sale line")}
+        message={
+          linePendingDelete
+            ? `${t("Are you sure you want to remove this livestock sale line?")} "${linePendingDelete.livestockItemLabel}" (${t("Quantity")}: ${linePendingDelete.weight}, ${t("Amount")}: ${linePendingDelete.amount}). ${t("This action cannot be undone.")}`
+            : ""
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={false}
+        onClose={() => setLineIndexToDelete(null)}
+        onConfirm={handleConfirmRemoveLine}
+      />
     </section>
   );
 }

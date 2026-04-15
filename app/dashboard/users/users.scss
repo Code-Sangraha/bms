@@ -118,7 +118,7 @@
 
 .usersRow {
   display: grid;
-  grid-template-columns: 120px 1.2fr 1.2fr 1.6fr 32px;
+  grid-template-columns: 120px 1.2fr minmax(140px, 1.2fr) 1.6fr;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -126,11 +126,37 @@
   font-size: 13px;
 }
 
+.usersRowData {
+  align-items: center;
+}
+
 .usersRowHeader {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+}
+
+.usersRoleActions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.usersRoleLabelMobile {
+  display: none;
+}
+
+.usersRoleValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {
@@ -172,7 +198,7 @@
 .moreButton {
   width: 30px;
   height: 30px;
-  border: 2px solid #111827;
+  border: none;
   border-radius: 10px;
   background: #ffffff;
   cursor: pointer;
@@ -184,12 +210,13 @@
 .usersActionsCell {
   position: relative;
   display: flex;
+  flex-shrink: 0;
   justify-content: flex-end;
 }
 
 .usersActionsMenu {
   position: absolute;
-  top: 36px;
+  top: calc(100% + 4px);
   right: 0;
   min-width: 120px;
   background: #ffffff;
@@ -231,9 +258,14 @@
     align-items: flex-start;
   }
 
-  .usersRow {
+  /* Stack rows only between tablet and mobile card breakpoint */
+  .usersRow:not(.usersRowData) {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .usersRowHeader {
+    display: none;
   }
 }
 
@@ -271,66 +303,123 @@
     border-top: none;
   }
 
-  .usersRow {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 12px;
-    padding: 12px;
+  .usersRowMessage {
+    padding: 14px 12px;
     background: #f9fafb;
     border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: 10px;
     border-bottom: none;
 
-    span {
-      padding: 4px 0;
+    .usersMessage {
+      display: block;
+      font-size: 13px;
+      line-height: 1.45;
       word-break: break-word;
     }
+  }
 
-    span:first-child {
+  .usersRow.usersRowData {
+    display: grid;
+    grid-template-columns: 1fr minmax(36px, auto);
+    grid-template-rows: auto auto;
+    gap: 10px 12px;
+    padding: 14px 12px;
+    background: #f9fafb;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    font-size: 13px;
+    border-bottom: none;
+    align-items: start;
+
+    .usersCellId {
       display: none;
     }
 
-    span:nth-child(2)::before {
-      content: "Name";
+    .usersCellName,
+    .usersCellContact,
+    .usersRoleActions {
+      padding: 2px 0;
+      word-break: break-word;
+    }
+
+    .usersCellName::before,
+    .usersCellContact::before {
+      content: attr(data-field-label);
       display: block;
       font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       color: #9ca3af;
-      letter-spacing: 0.08em;
-      margin-bottom: 2px;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
     }
 
-    span:nth-child(3)::before {
-      content: "Role";
+    .usersCellName {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .usersRoleActions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+      align-self: start;
+      width: 100%;
+      max-width: 100%;
+      gap: 6px 8px;
+      align-items: start;
+    }
+
+    .usersRoleLabelMobile {
       display: block;
+      grid-column: 1;
+      grid-row: 1;
+      padding-top: 2px;
       font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       color: #9ca3af;
-      letter-spacing: 0.08em;
-      margin-bottom: 2px;
-    }
-
-    span:nth-child(4)::before {
-      content: "Contact";
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #9ca3af;
-      letter-spacing: 0.08em;
-      margin-bottom: 2px;
-    }
-
-    span:nth-child(4) {
-      grid-column: 1 / -1;
+      letter-spacing: 0.06em;
     }
 
     .usersActionsCell {
-      grid-column: 2 / 3;
-      justify-content: flex-end;
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+    }
+
+    .usersRoleValue {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      flex: initial;
+      min-width: 0;
+      white-space: normal;
+      text-align: left;
+      overflow: visible;
+      text-overflow: clip;
+    }
+
+    .usersCellContact {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+}
+
+@media (min-width: 901px) {
+  .usersRowMessage {
+    display: grid;
+    grid-template-columns: 120px 1.2fr minmax(140px, 1.2fr) 1.6fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+
+    .usersMessage {
+      grid-column: 1 / -1;
     }
   }
 }
