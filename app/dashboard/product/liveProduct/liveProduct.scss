@@ -77,6 +77,51 @@
   background: rgba(2, 149, 90, 0.16);
 }
 
+.liveProductTabs {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f3f4f6;
+  box-sizing: border-box;
+}
+
+.liveProductTab {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.liveProductTab:hover {
+  color: #111827;
+}
+
+.liveProductTab:focus-visible {
+  outline: 2px solid rgba(2, 149, 90, 0.45);
+  outline-offset: 2px;
+}
+
+.liveProductTabActive {
+  background: #ffffff;
+  color: #02955a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.liveProductTabPanel {
+  width: 100%;
+  min-width: 0;
+}
+
 .liveProductSearch {
   display: flex;
   align-items: center;
@@ -118,13 +163,6 @@
   background: #ffffff;
   width: 100%;
   position: relative;
-}
-
-/* Taller table region on desktop so the grid does not feel cramped above opening/closing stock */
-@media (min-width: 901px) {
-  .liveProductPage .productsTable {
-    min-height: clamp(380px, 52vh, 720px);
-  }
 }
 
 .productsRow {

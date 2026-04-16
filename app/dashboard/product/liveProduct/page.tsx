@@ -64,6 +64,8 @@ type OpenRowMenuState = {
   right: number;
 };
 
+type LiveProductMainTab = "inventory" | "openingClosing";
+
 function resolveLivestockRowActionKey(item: LivestockItem, index: number): string {
   const withUnderscore = item as unknown as { _id?: unknown };
   if (typeof item.id === "string" && item.id) return `id:${item.id}`;
@@ -134,6 +136,7 @@ export default function LiveProductPage() {
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
+  const [mainTab, setMainTab] = useState<LiveProductMainTab>("inventory");
 
   const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
   const [openingStockTo, setOpeningStockTo] = useState(() => toIsoDateLocal(new Date()));
@@ -300,6 +303,10 @@ export default function LiveProductPage() {
   const closeRowMenu = useCallback(() => {
     setOpenRowMenu(null);
   }, []);
+
+  useEffect(() => {
+    if (mainTab !== "inventory") closeRowMenu();
+  }, [mainTab, closeRowMenu]);
 
   useLayoutEffect(() => {
     if (!openRowMenu) return;
@@ -664,6 +671,44 @@ export default function LiveProductPage() {
         </div>
       </div>
 
+      <div
+        className="liveProductTabs"
+        role="tablist"
+        aria-label={t("Live Products views")}
+      >
+        <button
+          type="button"
+          id="live-product-tab-inventory"
+          role="tab"
+          aria-selected={mainTab === "inventory"}
+          aria-controls="live-product-panel-inventory"
+          tabIndex={mainTab === "inventory" ? 0 : -1}
+          className={`liveProductTab${mainTab === "inventory" ? " liveProductTabActive" : ""}`}
+          onClick={() => setMainTab("inventory")}
+        >
+          {t("Inventory")}
+        </button>
+        <button
+          type="button"
+          id="live-product-tab-opening"
+          role="tab"
+          aria-selected={mainTab === "openingClosing"}
+          aria-controls="live-product-panel-opening"
+          tabIndex={mainTab === "openingClosing" ? 0 : -1}
+          className={`liveProductTab${mainTab === "openingClosing" ? " liveProductTabActive" : ""}`}
+          onClick={() => setMainTab("openingClosing")}
+        >
+          {t("Opening & closing")}
+        </button>
+      </div>
+
+      {mainTab === "inventory" && (
+        <div
+          id="live-product-panel-inventory"
+          role="tabpanel"
+          aria-labelledby="live-product-tab-inventory"
+          className="liveProductTabPanel"
+        >
       {rowActionError && <p className="productsMessage productsError">{rowActionError}</p>}
 
       <div className="productsTable">
@@ -885,7 +930,16 @@ export default function LiveProductPage() {
             onPageSizeChange={setPageSize}
           />
         )}
+        </div>
+      )}
 
+      {mainTab === "openingClosing" && (
+        <div
+          id="live-product-panel-opening"
+          role="tabpanel"
+          aria-labelledby="live-product-tab-opening"
+          className="liveProductTabPanel"
+        >
       <section className="openingClosingStockSection" aria-labelledby="opening-closing-stock-heading">
         <h2 id="opening-closing-stock-heading" className="pageTitle" style={{ fontSize: "18px", margin: 0 }}>
           {t("Live stock opening and closing")}
@@ -953,6 +1007,8 @@ export default function LiveProductPage() {
           </div>
         )}
       </section>
+        </div>
+      )}
 
       <Modal
         isOpen={isLivestockModalOpen}

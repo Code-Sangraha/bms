@@ -561,6 +561,9 @@ const translations: Record<string, string> = {
   "Unable to load waste history: missing item record ID from API.":
     "फोहोर इतिहास लोड गर्न सकिएन: API बाट आइटम रेकर्ड आईडी छैन।",
   "Live stock opening and closing": "लाइभ स्टक खुल्ला र बन्द स्टक",
+  "Live Products views": "ताजा उत्पादन दृश्यहरू",
+  Inventory: "इन्वेन्टरी",
+  "Opening & closing": "खुल्ला र बन्द",
   "Date from": "मिति देखि",
   "Date to": "मिति सम्म",
   Today: "आज",
