@@ -33,9 +33,17 @@ const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
 
 function getProcessedStock(product: Product): number {
-  const raw = product.weight ?? product.quantity;
+  const raw = product.quantity ?? product.weight;
   const num = typeof raw === "number" ? raw : Number(raw);
   return Number.isFinite(num) ? num : 0;
+}
+
+function formatProcessedQuantityDisplay(product: Product): string {
+  const q = product.quantity;
+  if (q != null && Number.isFinite(Number(q))) {
+    return String(q);
+  }
+  return "—";
 }
 
 function toIsoDateLocal(d: Date): string {
@@ -390,7 +398,7 @@ export default function ProcessedProductPage() {
           <span>{t("Name")}</span>
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
-          <span>{t("Weight")}</span>
+          <span>{t("Quantity")}</span>
           <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
@@ -450,7 +458,7 @@ export default function ProcessedProductPage() {
                 <span>{product.name}</span>
                 <span>{getTypeName(product.productTypeId)}</span>
                 <span>{getOutletName(product.outletId)}</span>
-                <span>{product.weight ?? product.quantity}</span>
+                <span>{formatProcessedQuantityDisplay(product)}</span>
                 <div className="productsRowActions">
                   <div
                     className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}

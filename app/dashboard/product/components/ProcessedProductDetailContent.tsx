@@ -16,7 +16,10 @@ export default function ProcessedProductDetailContent({
 }: ProcessedProductDetailContentProps) {
   const { t } = useI18n();
 
-  const stockDisplay = product.weight ?? product.quantity ?? "—";
+  const stockDisplay =
+    product.quantity != null && Number.isFinite(Number(product.quantity))
+      ? String(product.quantity)
+      : "—";
 
   return (
     <div className="processedProductViewModalBody">
@@ -34,7 +37,7 @@ export default function ProcessedProductDetailContent({
           <dd>{outletName}</dd>
         </div>
         <div className="processedProductViewDlRow">
-          <dt>{t("Weight")}</dt>
+          <dt>{t("Quantity")}</dt>
           <dd>{stockDisplay}</dd>
         </div>
       </dl>
