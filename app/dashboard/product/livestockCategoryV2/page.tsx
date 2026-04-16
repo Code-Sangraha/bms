@@ -100,9 +100,11 @@ export default function LivestockCategoryV2Page() {
         <span>{t("Product")}</span> {" > "} {t("Livestock Category")}
       </div>
 
-      <div className="header">
+      <div className="livestockCategoryHeader">
         <div className="headerText">
-          <h1 className="pageTitle">{t("Livestock Category")}</h1>
+          <h1 id="livestock-category-title" className="pageTitle">
+            {t("Livestock Category")}
+          </h1>
           <p className="pageSubtitle">{t("Create and manage livestock categories")}</p>
         </div>
         <button
@@ -163,42 +165,47 @@ export default function LivestockCategoryV2Page() {
         </div>
       </Modal>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="livestockCategoryInlineError">{error}</p>}
 
-      <div className="tableWrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t("Category Name")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td className="emptyCell">{t("Loading...")}</td>
-              </tr>
-            )}
-            {isError && (
-              <tr>
-                <td className="emptyCell">
-                  {errorDetail instanceof Error ? errorDetail.message : t("Failed to load livestock categories")}
-                </td>
-              </tr>
-            )}
-            {!isLoading && !isError && categories.length === 0 && (
-              <tr>
-                <td className="emptyCell">{t("No livestock categories yet.")}</td>
-              </tr>
-            )}
-            {!isLoading &&
-              !isError &&
-              paginatedCategories.map((category) => (
-                <tr key={category.id}>
-                  <td>{category.name}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+      <div
+        className="livestockCategoryList"
+        role="region"
+        aria-labelledby="livestock-category-title"
+      >
+        <div className="livestockCategoryRow livestockCategoryRowHeader">
+          <span>{t("Category Name")}</span>
+        </div>
+        {isLoading && (
+          <div className="livestockCategoryRow livestockCategoryRowMessage">
+            <span className="livestockCategoryMessage">{t("Loading...")}</span>
+          </div>
+        )}
+        {isError && (
+          <div className="livestockCategoryRow livestockCategoryRowMessage">
+            <span className="livestockCategoryMessage livestockCategoryMessageError">
+              {errorDetail instanceof Error
+                ? errorDetail.message
+                : t("Failed to load livestock categories")}
+            </span>
+          </div>
+        )}
+        {!isLoading && !isError && categories.length === 0 && (
+          <div className="livestockCategoryRow livestockCategoryRowMessage">
+            <span className="livestockCategoryMessage">
+              {t("No livestock categories yet.")}
+            </span>
+          </div>
+        )}
+        {!isLoading &&
+          !isError &&
+          paginatedCategories.map((category) => (
+            <div
+              key={category.id}
+              className="livestockCategoryRow livestockCategoryRowData"
+            >
+              <span className="livestockCategoryName">{category.name}</span>
+            </div>
+          ))}
       </div>
 
       {!isLoading && !isError && categories.length > 0 && (
