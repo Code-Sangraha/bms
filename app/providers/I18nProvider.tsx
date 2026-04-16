@@ -598,6 +598,8 @@ const translations: Record<string, string> = {
   'No product type named "Processed" found.':
     '"Processed" नामको कुनै उत्पादन प्रकार फेला परेन।',
   "No processed products match": "कुनै प्रशोधित उत्पादन मिलेन",
+  "Search products": "उत्पादनहरू खोज्नुहोस्",
+  "No products match": "कुनै उत्पादन मिलेन",
   "No processed products yet.": "अहिलेसम्म कुनै प्रशोधित उत्पादन छैन।",
   "Restock processed product": "प्रशोधित उत्पादन पुनः भण्डारण",
   "Deduct processed stock": "प्रशोधित स्टक कटौती",

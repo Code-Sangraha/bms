@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
@@ -33,6 +34,7 @@ export default function ProductPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [addProductName, setAddProductName] = useState("");
   const [addFormError, setAddFormError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -111,6 +113,12 @@ export default function ProductPage() {
   );
   const processedProductTypeId = processedProductType?.id ?? "";
 
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, searchQuery]);
+
   const {
     currentPage,
     setCurrentPage,
@@ -119,8 +127,16 @@ export default function ProductPage() {
     totalPages,
     startIndex,
     endIndex,
-  } = usePagination(products.length, { defaultPageSize: 10 });
-  const paginatedProducts = paginate(products, startIndex, endIndex);
+  } = usePagination(filteredProducts.length, { defaultPageSize: 10 });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, setCurrentPage]);
+
+  const paginatedProducts = useMemo(
+    () => paginate(filteredProducts, startIndex, endIndex),
+    [filteredProducts, startIndex, endIndex]
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProductApi(id),
@@ -277,48 +293,71 @@ export default function ProductPage() {
             {t("Create and manage products by type and outlet")}
           </p>
         </div>
-        <button
-          type="button"
-          className="button buttonPrimary"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          {t("Add Product")}
-        </button>
+        <div className="productHeaderActions">
+          <div className="productSearch">
+            <span className="searchIcon" aria-hidden>
+              🔍
+            </span>
+            <input
+              className="searchInput"
+              placeholder={t("Search")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label={t("Search products")}
+            />
+          </div>
+          <button
+            type="button"
+            className="button buttonPrimary productHeaderAddBtn"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            {t("Add Product")}
+          </button>
+        </div>
       </div>
 
       <div className="cardList">
         {productsLoading && (
-          <p className="productPageMessage">{t("Loading products…")}</p>
+          <div className="productPageState productPageStateMessage" role="status">
+            <p className="productPageMessage">{t("Loading products…")}</p>
+          </div>
         )}
         {productsError && (
-          <p className="productPageMessage productPageError">
-            {productsErrorDetail instanceof Error
-              ? productsErrorDetail.message
-              : t("Failed to load products")}
-          </p>
+          <div className="productPageState productPageStateMessage" role="alert">
+            <p className="productPageMessage productPageError">
+              {productsErrorDetail instanceof Error
+                ? productsErrorDetail.message
+                : t("Failed to load products")}
+            </p>
+          </div>
         )}
         {!productsLoading && !productsError && products.length === 0 && (
-          <p className="productPageMessage">
-            {t("No products yet. Add one to get started.")}
-          </p>
+          <div className="productPageState productPageStateMessage">
+            <p className="productPageMessage">
+              {t("No products yet. Add one to get started.")}
+            </p>
+          </div>
         )}
         {!productsLoading &&
           !productsError &&
+          products.length > 0 &&
+          filteredProducts.length === 0 && (
+            <div className="productPageState productPageStateMessage">
+              <p className="productPageMessage">
+                {t("No products match")} &quot;{searchQuery.trim()}&quot;.
+              </p>
+            </div>
+          )}
+        {!productsLoading &&
+          !productsError &&
+          filteredProducts.length > 0 &&
           paginatedProducts.map((product: Product) => (
             <article key={product.id} className="card">
               <div className="cardTop">
                 <div className="cardTitleBlock">
                   <h2 className="cardTitle">{product.name}</h2>
-                  {/* <span className="cardId">{product.id}</span> */}
                 </div>
-                <div className="badgeGroup">
-                  {/* <span
-                    className={
-                      product.status ? "badge badgeActive" : "badge"
-                    }
-                  >
-                    {product.status ? t("Active") : t("Inactive")}
-                  </span> */}
+                <div className="cardTopActions">
                   <div
                     className="cardMenuWrap"
                     ref={openMenuId === product.id ? menuButtonRef : undefined}
@@ -334,10 +373,22 @@ export default function ProductPage() {
                       aria-label={t("More options")}
                       aria-expanded={openMenuId === product.id}
                     >
-                      ⋮
+                      <MdMoreHoriz aria-hidden size={22} />
                     </button>
                     {openMenuId === product.id && (
                       <div className="cardMenuDropdown">
+                        <button
+                          type="button"
+                          className="cardMenuItem cardMenuItemEditMobile"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedProductId(product.id);
+                            setOpenMenuId(null);
+                          }}
+                        >
+                          {t("Edit")}
+                        </button>
                         <button
                           type="button"
                           className="cardMenuItem cardMenuItemDanger"
@@ -356,43 +407,36 @@ export default function ProductPage() {
                 </div>
               </div>
 
-              <div className="cardBody">
-                <label className="field">
-                  <span className="label">{t("Product Type")}</span>
-                  <input
-                    className="input"
-                    value={getProductTypeName(product)}
-                    readOnly
-                  />
-                </label>
-                <label className="field">
-                  <span className="label">{t("Outlet")}</span>
-                  <input
-                    className="input"
-                    value={getOutletName(product)}
-                    readOnly
-                  />
-                </label>
-              </div>
-
-              <div className="cardActions">
-                <button
-                  type="button"
-                  className="button buttonPrimary"
-                  onClick={() => setSelectedProductId(product.id)}
-                >
-                  {t("Edit")}
-                </button>
+              <div className="productCardBody">
+                <dl className="productCardMeta">
+                  <div className="productCardMetaRow">
+                    <dt>{t("Product Type")}</dt>
+                    <dd>{getProductTypeName(product)}</dd>
+                  </div>
+                  <div className="productCardMetaRow">
+                    <dt>{t("Outlet")}</dt>
+                    <dd>{getOutletName(product)}</dd>
+                  </div>
+                </dl>
+                <div className="cardEditSlot">
+                  <button
+                    type="button"
+                    className="button buttonPrimary cardEditBtn"
+                    onClick={() => setSelectedProductId(product.id)}
+                  >
+                    {t("Edit")}
+                  </button>
+                </div>
               </div>
             </article>
           ))}
       </div>
 
-      {!productsLoading && !productsError && products.length > 0 && (
+      {!productsLoading && !productsError && filteredProducts.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={products.length}
+          totalItems={filteredProducts.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           pageSizeOptions={[10, 20, 50]}
