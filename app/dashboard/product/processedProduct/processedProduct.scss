@@ -42,6 +42,52 @@
   gap: 6px;
 }
 
+/* Match Live Products tab control (shared class names with liveProduct.scss) */
+.liveProductTabs {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f3f4f6;
+  box-sizing: border-box;
+}
+
+.liveProductTab {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.liveProductTab:hover {
+  color: #111827;
+}
+
+.liveProductTab:focus-visible {
+  outline: 2px solid rgba(2, 149, 90, 0.45);
+  outline-offset: 2px;
+}
+
+.liveProductTabActive {
+  background: #ffffff;
+  color: #02955a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.liveProductTabPanel {
+  width: 100%;
+  min-width: 0;
+}
+
 .processedProductFilters {
   display: flex;
   align-items: flex-end;
@@ -114,12 +160,6 @@
   background: #ffffff;
   width: 100%;
   position: relative;
-}
-
-@media (min-width: 901px) {
-  .processedProductPage .productsTable {
-    min-height: clamp(380px, 52vh, 720px);
-  }
 }
 
 .productsRow > span {
@@ -247,7 +287,24 @@
   transform: none;
 }
 
-.processedRowWithActions .productsRowActions {
+.productsRow.processedRowWithActions > span:nth-child(1) {
+  grid-column: 1;
+}
+
+.productsRow.processedRowWithActions > span:nth-child(2) {
+  grid-column: 2;
+}
+
+.productsRow.processedRowWithActions > span:nth-child(3) {
+  grid-column: 3;
+}
+
+.productsRow.processedRowWithActions > span:nth-child(4) {
+  grid-column: 4;
+}
+
+.productsRow.processedRowWithActions .productsRowActions {
+  grid-column: 5;
   justify-self: stretch;
 }
 
@@ -396,14 +453,153 @@
   .processedProductSearch {
     width: 100%;
   }
+}
 
-  .productsRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
+@media (max-width: 768px) {
+  .processedProductPage {
+    gap: 14px;
   }
 
-  .productsRowActions {
-    grid-column: 1;
+  .processedProductPage .pageTitle {
+    font-size: 28px;
+  }
+
+  .processedProductPage .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .productsTable {
+    border: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  /* Header row has productsRowHeader + processedInventoryRowHeader but not processedRowWithActions */
+  .productsRow.processedInventoryRowHeader {
+    display: none !important;
+  }
+
+  .productsRow.processedRowWithActions.processedRowMessage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 72px;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .productsRow.processedRowWithActions.processedRowMessage .productsMessage {
+    text-align: center;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData {
+    display: grid;
+    grid-template-columns: 1fr 1fr minmax(44px, auto);
+    grid-template-areas:
+      "procName procName procMenu"
+      "procType procType procType"
+      "procOutlet procQty .";
+    gap: 10px 12px;
+    align-items: start;
+    min-width: 0;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span {
+    min-width: 0;
+    word-break: break-word;
+    font-size: 13px;
+    color: #111827;
+    text-align: left;
+    grid-column: auto;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(1) {
+    grid-area: procName;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(2) {
+    grid-area: procType;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(2)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(3) {
+    grid-area: procOutlet;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(4) {
+    grid-area: procQty;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(3)::before,
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(4)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData .productsRowActions {
+    grid-area: procMenu;
+    justify-self: end;
+    align-self: start;
+    margin: 0;
+    width: auto;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData .rowMenuTrigger {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .productsRow.processedRowWithActions.processedRowData .rowMenuTrigger:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 480px) {
+  .processedProductPage {
+    gap: 12px;
+  }
+
+  .processedProductPage .pageTitle {
+    font-size: 24px;
+  }
+
+  .productsRow.processedRowWithActions.processedRowData,
+  .productsRow.processedRowWithActions.processedRowMessage {
+    padding: 10px;
   }
 }
 

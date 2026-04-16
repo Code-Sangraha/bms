@@ -564,6 +564,7 @@ const translations: Record<string, string> = {
   "Live Products views": "ताजा उत्पादन दृश्यहरू",
   Inventory: "इन्वेन्टरी",
   "Opening & closing": "खुल्ला र बन्द",
+  "Processed Products views": "प्रशोधित उत्पादन दृश्यहरू",
   "Date from": "मिति देखि",
   "Date to": "मिति सम्म",
   Today: "आज",

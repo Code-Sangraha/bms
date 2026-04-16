@@ -62,6 +62,8 @@ type OpenRowMenuState = {
   right: number;
 };
 
+type ProcessedProductMainTab = "inventory" | "openingClosing";
+
 export default function ProcessedProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -71,6 +73,7 @@ export default function ProcessedProductPage() {
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
+  const [mainTab, setMainTab] = useState<ProcessedProductMainTab>("inventory");
 
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [restockTarget, setRestockTarget] = useState<Product | null>(null);
@@ -162,6 +165,10 @@ export default function ProcessedProductPage() {
   const closeRowMenu = useCallback(() => {
     setOpenRowMenu(null);
   }, []);
+
+  useEffect(() => {
+    if (mainTab !== "inventory") closeRowMenu();
+  }, [mainTab, closeRowMenu]);
 
   useLayoutEffect(() => {
     if (!openRowMenu) return;
@@ -393,8 +400,46 @@ export default function ProcessedProductPage() {
         </div>
       </div>
 
+      <div
+        className="liveProductTabs"
+        role="tablist"
+        aria-label={t("Processed Products views")}
+      >
+        <button
+          type="button"
+          id="processed-product-tab-inventory"
+          role="tab"
+          aria-selected={mainTab === "inventory"}
+          aria-controls="processed-product-panel-inventory"
+          tabIndex={mainTab === "inventory" ? 0 : -1}
+          className={`liveProductTab${mainTab === "inventory" ? " liveProductTabActive" : ""}`}
+          onClick={() => setMainTab("inventory")}
+        >
+          {t("Inventory")}
+        </button>
+        <button
+          type="button"
+          id="processed-product-tab-opening"
+          role="tab"
+          aria-selected={mainTab === "openingClosing"}
+          aria-controls="processed-product-panel-opening"
+          tabIndex={mainTab === "openingClosing" ? 0 : -1}
+          className={`liveProductTab${mainTab === "openingClosing" ? " liveProductTabActive" : ""}`}
+          onClick={() => setMainTab("openingClosing")}
+        >
+          {t("Opening & closing")}
+        </button>
+      </div>
+
+      {mainTab === "inventory" && (
+        <div
+          id="processed-product-panel-inventory"
+          role="tabpanel"
+          aria-labelledby="processed-product-tab-inventory"
+          className="liveProductTabPanel"
+        >
       <div className="productsTable">
-        <div className="productsRow productsRowHeader">
+        <div className="productsRow productsRowHeader processedInventoryRowHeader">
           <span>{t("Name")}</span>
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
@@ -402,50 +447,34 @@ export default function ProcessedProductPage() {
           <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
-          <div className="productsRow">
+          <div className="productsRow processedRowWithActions processedRowMessage">
             <span className="productsMessage">{t("Loading…")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {productsError && (
-          <div className="productsRow">
+          <div className="productsRow processedRowWithActions processedRowMessage">
             <span className="productsMessage productsError">
               {productsErrorDetail instanceof Error
                 ? productsErrorDetail.message
                 : t("Failed to load products")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!productsLoading && !productsError && !processedTypeId && productTypes.length > 0 && (
-          <div className="productsRow">
+          <div className="productsRow processedRowWithActions processedRowMessage">
             <span className="productsMessage">{t('No product type named "Processed" found.')}</span>
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!productsLoading &&
           !productsError &&
           processedTypeId &&
           filteredProducts.length === 0 && (
-            <div className="productsRow">
+            <div className="productsRow processedRowWithActions processedRowMessage">
               <span className="productsMessage">
                 {searchQuery.trim()
                   ? `${t("No processed products match")} "${searchQuery.trim()}".`
                   : t("No processed products yet.")}
               </span>
-              <span />
-              <span />
-              <span />
-              <span />
             </div>
           )}
         {!productsLoading &&
@@ -454,11 +483,15 @@ export default function ProcessedProductPage() {
           paginatedProducts.map((product) => {
             const rowKey = product.id;
             return (
-              <div key={rowKey} className="productsRow processedRowWithActions">
-                <span>{product.name}</span>
-                <span>{getTypeName(product.productTypeId)}</span>
-                <span>{getOutletName(product.outletId)}</span>
-                <span>{formatProcessedQuantityDisplay(product)}</span>
+              <div key={rowKey} className="productsRow processedRowWithActions processedRowData">
+                <span data-label={t("Name")}>{product.name}</span>
+                <span data-label={t("Product Type")}>
+                  {getTypeName(product.productTypeId)}
+                </span>
+                <span data-label={t("Outlet")}>{getOutletName(product.outletId)}</span>
+                <span data-label={t("Quantity")}>
+                  {formatProcessedQuantityDisplay(product)}
+                </span>
                 <div className="productsRowActions">
                   <div
                     className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
@@ -617,7 +650,16 @@ export default function ProcessedProductPage() {
           onPageSizeChange={setPageSize}
         />
       )}
+        </div>
+      )}
 
+      {mainTab === "openingClosing" && (
+        <div
+          id="processed-product-panel-opening"
+          role="tabpanel"
+          aria-labelledby="processed-product-tab-opening"
+          className="liveProductTabPanel"
+        >
       <section className="openingClosingStockSection" aria-labelledby="processed-opening-closing-heading">
         <h2 id="processed-opening-closing-heading" className="pageTitle" style={{ fontSize: "18px", margin: 0 }}>
           {t("Processed products opening and closing")}
@@ -685,6 +727,8 @@ export default function ProcessedProductPage() {
           </div>
         )}
       </section>
+        </div>
+      )}
 
       {productToEdit && (
         <ProductEditModal
