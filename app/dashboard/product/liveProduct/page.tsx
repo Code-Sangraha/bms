@@ -676,41 +676,26 @@ export default function LiveProductPage() {
           <span>{t("Actions")}</span>
         </div>
         {(categoryLoading || livestockItemsLoading) && (
-          <div className="productsRow livestockRowWithActions">
+          <div className="productsRow livestockRowWithActions livestockRowMessage">
             <span className="productsMessage">{t("Loading…")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {categoryError && (
-          <div className="productsRow livestockRowWithActions">
+          <div className="productsRow livestockRowWithActions livestockRowMessage">
             <span className="productsMessage productsError">
               {categoryErrorDetail instanceof Error
                 ? categoryErrorDetail.message
                 : t("Failed to load livestock categories")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {livestockItemsError && (
-          <div className="productsRow livestockRowWithActions">
+          <div className="productsRow livestockRowWithActions livestockRowMessage">
             <span className="productsMessage productsError">
               {livestockItemsErrorDetail instanceof Error
                 ? livestockItemsErrorDetail.message
                 : t("Failed to load live stock items")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!categoryLoading &&
@@ -718,13 +703,8 @@ export default function LiveProductPage() {
           !livestockItemsLoading &&
           !livestockItemsError &&
           filteredLivestockItems.length === 0 && (
-            <div className="productsRow livestockRowWithActions">
+            <div className="productsRow livestockRowWithActions livestockRowMessage">
               <span className="productsMessage">{t("No live stock items yet.")}</span>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
             </div>
           )}
         {!categoryLoading &&
@@ -736,13 +716,17 @@ export default function LiveProductPage() {
             return (
             <div
               key={rowKey}
-              className="productsRow livestockRowWithActions"
+              className="productsRow livestockRowWithActions livestockRowData"
             >
-              <span>{getLiveProductName(item.productId)}</span>
-              <span>{item.name}</span>
-              <span>{item.itemId}</span>
-              <span>{formatLivestockTableQuantity(item)}</span>
-              <span>{item.price}</span>
+              <span data-label={t("Product Category")}>
+                {getLiveProductName(item.productId)}
+              </span>
+              <span data-label={t("Name")}>{item.name}</span>
+              <span data-label={t("Item ID")}>{item.itemId}</span>
+              <span data-label={t("Quantity")}>
+                {formatLivestockTableQuantity(item)}
+              </span>
+              <span data-label={t("Price")}>{item.price}</span>
               <div className="productsRowActions">
                 <div
                   className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
