@@ -234,56 +234,50 @@ export default function CustomerTypesPage() {
           <span />
         </div>
         {itemsLoading && (
-          <div className="customerTypesRow">
+          <div className="customerTypesRow customerTypesRowMessage">
             <span className="customerTypesMessage">{t("Loading…")}</span>
-            <span />
-            <span />
           </div>
         )}
         {itemsError && (
-          <div className="customerTypesRow">
+          <div className="customerTypesRow customerTypesRowMessage">
             <span className="customerTypesMessage customerTypesError">
               {itemsErrorDetail instanceof Error
                 ? itemsErrorDetail.message
                 : t("Failed to load")}
             </span>
-            <span />
-            <span />
           </div>
         )}
         {!itemsLoading && !itemsError && items.length === 0 && (
-          <div className="customerTypesRow">
+          <div className="customerTypesRow customerTypesRowMessage">
             <span className="customerTypesMessage">
               {t("No customer types yet. Add one to get started.")}
             </span>
-            <span />
-            <span />
           </div>
         )}
         {!itemsLoading &&
           !itemsError &&
           items.length > 0 &&
           filteredItems.length === 0 && (
-            <div className="customerTypesRow">
+            <div className="customerTypesRow customerTypesRowMessage">
               <span className="customerTypesMessage">
                 {t("No items match")} &quot;{searchQuery.trim()}&quot;.
               </span>
-              <span />
-              <span />
             </div>
           )}
         {!itemsLoading &&
           !itemsError &&
           paginatedItems.map((ct) => (
-            <div key={ct.id} className="customerTypesRow">
-              <span>{ct.name}</span>
-              <span>
-                <span
-                  className={ct.status ? "badge badgeActive" : "badge"}
-                >
-                  {ct.status ? t("Active") : t("Inactive")}
+            <div key={ct.id} className="customerTypesRow customerTypesRowData">
+              <div className="customerTypesRowMain">
+                <span className="customerTypesName">{ct.name}</span>
+                <span className="customerTypesStatusCell">
+                  <span
+                    className={ct.status ? "badge badgeActive" : "badge"}
+                  >
+                    {ct.status ? t("Active") : t("Inactive")}
+                  </span>
                 </span>
-              </span>
+              </div>
               <div
                 className="customerTypesMenuWrap"
                 ref={openMenuId === ct.id ? menuButtonRef : undefined}
