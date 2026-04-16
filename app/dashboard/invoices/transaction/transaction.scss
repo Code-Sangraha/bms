@@ -1,3 +1,6 @@
+$brand: #02955a;
+$border: rgba(0, 0, 0, 0.08);
+
 .transactionPage {
   width: 100%;
   display: flex;
@@ -54,7 +57,7 @@
   flex: 1;
   min-width: 200px;
   max-width: 320px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid $border;
   border-radius: 8px;
   padding: 8px 12px;
   background: #ffffff;
@@ -81,7 +84,7 @@
   height: 40px;
   min-width: 160px;
   padding: 0 32px 0 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid $border;
   border-radius: 8px;
   font-size: 13px;
   color: #374151;
@@ -94,7 +97,7 @@
   margin-left: auto;
   font-size: 13px;
   font-weight: 500;
-  color: #02955a;
+  color: $brand;
 }
 
 .transactionTable {
@@ -102,20 +105,45 @@
 }
 
 .transactionRow {
-  display: grid;
-  grid-template-columns: 120px 1fr 1.2fr 1fr 90px 1fr 32px;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   font-size: 13px;
 }
 
 .transactionRowHeader {
+  display: grid;
+  grid-template-columns: 120px 1fr 1.2fr 1fr 90px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+}
+
+.transactionRowMessage {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+@media (min-width: 769px) {
+  .transactionRowData {
+    display: grid;
+    grid-template-columns: 120px 1fr 1.2fr 1fr 90px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    font-size: 13px;
+  }
+
+  .transactionRowDesktop {
+    display: contents;
+  }
+
+  .transactionCardMobile {
+    display: none !important;
+  }
 }
 
 .transactionColAmount {
@@ -145,37 +173,18 @@
   display: inline-block;
 }
 
-.transactionMenuWrap {
-  display: inline-flex;
-}
-
-.transactionMenuTrigger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #6b7280;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.transactionMenuTrigger:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #111827;
-}
-
 .transactionRowClickable {
   cursor: pointer;
 }
 
-.transactionRowClickable:hover {
-  background: #f9fafb;
+.transactionRowClickable:hover .transactionRowDesktop > span {
+  background: transparent;
+}
+
+.transactionRowData.transactionRowClickable:hover {
+  @media (min-width: 769px) {
+    background: #f9fafb;
+  }
 }
 
 .transactionDetail {
@@ -253,6 +262,211 @@
   font-size: 15px;
 }
 
+/* Mobile card (≤768px) */
+@media (max-width: 768px) {
+  .transactionPage {
+    gap: 14px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .transactionToolbar {
+    gap: 10px;
+  }
+
+  .transactionSearch {
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .transactionFilterWrap {
+    width: 100%;
+  }
+
+  .transactionFilterSelect {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .transactionLastSync {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 2px;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .transactionTable {
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .transactionRowHeader {
+    display: none;
+  }
+
+  .transactionRowMessage {
+    padding: 14px;
+    background: #f9fafb;
+    border: 1px solid $border;
+    border-radius: 10px;
+    border-bottom: none;
+  }
+
+  .transactionRowMessage .transactionMessage {
+    display: block;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .transactionRowData {
+    display: block;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .transactionRowDesktop {
+    display: none !important;
+  }
+
+  .transactionCardMobile {
+    display: block;
+    padding: 14px 14px 16px;
+    background: #ffffff;
+    border: 1px solid $border;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .transactionCardMobileTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .transactionCardMobileId {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    word-break: break-word;
+  }
+
+  .transactionCardMobileDate {
+    flex-shrink: 0;
+    max-width: 55%;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #6b7280;
+    text-align: right;
+  }
+
+  .transactionCardMobileField[data-field-label]::before,
+  .transactionCardMobileAmountBlock[data-field-label]::before {
+    content: attr(data-field-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+  }
+
+  .transactionCardMobileField {
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .transactionCardMobileMeta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    margin-top: 10px;
+  }
+
+  .transactionCardMobileFooter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .transactionCardMobileAmountBlock {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .transactionCardMobileAmount {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: $brand;
+  }
+
+  .transactionCardMobileViewBtn {
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid rgba(2, 149, 90, 0.35);
+    border-radius: 8px;
+    background: rgba(2, 149, 90, 0.08);
+    color: #047857;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .transactionCardMobileViewBtn:hover {
+    background: rgba(2, 149, 90, 0.14);
+    border-color: rgba(2, 149, 90, 0.5);
+  }
+
+  .transactionCardMobileViewBtn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(2, 149, 90, 0.18);
+  }
+
+  .transactionColAmount {
+    text-align: left;
+  }
+
+  .transactionDetailList {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .transactionDetailList dt {
+    font-size: 12px;
+  }
+
+  .transactionDetailList dd {
+    margin-bottom: 8px;
+  }
+}
+
 @media (max-width: 900px) {
   .transactionHeader {
     flex-direction: column;
@@ -271,150 +485,19 @@
   .transactionLastSync {
     margin-left: 0;
   }
-
-  .transactionRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .transactionColAmount {
-    text-align: left;
-  }
 }
 
-@media (max-width: 768px) {
-  .transactionPage {
-    gap: 14px;
-  }
+@media (min-width: 901px) {
+  .transactionRowMessage {
+    display: grid;
+    grid-template-columns: 120px 1fr 1.2fr 1fr 90px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 
-  .pageTitle {
-    font-size: 30px;
-  }
-
-  .pageSubtitle {
-    font-size: 12px;
-  }
-
-  .transactionToolbar {
-    gap: 10px;
-  }
-
-  .transactionSearch {
-    width: 100%;
-    max-width: none;
-  }
-
-  .transactionFilterWrap {
-    width: 100%;
-  }
-
-  .transactionFilterSelect {
-    width: 100%;
-  }
-
-  .transactionLastSync {
-    width: 100%;
-    margin-top: 2px;
-    text-align: left;
-    font-size: 12px;
-  }
-
-  .transactionTable {
-    border-top: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .transactionRowHeader {
-    display: none;
-  }
-
-  .transactionRow {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 12px;
-    padding: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 10px;
-    background: #ffffff;
-  }
-
-  .transactionRow > span {
-    min-width: 0;
-    word-break: break-word;
-  }
-
-  .transactionRow > span:nth-child(1)::before {
-    content: "Transaction ID";
-  }
-
-  .transactionRow > span:nth-child(2)::before {
-    content: "Date & Time";
-  }
-
-  .transactionRow > span:nth-child(3)::before {
-    content: "Customer";
-  }
-
-  .transactionRow > span:nth-child(4)::before {
-    content: "Type";
-  }
-
-  .transactionRow > span:nth-child(5)::before {
-    content: "Items";
-  }
-
-  .transactionRow > span:nth-child(6)::before {
-    content: "Amount";
-  }
-
-  .transactionRow > span:nth-child(1)::before,
-  .transactionRow > span:nth-child(2)::before,
-  .transactionRow > span:nth-child(3)::before,
-  .transactionRow > span:nth-child(4)::before,
-  .transactionRow > span:nth-child(5)::before,
-  .transactionRow > span:nth-child(6)::before {
-    display: block;
-    margin-bottom: 2px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #9ca3af;
-  }
-
-  .transactionColAmount {
-    text-align: left;
-  }
-
-  .transactionMenuWrap {
-    grid-column: 2 / 3;
-    justify-self: end;
-    align-self: end;
-  }
-
-  .transactionMenuTrigger {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: #f3f4f6;
-    color: #374151;
-  }
-
-  .transactionMessage {
-    grid-column: 1 / -1;
-  }
-
-  .transactionDetailList {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .transactionDetailList dt {
-    font-size: 12px;
-  }
-
-  .transactionDetailList dd {
-    margin-bottom: 8px;
+    .transactionMessage {
+      grid-column: 1 / -1;
+    }
   }
 }

@@ -14,6 +14,7 @@ import {
   type LivestockSale,
   type SaleTransaction,
 } from "@/handlers/sale";
+import type { Locale } from "@/app/providers/I18nProvider";
 import "./transaction.scss";
 
 const SALES_QUERY_KEY = ["sales"];
@@ -45,10 +46,24 @@ function toTimestamp(raw: unknown): number {
   return Number.isFinite(ts) ? ts : 0;
 }
 
-function formatDate(raw: unknown): string {
-  if (typeof raw === "string") return raw || "-";
-  if (typeof raw === "number") return new Date(raw).toISOString();
-  return "-";
+/** Human-readable date/time for lists and modals; keeps sort via `timestamp`. */
+function formatTransactionDateTime(raw: unknown, locale: Locale): string {
+  let ms: number;
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    ms = raw;
+  } else if (typeof raw === "string" && raw.trim()) {
+    ms = new Date(raw).getTime();
+  } else {
+    return "-";
+  }
+  if (!Number.isFinite(ms)) return "-";
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "-";
+  const localeTag = locale === "ne" ? "ne-NP" : "en-GB";
+  return new Intl.DateTimeFormat(localeTag, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
 }
 
 function getNumber(value: unknown): number | null {
@@ -105,7 +120,7 @@ function getLivestockLabel(sale: LivestockSale): string {
   return saleItemId || "-";
 }
 
-function toTransactionFromSale(tx: SaleTransaction): TransactionRecord {
+function toTransactionFromSale(tx: SaleTransaction, locale: Locale): TransactionRecord {
   const dateRaw = tx.date ?? tx.createdAt;
   const detailItems: TransactionDetailItem[] =
     tx.items?.map((item) => ({
@@ -121,7 +136,7 @@ function toTransactionFromSale(tx: SaleTransaction): TransactionRecord {
   return {
     id: tx.transactionId ?? tx.id ?? "-",
     timestamp: toTimestamp(dateRaw),
-    dateLabel: formatDate(dateRaw),
+    dateLabel: formatTransactionDateTime(dateRaw, locale),
     customer: getCustomerName(tx),
     contact: typeof tx.contact === "string" ? tx.contact : "-",
     type: getTxType(tx),
@@ -132,7 +147,7 @@ function toTransactionFromSale(tx: SaleTransaction): TransactionRecord {
   };
 }
 
-function toTransactionFromLivestock(sale: LivestockSale, index: number): TransactionRecord {
+function toTransactionFromLivestock(sale: LivestockSale, index: number, locale: Locale): TransactionRecord {
   const dateRaw = sale.date ?? sale.createdAt;
   const amount = getNumber(sale.amount ?? sale.totalAmount);
   const weight = getNumber(sale.weight);
@@ -145,7 +160,7 @@ function toTransactionFromLivestock(sale: LivestockSale, index: number): Transac
   return {
     id: sale.transactionId ?? sale.id ?? `LS-${index + 1}`,
     timestamp: toTimestamp(dateRaw),
-    dateLabel: formatDate(dateRaw),
+    dateLabel: formatTransactionDateTime(dateRaw, locale),
     customer: typeof sale.name === "string" && sale.name ? sale.name : "-",
     contact: typeof sale.contact === "string" && sale.contact ? sale.contact : "-",
     type: "Livestock",
@@ -173,7 +188,7 @@ function formatAmount(n: number | null): string {
 
 export default function TransactionPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
@@ -225,10 +240,12 @@ export default function TransactionPage() {
   });
 
   const transactions = useMemo(() => {
-    const standard = sales.map(toTransactionFromSale);
-    const livestock = livestockSales.map((sale, index) => toTransactionFromLivestock(sale, index));
+    const standard = sales.map((tx) => toTransactionFromSale(tx, locale));
+    const livestock = livestockSales.map((sale, index) =>
+      toTransactionFromLivestock(sale, index, locale)
+    );
     return [...standard, ...livestock].sort((a, b) => b.timestamp - a.timestamp);
-  }, [sales, livestockSales]);
+  }, [sales, livestockSales, locale]);
 
   const filteredTransactions = useMemo(
     () =>
@@ -320,21 +337,14 @@ export default function TransactionPage() {
           <span>{t("Type")}</span>
           <span>{t("Items")}</span>
           <span className="transactionColAmount">{t("Amount")}</span>
-          <span aria-label={t("Actions")} />
         </div>
         {loading && (
-          <div className="transactionRow">
-            <span className="transactionMessage">{t("Loading transactions...")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
+          <div className="transactionRow transactionRowMessage">
+            <span className="transactionMessage">{t("Loading transactions…")}</span>
           </div>
         )}
         {error && (
-          <div className="transactionRow">
+          <div className="transactionRow transactionRowMessage">
             <span className="transactionMessage transactionError">
               {salesErrorDetail instanceof Error
                 ? salesErrorDetail.message
@@ -342,37 +352,21 @@ export default function TransactionPage() {
                   ? livestockErrorDetail.message
                   : t("Failed to load transactions")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!loading && !error && transactions.length === 0 && (
-          <div className="transactionRow">
+          <div className="transactionRow transactionRowMessage">
             <span className="transactionMessage">{t("No transactions yet.")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!loading &&
           !error &&
           transactions.length > 0 &&
           filteredTransactions.length === 0 && (
-            <div className="transactionRow">
-              <span className="transactionMessage">{t("No transactions match your search.")}</span>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
+            <div className="transactionRow transactionRowMessage">
+              <span className="transactionMessage">
+                {t("No transactions match your search.")}
+              </span>
             </div>
           )}
         {!loading &&
@@ -380,8 +374,7 @@ export default function TransactionPage() {
           paginatedTransactions.map((tx) => (
             <div
               key={tx.id}
-              className="transactionRow transactionRowClickable"
-              role="button"
+              className="transactionRow transactionRowData transactionRowClickable"
               tabIndex={0}
               onClick={() => setSelectedTransaction(tx)}
               onKeyDown={(e) => {
@@ -392,18 +385,54 @@ export default function TransactionPage() {
               }}
               aria-label={`${t("View details for transaction")} ${tx.id}`}
             >
-              <span>{tx.id}</span>
-              <span>{tx.dateLabel}</span>
-              <span>{tx.customer}</span>
-              <span>
-                <span className="badge transactionTypeBadge">{tx.type}</span>
-              </span>
-              <span>{formatItemsCount(tx.itemsCount, t)}</span>
-              <span className="transactionColAmount">{formatAmount(tx.amount)}</span>
-              <div className="transactionMenuWrap">
-                <button type="button" className="transactionMenuTrigger" aria-label={t("More options")}>
-                  ⋮
-                </button>
+              <div className="transactionRowDesktop">
+                <span>{tx.id}</span>
+                <span>{tx.dateLabel}</span>
+                <span>{tx.customer}</span>
+                <span>
+                  <span className="badge transactionTypeBadge">{tx.type}</span>
+                </span>
+                <span>{formatItemsCount(tx.itemsCount, t)}</span>
+                <span className="transactionColAmount">{formatAmount(tx.amount)}</span>
+              </div>
+              <div className="transactionCardMobile">
+                <div className="transactionCardMobileTop">
+                  <span className="transactionCardMobileId">{tx.id}</span>
+                  <time
+                    className="transactionCardMobileDate"
+                    {...(tx.timestamp > 0
+                      ? { dateTime: new Date(tx.timestamp).toISOString() }
+                      : {})}
+                  >
+                    {tx.dateLabel}
+                  </time>
+                </div>
+                <div className="transactionCardMobileField" data-field-label={t("Customer")}>
+                  {tx.customer}
+                </div>
+                <div className="transactionCardMobileMeta">
+                  <div className="transactionCardMobileField" data-field-label={t("Type")}>
+                    <span className="badge transactionTypeBadge">{tx.type}</span>
+                  </div>
+                  <div className="transactionCardMobileField" data-field-label={t("Items")}>
+                    {formatItemsCount(tx.itemsCount, t)}
+                  </div>
+                </div>
+                <div className="transactionCardMobileFooter">
+                  <div className="transactionCardMobileAmountBlock" data-field-label={t("Amount")}>
+                    <span className="transactionCardMobileAmount">{formatAmount(tx.amount)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="transactionCardMobileViewBtn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTransaction(tx);
+                    }}
+                  >
+                    {t("View details")}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
