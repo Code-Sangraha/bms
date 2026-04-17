@@ -501,8 +501,8 @@
     grid-template-columns: 1fr 1fr minmax(44px, auto);
     grid-template-areas:
       "procName procName procMenu"
-      "procType procType procType"
-      "procOutlet procQty .";
+      "procType procOutlet ."
+      "procQty procQty procQty";
     gap: 10px 12px;
     align-items: start;
     min-width: 0;
@@ -550,6 +550,8 @@
 
   .productsRow.processedRowWithActions.processedRowData > span:nth-child(3) {
     grid-area: procOutlet;
+    font-size: 12px;
+    color: #6b7280;
   }
 
   .productsRow.processedRowWithActions.processedRowData > span:nth-child(4) {
