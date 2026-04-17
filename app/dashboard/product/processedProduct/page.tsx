@@ -32,8 +32,9 @@ import "./processedProduct.scss";
 const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
 
-function getProcessedStock(product: Product): number {
-  const raw = product.quantity ?? product.weight;
+/** Quantity-only stock for processed products (restock/deduct must not use weight). */
+function getProcessedQuantity(product: Product): number {
+  const raw = product.quantity;
   const num = typeof raw === "number" ? raw : Number(raw);
   return Number.isFinite(num) ? num : 0;
 }
@@ -77,11 +78,11 @@ export default function ProcessedProductPage() {
 
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [restockTarget, setRestockTarget] = useState<Product | null>(null);
-  const [restockWeight, setRestockWeight] = useState("");
+  const [restockQuantity, setRestockQuantity] = useState("");
   const [restockError, setRestockError] = useState<string | null>(null);
 
   const [deductTarget, setDeductTarget] = useState<Product | null>(null);
-  const [deductWeight, setDeductWeight] = useState("");
+  const [deductQuantity, setDeductQuantity] = useState("");
   const [deductError, setDeductError] = useState<string | null>(null);
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -271,7 +272,7 @@ export default function ProcessedProductPage() {
       setRestockError(null);
       if (result.ok) {
         setRestockTarget(null);
-        setRestockWeight("");
+        setRestockQuantity("");
         invalidateProducts();
       } else {
         if (result.status === 401) {
@@ -289,7 +290,7 @@ export default function ProcessedProductPage() {
       setDeductError(null);
       if (result.ok) {
         setDeductTarget(null);
-        setDeductWeight("");
+        setDeductQuantity("");
         invalidateProducts();
       } else {
         if (result.status === 401) {
@@ -327,26 +328,26 @@ export default function ProcessedProductPage() {
 
   const handleSubmitRestock = () => {
     if (!restockTarget) return;
-    const w = Number(restockWeight);
-    if (!Number.isFinite(w) || w <= 0) return;
+    const q = Number(restockQuantity);
+    if (!Number.isFinite(q) || q <= 0) return;
     restockMutation.mutate({
       id: restockTarget.id,
       outletId: restockTarget.outletId,
-      weight: w,
+      quantity: q,
     });
   };
 
   const handleSubmitDeduct = () => {
     if (!deductTarget) return;
-    const w = Number(deductWeight);
-    if (!Number.isFinite(w) || w <= 0) return;
-    const cap = getProcessedStock(deductTarget);
-    if (w > cap) {
+    const q = Number(deductQuantity);
+    if (!Number.isFinite(q) || q <= 0) return;
+    const cap = getProcessedQuantity(deductTarget);
+    if (q > cap) {
       setDeductError(t("Deduct amount cannot exceed current stock."));
       return;
     }
     setDeductError(null);
-    deductMutation.mutate({ id: deductTarget.id, weight: w });
+    deductMutation.mutate({ id: deductTarget.id, quantity: q });
   };
 
   const handleConfirmDelete = () => {
@@ -599,7 +600,7 @@ export default function ProcessedProductPage() {
                 if (rowMutationsPending) return;
                 closeRowMenu();
                 setRestockTarget(openRowMenu.product);
-                setRestockWeight("");
+                setRestockQuantity("");
                 setRestockError(null);
               }}
             >
@@ -615,7 +616,7 @@ export default function ProcessedProductPage() {
                 if (rowMutationsPending) return;
                 closeRowMenu();
                 setDeductTarget(openRowMenu.product);
-                setDeductWeight("");
+                setDeductQuantity("");
                 setDeductError(null);
               }}
             >
@@ -748,7 +749,7 @@ export default function ProcessedProductPage() {
         subtitle={restockTarget?.name ?? ""}
         onClose={() => {
           setRestockTarget(null);
-          setRestockWeight("");
+          setRestockQuantity("");
           setRestockError(null);
         }}
         footer={
@@ -759,7 +760,7 @@ export default function ProcessedProductPage() {
                 className="productActionModalCancel"
                 onClick={() => {
                   setRestockTarget(null);
-                  setRestockWeight("");
+                  setRestockQuantity("");
                   setRestockError(null);
                 }}
               >
@@ -770,9 +771,9 @@ export default function ProcessedProductPage() {
                 className="productActionModalSubmit"
                 onClick={handleSubmitRestock}
                 disabled={
-                  !restockWeight ||
-                  !Number.isFinite(Number(restockWeight)) ||
-                  Number(restockWeight) <= 0 ||
+                  !restockQuantity ||
+                  !Number.isFinite(Number(restockQuantity)) ||
+                  Number(restockQuantity) <= 0 ||
                   restockMutation.isPending
                 }
               >
@@ -786,15 +787,15 @@ export default function ProcessedProductPage() {
           <div className="productActionModalBody">
             {restockError && <p className="productActionModalError">{restockError}</p>}
             <label className="productActionModalLabel">
-              {t("Weight")}
+              {t("Quantity")}
               <input
                 type="number"
                 min={1}
                 step="any"
-                value={restockWeight}
-                onChange={(e) => setRestockWeight(e.target.value)}
+                value={restockQuantity}
+                onChange={(e) => setRestockQuantity(e.target.value)}
                 className="productActionModalInput"
-                placeholder={t("Enter weight")}
+                placeholder={t("Enter quantity")}
               />
             </label>
           </div>
@@ -807,7 +808,7 @@ export default function ProcessedProductPage() {
         subtitle={deductTarget?.name ?? ""}
         onClose={() => {
           setDeductTarget(null);
-          setDeductWeight("");
+          setDeductQuantity("");
           setDeductError(null);
         }}
         footer={
@@ -818,7 +819,7 @@ export default function ProcessedProductPage() {
                 className="productActionModalCancel"
                 onClick={() => {
                   setDeductTarget(null);
-                  setDeductWeight("");
+                  setDeductQuantity("");
                   setDeductError(null);
                 }}
               >
@@ -829,10 +830,10 @@ export default function ProcessedProductPage() {
                 className="productActionModalSubmit"
                 onClick={handleSubmitDeduct}
                 disabled={
-                  !deductWeight ||
-                  !Number.isFinite(Number(deductWeight)) ||
-                  Number(deductWeight) <= 0 ||
-                  (deductTarget !== null && Number(deductWeight) > getProcessedStock(deductTarget)) ||
+                  !deductQuantity ||
+                  !Number.isFinite(Number(deductQuantity)) ||
+                  Number(deductQuantity) <= 0 ||
+                  (deductTarget !== null && Number(deductQuantity) > getProcessedQuantity(deductTarget)) ||
                   deductMutation.isPending
                 }
               >
@@ -846,21 +847,21 @@ export default function ProcessedProductPage() {
           <div className="productActionModalBody">
             {deductError && <p className="productActionModalError">{deductError}</p>}
             <p className="productActionModalHint">
-              {t("Current stock")}: {getProcessedStock(deductTarget)}
+              {t("Current stock")}: {getProcessedQuantity(deductTarget)}
             </p>
             <label className="productActionModalLabel">
-              {t("Weight")}
+              {t("Quantity")}
               <input
                 type="number"
                 min={1}
                 step="any"
-                value={deductWeight}
+                value={deductQuantity}
                 onChange={(e) => {
-                  setDeductWeight(e.target.value);
+                  setDeductQuantity(e.target.value);
                   setDeductError(null);
                 }}
                 className="productActionModalInput"
-                placeholder={t("Enter weight")}
+                placeholder={t("Enter quantity")}
               />
             </label>
           </div>

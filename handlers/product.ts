@@ -187,12 +187,18 @@ export async function deleteProduct(id: string) {
 export type RestockProductPayload = {
   id: string;
   outletId: string;
-  weight: number;
+  /** Restock by weight only (e.g. transfers). Omit when using `quantity`. */
+  weight?: number;
+  /** Restock quantity only; does not adjust product weight. */
+  quantity?: number;
 };
 
 export type DeductProductPayload = {
   id: string;
-  weight: number;
+  /** Deduct by weight only. Omit when using `quantity`. */
+  weight?: number;
+  /** Deduct quantity only; does not adjust product weight. */
+  quantity?: number;
 };
 
 export type RestockDeductResponse = {
@@ -202,11 +208,21 @@ export type RestockDeductResponse = {
 };
 
 export async function restockProduct(payload: RestockProductPayload) {
-  const body = {
+  const body: Record<string, unknown> = {
     id: payload.id,
     outletId: payload.outletId,
-    weight: payload.weight,
   };
+  if (payload.quantity != null) {
+    body.quantity = Number(payload.quantity);
+  } else if (payload.weight != null) {
+    body.weight = Number(payload.weight);
+  } else {
+    return {
+      ok: false as const,
+      error: "Restock requires quantity or weight.",
+      status: 400,
+    };
+  }
   return apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.RESTOCK, {
     method: "POST",
     body: JSON.stringify(body),
@@ -214,7 +230,18 @@ export async function restockProduct(payload: RestockProductPayload) {
 }
 
 export async function deductProduct(payload: DeductProductPayload) {
-  const body = { id: payload.id, weight: payload.weight };
+  const body: Record<string, unknown> = { id: payload.id };
+  if (payload.quantity != null) {
+    body.quantity = Number(payload.quantity);
+  } else if (payload.weight != null) {
+    body.weight = Number(payload.weight);
+  } else {
+    return {
+      ok: false as const,
+      error: "Deduct requires quantity or weight.",
+      status: 400,
+    };
+  }
   return apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.DEDUCT, {
     method: "POST",
     body: JSON.stringify(body),
