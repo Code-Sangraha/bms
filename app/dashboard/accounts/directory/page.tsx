@@ -22,6 +22,7 @@ import {
   createEmployeeSchema,
   type CreateEmployeeFormValues,
 } from "@/schema/employee";
+import { MdMoreHoriz } from "react-icons/md";
 import "./directory.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
@@ -232,7 +233,7 @@ export default function DirectoryPage() {
         {canCreate && (
           <button
             type="button"
-            className="button buttonPrimary"
+            className="button buttonPrimary directoryHeaderAddBtn"
             onClick={() => setIsModalOpen(true)}
           >
             {t("Add Employees")}
@@ -262,70 +263,46 @@ export default function DirectoryPage() {
           <span />
         </div>
         {employeesLoading && (
-          <div className="directoryRow">
+          <div className="directoryRow directoryRowMessage">
             <span className="directoryMessage">{t("Loading employees…")}</span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {employeesError && (
-          <div className="directoryRow">
+          <div className="directoryRow directoryRowMessage">
             <span className="directoryMessage directoryError">
               {employeesErrorDetail instanceof Error
                 ? employeesErrorDetail.message
                 : t("Failed to load employees")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!employeesLoading && !employeesError && employees.length === 0 && (
-          <div className="directoryRow">
+          <div className="directoryRow directoryRowMessage">
             <span className="directoryMessage">
               {t("No employees yet. Add one to get started.")}
             </span>
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
           </div>
         )}
         {!employeesLoading &&
           !employeesError &&
           employees.length > 0 &&
           filteredEmployees.length === 0 && (
-            <div className="directoryRow">
+            <div className="directoryRow directoryRowMessage">
               <span className="directoryMessage">
                 {t("No employees match")} &quot;{searchQuery.trim()}&quot;.
               </span>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
             </div>
           )}
         {!employeesLoading &&
           !employeesError &&
           paginatedEmployees.map((emp) => (
-            <div key={emp.id} className="directoryRow">
-              <span>{emp.employeeId}</span>
-              <span>{emp.iot}</span>
-              <span>{emp.name}</span>
-              <span>{getRoleName(emp)}</span>
-              <span>{getDepartmentName(emp)}</span>
-              <span>
+            <div key={emp.id} className="directoryRow directoryRowData">
+              <span data-label={t("Employee ID")}>{emp.employeeId}</span>
+              <span data-label={t("IOT")}>{emp.iot}</span>
+              <span className="directoryCellName">{emp.name}</span>
+              <span data-label={t("Role")}>{getRoleName(emp)}</span>
+              <span data-label={t("Department")}>{getDepartmentName(emp)}</span>
+              <span data-label={t("Contact")}>
                 <span className="directoryContactPrimary">{emp.contact}</span>
                 {emp.email && (
                   <span className="directoryContactSecondary">{emp.email}</span>
@@ -344,7 +321,7 @@ export default function DirectoryPage() {
                   aria-label={t("More options")}
                   aria-expanded={openMenuId === emp.id}
                 >
-                  ⋮
+                  <MdMoreHoriz aria-hidden size={22} />
                 </button>
                 {openMenuId === emp.id && (
                   <div className="directoryMenuDropdown">

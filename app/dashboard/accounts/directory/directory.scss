@@ -40,7 +40,6 @@
   color: #6b7280;
 }
 
-/* Search – same as users */
 .directorySearch {
   display: flex;
   align-items: center;
@@ -50,11 +49,13 @@
   border-radius: 8px;
   padding: 8px 12px;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .searchIcon {
   font-size: 14px;
   color: #9ca3af;
+  flex-shrink: 0;
 }
 
 .searchInput {
@@ -63,6 +64,7 @@
   width: 100%;
   font-size: 13px;
   color: #111827;
+  background: transparent;
 }
 
 .directoryMessage {
@@ -74,7 +76,6 @@
   color: #dc2626;
 }
 
-/* Table – same structure as users (div-based grid) */
 .directoryTable {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
@@ -94,6 +95,13 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6b7280;
+}
+
+.directoryCellName {
+  margin: 0;
+  font-weight: 600;
+  color: #111827;
+  word-break: break-word;
 }
 
 .directoryContactPrimary {
@@ -124,7 +132,6 @@
   color: #02955a;
 }
 
-/* Row actions menu */
 .directoryMenuWrap {
   position: relative;
   display: inline-flex;
@@ -134,12 +141,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: none;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
   color: #6b7280;
   font-size: 18px;
   line-height: 1;
@@ -147,8 +154,13 @@
 }
 
 .directoryMenuTrigger:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.08);
   color: #111827;
+}
+
+.directoryMenuTrigger svg {
+  display: block;
+  pointer-events: none;
 }
 
 .directoryMenuDropdown {
@@ -188,6 +200,46 @@
 
 .directoryMenuItemDanger:hover {
   background: rgba(220, 38, 38, 0.08);
+}
+
+.button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.buttonPrimary {
+  border-color: #02955a;
+  background: #02955a;
+  color: #ffffff;
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  background: #027a4a;
+  border-color: #027a4a;
+}
+
+.directoryHeaderAddBtn {
+  white-space: nowrap;
+}
+
+.modalButton {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  width: 100%;
 }
 
 /* Modal form */
@@ -231,14 +283,202 @@
   background: #ffffff;
 }
 
+@media (min-width: 901px) {
+  .directoryRow.directoryRowMessage {
+    display: grid;
+    grid-template-columns: 120px 80px 1.2fr 1.2fr 1fr 1.4fr 32px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+
+    .directoryMessage {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .directoryRow.directoryRowData:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .directoryRow .directoryMenuWrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .directoryHeader {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .directoryRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
+  .directoryRowHeader {
+    display: none;
+  }
+
+  .directoryTable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .directoryRow.directoryRowMessage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 72px;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border-bottom: none;
+  }
+
+  .directoryRow.directoryRowMessage .directoryMessage {
+    text-align: center;
+  }
+
+  .directoryRow.directoryRowData {
+    min-width: min(720px, 100%);
+  }
+}
+
+@media (max-width: 768px) {
+  .directoryPage .pageTitle {
+    font-size: 20px;
+  }
+
+  .directoryPage .pageSubtitle {
+    font-size: 12px;
+  }
+
+  .directorySearch {
+    width: 100%;
+  }
+
+  .directoryHeaderAddBtn {
+    width: 100%;
+  }
+
+  .directoryRowHeader {
+    display: none;
+  }
+
+  .directoryTable {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: none;
+    overflow-x: visible;
+  }
+
+  .directoryRow.directoryRowMessage {
+    margin-bottom: 0;
+  }
+
+  .directoryRow.directoryRowData {
+    display: grid;
+    grid-template-columns: 1fr 1fr minmax(44px, auto);
+    grid-template-areas:
+      "dirName dirName dirMenu"
+      "dirEmpId dirIot ."
+      "dirRole dirDept ."
+      "dirContact dirContact dirContact";
+    gap: 10px 12px;
+    align-items: start;
+    min-width: 0;
+    margin-bottom: 0;
+    padding: 14px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border-bottom: none;
+    font-size: 13px;
+  }
+
+  .directoryRow.directoryRowData > span {
+    min-width: 0;
+    word-break: break-word;
+    color: #111827;
+    text-align: left;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(1) {
+    grid-area: dirEmpId;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(2) {
+    grid-area: dirIot;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(3) {
+    grid-area: dirName;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(4) {
+    grid-area: dirRole;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(5) {
+    grid-area: dirDept;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(6) {
+    grid-area: dirContact;
+  }
+
+  .directoryRow.directoryRowData > span:nth-child(1)::before,
+  .directoryRow.directoryRowData > span:nth-child(2)::before,
+  .directoryRow.directoryRowData > span:nth-child(4)::before,
+  .directoryRow.directoryRowData > span:nth-child(5)::before,
+  .directoryRow.directoryRowData > span:nth-child(6)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .directoryRow.directoryRowData .directoryMenuWrap {
+    grid-area: dirMenu;
+    justify-self: end;
+    align-self: start;
+    margin: 0;
+  }
+
+  .directoryRow.directoryRowData .directoryMenuTrigger {
+    width: 36px;
+    height: 36px;
+  }
+
+  .directoryRow.directoryRowData .directoryContactPrimary {
+    color: #111827;
+  }
+}
+
+@media (max-width: 480px) {
+  .directoryRow.directoryRowData,
+  .directoryRow.directoryRowMessage {
+    padding: 12px 14px;
   }
 }
