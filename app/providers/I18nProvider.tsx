@@ -722,8 +722,6 @@ const translations: Record<string, string> = {
   "No stock history in this range.": "यस मिति दायरामा कुनै स्टक इतिहास छैन।",
   "Column item": "वस्तु",
   "Column amount": "मात्रा",
-  Restock: "पुनः भण्डारण",
-  Deduct: "कटौती",
   Filter: "फिल्टर",
   "History tabs": "इतिहास ट्याबहरू",
   "No rows in this date range.": "यस मिति दायरामा कुनै पंक्ति छैन।",
