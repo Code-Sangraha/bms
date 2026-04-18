@@ -17,7 +17,8 @@ export type LivestockInventoryHistoryItemSnapshot = {
   name: string;
   weight: number;
   quantity: number;
-  isBulk: boolean;
+  buyingPrice?: number | null;
+  sellingPrice?: number | null;
 };
 
 export type LivestockInventoryHistoryEntry = {
@@ -52,15 +53,20 @@ function parseNum(value: unknown): number | null {
 
 function parseItemSnapshot(raw: unknown): LivestockInventoryHistoryItemSnapshot {
   if (!raw || typeof raw !== "object") {
-    return { name: "—", weight: 0, quantity: 0, isBulk: false };
+    return { name: "—", weight: 0, quantity: 0 };
   }
   const o = raw as Record<string, unknown>;
   const name = typeof o.name === "string" ? o.name.trim() : "";
+  const buyingPrice =
+    parseNum(o.buyingPrice) ?? parseNum((o as { buying_price?: unknown }).buying_price);
+  const sellingPrice =
+    parseNum(o.sellingPrice) ?? parseNum((o as { selling_price?: unknown }).selling_price);
   return {
     name: name || "—",
     weight: parseNum(o.weight) ?? 0,
     quantity: parseNum(o.quantity) ?? 0,
-    isBulk: o.isBulk === true,
+    buyingPrice: buyingPrice ?? null,
+    sellingPrice: sellingPrice ?? null,
   };
 }
 
@@ -96,7 +102,6 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
           name: typeof row.name === "string" ? row.name : "—",
           weight: parseNum(row.weight) ?? 0,
           quantity: parseNum(row.quantity) ?? 0,
-          isBulk: row.isBulk === true,
         };
   const type = parseHistoryType(row.type);
   if (!type) return null;
@@ -232,18 +237,19 @@ export async function getLivestockInventoryHistory(
   }
 }
 
-/** Display amount for a history row: head count when bulk, kg when not. */
+/** Display amount: prefer row quantity; fall back to legacy weight-only rows. */
 export function formatLivestockHistoryAmount(row: LivestockInventoryHistoryEntry): {
   display: string;
-  isBulk: boolean;
+  /** When true, the number is from `weight` (legacy); otherwise from `quantity`. */
+  isLegacyWeight: boolean;
 } {
-  const bulk = row.livestockItem.isBulk === true;
-  if (bulk) {
-    const q = row.quantity;
-    if (q != null && Number.isFinite(q)) return { display: String(q), isBulk: true };
-    return { display: "\u2014", isBulk: true };
+  const q = row.quantity;
+  if (q != null && Number.isFinite(q)) {
+    return { display: String(q), isLegacyWeight: false };
   }
   const w = row.weight;
-  if (w != null && Number.isFinite(w)) return { display: String(w), isBulk: false };
-  return { display: "\u2014", isBulk: false };
+  if (w != null && Number.isFinite(w)) {
+    return { display: String(w), isLegacyWeight: true };
+  }
+  return { display: "\u2014", isLegacyWeight: false };
 }

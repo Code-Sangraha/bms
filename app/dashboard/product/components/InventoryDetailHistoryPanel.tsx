@@ -277,7 +277,7 @@ export default function InventoryDetailHistoryPanel({
           <td>
             {amt.display}
             <span className="inventoryDetailAmountUnit">
-              {amt.isBulk ? t("Head count") : t("Qty (kg)")}
+              {amt.isLegacyWeight ? t("Qty (kg)") : t("Quantity")}
             </span>
           </td>
         </tr>
@@ -297,7 +297,7 @@ export default function InventoryDetailHistoryPanel({
           <td>
             {amt.display}
             <span className="inventoryDetailAmountUnit">
-              {amt.isBulk ? t("Head count") : t("Qty (kg)")}
+              {amt.isLegacyWeight ? t("Qty (kg)") : t("Quantity")}
             </span>
           </td>
           <td>{formatPriceCell(row.buyingPrice)}</td>

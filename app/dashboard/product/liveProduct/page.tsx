@@ -38,9 +38,9 @@ type LivestockFormState = {
   name: string;
   itemId: string;
   weight: string;
-  price: string;
+  buyingPrice: string;
+  sellingPrice: string;
   status: "Active" | "Inactive";
-  isBulk: boolean;
 };
 
 const defaultLivestockForm: LivestockFormState = {
@@ -48,9 +48,9 @@ const defaultLivestockForm: LivestockFormState = {
   name: "",
   itemId: "",
   weight: "",
-  price: "",
+  buyingPrice: "",
+  sellingPrice: "",
   status: "Active",
-  isBulk: false,
 };
 
 type StockAdjustModalState = { item: LivestockItem; mode: "restock" | "deduct" } | null;
@@ -80,15 +80,36 @@ function resolveLivestockOutletId(item: LivestockItem): string {
   return "";
 }
 
+function priceFieldToString(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "";
+  return String(value);
+}
+
+/** Empty → null; valid positive number → value; invalid partial input → null after validation elsewhere. */
+function parsePriceFieldForSubmit(raw: string): number | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function hasInvalidOptionalPriceField(raw: string): boolean {
+  const t = raw.trim();
+  if (t === "") return false;
+  const n = Number(t);
+  return !Number.isFinite(n) || n <= 0;
+}
+
 function toFormState(item: LivestockItem): LivestockFormState {
   return {
     productId: item.productId,
     name: item.name ?? "",
     itemId: item.itemId ?? "",
     weight: item.weight != null ? String(item.weight) : "",
-    price: item.price != null ? String(item.price) : "",
+    buyingPrice: priceFieldToString(item.buyingPrice),
+    sellingPrice: priceFieldToString(item.sellingPrice),
     status: item.status ? "Active" : "Inactive",
-    isBulk: item.isBulk === true,
   };
 }
 
@@ -104,6 +125,16 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
 function formatLivestockTableQuantity(item: LivestockItem): string {
   if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
     return String(item.quantity);
+  }
+  return "\u2014";
+}
+
+function formatLivestockPriceCell(value: number | null | undefined): string {
+  if (value != null && Number.isFinite(value)) {
+    return value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
   return "\u2014";
 }
@@ -253,12 +284,17 @@ export default function LiveProductPage() {
         livestockCategories.find((product) => product.id === item.productId)?.name.toLowerCase() ?? "";
       const qtySearch =
         typeof item.quantity === "number" && Number.isFinite(item.quantity) ? String(item.quantity) : "";
+      const buySearch =
+        item.buyingPrice != null && Number.isFinite(item.buyingPrice) ? String(item.buyingPrice) : "";
+      const sellSearch =
+        item.sellingPrice != null && Number.isFinite(item.sellingPrice) ? String(item.sellingPrice) : "";
       return (
         item.name.toLowerCase().includes(q) ||
         item.itemId.toLowerCase().includes(q) ||
         qtySearch.includes(q) ||
         String(item.weight).includes(q) ||
-        String(item.price).includes(q) ||
+        buySearch.includes(q) ||
+        sellSearch.includes(q) ||
         productName.includes(q)
       );
     });
@@ -483,13 +519,19 @@ export default function LiveProductPage() {
     const trimmedName = form.name.trim();
     const trimmedItemId = form.itemId.trim();
     const weight = Number(form.weight);
-    const price = Number(form.price);
+    const buyingPrice = parsePriceFieldForSubmit(form.buyingPrice);
+    const sellingPrice = parsePriceFieldForSubmit(form.sellingPrice);
 
     if (!form.productId) return setError(t("Please select live stock product category.")), null;
     if (!trimmedName) return setError(t("Name is required.")), null;
     if (!trimmedItemId) return setError(t("Item ID is required.")), null;
     if (!Number.isFinite(weight) || weight <= 0) return setError(t("Quantity must be greater than 0.")), null;
-    if (!Number.isFinite(price) || price <= 0) return setError(t("Price must be greater than 0.")), null;
+    if (form.buyingPrice.trim() !== "" && buyingPrice === null) {
+      return setError(t("Buying price must be greater than 0 when provided.")), null;
+    }
+    if (form.sellingPrice.trim() !== "" && sellingPrice === null) {
+      return setError(t("Selling price must be greater than 0 when provided.")), null;
+    }
 
     setError(null);
     return {
@@ -497,8 +539,8 @@ export default function LiveProductPage() {
       name: trimmedName,
       itemId: trimmedItemId,
       itemQuantityOrWeight: weight,
-      price,
-      isBulk: false,
+      buyingPrice,
+      sellingPrice,
       status: true,
     };
   };
@@ -530,13 +572,19 @@ export default function LiveProductPage() {
     const trimmedName = editLivestockForm.name.trim();
     const trimmedItemId = editLivestockForm.itemId.trim();
     const weight = Number(editLivestockForm.weight);
-    const price = Number(editLivestockForm.price);
+    const buyingPrice = parsePriceFieldForSubmit(editLivestockForm.buyingPrice);
+    const sellingPrice = parsePriceFieldForSubmit(editLivestockForm.sellingPrice);
 
     if (!editLivestockForm.productId) return setEditLivestockError(t("Please select live stock product category."));
     if (!trimmedName) return setEditLivestockError(t("Name is required."));
     if (!trimmedItemId) return setEditLivestockError(t("Item ID is required."));
     if (!Number.isFinite(weight) || weight <= 0) return setEditLivestockError(t("Quantity must be greater than 0."));
-    if (!Number.isFinite(price) || price <= 0) return setEditLivestockError(t("Price must be greater than 0."));
+    if (editLivestockForm.buyingPrice.trim() !== "" && buyingPrice === null) {
+      return setEditLivestockError(t("Buying price must be greater than 0 when provided."));
+    }
+    if (editLivestockForm.sellingPrice.trim() !== "" && sellingPrice === null) {
+      return setEditLivestockError(t("Selling price must be greater than 0 when provided."));
+    }
 
     setEditLivestockError(null);
     updateLivestockMutation.mutate({
@@ -546,9 +594,9 @@ export default function LiveProductPage() {
       productId: editLivestockForm.productId,
       outletId,
       itemQuantityOrWeight: weight,
-      price,
+      buyingPrice,
+      sellingPrice,
       status: editLivestockForm.status === "Active",
-      isBulk: editLivestockForm.isBulk,
     });
   };
 
@@ -580,14 +628,14 @@ export default function LiveProductPage() {
     }
     const amount = Number(adjustAmount);
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
-      setStockAdjustError(t("Head count must be a whole number greater than 0."));
+      setStockAdjustError(t("Quantity must be a whole number greater than 0."));
       return;
     }
     setStockAdjustError(null);
     if (stockAdjustModal.mode === "restock") {
-      restockLivestockMutation.mutate({ livestockItemId: id, amount });
+      restockLivestockMutation.mutate({ livestockItemId: id, quantity: amount });
     } else {
-      deductLivestockMutation.mutate({ livestockItemId: id, isBulk: true, amount });
+      deductLivestockMutation.mutate({ livestockItemId: id, quantity: amount });
     }
   };
 
@@ -717,7 +765,8 @@ export default function LiveProductPage() {
           <span>{t("Name")}</span>
           <span>{t("Item ID")}</span>
           <span>{t("Quantity")}</span>
-          <span>{t("Price")}</span>
+          <span>{t("Buying price")}</span>
+          <span>{t("Selling price")}</span>
           <span>{t("Actions")}</span>
         </div>
         {(categoryLoading || livestockItemsLoading) && (
@@ -771,7 +820,8 @@ export default function LiveProductPage() {
               <span data-label={t("Quantity")}>
                 {formatLivestockTableQuantity(item)}
               </span>
-              <span data-label={t("Price")}>{item.price}</span>
+              <span data-label={t("Buying price")}>{formatLivestockPriceCell(item.buyingPrice)}</span>
+              <span data-label={t("Selling price")}>{formatLivestockPriceCell(item.sellingPrice)}</span>
               <div className="productsRowActions">
                 <div
                   className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
@@ -1042,7 +1092,8 @@ export default function LiveProductPage() {
                 !livestockForm.name.trim() ||
                 !livestockForm.itemId.trim() ||
                 Number(livestockForm.weight) <= 0 ||
-                Number(livestockForm.price) <= 0
+                hasInvalidOptionalPriceField(livestockForm.buyingPrice) ||
+                hasInvalidOptionalPriceField(livestockForm.sellingPrice)
               }
             >
               {livestockMutation.isPending ? t("Saving…") : t("Save")}
@@ -1100,15 +1151,27 @@ export default function LiveProductPage() {
             />
           </label>
           <label className="productActionModalLabel">
-            {t("Price")}
+            {t("Buying price")}
             <input
               type="number"
               min={0}
               step="any"
-              value={livestockForm.price}
-              onChange={(e) => setLivestockForm((prev) => ({ ...prev, price: e.target.value }))}
+              value={livestockForm.buyingPrice}
+              onChange={(e) => setLivestockForm((prev) => ({ ...prev, buyingPrice: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Enter price")}
+              placeholder={t("Optional")}
+            />
+          </label>
+          <label className="productActionModalLabel">
+            {t("Selling price")}
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={livestockForm.sellingPrice}
+              onChange={(e) => setLivestockForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
+              className="productActionModalInput"
+              placeholder={t("Optional")}
             />
           </label>
         </div>
@@ -1149,7 +1212,8 @@ export default function LiveProductPage() {
                 !editLivestockForm.name.trim() ||
                 !editLivestockForm.itemId.trim() ||
                 Number(editLivestockForm.weight) <= 0 ||
-                Number(editLivestockForm.price) <= 0
+                hasInvalidOptionalPriceField(editLivestockForm.buyingPrice) ||
+                hasInvalidOptionalPriceField(editLivestockForm.sellingPrice)
               }
             >
               {updateLivestockMutation.isPending ? t("Saving…") : t("Update")}
@@ -1207,15 +1271,27 @@ export default function LiveProductPage() {
             />
           </label>
           <label className="productActionModalLabel">
-            {t("Price")}
+            {t("Buying price")}
             <input
               type="number"
               min={0}
               step="any"
-              value={editLivestockForm.price}
-              onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, price: e.target.value }))}
+              value={editLivestockForm.buyingPrice}
+              onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, buyingPrice: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Enter price")}
+              placeholder={t("Optional")}
+            />
+          </label>
+          <label className="productActionModalLabel">
+            {t("Selling price")}
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={editLivestockForm.sellingPrice}
+              onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
+              className="productActionModalInput"
+              placeholder={t("Optional")}
             />
           </label>
           <label className="productActionModalLabel">
@@ -1234,27 +1310,6 @@ export default function LiveProductPage() {
               <option value="Inactive">{t("Inactive")}</option>
             </select>
           </label>
-          <fieldset className="stockAdjustFieldset">
-            <legend className="productActionModalLabel">{t("Amount measures")}</legend>
-            <label className="stockAdjustRadioLabel">
-              <input
-                type="radio"
-                name="editIsBulk"
-                checked={editLivestockForm.isBulk}
-                onChange={() => setEditLivestockForm((prev) => ({ ...prev, isBulk: true }))}
-              />
-              {t("Head count (bulk)")}
-            </label>
-            <label className="stockAdjustRadioLabel">
-              <input
-                type="radio"
-                name="editIsBulk"
-                checked={!editLivestockForm.isBulk}
-                onChange={() => setEditLivestockForm((prev) => ({ ...prev, isBulk: false }))}
-              />
-              {t("Weight (kg)")}
-            </label>
-          </fieldset>
         </div>
       </Modal>
 
@@ -1267,8 +1322,8 @@ export default function LiveProductPage() {
         }
         subtitle={
           stockAdjustModal?.mode === "deduct"
-            ? t("Enter how many head to deduct from stock.")
-            : t("Enter how many head to add to stock.")
+            ? t("Enter quantity to deduct from stock.")
+            : t("Enter quantity to add to stock.")
         }
         onClose={closeStockAdjustModal}
         footer={
@@ -1307,7 +1362,7 @@ export default function LiveProductPage() {
           )}
           {stockAdjustError && <p className="productActionModalError">{stockAdjustError}</p>}
           <label className="productActionModalLabel">
-            {t("Head count")}
+            {t("Quantity")}
             <input
               type="number"
               min={1}
@@ -1315,7 +1370,7 @@ export default function LiveProductPage() {
               value={adjustAmount}
               onChange={(e) => setAdjustAmount(e.target.value)}
               className="productActionModalInput"
-              placeholder={t("Enter head count")}
+              placeholder={t("Enter quantity")}
             />
           </label>
         </div>

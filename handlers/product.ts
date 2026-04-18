@@ -253,9 +253,9 @@ export type CreateLivestockItemPayload = {
   name: string;
   itemId: string;
   itemQuantityOrWeight: number;
-  price: number;
+  buyingPrice: number | null;
+  sellingPrice: number | null;
   status: boolean;
-  isBulk: boolean;
 };
 
 export type LivestockItem = {
@@ -268,8 +268,8 @@ export type LivestockItem = {
   /** Head count or unit quantity from the API — never derived from body `weight` (kg). */
   quantity?: number | null;
   itemQuantityOrWeight?: number;
-  isBulk?: boolean;
-  price: number;
+  buyingPrice?: number | null;
+  sellingPrice?: number | null;
   status: boolean;
   [key: string]: unknown;
 };
@@ -428,6 +428,16 @@ let livestockCategoriesCooldownUntil = 0;
 let livestockCategoriesInflight: Promise<LivestockCategoriesResult> | null = null;
 let livestockCategoriesCache: { data: LivestockCategory[]; expiresAt: number } | null = null;
 
+function parseNullableNum(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function normalizeLivestockItem(item: LivestockItem): LivestockItem {
   const parseNum = (value: unknown): number | null => {
     if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -438,6 +448,7 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
     return null;
   };
 
+  const rec = item as Record<string, unknown>;
   const explicitQuantity = parseNum((item as { quantity?: unknown }).quantity);
   const explicitWeight = parseNum(item.weight);
   const iqw = parseNum(item.itemQuantityOrWeight);
@@ -445,12 +456,20 @@ function normalizeLivestockItem(item: LivestockItem): LivestockItem {
   const itemQuantityOrWeightResolved = iqw ?? explicitQuantity ?? explicitWeight ?? 0;
   const weightScalar = explicitWeight ?? iqw ?? explicitQuantity ?? 0;
 
+  const buyingPrice =
+    parseNullableNum(rec.buyingPrice) ??
+    parseNullableNum(rec.buying_price);
+  const sellingPrice =
+    parseNullableNum(rec.sellingPrice) ??
+    parseNullableNum(rec.selling_price);
+
   return {
     ...item,
     quantity: explicitQuantity,
     weight: weightScalar,
     itemQuantityOrWeight: itemQuantityOrWeightResolved,
-    isBulk: true,
+    buyingPrice,
+    sellingPrice,
   };
 }
 
@@ -590,35 +609,20 @@ export type CreateLivestockItemResponse = {
 };
 
 export async function createLivestockItem(payload: CreateLivestockItemPayload) {
+  const base = {
+    productId: payload.productId,
+    name: payload.name,
+    itemId: payload.itemId,
+    itemQuantityOrWeight: payload.itemQuantityOrWeight,
+    buyingPrice: payload.buyingPrice,
+    sellingPrice: payload.sellingPrice,
+    status: payload.status,
+  };
   const bodies = [
+    base,
     {
-      productId: payload.productId,
-      name: payload.name,
-      itemId: payload.itemId,
-      itemQuantityOrWeight: payload.itemQuantityOrWeight,
-      price: payload.price,
-      status: payload.status,
-      isBulk: payload.isBulk,
-    },
-    {
-      productId: payload.productId,
-      name: payload.name,
-      itemId: payload.itemId,
-      weight: payload.itemQuantityOrWeight,
-      price: payload.price,
-      status: payload.status,
-      isBulk: payload.isBulk,
-    },
-    {
-      productId: payload.productId,
-      name: payload.name,
-      itemId: payload.itemId,
-      itemQuantityOrWeight: payload.itemQuantityOrWeight,
-      weight: payload.itemQuantityOrWeight,
+      ...base,
       quantity: payload.itemQuantityOrWeight,
-      price: payload.price,
-      status: payload.status,
-      isBulk: payload.isBulk,
     },
   ];
 
@@ -768,7 +772,7 @@ export async function getLivestockItemsByProduct(
   }
 }
 
-/** POST /products/livestock/update-item — enable on backend before relying on this. */
+/** POST /products/livestock/update-item */
 export type UpdateLivestockItemPayload = {
   id: string;
   name: string;
@@ -776,9 +780,9 @@ export type UpdateLivestockItemPayload = {
   productId: string;
   outletId: string;
   itemQuantityOrWeight: number;
-  price: number;
+  buyingPrice: number | null;
+  sellingPrice: number | null;
   status: boolean;
-  isBulk: boolean;
 };
 
 export type UpdateLivestockItemResponse = {
@@ -796,16 +800,17 @@ export async function updateLivestockItem(payload: UpdateLivestockItemPayload) {
   });
 }
 
-export type LivestockRestockDeductPayload = {
+/** Livestock deduct: quantity only (matches backend). */
+export type LivestockDeductPayload = {
   livestockItemId: string;
-  isBulk: boolean;
-  amount: number;
+  quantity: number;
 };
 
-/** Body for livestock restock — `isBulk` is always sent as `true` by `restockLivestockItem` (quantity). */
 export type LivestockRestockPayload = {
   livestockItemId: string;
-  amount: number;
+  quantity: number;
+  buyingPrice?: number;
+  sellingPrice?: number;
 };
 
 export type LivestockRestockDeductResponse = {
@@ -824,18 +829,23 @@ export type LivestockRestockDeductResponse = {
 };
 
 export async function restockLivestockItem(payload: LivestockRestockPayload) {
-  const body: LivestockRestockDeductPayload = {
+  const body: Record<string, unknown> = {
     livestockItemId: payload.livestockItemId,
-    isBulk: true,
-    amount: payload.amount,
+    quantity: payload.quantity,
   };
+  if (payload.buyingPrice != null && Number.isFinite(payload.buyingPrice)) {
+    body.buyingPrice = payload.buyingPrice;
+  }
+  if (payload.sellingPrice != null && Number.isFinite(payload.sellingPrice)) {
+    body.sellingPrice = payload.sellingPrice;
+  }
   return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_RESTOCK, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function deductLivestockItem(payload: LivestockRestockDeductPayload) {
+export async function deductLivestockItem(payload: LivestockDeductPayload) {
   return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_DEDUCT, {
     method: "POST",
     body: JSON.stringify(payload),

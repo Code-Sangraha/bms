@@ -155,7 +155,7 @@ export default function LivestockItemDetailPage() {
                     <dd>{item.itemId}</dd>
                   </div>
                   <div className="livestockDetailDlRow">
-                    <dt>{item.isBulk === true ? t("Head count (bulk)") : t("Quantity")}</dt>
+                    <dt>{t("Quantity")}</dt>
                     <dd>
                       {typeof item.quantity === "number" && Number.isFinite(item.quantity)
                         ? item.quantity
@@ -163,14 +163,21 @@ export default function LivestockItemDetailPage() {
                     </dd>
                   </div>
                   <div className="livestockDetailDlRow">
-                    <dt>{t("Unit")}</dt>
-                    <dd>{item.isBulk === true ? t("Head count") : t("Qty (kg)")}</dd>
+                    <dt>{t("Buying price")}</dt>
+                    <dd>
+                      {item.buyingPrice != null && Number.isFinite(item.buyingPrice)
+                        ? item.buyingPrice.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "\u2014"}
+                    </dd>
                   </div>
                   <div className="livestockDetailDlRow">
                     <dt>{t("Selling price")}</dt>
                     <dd>
-                      {typeof item.price === "number" && Number.isFinite(item.price)
-                        ? item.price.toLocaleString("en-IN", {
+                      {item.sellingPrice != null && Number.isFinite(item.sellingPrice)
+                        ? item.sellingPrice.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })
@@ -208,7 +215,7 @@ export default function LivestockItemDetailPage() {
             dateFilterAffectsStorage={false}
             productShellStyle
             storagePriceFallback={
-              typeof item.price === "number" && Number.isFinite(item.price) ? item.price : undefined
+              item.sellingPrice != null && Number.isFinite(item.sellingPrice) ? item.sellingPrice : undefined
             }
           />
 

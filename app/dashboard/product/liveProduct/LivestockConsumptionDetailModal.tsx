@@ -35,8 +35,6 @@ export default function LivestockConsumptionDetailModal({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const unitLabel = item.isBulk === true ? t("Head count") : t("Qty (kg)");
-
   const {
     register,
     handleSubmit,
@@ -55,8 +53,7 @@ export default function LivestockConsumptionDetailModal({
     mutationFn: (values: LivestockConsumptionDetailFormValues) =>
       deductLivestockItem({
         livestockItemId,
-        isBulk: item.isBulk === true,
-        amount: values.quantity,
+        quantity: values.quantity,
       }),
     onSuccess: (result) => {
       if (!result.ok) {
@@ -94,13 +91,13 @@ export default function LivestockConsumptionDetailModal({
       <form onSubmit={handleSubmit(onSubmit)} className="livestockDetailModalForm">
         <div className="livestockDetailModalField">
           <label className="livestockDetailModalLabel" htmlFor="livestock-consume-qty">
-            {`${t("Quantity")} (${unitLabel})`}
+            {t("Quantity")}
           </label>
           <input
             id="livestock-consume-qty"
             type="number"
-            min={0.01}
-            step={item.isBulk === true ? 1 : "0.01"}
+            min={1}
+            step={1}
             className="livestockDetailModalInput"
             disabled={isPending}
             {...register("quantity", { valueAsNumber: true })}

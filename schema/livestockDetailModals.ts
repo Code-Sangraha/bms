@@ -23,7 +23,7 @@ export const livestockConsumptionTypes = [{ value: "Waste", label: "Waste" }] as
 export const livestockConsumptionDetailSchema = z.object({
   quantity: z.coerce
     .number({ errorMap: () => ({ message: "Quantity is required" }) })
-    .refine((n) => Number.isFinite(n) && n > 0, "Quantity must be greater than 0"),
+    .refine((n) => Number.isFinite(n) && Number.isInteger(n) && n >= 1, "Quantity must be a whole number at least 1"),
   consumptionType: z.enum(["Waste"]),
   remarks: z.string().optional(),
 });

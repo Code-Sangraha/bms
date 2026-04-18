@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
-import { restockLivestockItem, type LivestockItem } from "@/handlers/product";
+import { restockLivestockItem, type LivestockItem, type LivestockRestockPayload } from "@/handlers/product";
 import {
   livestockRestockDetailSchema,
   type LivestockRestockDetailFormValues,
@@ -49,11 +49,20 @@ export default function LivestockRestockDetailModal({
   });
 
   const mutation = useMutation({
-    mutationFn: (values: LivestockRestockDetailFormValues) =>
-      restockLivestockItem({
+    mutationFn: (values: LivestockRestockDetailFormValues) => {
+      const qty = Math.floor(values.quantity);
+      const body: LivestockRestockPayload = {
         livestockItemId,
-        amount: Math.floor(values.quantity),
-      }),
+        quantity: qty,
+      };
+      if (values.buyingPrice != null && Number.isFinite(values.buyingPrice)) {
+        body.buyingPrice = values.buyingPrice;
+      }
+      if (values.sellingPrice != null && Number.isFinite(values.sellingPrice)) {
+        body.sellingPrice = values.sellingPrice;
+      }
+      return restockLivestockItem(body);
+    },
     onSuccess: (result) => {
       if (!result.ok) {
         if (result.status === 401) navigate("/login");

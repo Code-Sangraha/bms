@@ -146,7 +146,7 @@ type I18nContextValue = {
   "Buying price": "खरिद मूल्य",
   "Selling price": "बिक्री मूल्य",
   "Only the quantity is submitted to the server; buying and selling prices are optional local notes.":
-    "सर्भरमा मात्र परिमाण पठाइन्छ; खरिद र बिक्री मूल्य वैकल्पिक स्थानीय टिप्पणी हुन्।",
+    "पुनः भण्डारणमा परिमाण आवश्यक छ; खरिद र बिक्री मूल्य वैकल्पिक रूपमा पठाइन्छ।",
   "Confirm Consumption": "खपत पुष्टि गर्नुहोस्",
   "Reduce stored quantity for this line item.": "यस लाइन वस्तुको भण्डारित परिमाण घटाउनुहोस्।",
   "Consumption type": "खपत प्रकार",
@@ -532,13 +532,21 @@ const translations: Record<string, string> = {
     "स्टकमा कति टाउको थप्ने हो प्रविष्ट गर्नुहोस्।",
   "Enter how many head to deduct from stock.":
     "स्टकबाट कति टाउको कटौती गर्ने हो प्रविष्ट गर्नुहोस्।",
+  "Enter quantity to add to stock.": "स्टकमा थप्न परिमाण प्रविष्ट गर्नुहोस्।",
+  "Enter quantity to deduct from stock.": "स्टकबाट कटौती गर्न परिमाण प्रविष्ट गर्नुहोस्।",
   "Head count must be a whole number greater than 0.":
     "टाउको गणना ० भन्दा ठूलो पूर्ण संख्या हुनुपर्छ।",
+  "Quantity must be a whole number greater than 0.": "परिमाण ० भन्दा ठूलो पूर्ण संख्या हुनुपर्छ।",
   "Enter head count": "टाउको गणना प्रविष्ट गर्नुहोस्",
+  Optional: "वैकल्पिक",
+  "Buying price must be greater than 0 when provided.":
+    "खरिद मूल्य दिँदा त्यो ० भन्दा ठूलो हुनुपर्छ।",
+  "Selling price must be greater than 0 when provided.":
+    "बिक्री मूल्य दिँदा त्यो ० भन्दा ठूलो हुनुपर्छ।",
   "Amount is subtracted using the same unit rules as restock (head count vs kg).":
-    "पुनः भण्डारण जस्तै इकाइ नियम (टाउको गणना वा केजी) अनुसार रकम घटाइन्छ।",
+    "कटौती इन्वेन्टरी परिमाणको समान एकाइमा गरिन्छ।",
   "Amount is added as head count when bulk, or as kg when not bulk.":
-    "बल्क हुँदा टाउको गणना, नभए केजीमा रकम थपिन्छ।",
+    "पुनः भण्डारणले इन्वेन्टरीमा परिमाण थप्छ।",
   "Amount measures": "रकमको मापन",
   "Head count (bulk)": "टाउको गणना (बल्क)",
   "Head count": "टाउको गणना",
@@ -739,7 +747,7 @@ const translations: Record<string, string> = {
   "Buying price": "खरिद मूल्य",
   "Selling price": "बिक्री मूल्य",
   "Only the quantity is submitted to the server; buying and selling prices are optional local notes.":
-    "सर्भरमा मात्र परिमाण पठाइन्छ; खरिद र बिक्री मूल्य वैकल्पिक स्थानीय टिप्पणी हुन्।",
+    "पुनः भण्डारणमा परिमाण आवश्यक छ; खरिद र बिक्री मूल्य वैकल्पिक रूपमा पठाइन्छ।",
   "Confirm Consumption": "खपत पुष्टि गर्नुहोस्",
   "Reduce stored quantity for this line item.": "यस लाइन वस्तुको भण्डारित परिमाण घटाउनुहोस्।",
   "Consumption type": "खपत प्रकार",

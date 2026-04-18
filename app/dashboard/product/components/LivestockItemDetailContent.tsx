@@ -14,8 +14,6 @@ export default function LivestockItemDetailContent({
 }: LivestockItemDetailContentProps) {
   const { t } = useI18n();
 
-  const quantityLabel = item.isBulk === true ? t("Head count (bulk)") : t("Quantity");
-
   return (
     <div className="livestockViewModalBody">
       <dl className="livestockViewDl">
@@ -32,7 +30,7 @@ export default function LivestockItemDetailContent({
           <dd>{item.itemId}</dd>
         </div>
         <div className="livestockViewDlRow">
-          <dt>{quantityLabel}</dt>
+          <dt>{t("Quantity")}</dt>
           <dd>
             {typeof item.quantity === "number" && Number.isFinite(item.quantity)
               ? item.quantity
