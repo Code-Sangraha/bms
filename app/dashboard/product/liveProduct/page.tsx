@@ -538,7 +538,7 @@ export default function LiveProductPage() {
       productId: form.productId,
       name: trimmedName,
       itemId: trimmedItemId,
-      itemQuantityOrWeight: weight,
+      quantity: weight,
       buyingPrice,
       sellingPrice,
       status: true,

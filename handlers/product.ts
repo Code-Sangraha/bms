@@ -252,7 +252,8 @@ export type CreateLivestockItemPayload = {
   productId: string;
   name: string;
   itemId: string;
-  itemQuantityOrWeight: number;
+  /** Initial stock amount — backend `createLiveStockProductItem` reads this (not `itemQuantityOrWeight`). */
+  quantity: number;
   buyingPrice: number | null;
   sellingPrice: number | null;
   status: boolean;
@@ -609,45 +610,19 @@ export type CreateLivestockItemResponse = {
 };
 
 export async function createLivestockItem(payload: CreateLivestockItemPayload) {
-  const base = {
+  const body = {
     productId: payload.productId,
     name: payload.name,
     itemId: payload.itemId,
-    itemQuantityOrWeight: payload.itemQuantityOrWeight,
+    quantity: payload.quantity,
     buyingPrice: payload.buyingPrice,
     sellingPrice: payload.sellingPrice,
     status: payload.status,
   };
-  const bodies = [
-    base,
-    {
-      ...base,
-      quantity: payload.itemQuantityOrWeight,
-    },
-  ];
-
-  let lastError:
-    | { ok: false; error: string; status: number }
-    | null = null;
-
-  for (const body of bodies) {
-    const result = await apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    if (result.ok) return result;
-    lastError = result;
-    if (result.status === 401) return result;
-    if (result.status >= 500) return result;
-  }
-
-  return (
-    lastError ?? {
-      ok: false,
-      status: 400,
-      error: "Failed to create livestock item.",
-    }
-  );
+  return apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export type GetLivestockItemsByProductResponse = {
