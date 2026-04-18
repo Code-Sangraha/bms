@@ -4,13 +4,7 @@ import { clearStoredUser } from "@/lib/auth/user";
 
 export const getBaseUrl = (): string => {
   const configuredBaseUrl = (import.meta.env.VITE_API_URL ?? "").trim();
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname.toLowerCase();
-    const isLocalDevHost = host === "localhost" || host === "127.0.0.1";
-    // Always use Vite proxy in local dev to avoid browser CORS/preflight issues.
-    if (isLocalDevHost) return "/api";
-  }
-  if (!configuredBaseUrl) return "/api";
+  if (!configuredBaseUrl) return "";
   return configuredBaseUrl.replace(/\/$/, "");
 };
 

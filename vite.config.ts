@@ -1,11 +1,9 @@
 import path from "path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  return {
+export default defineConfig({
   optimizeDeps: {
     include: ["react", "react-dom", "@tanstack/react-query"],
   },
@@ -52,15 +50,6 @@ export default defineConfig(({ mode }) => {
       devOptions: { enabled: false },
     }),
   ],
-  server: {
-    proxy: {
-      "/api": {
-        target: env.VITE_PROXY_TARGET || "https://bmsapi.codesangraha.com",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, "/v1"),
-      },
-    },
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
@@ -71,5 +60,4 @@ export default defineConfig(({ mode }) => {
   build: {
     outDir: "dist",
   },
-  };
 });
