@@ -165,6 +165,112 @@
   position: relative;
 }
 
+/* Desktop (≥769px): fixed-layout table so thead and tbody share one column width solve */
+.livestockInventoryTable {
+  table-layout: fixed;
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.livestockInventoryTableDesktop {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
+.livestockInventoryMobile {
+  @media (min-width: 769px) {
+    display: none !important;
+  }
+}
+
+.livestockInventoryCol--category {
+  width: 18%;
+}
+
+.livestockInventoryCol--name {
+  width: 17%;
+}
+
+.livestockInventoryCol--itemId {
+  width: 14%;
+}
+
+.livestockInventoryCol--quantity {
+  width: 10%;
+}
+
+.livestockInventoryCol--buy {
+  width: 12%;
+}
+
+.livestockInventoryCol--sell {
+  width: 12%;
+}
+
+.livestockInventoryCol--actions {
+  width: 17%;
+  min-width: 44px;
+}
+
+.livestockInventoryTableHeadRow th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  font-weight: 600;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  text-align: left;
+  vertical-align: bottom;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.livestockInventoryTableHeadRow th:nth-child(4) {
+  text-align: center;
+}
+
+.livestockInventoryTableHeadRow th:nth-child(5),
+.livestockInventoryTableHeadRow th:nth-child(6) {
+  text-align: right;
+}
+
+.livestockInventoryTableHeadRow th:last-child {
+  text-align: center;
+}
+
+.livestockInventoryTableDataRow td {
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  vertical-align: middle;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.livestockInventoryTableDataRow td:nth-child(4),
+.livestockInventoryTableDataRow td:nth-child(5),
+.livestockInventoryTableDataRow td:nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.livestockInventoryTableCellActions {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.livestockInventoryTableMessageRow td {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  text-align: center;
+}
+
 .productsRow {
   display: grid;
   grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr 1fr 1fr;
@@ -546,6 +652,12 @@
   text-transform: uppercase;
   color: #6b7280;
   padding-right: 0;
+}
+
+/* Override global .productsRowHeader > span { nowrap } so header tracks size like data rows (separate grids). */
+.productsRow.livestockInventoryRowHeader > span {
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .productsRow.livestockInventoryRowHeader > span:last-child {

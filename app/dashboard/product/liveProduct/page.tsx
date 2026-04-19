@@ -676,6 +676,42 @@ export default function LiveProductPage() {
     restockLivestockMutation.isPending ||
     deductLivestockMutation.isPending;
 
+  const renderLivestockRowActions = (item: LivestockItem, rowKey: string) => (
+    <div className="productsRowActions">
+      <div
+        className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
+        ref={openRowMenu?.rowKey === rowKey ? rowMenuButtonRef : undefined}
+      >
+        <button
+          type="button"
+          className="rowMenuTrigger"
+          onClick={(e) => {
+            e.stopPropagation();
+            const trigger = e.currentTarget;
+            const rect = trigger.getBoundingClientRect();
+            setOpenRowMenu((prev) => {
+              if (prev?.rowKey === rowKey) return null;
+              const pos = computeRowMenuPosition(rect, ROW_MENU_HEIGHT_ESTIMATE_PX);
+              return {
+                rowKey,
+                item,
+                placement: pos.placement,
+                top: pos.top,
+                bottom: pos.bottom,
+                right: pos.right,
+              };
+            });
+          }}
+          aria-label={t("More options")}
+          aria-expanded={openRowMenu?.rowKey === rowKey}
+          aria-haspopup="menu"
+        >
+          <MdMoreHoriz aria-hidden size={22} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <section className="liveProductPage">
       <div className="breadcrumb">
@@ -766,104 +802,162 @@ export default function LiveProductPage() {
       {rowActionError && <p className="productsMessage productsError">{rowActionError}</p>}
 
       <div className="productsTable">
-        <div className="productsRow productsRowHeader livestockInventoryRowHeader livestockRowHeader">
-          <span>{t("Product Category")}</span>
-          <span>{t("Name")}</span>
-          <span>{t("Item ID")}</span>
-          <span>{t("Quantity")}</span>
-          <span>{t("Buying price")}</span>
-          <span>{t("Selling price")}</span>
-          <span>{t("Actions")}</span>
-        </div>
-        {(categoryLoading || livestockItemsLoading) && (
-          <div className="productsRow livestockRowWithActions livestockRowMessage">
-            <span className="productsMessage">{t("Loading…")}</span>
+        <table
+          className="livestockInventoryTable livestockInventoryTableDesktop"
+          aria-label={t("Inventory")}
+        >
+          <colgroup>
+            <col className="livestockInventoryCol livestockInventoryCol--category" />
+            <col className="livestockInventoryCol livestockInventoryCol--name" />
+            <col className="livestockInventoryCol livestockInventoryCol--itemId" />
+            <col className="livestockInventoryCol livestockInventoryCol--quantity" />
+            <col className="livestockInventoryCol livestockInventoryCol--buy" />
+            <col className="livestockInventoryCol livestockInventoryCol--sell" />
+            <col className="livestockInventoryCol livestockInventoryCol--actions" />
+          </colgroup>
+          <thead>
+            <tr className="livestockInventoryTableHeadRow">
+              <th scope="col">{t("Product Category")}</th>
+              <th scope="col">{t("Name")}</th>
+              <th scope="col">{t("Item ID")}</th>
+              <th scope="col">{t("Quantity")}</th>
+              <th scope="col">{t("Buying price")}</th>
+              <th scope="col">{t("Selling price")}</th>
+              <th scope="col">{t("Actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(categoryLoading || livestockItemsLoading) && (
+              <tr className="livestockInventoryTableMessageRow">
+                <td colSpan={7}>
+                  <span className="productsMessage">{t("Loading…")}</span>
+                </td>
+              </tr>
+            )}
+            {categoryError && (
+              <tr className="livestockInventoryTableMessageRow">
+                <td colSpan={7}>
+                  <span className="productsMessage productsError">
+                    {categoryErrorDetail instanceof Error
+                      ? categoryErrorDetail.message
+                      : t("Failed to load livestock categories")}
+                  </span>
+                </td>
+              </tr>
+            )}
+            {livestockItemsError && (
+              <tr className="livestockInventoryTableMessageRow">
+                <td colSpan={7}>
+                  <span className="productsMessage productsError">
+                    {livestockItemsErrorDetail instanceof Error
+                      ? livestockItemsErrorDetail.message
+                      : t("Failed to load live stock items")}
+                  </span>
+                </td>
+              </tr>
+            )}
+            {!categoryLoading &&
+              !categoryError &&
+              !livestockItemsLoading &&
+              !livestockItemsError &&
+              filteredLivestockItems.length === 0 && (
+                <tr className="livestockInventoryTableMessageRow">
+                  <td colSpan={7}>
+                    <span className="productsMessage">{t("No live stock items yet.")}</span>
+                  </td>
+                </tr>
+              )}
+            {!categoryLoading &&
+              !categoryError &&
+              !livestockItemsLoading &&
+              !livestockItemsError &&
+              paginatedLivestockItems.map((item, index) => {
+                const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
+                return (
+                  <tr key={rowKey} className="livestockInventoryTableDataRow">
+                    <td>{getLiveProductName(item.productId)}</td>
+                    <td>{item.name}</td>
+                    <td>{item.itemId}</td>
+                    <td>{formatLivestockTableQuantity(item)}</td>
+                    <td>{formatLivestockPriceCell(item.buyingPrice)}</td>
+                    <td>{formatLivestockPriceCell(item.sellingPrice)}</td>
+                    <td className="livestockInventoryTableCellActions">
+                      {renderLivestockRowActions(item, rowKey)}
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+
+        <div className="livestockInventoryMobile">
+          <div className="productsRow productsRowHeader livestockInventoryRowHeader livestockRowHeader">
+            <span>{t("Product Category")}</span>
+            <span>{t("Name")}</span>
+            <span>{t("Item ID")}</span>
+            <span>{t("Quantity")}</span>
+            <span>{t("Buying price")}</span>
+            <span>{t("Selling price")}</span>
+            <span>{t("Actions")}</span>
           </div>
-        )}
-        {categoryError && (
-          <div className="productsRow livestockRowWithActions livestockRowMessage">
-            <span className="productsMessage productsError">
-              {categoryErrorDetail instanceof Error
-                ? categoryErrorDetail.message
-                : t("Failed to load livestock categories")}
-            </span>
-          </div>
-        )}
-        {livestockItemsError && (
-          <div className="productsRow livestockRowWithActions livestockRowMessage">
-            <span className="productsMessage productsError">
-              {livestockItemsErrorDetail instanceof Error
-                ? livestockItemsErrorDetail.message
-                : t("Failed to load live stock items")}
-            </span>
-          </div>
-        )}
-        {!categoryLoading &&
-          !categoryError &&
-          !livestockItemsLoading &&
-          !livestockItemsError &&
-          filteredLivestockItems.length === 0 && (
+          {(categoryLoading || livestockItemsLoading) && (
             <div className="productsRow livestockRowWithActions livestockRowMessage">
-              <span className="productsMessage">{t("No live stock items yet.")}</span>
+              <span className="productsMessage">{t("Loading…")}</span>
             </div>
           )}
-        {!categoryLoading &&
-          !categoryError &&
-          !livestockItemsLoading &&
-          !livestockItemsError &&
-          paginatedLivestockItems.map((item, index) => {
-            const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
-            return (
-            <div
-              key={rowKey}
-              className="productsRow livestockRowWithActions livestockRowData"
-            >
-              <span data-label={t("Product Category")}>
-                {getLiveProductName(item.productId)}
+          {categoryError && (
+            <div className="productsRow livestockRowWithActions livestockRowMessage">
+              <span className="productsMessage productsError">
+                {categoryErrorDetail instanceof Error
+                  ? categoryErrorDetail.message
+                  : t("Failed to load livestock categories")}
               </span>
-              <span data-label={t("Name")}>{item.name}</span>
-              <span data-label={t("Item ID")}>{item.itemId}</span>
-              <span data-label={t("Quantity")}>
-                {formatLivestockTableQuantity(item)}
-              </span>
-              <span data-label={t("Buying price")}>{formatLivestockPriceCell(item.buyingPrice)}</span>
-              <span data-label={t("Selling price")}>{formatLivestockPriceCell(item.sellingPrice)}</span>
-              <div className="productsRowActions">
-                <div
-                  className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
-                  ref={openRowMenu?.rowKey === rowKey ? rowMenuButtonRef : undefined}
-                >
-                  <button
-                    type="button"
-                    className="rowMenuTrigger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const trigger = e.currentTarget;
-                      const rect = trigger.getBoundingClientRect();
-                      setOpenRowMenu((prev) => {
-                        if (prev?.rowKey === rowKey) return null;
-                        const pos = computeRowMenuPosition(rect, ROW_MENU_HEIGHT_ESTIMATE_PX);
-                        return {
-                          rowKey,
-                          item,
-                          placement: pos.placement,
-                          top: pos.top,
-                          bottom: pos.bottom,
-                          right: pos.right,
-                        };
-                      });
-                    }}
-                    aria-label={t("More options")}
-                    aria-expanded={openRowMenu?.rowKey === rowKey}
-                    aria-haspopup="menu"
-                  >
-                    <MdMoreHoriz aria-hidden size={22} />
-                  </button>
-                </div>
-              </div>
             </div>
-          );
-          })}
+          )}
+          {livestockItemsError && (
+            <div className="productsRow livestockRowWithActions livestockRowMessage">
+              <span className="productsMessage productsError">
+                {livestockItemsErrorDetail instanceof Error
+                  ? livestockItemsErrorDetail.message
+                  : t("Failed to load live stock items")}
+              </span>
+            </div>
+          )}
+          {!categoryLoading &&
+            !categoryError &&
+            !livestockItemsLoading &&
+            !livestockItemsError &&
+            filteredLivestockItems.length === 0 && (
+              <div className="productsRow livestockRowWithActions livestockRowMessage">
+                <span className="productsMessage">{t("No live stock items yet.")}</span>
+              </div>
+            )}
+          {!categoryLoading &&
+            !categoryError &&
+            !livestockItemsLoading &&
+            !livestockItemsError &&
+            paginatedLivestockItems.map((item, index) => {
+              const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
+              return (
+                <div
+                  key={rowKey}
+                  className="productsRow livestockRowWithActions livestockRowData"
+                >
+                  <span data-label={t("Product Category")}>
+                    {getLiveProductName(item.productId)}
+                  </span>
+                  <span data-label={t("Name")}>{item.name}</span>
+                  <span data-label={t("Item ID")}>{item.itemId}</span>
+                  <span data-label={t("Quantity")}>
+                    {formatLivestockTableQuantity(item)}
+                  </span>
+                  <span data-label={t("Buying price")}>{formatLivestockPriceCell(item.buyingPrice)}</span>
+                  <span data-label={t("Selling price")}>{formatLivestockPriceCell(item.sellingPrice)}</span>
+                  {renderLivestockRowActions(item, rowKey)}
+                </div>
+              );
+            })}
+        </div>
       </div>
 
       {openRowMenu &&
