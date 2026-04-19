@@ -332,6 +332,18 @@ export default function LiveProductPage() {
     endIndex,
   } = usePagination(orderedLivestockItems.length, { defaultPageSize: 10 });
 
+  /** Matches CSS that shows the fixed table (desktop) vs card grid (mobile). Both are mounted; ref must attach only to the visible one or getBoundingClientRect is 0 for display:none. */
+  const [isWideViewport, setIsWideViewport] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 769px)").matches : true
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 769px)");
+    const onChange = () => setIsWideViewport(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategoryId, searchQuery, setCurrentPage]);
@@ -378,7 +390,7 @@ export default function LiveProductPage() {
       window.removeEventListener("scroll", syncMenuPosition, true);
       window.removeEventListener("resize", syncMenuPosition);
     };
-  }, [openRowMenu?.rowKey]);
+  }, [openRowMenu?.rowKey, isWideViewport]);
 
   useEffect(() => {
     if (!openRowMenu) return;
@@ -676,11 +688,19 @@ export default function LiveProductPage() {
     restockLivestockMutation.isPending ||
     deductLivestockMutation.isPending;
 
-  const renderLivestockRowActions = (item: LivestockItem, rowKey: string) => (
+  const renderLivestockRowActions = (
+    item: LivestockItem,
+    rowKey: string,
+    surface: "table" | "mobile"
+  ) => {
+    const refActive =
+      openRowMenu?.rowKey === rowKey &&
+      ((surface === "table" && isWideViewport) || (surface === "mobile" && !isWideViewport));
+    return (
     <div className="productsRowActions">
       <div
         className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
-        ref={openRowMenu?.rowKey === rowKey ? rowMenuButtonRef : undefined}
+        ref={refActive ? rowMenuButtonRef : undefined}
       >
         <button
           type="button"
@@ -710,7 +730,8 @@ export default function LiveProductPage() {
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <section className="liveProductPage">
@@ -882,7 +903,7 @@ export default function LiveProductPage() {
                     <td>{formatLivestockPriceCell(item.buyingPrice)}</td>
                     <td>{formatLivestockPriceCell(item.sellingPrice)}</td>
                     <td className="livestockInventoryTableCellActions">
-                      {renderLivestockRowActions(item, rowKey)}
+                      {renderLivestockRowActions(item, rowKey, "table")}
                     </td>
                   </tr>
                 );
@@ -953,7 +974,7 @@ export default function LiveProductPage() {
                   </span>
                   <span data-label={t("Buying price")}>{formatLivestockPriceCell(item.buyingPrice)}</span>
                   <span data-label={t("Selling price")}>{formatLivestockPriceCell(item.sellingPrice)}</span>
-                  {renderLivestockRowActions(item, rowKey)}
+                  {renderLivestockRowActions(item, rowKey, "mobile")}
                 </div>
               );
             })}
