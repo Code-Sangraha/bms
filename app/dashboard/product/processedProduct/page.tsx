@@ -32,18 +32,26 @@ import "./processedProduct.scss";
 const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
 
-/** Quantity-only stock for processed products (restock/deduct must not use weight). */
+/** Quantity used for restock/deduct caps (mirrors weight when API keeps them aligned). */
 function getProcessedQuantity(product: Product): number {
   const raw = product.quantity;
   const num = typeof raw === "number" ? raw : Number(raw);
   return Number.isFinite(num) ? num : 0;
 }
 
-function formatProcessedQuantityDisplay(product: Product): string {
+/** Stored stock weight for processed products (backend increments `weight` on complete processing). */
+function formatProcessedWeightDisplay(product: Product): string {
+  const w = product.weight;
+  if (w != null && Number.isFinite(Number(w))) return String(w);
   const q = product.quantity;
-  if (q != null && Number.isFinite(Number(q))) {
-    return String(q);
-  }
+  if (q != null && Number.isFinite(Number(q))) return String(q);
+  return "—";
+}
+
+/** Waste weight when the API exposes it on the product; otherwise em dash. */
+function formatProcessedWasteWeightDisplay(product: Product): string {
+  const waste = product.wasteWeight;
+  if (waste != null && Number.isFinite(Number(waste))) return String(waste);
   return "—";
 }
 
@@ -444,7 +452,8 @@ export default function ProcessedProductPage() {
           <span>{t("Name")}</span>
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
-          <span>{t("Quantity")}</span>
+          <span>{t("Weight")}</span>
+          <span>{t("Waste Weight")}</span>
           <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
@@ -490,9 +499,8 @@ export default function ProcessedProductPage() {
                   {getTypeName(product.productTypeId)}
                 </span>
                 <span data-label={t("Outlet")}>{getOutletName(product.outletId)}</span>
-                <span data-label={t("Quantity")}>
-                  {formatProcessedQuantityDisplay(product)}
-                </span>
+                <span data-label={t("Weight")}>{formatProcessedWeightDisplay(product)}</span>
+                <span data-label={t("Waste Weight")}>{formatProcessedWasteWeightDisplay(product)}</span>
                 <div className="productsRowActions">
                   <div
                     className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}

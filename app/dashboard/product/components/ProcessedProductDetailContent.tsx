@@ -16,9 +16,15 @@ export default function ProcessedProductDetailContent({
 }: ProcessedProductDetailContentProps) {
   const { t } = useI18n();
 
-  const stockDisplay =
-    product.quantity != null && Number.isFinite(Number(product.quantity))
-      ? String(product.quantity)
+  const weightDisplay =
+    product.weight != null && Number.isFinite(Number(product.weight))
+      ? String(product.weight)
+      : product.quantity != null && Number.isFinite(Number(product.quantity))
+        ? String(product.quantity)
+        : "—";
+  const wasteDisplay =
+    product.wasteWeight != null && Number.isFinite(Number(product.wasteWeight))
+      ? String(product.wasteWeight)
       : "—";
 
   return (
@@ -37,8 +43,12 @@ export default function ProcessedProductDetailContent({
           <dd>{outletName}</dd>
         </div>
         <div className="processedProductViewDlRow">
-          <dt>{t("Quantity")}</dt>
-          <dd>{stockDisplay}</dd>
+          <dt>{t("Weight")}</dt>
+          <dd>{weightDisplay}</dd>
+        </div>
+        <div className="processedProductViewDlRow">
+          <dt>{t("Waste Weight")}</dt>
+          <dd>{wasteDisplay}</dd>
         </div>
       </dl>
     </div>

@@ -18,6 +18,8 @@ export type Product = {
   productType?: { id?: string; name?: string };
   outlet?: { id?: string; name?: string };
   weight?: number | null;
+  /** Cumulative waste weight attributed to this product when returned by GET products */
+  wasteWeight?: number | null;
   stockStatus?: string;
   [key: string]: unknown;
 };
@@ -121,10 +123,16 @@ export async function getProducts(): Promise<
           parseNum(asRecord.outputWeight) ??
           parseNum(asRecord.totalWeight) ??
           quantityFromAny;
+        const wasteFromAny =
+          parseNum(asRecord.wasteWeight) ??
+          parseNum(asRecord.totalWasteWeight) ??
+          parseNum((asRecord as { accumulatedWaste?: unknown }).accumulatedWaste) ??
+          parseNum(asRecord.waste);
         return {
           ...item,
           quantity: quantityFromAny,
           weight: weightFromAny,
+          wasteWeight: wasteFromAny,
         } as Product;
       })
     : [];
