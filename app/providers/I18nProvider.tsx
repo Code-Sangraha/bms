@@ -606,6 +606,7 @@ const translations: Record<string, string> = {
   "Selected livestock item has no item ID code; it cannot be removed from stock after sale.":
     "छानिएको लाइभस्टक आइटममा item ID कोड छैन; बिक्री पछि स्टकबाट हटाउन सकिँदैन।",
   "Enter quantity": "परिमाण प्रविष्ट गर्नुहोस्",
+  "Enter weight": "तौल प्रविष्ट गर्नुहोस्",
   "Processed Products": "प्रशोधित उत्पादनहरू",
   "Products of type Processed": "प्रशोधित प्रकारका उत्पादनहरू",
   "Search processed products": "प्रशोधित उत्पादनहरू खोज्नुहोस्",
