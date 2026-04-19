@@ -254,8 +254,8 @@ export type CreateLivestockItemPayload = {
   itemId: string;
   /** Initial stock amount — backend `createLiveStockProductItem` reads this (not `itemQuantityOrWeight`). */
   quantity: number;
-  buyingPrice: number | null;
-  sellingPrice: number | null;
+  buyingPrice: number;
+  sellingPrice: number;
   status: boolean;
 };
 

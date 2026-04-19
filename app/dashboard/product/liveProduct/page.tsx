@@ -526,11 +526,17 @@ export default function LiveProductPage() {
     if (!trimmedName) return setError(t("Name is required.")), null;
     if (!trimmedItemId) return setError(t("Item ID is required.")), null;
     if (!Number.isFinite(weight) || weight <= 0) return setError(t("Quantity must be greater than 0.")), null;
-    if (form.buyingPrice.trim() !== "" && buyingPrice === null) {
-      return setError(t("Buying price must be greater than 0 when provided.")), null;
+    if (form.buyingPrice.trim() === "") {
+      return setError(t("Buying price is required.")), null;
     }
-    if (form.sellingPrice.trim() !== "" && sellingPrice === null) {
-      return setError(t("Selling price must be greater than 0 when provided.")), null;
+    if (form.sellingPrice.trim() === "") {
+      return setError(t("Selling price is required.")), null;
+    }
+    if (buyingPrice === null) {
+      return setError(t("Buying price must be greater than 0.")), null;
+    }
+    if (sellingPrice === null) {
+      return setError(t("Selling price must be greater than 0.")), null;
     }
 
     setError(null);
@@ -1092,6 +1098,8 @@ export default function LiveProductPage() {
                 !livestockForm.name.trim() ||
                 !livestockForm.itemId.trim() ||
                 Number(livestockForm.weight) <= 0 ||
+                !livestockForm.buyingPrice.trim() ||
+                !livestockForm.sellingPrice.trim() ||
                 hasInvalidOptionalPriceField(livestockForm.buyingPrice) ||
                 hasInvalidOptionalPriceField(livestockForm.sellingPrice)
               }
@@ -1159,7 +1167,9 @@ export default function LiveProductPage() {
               value={livestockForm.buyingPrice}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, buyingPrice: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Optional")}
+              placeholder={t("Enter buying price")}
+              required
+              aria-required
             />
           </label>
           <label className="productActionModalLabel">
@@ -1171,7 +1181,9 @@ export default function LiveProductPage() {
               value={livestockForm.sellingPrice}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Optional")}
+              placeholder={t("Enter selling price")}
+              required
+              aria-required
             />
           </label>
         </div>

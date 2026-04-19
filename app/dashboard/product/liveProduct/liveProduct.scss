@@ -505,6 +505,12 @@
   grid-column: 6;
 }
 
+/* Header row uses seven <span>s; data rows use six spans + .productsRowActions div */
+.productsRow.livestockRowWithActions > span:nth-child(7) {
+  grid-column: 7;
+  justify-self: end;
+}
+
 .productsRow.livestockRowWithActions .productsRowActions {
   grid-column: 7;
   justify-self: stretch;

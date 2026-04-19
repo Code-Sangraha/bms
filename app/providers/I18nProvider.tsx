@@ -543,6 +543,12 @@ const translations: Record<string, string> = {
     "खरिद मूल्य दिँदा त्यो ० भन्दा ठूलो हुनुपर्छ।",
   "Selling price must be greater than 0 when provided.":
     "बिक्री मूल्य दिँदा त्यो ० भन्दा ठूलो हुनुपर्छ।",
+  "Buying price is required.": "खरिद मूल्य आवश्यक छ।",
+  "Selling price is required.": "बिक्री मूल्य आवश्यक छ।",
+  "Buying price must be greater than 0.": "खरिद मूल्य ० भन्दा ठूलो हुनुपर्छ।",
+  "Selling price must be greater than 0.": "बिक्री मूल्य ० भन्दा ठूलो हुनुपर्छ।",
+  "Enter buying price": "खरिद मूल्य प्रविष्ट गर्नुहोस्",
+  "Enter selling price": "बिक्री मूल्य प्रविष्ट गर्नुहोस्",
   "Amount is subtracted using the same unit rules as restock (head count vs kg).":
     "कटौती इन्वेन्टरी परिमाणको समान एकाइमा गरिन्छ।",
   "Amount is added as head count when bulk, or as kg when not bulk.":
