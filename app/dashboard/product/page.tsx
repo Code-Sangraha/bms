@@ -221,31 +221,32 @@ export default function ProductPage() {
           .map((product) => product.outletId)
       );
 
-      let createdCount = 0;
-      for (const outlet of outlets) {
-        if (processedProductOutletIds.has(outlet.id)) continue;
-        const result = await createProductApi(
-          {
-            name: trimmedName,
-            productTypeId: processedProductTypeId,
-            outletId: outlet.id,
-            quantity: 0,
-            status: "Active",
-            createdBy: "",
-          },
-          { isProcessed: true }
-        );
-        if (!result.ok) return result;
-        createdCount += 1;
-      }
+      const firstOutletWithoutProduct = outlets.find(
+        (outlet) => !processedProductOutletIds.has(outlet.id)
+      );
 
-      if (createdCount === 0) {
+      if (!firstOutletWithoutProduct) {
         return {
           ok: false as const,
           error: t("This processed product already exists in all outlets."),
           status: 409,
         };
       }
+
+      // One POST only: the API creates this processed product across outlets in a single request.
+      // Looping per outlet duplicates rows when each POST also fan-outs to every outlet.
+      const result = await createProductApi(
+        {
+          name: trimmedName,
+          productTypeId: processedProductTypeId,
+          outletId: firstOutletWithoutProduct.id,
+          quantity: 0,
+          status: "Active",
+          createdBy: "",
+        },
+        { isProcessed: true }
+      );
+      if (!result.ok) return result;
 
       return { ok: true as const };
     },
