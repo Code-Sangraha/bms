@@ -766,7 +766,7 @@ export default function LiveProductPage() {
       {rowActionError && <p className="productsMessage productsError">{rowActionError}</p>}
 
       <div className="productsTable">
-        <div className="productsRow livestockRowWithActions livestockRowHeader">
+        <div className="productsRow productsRowHeader livestockInventoryRowHeader livestockRowHeader">
           <span>{t("Product Category")}</span>
           <span>{t("Name")}</span>
           <span>{t("Item ID")}</span>

@@ -468,7 +468,10 @@
   grid-template-columns: 1.2fr 1fr 1fr 0.7fr 0.7fr 0.7fr 0.8fr;
 }
 
-.livestockRowWithActions {
+/* Same column tracks for header (livestockInventoryRowHeader) and body (livestockRowWithActions),
+   matching processed inventory: header row does not use livestockRowWithActions. */
+.livestockRowWithActions,
+.productsRow.livestockInventoryRowHeader {
   grid-template-columns:
     minmax(160px, 240px)
     minmax(140px, 220px)
@@ -481,6 +484,7 @@
   min-width: 0;
 }
 
+/* Processed pattern: only data rows use *RowWithActions; spans 1–N-1 + .productsRowActions in column N */
 .productsRow.livestockRowWithActions > span:nth-child(1) {
   grid-column: 1;
 }
@@ -505,36 +509,26 @@
   grid-column: 6;
 }
 
-/* Header row uses seven <span>s; data rows use six spans + .productsRowActions div */
-.productsRow.livestockRowWithActions > span:nth-child(7) {
-  grid-column: 7;
-  justify-self: center;
-  text-align: center;
-}
-
 .productsRow.livestockRowWithActions .productsRowActions {
   grid-column: 7;
-  justify-self: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 100%;
+  justify-self: stretch;
 }
 
 /* Desktop: right-align price headers + cells; contain long formatted numbers (en-IN) */
 @media (min-width: 769px) {
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(4),
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(5),
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(6) {
+  .productsRow.livestockInventoryRowHeader > span:nth-child(4),
+  .productsRow.livestockInventoryRowHeader > span:nth-child(5),
+  .productsRow.livestockInventoryRowHeader > span:nth-child(6) {
     white-space: normal;
     overflow-wrap: break-word;
   }
 
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(5),
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(6) {
+  .productsRow.livestockInventoryRowHeader > span:nth-child(5),
+  .productsRow.livestockInventoryRowHeader > span:nth-child(6) {
     text-align: right;
   }
 
-  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(4) {
+  .productsRow.livestockInventoryRowHeader > span:nth-child(4) {
     text-align: center;
   }
 
@@ -554,6 +548,10 @@
   padding-right: 0;
 }
 
+.productsRow.livestockInventoryRowHeader > span:last-child {
+  text-align: center;
+}
+
 /* Must stay position: relative so .rowMenuDropdown anchors to this row’s trigger, not .productsTable */
 .rowActionFloating {
   position: relative;
@@ -561,7 +559,8 @@
 }
 
 @media (max-width: 1280px) {
-  .livestockRowWithActions {
+  .livestockRowWithActions,
+  .productsRow.livestockInventoryRowHeader {
     grid-template-columns:
       minmax(150px, 210px)
       minmax(130px, 180px)
@@ -645,7 +644,7 @@
     overflow: visible;
   }
 
-  .productsRow.livestockRowWithActions.livestockRowHeader {
+  .productsRow.livestockInventoryRowHeader {
     display: none !important;
   }
 
