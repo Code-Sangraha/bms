@@ -474,10 +474,10 @@
     minmax(140px, 220px)
     minmax(120px, 180px)
     minmax(80px, 110px)
-    minmax(80px, 110px)
-    minmax(80px, 110px)
-    minmax(120px, 170px);
-  column-gap: 10px;
+    minmax(96px, 132px)
+    minmax(96px, 132px)
+    minmax(44px, 56px);
+  column-gap: 12px;
   min-width: 0;
 }
 
@@ -508,12 +508,42 @@
 /* Header row uses seven <span>s; data rows use six spans + .productsRowActions div */
 .productsRow.livestockRowWithActions > span:nth-child(7) {
   grid-column: 7;
-  justify-self: end;
+  justify-self: center;
+  text-align: center;
 }
 
 .productsRow.livestockRowWithActions .productsRowActions {
   grid-column: 7;
-  justify-self: stretch;
+  justify-self: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Desktop: right-align price headers + cells; contain long formatted numbers (en-IN) */
+@media (min-width: 769px) {
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(4),
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(5),
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(6) {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(5),
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(6) {
+    text-align: right;
+  }
+
+  .productsRow.livestockRowWithActions.livestockRowHeader > span:nth-child(4) {
+    text-align: center;
+  }
+
+  .productsRow.livestockRowWithActions.livestockRowData > span:nth-child(4),
+  .productsRow.livestockRowWithActions.livestockRowData > span:nth-child(5),
+  .productsRow.livestockRowWithActions.livestockRowData > span:nth-child(6) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .livestockRowHeader {
@@ -537,9 +567,9 @@
       minmax(130px, 180px)
       minmax(110px, 150px)
       minmax(72px, 100px)
-      minmax(72px, 100px)
-      minmax(72px, 100px)
-      minmax(110px, 160px);
+      minmax(88px, 120px)
+      minmax(88px, 120px)
+      minmax(44px, 56px);
   }
 
   .liveProductSearch {
