@@ -57,12 +57,12 @@ function formatProcessedWeightDisplay(product: Product): string {
   return "—";
 }
 
-/** Waste weight when the API exposes it on the product; otherwise em dash. */
-function formatProcessedWasteWeightDisplay(product: Product): string {
-  const waste = product.wasteWeight;
-  if (waste != null && Number.isFinite(Number(waste))) return String(waste);
-  return "—";
-}
+// /** Waste weight when the API exposes it on the product; otherwise em dash. */
+// function formatProcessedWasteWeightDisplay(product: Product): string {
+//   const waste = product.wasteWeight;
+//   if (waste != null && Number.isFinite(Number(waste))) return String(waste);
+//   return "—";
+// }
 
 function toIsoDateLocal(d: Date): string {
   const y = d.getFullYear();
@@ -429,7 +429,7 @@ export default function ProcessedProductPage() {
           <span>{t("Product Type")}</span>
           <span>{t("Outlet")}</span>
           <span>{t("Weight")}</span>
-          <span>{t("Waste Weight")}</span>
+          {/* <span>{t("Waste Weight")}</span> */}
           <span>{t("Actions")}</span>
         </div>
         {productsLoading && (
@@ -476,7 +476,7 @@ export default function ProcessedProductPage() {
                 </span>
                 <span data-label={t("Outlet")}>{getOutletName(product.outletId)}</span>
                 <span data-label={t("Weight")}>{formatProcessedWeightDisplay(product)}</span>
-                <span data-label={t("Waste Weight")}>{formatProcessedWasteWeightDisplay(product)}</span>
+                {/* <span data-label={t("Waste Weight")}>{formatProcessedWasteWeightDisplay(product)}</span> */}
                 <div className="productsRowActions">
                   <div
                     className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}

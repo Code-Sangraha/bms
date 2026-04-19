@@ -169,7 +169,7 @@
 
 .productsRow {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1.2fr 0.8fr 0.8fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1.2fr 0.9fr 1fr;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -303,12 +303,9 @@
   grid-column: 4;
 }
 
-.productsRow.processedRowWithActions > span:nth-child(5) {
-  grid-column: 5;
-}
-
+/* Fifth column (waste weight) commented out in JSX — restore span:nth-child(5) + grid-column: 6 on actions when re-enabled. */
 .productsRow.processedRowWithActions .productsRowActions {
-  grid-column: 6;
+  grid-column: 5;
   justify-self: stretch;
 }
 
@@ -506,7 +503,7 @@
     grid-template-areas:
       "procName procName procMenu"
       "procType procOutlet ."
-      "procWeight procWaste .";
+      "procWeight procWeight procWeight";
     gap: 10px 12px;
     align-items: start;
     min-width: 0;
@@ -562,13 +559,8 @@
     grid-area: procWeight;
   }
 
-  .productsRow.processedRowWithActions.processedRowData > span:nth-child(5) {
-    grid-area: procWaste;
-  }
-
   .productsRow.processedRowWithActions.processedRowData > span:nth-child(3)::before,
-  .productsRow.processedRowWithActions.processedRowData > span:nth-child(4)::before,
-  .productsRow.processedRowWithActions.processedRowData > span:nth-child(5)::before {
+  .productsRow.processedRowWithActions.processedRowData > span:nth-child(4)::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 4px;
