@@ -121,6 +121,19 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
   };
 }
 
+/** Next `itemId` for create: max positive integer string among same-`productId` rows + 1, or `"1"`. Non-numeric legacy `itemId`s are skipped for the max. */
+function computeNextLivestockItemId(productId: string, items: LivestockItem[]): string {
+  let max = 0;
+  for (const item of items) {
+    if (item.productId !== productId) continue;
+    const s = typeof item.itemId === "string" ? item.itemId.trim() : "";
+    if (!/^\d+$/.test(s)) continue;
+    const n = Number(s);
+    if (Number.isInteger(n) && n > 0 && n > max) max = n;
+  }
+  return String(max + 1);
+}
+
 /** Table "Quantity" column: only API `quantity` (head count / units), never body weight (kg). */
 function formatLivestockTableQuantity(item: LivestockItem): string {
   if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
@@ -529,14 +542,12 @@ export default function LiveProductPage() {
     setError: (message: string | null) => void
   ) => {
     const trimmedName = form.name.trim();
-    const trimmedItemId = form.itemId.trim();
     const weight = Number(form.weight);
     const buyingPrice = parsePriceFieldForSubmit(form.buyingPrice);
     const sellingPrice = parsePriceFieldForSubmit(form.sellingPrice);
 
     if (!form.productId) return setError(t("Please select live stock product category.")), null;
     if (!trimmedName) return setError(t("Name is required.")), null;
-    if (!trimmedItemId) return setError(t("Item ID is required.")), null;
     if (!Number.isFinite(weight) || weight <= 0) return setError(t("Quantity must be greater than 0.")), null;
     if (form.buyingPrice.trim() === "") {
       return setError(t("Buying price is required.")), null;
@@ -555,7 +566,7 @@ export default function LiveProductPage() {
     return {
       productId: form.productId,
       name: trimmedName,
-      itemId: trimmedItemId,
+      itemId: computeNextLivestockItemId(form.productId, livestockItems),
       quantity: weight,
       buyingPrice,
       sellingPrice,
@@ -587,15 +598,15 @@ export default function LiveProductPage() {
     if (!editingLivestockId) return;
     const sourceItem = livestockItems.find((row) => resolveLivestockItemId(row) === editingLivestockId);
     const outletId = sourceItem ? resolveLivestockOutletId(sourceItem) : "";
+    const stableItemId = (sourceItem?.itemId ?? "").trim();
     const trimmedName = editLivestockForm.name.trim();
-    const trimmedItemId = editLivestockForm.itemId.trim();
     const weight = Number(editLivestockForm.weight);
     const buyingPrice = parsePriceFieldForSubmit(editLivestockForm.buyingPrice);
     const sellingPrice = parsePriceFieldForSubmit(editLivestockForm.sellingPrice);
 
     if (!editLivestockForm.productId) return setEditLivestockError(t("Please select live stock product category."));
     if (!trimmedName) return setEditLivestockError(t("Name is required."));
-    if (!trimmedItemId) return setEditLivestockError(t("Item ID is required."));
+    if (!stableItemId) return setEditLivestockError(t("Item ID is required."));
     if (!Number.isFinite(weight) || weight <= 0) return setEditLivestockError(t("Quantity must be greater than 0."));
     if (editLivestockForm.buyingPrice.trim() !== "" && buyingPrice === null) {
       return setEditLivestockError(t("Buying price must be greater than 0 when provided."));
@@ -608,7 +619,7 @@ export default function LiveProductPage() {
     updateLivestockMutation.mutate({
       id: editingLivestockId,
       name: trimmedName,
-      itemId: trimmedItemId,
+      itemId: stableItemId,
       productId: editLivestockForm.productId,
       outletId,
       itemQuantityOrWeight: weight,
@@ -1211,7 +1222,6 @@ export default function LiveProductPage() {
                 livestockMutation.isPending ||
                 !livestockForm.productId ||
                 !livestockForm.name.trim() ||
-                !livestockForm.itemId.trim() ||
                 Number(livestockForm.weight) <= 0 ||
                 !livestockForm.buyingPrice.trim() ||
                 !livestockForm.sellingPrice.trim() ||
@@ -1249,16 +1259,6 @@ export default function LiveProductPage() {
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, name: e.target.value }))}
               className="productActionModalInput"
               placeholder={t("Enter name")}
-            />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Item ID")}
-            <input
-              type="text"
-              value={livestockForm.itemId}
-              onChange={(e) => setLivestockForm((prev) => ({ ...prev, itemId: e.target.value }))}
-              className="productActionModalInput"
-              placeholder={t("Enter item ID")}
             />
           </label>
           <label className="productActionModalLabel">
@@ -1337,7 +1337,6 @@ export default function LiveProductPage() {
                 !editingLivestockId ||
                 !editLivestockForm.productId ||
                 !editLivestockForm.name.trim() ||
-                !editLivestockForm.itemId.trim() ||
                 Number(editLivestockForm.weight) <= 0 ||
                 hasInvalidOptionalPriceField(editLivestockForm.buyingPrice) ||
                 hasInvalidOptionalPriceField(editLivestockForm.sellingPrice)
@@ -1379,10 +1378,10 @@ export default function LiveProductPage() {
             {t("Item ID")}
             <input
               type="text"
+              readOnly
+              aria-readonly="true"
               value={editLivestockForm.itemId}
-              onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, itemId: e.target.value }))}
               className="productActionModalInput"
-              placeholder={t("Enter item ID")}
             />
           </label>
           <label className="productActionModalLabel">
