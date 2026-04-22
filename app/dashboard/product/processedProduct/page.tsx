@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { createPortal } from "react-dom";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -88,14 +88,14 @@ export default function ProcessedProductPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOutletId, setSelectedOutletId] = useState("all");
 
   useEffect(() => {
-    if (isScoped && scopedOutletId) setSelectedOutletId(scopedOutletId);
+    if (isScoped && rowFilterOutletId) setSelectedOutletId(rowFilterOutletId);
     else if (!isScoped) setSelectedOutletId("all");
-  }, [isScoped, scopedOutletId]);
+  }, [isScoped, rowFilterOutletId]);
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
@@ -358,13 +358,9 @@ export default function ProcessedProductPage() {
           <p className="pageSubtitle">{t("Products of type Processed")}</p>
         </div>
         <div className="processedProductFilters">
-          <label className="processedProductOutletFilter">
-            <span className="processedProductOutletLabel">{t("Outlet")}</span>
-            {isScoped && scopedOutletId ? (
-              <span className="processedProductOutletSelect processedProductOutletReadonly" aria-live="polite">
-                {outlets.find((o) => o.id === scopedOutletId)?.name ?? scopedOutletId}
-              </span>
-            ) : (
+          {!isScoped && (
+            <label className="processedProductOutletFilter">
+              <span className="processedProductOutletLabel">{t("Outlet")}</span>
               <select
                 className="processedProductOutletSelect"
                 value={selectedOutletId}
@@ -381,8 +377,8 @@ export default function ProcessedProductPage() {
                   </option>
                 ))}
               </select>
-            )}
-          </label>
+            </label>
+          )}
           <div className="processedProductSearch">
             <span className="searchIcon">🔍</span>
             <input

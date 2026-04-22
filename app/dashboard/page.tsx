@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
   getLivestockItemsByProduct,
   getProducts,
@@ -44,7 +44,7 @@ const STATIC_ATTENDANCE_PREVIEW = [
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId, scopedOutletId } = useRowFilterOutletId();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -134,7 +134,7 @@ export default function DashboardPage() {
   );
 
   const { data: livestockItemsForScope = [] } = useQuery({
-    queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds, isScoped, scopedOutletId],
+    queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds, isScoped, rowFilterOutletId],
     enabled: isScoped && liveStockProductIds.length > 0,
     queryFn: async () => {
       const results = await Promise.all(
@@ -169,35 +169,35 @@ export default function DashboardPage() {
   }, [livestockItemsForScope, productOutletById]);
 
   const salesTransactionsScoped = useMemo(() => {
-    if (!isScoped || !scopedOutletId) return salesTransactions;
+    if (!isScoped || !rowFilterOutletId) return salesTransactions;
     return salesTransactions.filter((tx: SaleTransaction) => {
       const oid =
         (typeof tx.outletId === "string" && tx.outletId) ||
         (tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "");
-      return oid === scopedOutletId;
+      return oid === rowFilterOutletId;
     });
-  }, [salesTransactions, isScoped, scopedOutletId]);
+  }, [salesTransactions, isScoped, rowFilterOutletId]);
 
   const livestockSalesScoped = useMemo(() => {
-    if (!isScoped || !scopedOutletId) return livestockSales;
+    if (!isScoped || !rowFilterOutletId) return livestockSales;
     return livestockSales.filter((sale: LivestockSale) => {
       const itemId = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
       if (!itemId) return false;
-      return (livestockMetaByOutletId.get(itemId) ?? null) === scopedOutletId;
+      return (livestockMetaByOutletId.get(itemId) ?? null) === rowFilterOutletId;
     });
-  }, [livestockSales, isScoped, scopedOutletId, livestockMetaByOutletId]);
+  }, [livestockSales, isScoped, rowFilterOutletId, livestockMetaByOutletId]);
 
   const salesData: DashboardSalesData | undefined = useMemo(() => {
     const raw = salesResponse?.data;
     if (!raw) return undefined;
-    if (!isScoped || !scopedOutletId) return raw;
+    if (!isScoped || !rowFilterOutletId) return raw;
     return {
       ...raw,
-      salesByOutlet: (raw.salesByOutlet ?? []).filter((o) => o.outletId === scopedOutletId),
+      salesByOutlet: (raw.salesByOutlet ?? []).filter((o) => o.outletId === rowFilterOutletId),
       salesByProduct: [],
       salesByCustomer: [],
     };
-  }, [salesResponse?.data, isScoped, scopedOutletId]);
+  }, [salesResponse?.data, isScoped, rowFilterOutletId]);
 
   const apiTotalRevenue = salesData?.totalRevenue ?? 0;
   const apiTotalTransactions = salesData?.totalTransactions ?? 0;

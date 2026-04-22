@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -55,7 +55,7 @@ export default function PointOfSalePage() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [outletId, setOutletId] = useState("");
@@ -104,25 +104,25 @@ export default function PointOfSalePage() {
   });
 
   const outletsForSelect = useMemo(() => {
-    if (isScoped && scopedOutletId) {
-      return outlets.filter((o) => o.id === scopedOutletId);
+    if (isScoped && rowFilterOutletId) {
+      return outlets.filter((o) => o.id === rowFilterOutletId);
     }
     if (userOutletId != null) {
       return outlets.filter((o) => o.id === userOutletId);
     }
     return outlets;
-  }, [isScoped, scopedOutletId, outlets, userOutletId]);
+  }, [isScoped, rowFilterOutletId, outlets, userOutletId]);
 
   useEffect(() => {
-    if (isScoped && scopedOutletId && outlets.some((o) => o.id === scopedOutletId)) {
-      setOutletId(scopedOutletId);
+    if (isScoped && rowFilterOutletId && outlets.some((o) => o.id === rowFilterOutletId)) {
+      setOutletId(rowFilterOutletId);
       return;
     }
     if (userOutletId && outlets.length > 0 && !outletId) {
       const allowed = outlets.some((o) => o.id === userOutletId);
       if (allowed) setOutletId(userOutletId);
     }
-  }, [userOutletId, outlets, outletId, isScoped, scopedOutletId]);
+  }, [userOutletId, outlets, outletId, isScoped, rowFilterOutletId]);
 
   const { data: dualPricings = [] } = useQuery({
     queryKey: DUAL_PRICING_QUERY_KEY,
@@ -338,11 +338,12 @@ export default function PointOfSalePage() {
           <div className="posFormRow posFormRow--outletPayment">
             <label className="posField">
               <span className="posLabel">{t("Outlet")}</span>
-              {isScoped && scopedOutletId ? (
+              {isScoped && rowFilterOutletId ? (
                 <span className="posSelect posSelectReadonly" aria-live="polite">
                   {outletsForSelect.find((o) => o.id === outletId)?.name ??
                     outletsForSelect[0]?.name ??
-                    scopedOutletId}
+                    scopeLabel ??
+                    rowFilterOutletId}
                 </span>
               ) : (
                 <select

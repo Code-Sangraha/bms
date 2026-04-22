@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -190,15 +190,15 @@ function formatAmount(n: number | null): string {
 export default function TransactionPage() {
   const navigate = useNavigate();
   const { t, locale } = useI18n();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   useEffect(() => {
-    if (isScoped && scopedOutletId) setOutletFilter(scopedOutletId);
+    if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
     else if (!isScoped) setOutletFilter("");
-  }, [isScoped, scopedOutletId]);
+  }, [isScoped, rowFilterOutletId]);
 
   const {
     data: sales = [],
@@ -319,9 +319,9 @@ export default function TransactionPage() {
           />
         </div>
         <div className="transactionFilterWrap">
-          {isScoped && scopedOutletId ? (
+          {isScoped && rowFilterOutletId ? (
             <span className="transactionFilterSelect transactionFilterReadonly" aria-live="polite">
-              {outlets.find((o) => o.id === scopedOutletId)?.name ?? scopedOutletId}
+              {scopeLabel || outlets.find((o) => o.id === rowFilterOutletId)?.name || rowFilterOutletId}
             </span>
           ) : (
             <select
@@ -384,9 +384,9 @@ export default function TransactionPage() {
           )}
         {!loading &&
           !error &&
-          paginatedTransactions.map((tx) => (
+          paginatedTransactions.map((tx, i) => (
             <div
-              key={tx.id}
+              key={`tx-row-${startIndex + i}`}
               className="transactionRow transactionRowData transactionRowClickable"
               tabIndex={0}
               onClick={() => setSelectedTransaction(tx)}

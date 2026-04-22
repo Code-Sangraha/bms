@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
   getLivestockItemsByProduct,
@@ -93,14 +93,14 @@ function isInRange(timestamp: number, now: number, rangeMs: number): boolean {
 export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
 
   useEffect(() => {
-    if (isScoped && scopedOutletId) setOutletFilter(scopedOutletId);
+    if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
     else if (!isScoped) setOutletFilter("all");
-  }, [isScoped, scopedOutletId]);
+  }, [isScoped, rowFilterOutletId]);
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -476,9 +476,9 @@ export default function InvoicesAnalyticsPage() {
             ))}
           </div>
           <div className="toolbarRight">
-            {isScoped && scopedOutletId ? (
+            {isScoped && rowFilterOutletId ? (
               <span className="outletSelect outletSelectReadonly" aria-live="polite">
-                {outletNameById.get(scopedOutletId) ?? scopedOutletId}
+                {outletNameById.get(rowFilterOutletId) ?? scopeLabel ?? rowFilterOutletId}
               </span>
             ) : (
               <select

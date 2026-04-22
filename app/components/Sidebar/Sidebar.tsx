@@ -11,7 +11,14 @@ import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { logout as logoutApi } from "@/handlers/auth";
-import { getProcessingPlants, type ProcessingPlant } from "@/handlers/processingPlant";
+import {
+  getProcessingPlants,
+  mergeProcessingPlantOutletFromUsers,
+  type ProcessingPlant,
+} from "@/handlers/processingPlant";
+import { getOutlets } from "@/handlers/outlet";
+import { getUsers } from "@/handlers/user";
+import { resolveRowFilterOutletId, resolvedScopeOutletIdForPlant } from "@/lib/rowFilterOutlet";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 import {
@@ -117,6 +124,8 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
 };
 
 const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
+const USERS_QUERY_KEY = ["users"];
+const OUTLETS_QUERY_KEY = ["outlets"];
 
 /** Highland drawer: reduced menu when a processing plant (outlet scope) is selected. */
 const highlandPlantMenuSections: MenuSectionBlock[] = [
@@ -469,6 +478,29 @@ export default function Sidebar() {
     },
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: USERS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getUsers();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const { data: outlets = [] } = useQuery({
+    queryKey: OUTLETS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getOutlets();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const processingPlantsForRail = useMemo(
+    () => mergeProcessingPlantOutletFromUsers(processingPlants, users),
+    [processingPlants, users]
+  );
+
   const highlandMainSections = useMemo((): MenuSectionBlock[] => {
     const rail = sidebarConfig.sections[0].items.find((i) => i.id === "highland");
     const menu = rail?.menu as RailMenu | undefined;
@@ -479,12 +511,19 @@ export default function Sidebar() {
   useEffect(() => {
     const oid = readOutletScopeFromSearch(locationSearch);
     if (!oid) return;
-    const plant = processingPlants.find((p) => p.outletId === oid);
-    if (!plant?.outletId) return;
+    const plant =
+      processingPlantsForRail.find((p) => p.id === oid) ??
+      processingPlantsForRail.find(
+        (p) => resolveRowFilterOutletId(p.id, outlets, processingPlantsForRail) === oid
+      ) ??
+      processingPlantsForRail.find((p) => p.outletId === oid);
+    if (!plant) return;
+    const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
+    if (!resolved) return;
     const next: HighlandStoredContext = {
       mode: "plant",
       plantId: plant.id,
-      outletId: plant.outletId,
+      outletId: resolved,
       plantName: plant.name,
     };
     setHighlandContext((prev) => {
@@ -498,7 +537,7 @@ export default function Sidebar() {
       return next;
     });
     writeHighlandContextToStorage(next);
-  }, [locationSearch, processingPlants]);
+  }, [locationSearch, processingPlantsForRail, outlets]);
 
   const primaryRailItems = useMemo(
     () => [
@@ -680,22 +719,31 @@ export default function Sidebar() {
 
   const handleSelectPlant = useCallback(
     (plant: ProcessingPlant) => {
-      if (!plant.outletId) {
+      const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
+      if (!resolved) {
         showToast(t("Processing plant has no linked outlet yet."));
         return;
       }
       const nextCtx: HighlandStoredContext = {
         mode: "plant",
         plantId: plant.id,
-        outletId: plant.outletId,
+        outletId: resolved,
         plantName: plant.name,
       };
       setHighlandContext(nextCtx);
       writeHighlandContextToStorage(nextCtx);
-      setActiveMenuId(null);
-      navigate(buildPathWithOutletScope("/dashboard", plant.outletId, ""), { replace: true });
+      setActiveMenuId("highland");
+      // Do not navigate to a route here — the user chooses a page from the drawer. If the
+      // URL still had `?outletId=` from another scope, remove it so URL sync cannot override
+      // the plant we just selected.
+      if (readOutletScopeFromSearch(locationSearch) != null) {
+        navigate(
+          buildPathWithOutletScope(pathname, null, locationSearch),
+          { replace: true }
+        );
+      }
     },
-    [navigate, showToast, t]
+    [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
   );
 
   return (
@@ -734,8 +782,10 @@ export default function Sidebar() {
               })}
             </div>
           ))}
-          {processingPlants.map((plant: ProcessingPlant) => {
-            const hasOutlet = Boolean(plant.outletId);
+          {processingPlantsForRail.map((plant: ProcessingPlant) => {
+            const hasOutlet = Boolean(
+              resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
+            );
             const isActivePlant =
               highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
             return (

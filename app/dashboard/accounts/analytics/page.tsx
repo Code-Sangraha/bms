@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getAttendances, type AttendanceRecord } from "@/handlers/attendance";
 import { getEmployees } from "@/handlers/employee";
 import { getOutlets } from "@/handlers/outlet";
@@ -45,14 +45,14 @@ function rowOutletId(row: AttendanceRecord): string | undefined {
 
 export default function AccountsAnalyticsPage() {
   const navigate = useNavigate();
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [outletFilter, setOutletFilter] = useState("all");
   const { t } = useI18n();
 
   useEffect(() => {
-    if (isScoped && scopedOutletId) setOutletFilter(scopedOutletId);
+    if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
     else if (!isScoped) setOutletFilter("all");
-  }, [isScoped, scopedOutletId]);
+  }, [isScoped, rowFilterOutletId]);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -102,9 +102,9 @@ export default function AccountsAnalyticsPage() {
   }, [attendanceRows, outletFilter]);
 
   const employeesInScope = useMemo(() => {
-    if (!isScoped || !scopedOutletId) return employees;
-    return employees.filter((e) => e.outletId === scopedOutletId);
-  }, [employees, isScoped, scopedOutletId]);
+    if (!isScoped || !rowFilterOutletId) return employees;
+    return employees.filter((e) => e.outletId === rowFilterOutletId);
+  }, [employees, isScoped, rowFilterOutletId]);
 
   const presentTodayCount = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
@@ -139,9 +139,9 @@ export default function AccountsAnalyticsPage() {
           <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
-          {isScoped && scopedOutletId ? (
+          {isScoped && rowFilterOutletId ? (
             <span className="analyticsOutletSelect analyticsOutletReadonly" aria-live="polite">
-              {outlets.find((o) => o.id === scopedOutletId)?.name ?? scopedOutletId}
+              {scopeLabel || outlets.find((o) => o.id === rowFilterOutletId)?.name || rowFilterOutletId}
             </span>
           ) : (
             <select
@@ -174,7 +174,7 @@ export default function AccountsAnalyticsPage() {
           <div className="analyticsCardSub">
             {outletsLoading
               ? "—"
-              : `${isScoped && scopedOutletId ? 1 : outlets.length} ${t("Outlets")}`}
+              : `${isScoped && rowFilterOutletId ? 1 : outlets.length} ${t("Outlets")}`}
           </div>
         </div>
         <div className="analyticsCard analyticsCardPresent">
