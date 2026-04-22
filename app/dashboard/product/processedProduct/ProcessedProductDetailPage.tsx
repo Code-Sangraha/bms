@@ -100,7 +100,13 @@ export default function ProcessedProductDetailPage() {
       <div className="breadcrumb">
         <span>{t("Product")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
-        <Link to="/dashboard/product/processedProduct" className="breadcrumbLink">
+        <Link
+          to={{
+            pathname: "/dashboard/product/processedProduct",
+            search: location.search || "",
+          }}
+          className="breadcrumbLink"
+        >
           {t("Processed Inventory")}
         </Link>
         <span className="separator">&nbsp;&gt;&nbsp;</span>

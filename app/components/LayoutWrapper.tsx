@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import ToastProvider from "@/app/providers/ToastProvider";
+import { OutletScopeProvider } from "@/app/providers/OutletScopeProvider";
 import PageBackBar from "./PageBackBar";
 import Sidebar from "./Sidebar/Sidebar";
 import "./PageBackBar.scss";
@@ -29,6 +30,7 @@ export default function LayoutWrapper() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <OutletScopeProvider>
         <div className="flex h-dvh max-h-dvh min-h-0 w-full overflow-x-hidden overflow-y-hidden">
           <Sidebar />
           <main
@@ -41,6 +43,7 @@ export default function LayoutWrapper() {
             </div>
           </main>
         </div>
+        </OutletScopeProvider>
       </ToastProvider>
     </AuthProvider>
   );

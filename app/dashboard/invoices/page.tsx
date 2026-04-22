@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { getOutlets } from "@/handlers/outlet";
 import {
   getLivestockItemsByProduct,
@@ -92,8 +93,14 @@ function isInRange(timestamp: number, now: number, rangeMs: number): boolean {
 export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
+
+  useEffect(() => {
+    if (isScoped && scopedOutletId) setOutletFilter(scopedOutletId);
+    else if (!isScoped) setOutletFilter("all");
+  }, [isScoped, scopedOutletId]);
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -469,19 +476,25 @@ export default function InvoicesAnalyticsPage() {
             ))}
           </div>
           <div className="toolbarRight">
-            <select
-              className="outletSelect"
-              value={outletFilter}
-              onChange={(e) => setOutletFilter(e.target.value)}
-              aria-label={t("Filter by outlet")}
-            >
-              <option value="all">{t("All Outlets")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+            {isScoped && scopedOutletId ? (
+              <span className="outletSelect outletSelectReadonly" aria-live="polite">
+                {outletNameById.get(scopedOutletId) ?? scopedOutletId}
+              </span>
+            ) : (
+              <select
+                className="outletSelect"
+                value={outletFilter}
+                onChange={(e) => setOutletFilter(e.target.value)}
+                aria-label={t("Filter by outlet")}
+              >
+                <option value="all">{t("All Outlets")}</option>
+                {outlets.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <span className="lastSync">{t("Live filter")}</span>
           </div>
         </div>

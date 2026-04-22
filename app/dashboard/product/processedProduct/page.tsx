@@ -1,8 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { createPortal } from "react-dom";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -84,10 +85,17 @@ type ProcessedProductMainTab = "inventory" | "openingClosing";
 
 export default function ProcessedProductPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOutletId, setSelectedOutletId] = useState("all");
+
+  useEffect(() => {
+    if (isScoped && scopedOutletId) setSelectedOutletId(scopedOutletId);
+    else if (!isScoped) setSelectedOutletId("all");
+  }, [isScoped, scopedOutletId]);
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
@@ -352,22 +360,28 @@ export default function ProcessedProductPage() {
         <div className="processedProductFilters">
           <label className="processedProductOutletFilter">
             <span className="processedProductOutletLabel">{t("Outlet")}</span>
-            <select
-              className="processedProductOutletSelect"
-              value={selectedOutletId}
-              onChange={(e) => {
-                setSelectedOutletId(e.target.value);
-                setCurrentPage(1);
-              }}
-              aria-label={t("Filter by outlet")}
-            >
-              <option value="all">{t("All Outlets")}</option>
-              {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
-              ))}
-            </select>
+            {isScoped && scopedOutletId ? (
+              <span className="processedProductOutletSelect processedProductOutletReadonly" aria-live="polite">
+                {outlets.find((o) => o.id === scopedOutletId)?.name ?? scopedOutletId}
+              </span>
+            ) : (
+              <select
+                className="processedProductOutletSelect"
+                value={selectedOutletId}
+                onChange={(e) => {
+                  setSelectedOutletId(e.target.value);
+                  setCurrentPage(1);
+                }}
+                aria-label={t("Filter by outlet")}
+              >
+                <option value="all">{t("All Outlets")}</option>
+                {outlets.map((outlet) => (
+                  <option key={outlet.id} value={outlet.id}>
+                    {outlet.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           <div className="processedProductSearch">
             <span className="searchIcon">🔍</span>
@@ -563,7 +577,10 @@ export default function ProcessedProductPage() {
                 if (rowMutationsPending) return;
                 closeRowMenu();
                 navigate(
-                  `/dashboard/product/processedProduct/${encodeURIComponent(openRowMenu.product.id)}`,
+                  {
+                    pathname: `/dashboard/product/processedProduct/${encodeURIComponent(openRowMenu.product.id)}`,
+                    search: location.search || "",
+                  },
                   {
                     state: {
                       productSnapshot: openRowMenu.product,

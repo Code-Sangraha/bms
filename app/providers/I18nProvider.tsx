@@ -65,6 +65,9 @@ type I18nContextValue = {
   "Add at least one livestock item.": "कम्तिमा एउटा लाइभस्टक आइटम थप्नुहोस्।",
   "Sale created, but some livestock items could not be removed automatically.": "बिक्री सिर्जना भयो, तर केही लाइभस्टक आइटम स्वतः हटाउन सकिएन।",
   "Highland": "हाइल्याण्ड",
+  "Invalid outlet filter was removed.": "अमान्य आउटलेट फिल्टर हटाइयो।",
+  "Processing plant has no linked outlet yet.":
+    "प्रशोधन केन्द्रमा अझै आउटलेट जोडिएको छैन।",
   "Processing Plant": "प्रशोधन केन्द्र",
   "Create and manage processing plants": "प्रोसेसिङ प्लान्ट सिर्जना र व्यवस्थापन गर्नुहोस्",
   "Add Processing Plant": "प्रोसेसिङ प्लान्ट थप्नुहोस्",

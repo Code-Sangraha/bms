@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { getAttendances, type AttendanceRecord } from "@/handlers/attendance";
 import { getEmployees } from "@/handlers/employee";
 import { getOutlets } from "@/handlers/outlet";
@@ -44,8 +45,14 @@ function rowOutletId(row: AttendanceRecord): string | undefined {
 
 export default function AccountsAnalyticsPage() {
   const navigate = useNavigate();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [outletFilter, setOutletFilter] = useState("all");
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (isScoped && scopedOutletId) setOutletFilter(scopedOutletId);
+    else if (!isScoped) setOutletFilter("all");
+  }, [isScoped, scopedOutletId]);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -94,12 +101,20 @@ export default function AccountsAnalyticsPage() {
     return attendanceRows.filter((r) => rowOutletId(r) === outletFilter);
   }, [attendanceRows, outletFilter]);
 
+  const employeesInScope = useMemo(() => {
+    if (!isScoped || !scopedOutletId) return employees;
+    return employees.filter((e) => e.outletId === scopedOutletId);
+  }, [employees, isScoped, scopedOutletId]);
+
   const presentTodayCount = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
-    return new Set(todayRows.map((r) => r.employeeId)).size;
-  }, [attendanceRows]);
+    const scopeIds = new Set(employeesInScope.map((e) => e.id));
+    return new Set(
+      todayRows.filter((r) => scopeIds.has(r.employeeId)).map((r) => r.employeeId)
+    ).size;
+  }, [attendanceRows, employeesInScope]);
 
-  const totalStaff = employees.length;
+  const totalStaff = employeesInScope.length;
   const pctPresent =
     totalStaff > 0 ? Math.round((presentTodayCount / totalStaff) * 100) : 0;
 
@@ -124,20 +139,26 @@ export default function AccountsAnalyticsPage() {
           <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
-          <select
-            className="analyticsOutletSelect"
-            value={outletFilter}
-            onChange={(e) => setOutletFilter(e.target.value)}
-            aria-label={t("Filter by outlet")}
-            disabled={outletsLoading}
-          >
-            <option value="all">{t("All Outlets")}</option>
-            {outlets.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
+          {isScoped && scopedOutletId ? (
+            <span className="analyticsOutletSelect analyticsOutletReadonly" aria-live="polite">
+              {outlets.find((o) => o.id === scopedOutletId)?.name ?? scopedOutletId}
+            </span>
+          ) : (
+            <select
+              className="analyticsOutletSelect"
+              value={outletFilter}
+              onChange={(e) => setOutletFilter(e.target.value)}
+              aria-label={t("Filter by outlet")}
+              disabled={outletsLoading}
+            >
+              <option value="all">{t("All Outlets")}</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          )}
           <span className="analyticsLastSync">
             {lastUpdatedLabel ? `${t("Last updated")}: ${lastUpdatedLabel}` : ""}
           </span>
@@ -151,7 +172,9 @@ export default function AccountsAnalyticsPage() {
             {employeesLoading ? "—" : totalStaff}
           </div>
           <div className="analyticsCardSub">
-            {outletsLoading ? "—" : `${outlets.length} ${t("Outlets")}`}
+            {outletsLoading
+              ? "—"
+              : `${isScoped && scopedOutletId ? 1 : outlets.length} ${t("Outlets")}`}
           </div>
         </div>
         <div className="analyticsCard analyticsCardPresent">

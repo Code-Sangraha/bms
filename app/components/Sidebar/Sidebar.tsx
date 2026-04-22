@@ -1,16 +1,26 @@
 "use client";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
-import { TbLayoutDashboard } from "react-icons/tb";
+import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useToast } from "@/app/providers/ToastProvider";
 import { logout as logoutApi } from "@/handlers/auth";
+import { getProcessingPlants, type ProcessingPlant } from "@/handlers/processingPlant";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
+import {
+  buildPathWithOutletScope,
+  readHighlandContextFromStorage,
+  readOutletScopeFromSearch,
+  writeHighlandContextToStorage,
+  type HighlandStoredContext,
+} from "@/lib/outletScope";
 
 /** Menu link; permission "create" means link is shown only when user can create. */
 type TranslationKey =
@@ -105,6 +115,39 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   closeMenu: "Close menu",
   highland: "Highland",
 };
+
+const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
+
+/** Highland drawer: reduced menu when a processing plant (outlet scope) is selected. */
+const highlandPlantMenuSections: MenuSectionBlock[] = [
+  {
+    titleKey: "dashboard",
+    items: [{ labelKey: "overview", href: "/dashboard" }],
+  },
+  {
+    titleKey: "salesBilling",
+    items: [
+      { labelKey: "analytics", href: "/dashboard/invoices" },
+      { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" },
+      { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+    ],
+  },
+  {
+    titleKey: "product",
+    items: [
+      { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
+      { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+    ],
+  },
+  {
+    titleKey: "attendance",
+    items: [
+      { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
+      { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
+      { labelKey: "directory", href: "/dashboard/accounts/directory" },
+    ],
+  },
+];
 
 const sidebarConfig = {
   header: { title: "HMP" },
@@ -293,6 +336,46 @@ function longestMatchingHrefInMenu(
   return matches.reduce((a, b) => (a.length >= b.length ? a : b));
 }
 
+function splitPathAndQuery(to: string): { pathname: string; query: string } {
+  const q = to.indexOf("?");
+  if (q === -1) return { pathname: to, query: "" };
+  return { pathname: to.slice(0, q), query: to.slice(q + 1) };
+}
+
+/** Active drawer link: pathname match plus exact query match for scoped links; main links require no `outletId` in the URL. */
+function drawerLinkIsActive(to: string, pathname: string, locationSearch: string): boolean {
+  const { pathname: p, query } = splitPathAndQuery(to);
+  if (!hrefMatchesPathname(p, pathname)) return false;
+  const want = new URLSearchParams(query);
+  if ([...want.keys()].length === 0) {
+    return readOutletScopeFromSearch(locationSearch) == null;
+  }
+  const loc = new URLSearchParams(
+    locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch
+  );
+  for (const [k, v] of want) {
+    if (loc.get(k) !== v) return false;
+  }
+  return true;
+}
+
+function longestActiveDrawerHref(
+  sections: MenuSectionBlock[],
+  canCreate: boolean,
+  pathname: string,
+  locationSearch: string,
+  linkForItem: (href: string) => string
+): string | null {
+  const flat = sections.flatMap((section) =>
+    section.items
+      .filter((entry) => (entry.permission === "create" ? canCreate : true))
+      .map((entry) => ({ href: entry.href, to: linkForItem(entry.href) }))
+  );
+  const matches = flat.filter((e) => drawerLinkIsActive(e.to, pathname, locationSearch));
+  if (matches.length === 0) return null;
+  return matches.reduce((a, b) => (a.href.length >= b.href.length ? a : b)).href;
+}
+
 /**
  * Picks which primary rail icon is "active" for the current route.
  * When several rails share the same matching href length (e.g. Highland vs Dashboard),
@@ -301,6 +384,7 @@ function longestMatchingHrefInMenu(
  */
 function getActivePrimaryId(
   pathname: string,
+  search: string,
   railItems: SidebarRailItem[],
   canCreate: boolean,
   openMenuId: string | null
@@ -324,6 +408,11 @@ function getActivePrimaryId(
   const maxLen = Math.max(...candidates.map((c) => c.hrefLen));
   const tied = candidates.filter((c) => c.hrefLen === maxLen);
   if (tied.length === 1) return tied[0].id;
+
+  if (pathname === "/dashboard" && readOutletScopeFromSearch(search)) {
+    const highlandHit = tied.find((c) => c.id === "highland");
+    if (highlandHit) return "highland";
+  }
 
   const dashboardOrgPaths = [
     "/dashboard/outlet",
@@ -354,7 +443,12 @@ export default function Sidebar() {
   const location = useLocation();
   const { canCreate } = usePermissions();
   const { t, locale } = useI18n();
+  const { showToast } = useToast();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [highlandContext, setHighlandContext] = useState<HighlandStoredContext>(() => {
+    const stored = readHighlandContextFromStorage();
+    return stored ?? { mode: "main" };
+  });
   const allItems = useMemo(
     () => [
       ...sidebarConfig.sections.flatMap((section) => section.items),
@@ -364,6 +458,48 @@ export default function Sidebar() {
   );
 
   const pathname = location.pathname;
+  const locationSearch = location.search;
+
+  const { data: processingPlants = [] } = useQuery({
+    queryKey: PROCESSING_PLANTS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getProcessingPlants();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const highlandMainSections = useMemo((): MenuSectionBlock[] => {
+    const rail = sidebarConfig.sections[0].items.find((i) => i.id === "highland");
+    const menu = rail?.menu as RailMenu | undefined;
+    if (menu && isGroupedRailMenu(menu)) return menu.sections;
+    return [];
+  }, []);
+
+  useEffect(() => {
+    const oid = readOutletScopeFromSearch(locationSearch);
+    if (!oid) return;
+    const plant = processingPlants.find((p) => p.outletId === oid);
+    if (!plant?.outletId) return;
+    const next: HighlandStoredContext = {
+      mode: "plant",
+      plantId: plant.id,
+      outletId: plant.outletId,
+      plantName: plant.name,
+    };
+    setHighlandContext((prev) => {
+      if (
+        prev.mode === "plant" &&
+        prev.plantId === next.plantId &&
+        prev.outletId === next.outletId
+      ) {
+        return prev;
+      }
+      return next;
+    });
+    writeHighlandContextToStorage(next);
+  }, [locationSearch, processingPlants]);
+
   const primaryRailItems = useMemo(
     () => [
       ...sidebarConfig.sections.flatMap((section) => section.items),
@@ -372,8 +508,15 @@ export default function Sidebar() {
     []
   );
   const activePrimaryId = useMemo(
-    () => getActivePrimaryId(pathname, primaryRailItems, canCreate, activeMenuId),
-    [pathname, primaryRailItems, canCreate, activeMenuId]
+    () =>
+      getActivePrimaryId(
+        pathname,
+        locationSearch,
+        primaryRailItems,
+        canCreate,
+        activeMenuId
+      ),
+    [pathname, locationSearch, primaryRailItems, canCreate, activeMenuId]
   );
 
   const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
@@ -382,8 +525,33 @@ export default function Sidebar() {
     const visible = getFlatMenuItems(activeMenu as RailMenu).filter(
       (entry) => entry.permission !== "create" || canCreate
     );
+    if (activeMenuId === "highland" && isGroupedRailMenu(activeMenu as RailMenu)) {
+      const sections =
+        highlandContext.mode === "plant" && highlandContext.outletId
+          ? highlandPlantMenuSections
+          : highlandMainSections;
+      const linkFor = (href: string) =>
+        highlandContext.mode === "plant" && highlandContext.outletId
+          ? buildPathWithOutletScope(href, highlandContext.outletId, "")
+          : href;
+      return longestActiveDrawerHref(
+        sections,
+        canCreate,
+        pathname,
+        locationSearch,
+        linkFor
+      );
+    }
     return longestMatchingHrefInMenu(visible, pathname);
-  }, [activeMenu, pathname, canCreate]);
+  }, [
+    activeMenu,
+    pathname,
+    locationSearch,
+    canCreate,
+    activeMenuId,
+    highlandContext,
+    highlandMainSections,
+  ]);
   const getSidebarLabel = useCallback(
     (key: TranslationKey) => {
       if (locale === "ne") {
@@ -397,9 +565,23 @@ export default function Sidebar() {
     },
     [locale, t]
   );
-  const handleMenuToggle = (id: string) => {
-    setActiveMenuId((current) => (current === id ? null : id));
-  };
+  const handleMenuToggle = useCallback(
+    (id: string) => {
+      setActiveMenuId((current) => {
+        const next = current === id ? null : id;
+        if (id === "highland" && next === "highland") {
+          const nextCtx: HighlandStoredContext = { mode: "main" };
+          setHighlandContext(nextCtx);
+          writeHighlandContextToStorage(nextCtx);
+          navigate(buildPathWithOutletScope(pathname, null, locationSearch), {
+            replace: true,
+          });
+        }
+        return next;
+      });
+    },
+    [navigate, pathname, locationSearch]
+  );
 
   const handleLogout = async () => {
     await logoutApi();
@@ -421,7 +603,10 @@ export default function Sidebar() {
     const menu = allItems.find((item) => item.id === activeMenuId)?.menu;
     if (!menu || !isGroupedRailMenu(menu as RailMenu)) return;
 
-    const sections = (menu as RailMenu & { sections: MenuSectionBlock[] }).sections;
+    const sections =
+      activeMenuId === "highland" && highlandContext.mode === "plant" && highlandContext.outletId
+        ? highlandPlantMenuSections
+        : (menu as RailMenu & { sections: MenuSectionBlock[] }).sections;
     const visibleBlocks = sections
       .map((section) => ({
         section,
@@ -431,12 +616,27 @@ export default function Sidebar() {
       }))
       .filter((b) => b.items.length > 0);
 
+    const linkFor =
+      activeMenuId === "highland" && highlandContext.mode === "plant" && highlandContext.outletId
+        ? (href: string) => buildPathWithOutletScope(href, highlandContext.outletId, "")
+        : (href: string) => href;
+
     const withActive = visibleBlocks.find((b) =>
-      b.items.some((entry) => activeHrefInOpenMenu === entry.href)
+      b.items.some((entry) =>
+        drawerLinkIsActive(linkFor(entry.href), pathname, locationSearch)
+      )
     );
     const nextKey = (withActive ?? visibleBlocks[0])?.section.titleKey ?? null;
     setGroupedDrawerAccordionKey(nextKey);
-  }, [activeMenuId, pathname, canCreate, activeHrefInOpenMenu, allItems]);
+  }, [
+    activeMenuId,
+    pathname,
+    locationSearch,
+    canCreate,
+    activeHrefInOpenMenu,
+    allItems,
+    highlandContext,
+  ]);
 
   useEffect(() => {
     setShowInstallButton(true);
@@ -478,6 +678,26 @@ export default function Sidebar() {
     if (!el?.showDialog && el?.show) el.show();
   }, [deferredInstallPrompt]);
 
+  const handleSelectPlant = useCallback(
+    (plant: ProcessingPlant) => {
+      if (!plant.outletId) {
+        showToast(t("Processing plant has no linked outlet yet."));
+        return;
+      }
+      const nextCtx: HighlandStoredContext = {
+        mode: "plant",
+        plantId: plant.id,
+        outletId: plant.outletId,
+        plantName: plant.name,
+      };
+      setHighlandContext(nextCtx);
+      writeHighlandContextToStorage(nextCtx);
+      setActiveMenuId(null);
+      navigate(buildPathWithOutletScope("/dashboard", plant.outletId, ""), { replace: true });
+    },
+    [navigate, showToast, t]
+  );
+
   return (
     <div className="sidebarWrapper">
       <aside className="sidebar" aria-label="Primary">
@@ -488,28 +708,58 @@ export default function Sidebar() {
         <nav className="nav">
           {sidebarConfig.sections.map((section) => (
             <div key={section.items[0].id}>
-              {section.items.map((item) => (
-                <button
-                  key={item.id}
-                  className={
-                    activePrimaryId === item.id ? "link active" : "link"
-                  }
-                  type="button"
-                  aria-label={getSidebarLabel(item.menu.titleKey)}
-                  aria-pressed={activeMenuId === item.id}
-                  title={getSidebarLabel(item.menu.titleKey)}
-                  onClick={() => handleMenuToggle(item.id)}
-                >
-                  <span className="mobileRailIcon" aria-hidden>
-                    {item.icon}
-                  </span>
-                  <span className="mobileRailLabel">
-                    {getSidebarLabel(item.menu.titleKey)}
-                  </span>
-                </button>
-              ))}
+              {section.items.map((item) => {
+                const isHighland = item.id === "highland";
+                const railActive =
+                  activePrimaryId === item.id &&
+                  (!isHighland || highlandContext.mode === "main");
+                return (
+                  <button
+                    key={item.id}
+                    className={railActive ? "link active" : "link"}
+                    type="button"
+                    aria-label={getSidebarLabel(item.menu.titleKey)}
+                    aria-pressed={activeMenuId === item.id}
+                    title={getSidebarLabel(item.menu.titleKey)}
+                    onClick={() => handleMenuToggle(item.id)}
+                  >
+                    <span className="mobileRailIcon" aria-hidden>
+                      {item.icon}
+                    </span>
+                    <span className="mobileRailLabel">
+                      {getSidebarLabel(item.menu.titleKey)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ))}
+          {processingPlants.map((plant: ProcessingPlant) => {
+            const hasOutlet = Boolean(plant.outletId);
+            const isActivePlant =
+              highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
+            return (
+              <button
+                key={`plant-${plant.id}`}
+                type="button"
+                className={isActivePlant ? "link active" : "link"}
+                disabled={!hasOutlet}
+                title={
+                  hasOutlet
+                    ? plant.name
+                    : t("Processing plant has no linked outlet yet.")
+                }
+                aria-label={plant.name}
+                aria-pressed={isActivePlant}
+                onClick={() => handleSelectPlant(plant)}
+              >
+                <span className="mobileRailIcon" aria-hidden>
+                  <TbBuildingFactory2 size={20} />
+                </span>
+                <span className="mobileRailLabel">{plant.name}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="footer">
@@ -576,76 +826,91 @@ export default function Sidebar() {
         <div className="drawerBody">
           {activeMenu &&
             (isGroupedRailMenu(activeMenu as RailMenu)
-              ? (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections.map(
-                  (section) => {
-                    const visibleItems = section.items.filter((entry) =>
-                      entry.permission === "create" ? canCreate : true
-                    );
-                    if (visibleItems.length === 0) return null;
+              ? (
+                  activeMenuId === "highland" && highlandContext.mode === "plant"
+                    ? highlandPlantMenuSections
+                    : (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections
+                ).map((section) => {
+                        const visibleItems = section.items.filter((entry) =>
+                          entry.permission === "create" ? canCreate : true
+                        );
+                        if (visibleItems.length === 0) return null;
 
-                    const panelId = `drawer-section-${section.titleKey}`;
-                    const isAccordionOpen =
-                      groupedDrawerAccordionKey === section.titleKey;
+                        const panelId = `drawer-section-${section.titleKey}`;
+                        const isAccordionOpen =
+                          groupedDrawerAccordionKey === section.titleKey;
 
-                    return (
-                      <div key={section.titleKey} className="drawerAccordionSection">
-                        <button
-                          type="button"
-                          className="drawerAccordionTrigger"
-                          aria-expanded={isAccordionOpen}
-                          aria-controls={panelId}
-                          id={`drawer-trigger-${section.titleKey}`}
-                          onClick={() =>
-                            setGroupedDrawerAccordionKey((current) =>
-                              current === section.titleKey ? null : section.titleKey
-                            )
-                          }
-                        >
-                          <span className="drawerAccordionTriggerLabel">
-                            {getSidebarLabel(section.titleKey)}
-                          </span>
-                          <IoChevronDown
-                            className={
-                              isAccordionOpen
-                                ? "drawerAccordionChevron open"
-                                : "drawerAccordionChevron"
-                            }
-                            aria-hidden
-                            size={20}
-                          />
-                        </button>
-                        {isAccordionOpen && (
-                          <div
-                            className="drawerAccordionPanel"
-                            id={panelId}
-                            role="region"
-                            aria-labelledby={`drawer-trigger-${section.titleKey}`}
-                          >
-                            {visibleItems.map((entry) => (
-                              <Link
-                                key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                        return (
+                          <div key={section.titleKey} className="drawerAccordionSection">
+                            <button
+                              type="button"
+                              className="drawerAccordionTrigger"
+                              aria-expanded={isAccordionOpen}
+                              aria-controls={panelId}
+                              id={`drawer-trigger-${section.titleKey}`}
+                              onClick={() =>
+                                setGroupedDrawerAccordionKey((current) =>
+                                  current === section.titleKey ? null : section.titleKey
+                                )
+                              }
+                            >
+                              <span className="drawerAccordionTriggerLabel">
+                                {getSidebarLabel(section.titleKey)}
+                              </span>
+                              <IoChevronDown
                                 className={
-                                  activeHrefInOpenMenu === entry.href
-                                    ? "drawerItem drawerItemNested active"
-                                    : "drawerItem drawerItemNested"
+                                  isAccordionOpen
+                                    ? "drawerAccordionChevron open"
+                                    : "drawerAccordionChevron"
                                 }
-                                to={entry.href}
-                                onClick={() => setActiveMenuId(null)}
-                                aria-current={
-                                  activeHrefInOpenMenu === entry.href
-                                    ? "page"
-                                    : undefined
-                                }
+                                aria-hidden
+                                size={20}
+                              />
+                            </button>
+                            {isAccordionOpen && (
+                              <div
+                                className="drawerAccordionPanel"
+                                id={panelId}
+                                role="region"
+                                aria-labelledby={`drawer-trigger-${section.titleKey}`}
                               >
-                                {getSidebarLabel(entry.labelKey)}
-                              </Link>
-                            ))}
+                                {visibleItems.map((entry) => {
+                                  const to =
+                                    activeMenuId === "highland" &&
+                                    highlandContext.mode === "plant" &&
+                                    highlandContext.outletId
+                                      ? buildPathWithOutletScope(
+                                          entry.href,
+                                          highlandContext.outletId,
+                                          ""
+                                        )
+                                      : entry.href;
+                                  const isActive = drawerLinkIsActive(
+                                    to,
+                                    pathname,
+                                    locationSearch
+                                  );
+                                  return (
+                                    <Link
+                                      key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                                      className={
+                                        isActive
+                                          ? "drawerItem drawerItemNested active"
+                                          : "drawerItem drawerItemNested"
+                                      }
+                                      to={to}
+                                      onClick={() => setActiveMenuId(null)}
+                                      aria-current={isActive ? "page" : undefined}
+                                    >
+                                      {getSidebarLabel(entry.labelKey)}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  }
-                )
+                        );
+                      })
               : (activeMenu as { items: MenuItem[] }).items
                   .filter((entry) =>
                     entry.permission === "create" ? canCreate : true

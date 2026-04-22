@@ -4,8 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { getProducts, type Product } from "@/handlers/product";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import {
+  getLivestockItemsByProduct,
+  getProducts,
+  resolveLivestockItemId,
+  type LivestockItem,
+  type Product,
+} from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
+import { buildPathWithOutletScope } from "@/lib/outletScope";
 import {
   getDashboardSales,
   getLivestockSales,
@@ -24,6 +32,8 @@ const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
 const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
+const LIVESTOCK_ITEMS_QUERY_KEY = ["dashboardLivestockItemsByProduct"];
+const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 
 const STATIC_ATTENDANCE_PREVIEW = [
   { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
@@ -34,6 +44,7 @@ const STATIC_ATTENDANCE_PREVIEW = [
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -97,7 +108,97 @@ export default function DashboardPage() {
     },
   });
 
-  const salesData: DashboardSalesData | undefined = salesResponse?.data;
+  const liveTypeIds = useMemo(() => {
+    const ids = new Set<string>();
+    productTypes.forEach((pt) => {
+      if (LIVE_PRODUCT_TYPE_NAMES.includes(pt.name.toLowerCase())) ids.add(pt.id);
+    });
+    return ids;
+  }, [productTypes]);
+
+  const liveStockProducts = useMemo(
+    () =>
+      products.filter((p: Product) => {
+        const productTypeName =
+          typeof p.productType === "object" && typeof p.productType?.name === "string"
+            ? p.productType.name.toLowerCase()
+            : "";
+        return liveTypeIds.has(p.productTypeId) || LIVE_PRODUCT_TYPE_NAMES.includes(productTypeName);
+      }),
+    [products, liveTypeIds]
+  );
+
+  const liveStockProductIds = useMemo(
+    () => liveStockProducts.map((product) => product.id).sort(),
+    [liveStockProducts]
+  );
+
+  const { data: livestockItemsForScope = [] } = useQuery({
+    queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds, isScoped, scopedOutletId],
+    enabled: isScoped && liveStockProductIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        liveStockProductIds.map((productId) => getLivestockItemsByProduct(productId))
+      );
+      const merged: LivestockItem[] = [];
+      for (const result of results) {
+        if (!result.ok) {
+          if (result.status === 401) navigate("/login");
+          throw new Error(result.error);
+        }
+        merged.push(...result.data);
+      }
+      return merged;
+    },
+  });
+
+  const productOutletById = useMemo(
+    () => new Map(products.map((product: Product) => [product.id, product.outletId])),
+    [products]
+  );
+
+  const livestockMetaByOutletId = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const item of livestockItemsForScope) {
+      const id = resolveLivestockItemId(item);
+      if (!id) continue;
+      const outletId = productOutletById.get(item.productId) ?? null;
+      map.set(id, outletId);
+    }
+    return map;
+  }, [livestockItemsForScope, productOutletById]);
+
+  const salesTransactionsScoped = useMemo(() => {
+    if (!isScoped || !scopedOutletId) return salesTransactions;
+    return salesTransactions.filter((tx: SaleTransaction) => {
+      const oid =
+        (typeof tx.outletId === "string" && tx.outletId) ||
+        (tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "");
+      return oid === scopedOutletId;
+    });
+  }, [salesTransactions, isScoped, scopedOutletId]);
+
+  const livestockSalesScoped = useMemo(() => {
+    if (!isScoped || !scopedOutletId) return livestockSales;
+    return livestockSales.filter((sale: LivestockSale) => {
+      const itemId = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
+      if (!itemId) return false;
+      return (livestockMetaByOutletId.get(itemId) ?? null) === scopedOutletId;
+    });
+  }, [livestockSales, isScoped, scopedOutletId, livestockMetaByOutletId]);
+
+  const salesData: DashboardSalesData | undefined = useMemo(() => {
+    const raw = salesResponse?.data;
+    if (!raw) return undefined;
+    if (!isScoped || !scopedOutletId) return raw;
+    return {
+      ...raw,
+      salesByOutlet: (raw.salesByOutlet ?? []).filter((o) => o.outletId === scopedOutletId),
+      salesByProduct: [],
+      salesByCustomer: [],
+    };
+  }, [salesResponse?.data, isScoped, scopedOutletId]);
+
   const apiTotalRevenue = salesData?.totalRevenue ?? 0;
   const apiTotalTransactions = salesData?.totalTransactions ?? 0;
   const apiTotalWeight = salesData?.totalWeight ?? 0;
@@ -152,7 +253,7 @@ export default function DashboardPage() {
       date: string;
     }> = [];
 
-    for (const tx of salesTransactions as SaleTransaction[]) {
+    for (const tx of salesTransactionsScoped as SaleTransaction[]) {
       const items = Array.isArray(tx.items) ? tx.items : [];
       const txCustomer =
         (typeof tx.name === "string" && tx.name) ||
@@ -200,7 +301,7 @@ export default function DashboardPage() {
     }
 
     return rows;
-  }, [salesTransactions, processedProductIdSet, processedProductNameSet, t]);
+  }, [salesTransactionsScoped, processedProductIdSet, processedProductNameSet, t]);
 
   const getLivestockDisplay = (sale: LivestockSale): string => {
     const id = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
@@ -225,11 +326,11 @@ export default function DashboardPage() {
     return id || "-";
   };
 
-  const livestockRevenue = livestockSales.reduce(
+  const livestockRevenue = livestockSalesScoped.reduce(
     (sum, row) => sum + (typeof row.amount === "number" ? row.amount : 0),
     0
   );
-  const livestockWeight = livestockSales.reduce(
+  const livestockWeight = livestockSalesScoped.reduce(
     (sum, row) =>
       sum +
       (typeof row.weight === "number"
@@ -241,7 +342,7 @@ export default function DashboardPage() {
             : 0),
     0
   );
-  const livestockQuantity = livestockSales.reduce(
+  const livestockQuantity = livestockSalesScoped.reduce(
     (sum, row) =>
       sum +
       (typeof row.quantity === "number"
@@ -327,7 +428,7 @@ export default function DashboardPage() {
       daily.set(key, current);
     }
 
-    for (const row of livestockSales) {
+    for (const row of livestockSalesScoped) {
       const dateValue =
         (typeof row.createdAt === "string" && row.createdAt) ||
         (typeof row.date === "string" && row.date) ||
@@ -373,14 +474,14 @@ export default function DashboardPage() {
       }))
       .sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1))
       .slice(0, 10);
-  }, [processedLineItems, livestockSales]);
+  }, [processedLineItems, livestockSalesScoped]);
 
   const totalRevenue = processedRevenue + livestockRevenue;
   const totalTransactions = processedTransactions + livestockTransactions;
   const totalWeight = processedWeight + livestockWeight;
   const totalQuantity = processedQuantity + livestockQuantity;
 
-  const livestockSalesRows = [...livestockSales]
+  const livestockSalesRows = [...livestockSalesScoped]
     .sort((a, b) => {
       const aTime = new Date(a.createdAt ?? a.date ?? 0).getTime();
       const bTime = new Date(b.createdAt ?? b.date ?? 0).getTime();
@@ -401,7 +502,14 @@ export default function DashboardPage() {
       <div className="dashboardSection dashboardSectionSales">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">{t("Sales & Billing")}</h2>
-          <Link to="/dashboard/invoices" className="dashboardSectionLink">
+          <Link
+            to={buildPathWithOutletScope(
+              "/dashboard/invoices",
+              isScoped && scopedOutletId ? scopedOutletId : null,
+              ""
+            )}
+            className="dashboardSectionLink"
+          >
             {t("View full analytics")} →
           </Link>
         </div>
@@ -690,7 +798,14 @@ export default function DashboardPage() {
       <div className="dashboardSection dashboardSectionAttendance">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">{t("Attendance")}</h2>
-          <Link to="/dashboard/accounts/analytics" className="dashboardSectionLink">
+          <Link
+            to={buildPathWithOutletScope(
+              "/dashboard/accounts/analytics",
+              isScoped && scopedOutletId ? scopedOutletId : null,
+              ""
+            )}
+            className="dashboardSectionLink"
+          >
             {t("View full analytics")} →
           </Link>
         </div>

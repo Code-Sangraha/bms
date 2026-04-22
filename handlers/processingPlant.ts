@@ -1,12 +1,18 @@
 import { apiRequest } from "@/lib/api/client";
 import { PROCESSING_PLANT_ROUTES } from "@/lib/api/routes";
 
+/**
+ * Processing plant record. Backend should associate each plant with an `outletId`
+ * so scoped navigation (`?outletId=`) can filter sales, inventory, and attendance.
+ */
 export type ProcessingPlant = {
   id: string;
   name: string;
   userId: string;
   contact: string;
   status: boolean;
+  /** Outlet used for sales/inventory scope when operating as this plant (from API). */
+  outletId: string | null;
   [key: string]: unknown;
 };
 
@@ -16,6 +22,7 @@ type RawProcessingPlant = {
   userId?: string;
   contact?: string;
   status?: boolean;
+  outletId?: string;
   [key: string]: unknown;
 };
 
@@ -42,12 +49,16 @@ type CreateProcessingPlantResponse = {
 
 function normalizeProcessingPlant(item: RawProcessingPlant): ProcessingPlant | null {
   if (!item.id || !item.name) return null;
+  const outletRaw = item.outletId;
+  const outletId =
+    typeof outletRaw === "string" && outletRaw.trim() !== "" ? outletRaw.trim() : null;
   return {
     id: item.id,
     name: item.name,
     userId: item.userId ?? "",
     contact: item.contact ?? "",
     status: Boolean(item.status),
+    outletId,
   };
 }
 

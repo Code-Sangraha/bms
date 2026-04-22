@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
@@ -28,6 +29,7 @@ export default function ProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -114,10 +116,14 @@ export default function ProductPage() {
   const processedProductTypeId = processedProductType?.id ?? "";
 
   const filteredProducts = useMemo(() => {
+    let list = products;
+    if (isScoped && scopedOutletId) {
+      list = list.filter((p) => p.outletId === scopedOutletId);
+    }
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, searchQuery]);
+    if (!q) return list;
+    return list.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, searchQuery, isScoped, scopedOutletId]);
 
   const {
     currentPage,

@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -54,6 +55,7 @@ export default function PointOfSalePage() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [outletId, setOutletId] = useState("");
@@ -101,17 +103,26 @@ export default function PointOfSalePage() {
     },
   });
 
-  const outletsForSelect =
-    userOutletId != null
-      ? outlets.filter((o) => o.id === userOutletId)
-      : outlets;
+  const outletsForSelect = useMemo(() => {
+    if (isScoped && scopedOutletId) {
+      return outlets.filter((o) => o.id === scopedOutletId);
+    }
+    if (userOutletId != null) {
+      return outlets.filter((o) => o.id === userOutletId);
+    }
+    return outlets;
+  }, [isScoped, scopedOutletId, outlets, userOutletId]);
 
   useEffect(() => {
+    if (isScoped && scopedOutletId && outlets.some((o) => o.id === scopedOutletId)) {
+      setOutletId(scopedOutletId);
+      return;
+    }
     if (userOutletId && outlets.length > 0 && !outletId) {
       const allowed = outlets.some((o) => o.id === userOutletId);
       if (allowed) setOutletId(userOutletId);
     }
-  }, [userOutletId, outlets, outletId]);
+  }, [userOutletId, outlets, outletId, isScoped, scopedOutletId]);
 
   const { data: dualPricings = [] } = useQuery({
     queryKey: DUAL_PRICING_QUERY_KEY,
@@ -327,19 +338,27 @@ export default function PointOfSalePage() {
           <div className="posFormRow posFormRow--outletPayment">
             <label className="posField">
               <span className="posLabel">{t("Outlet")}</span>
-              <select
-                className="posSelect"
-                value={outletId}
-                onChange={(e) => setOutletId(e.target.value)}
-                aria-label={t("Outlet")}
-              >
-                <option value="">{t("Select outlet")}</option>
-                {outletsForSelect.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
+              {isScoped && scopedOutletId ? (
+                <span className="posSelect posSelectReadonly" aria-live="polite">
+                  {outletsForSelect.find((o) => o.id === outletId)?.name ??
+                    outletsForSelect[0]?.name ??
+                    scopedOutletId}
+                </span>
+              ) : (
+                <select
+                  className="posSelect"
+                  value={outletId}
+                  onChange={(e) => setOutletId(e.target.value)}
+                  aria-label={t("Outlet")}
+                >
+                  <option value="">{t("Select outlet")}</option>
+                  {outletsForSelect.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
             <div className="posField posField--payment">
               <span className="posLabel" id="pos-payment-method-label">

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { getEmployees } from "@/handlers/employee";
 import {
   clockIn as clockInApi,
@@ -85,11 +86,12 @@ export default function ClockInOutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [clockError, setClockError] = useState<string | null>(null);
 
-  const { data: employees = [] } = useQuery({
+  const { data: employeesRaw = [] } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
     queryFn: async () => {
       const result = await getEmployees();
@@ -100,6 +102,11 @@ export default function ClockInOutPage() {
       return result.data;
     },
   });
+
+  const employees = useMemo(() => {
+    if (!isScoped || !scopedOutletId) return employeesRaw;
+    return employeesRaw.filter((e) => e.outletId === scopedOutletId);
+  }, [employeesRaw, isScoped, scopedOutletId]);
 
   const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
     queryKey: ATTENDANCES_QUERY_KEY,

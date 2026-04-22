@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -56,6 +57,7 @@ export default function DirectoryPage() {
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const { t } = useI18n();
+  const { isScoped, scopedOutletId } = useOutletScope();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -127,8 +129,16 @@ export default function DirectoryPage() {
   });
 
   useEffect(() => {
-    if (!isModalOpen) reset(defaultFormValues);
-  }, [isModalOpen, reset]);
+    if (!isModalOpen) {
+      reset(defaultFormValues);
+      return;
+    }
+    if (isScoped && scopedOutletId) {
+      reset({ ...defaultFormValues, outletId: scopedOutletId });
+    } else {
+      reset(defaultFormValues);
+    }
+  }, [isModalOpen, isScoped, scopedOutletId, reset]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -159,6 +169,9 @@ export default function DirectoryPage() {
   const filteredEmployees = useMemo(
     () =>
       employees.filter((emp) => {
+        if (isScoped && scopedOutletId && emp.outletId !== scopedOutletId) {
+          return false;
+        }
         const q = searchQuery.trim().toLowerCase();
         if (q) {
           const match =
@@ -176,7 +189,7 @@ export default function DirectoryPage() {
         }
         return true;
       }),
-    [employees, searchQuery, departmentFilter]
+    [employees, searchQuery, departmentFilter, isScoped, scopedOutletId]
   );
 
   const {
@@ -438,9 +451,16 @@ export default function DirectoryPage() {
           </label>
           <label className="modalField">
             <span className="label">{t("Outlet")}</span>
-            <select className="select" {...register("outletId")}>
+            <select
+              className="select"
+              {...register("outletId")}
+              disabled={Boolean(isScoped && scopedOutletId)}
+            >
               <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
+              {(isScoped && scopedOutletId
+                ? outlets.filter((o) => o.id === scopedOutletId)
+                : outlets
+              ).map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
                 </option>
