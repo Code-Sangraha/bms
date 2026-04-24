@@ -15,8 +15,8 @@ import {
   deductLivestockItem,
   deleteLivestockItem,
   getLivestockCategories,
+  getLivestockInventoryHistory,
   getLivestockItemsByProduct,
-  getOpeningStock,
   resolveLivestockDeleteKey,
   resolveLivestockItemId,
   restockLivestockItem,
@@ -26,6 +26,10 @@ import {
 import type { LivestockDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import OpeningStockTable from "./components/OpeningStockTable";
 import ClosingStockTable from "./components/ClosingStockTable";
+import {
+  buildLivestockOpeningStockData,
+  type LivestockClientStockMode,
+} from "./lib/buildLivestockOpeningStockData";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
 import { MdMoreHoriz } from "react-icons/md";
 import "./liveProduct.scss";
@@ -159,6 +163,31 @@ function toIsoDateLocal(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Local YYYY-MM-DD from history `createdAt` (same bucketing as opening/closing stock builder). */
+function localCalendarDayFromCreatedAt(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    const s = iso.trim();
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Dev: always on. Prod: set `localStorage.setItem('DEBUG_LIVESTOCK_STOCK','1')` then refresh. */
+function shouldLogLivestockOpeningStockDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  if (import.meta.env.DEV) return true;
+  try {
+    return window.localStorage.getItem("DEBUG_LIVESTOCK_STOCK") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function LiveProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -185,31 +214,6 @@ export default function LiveProductPage() {
   const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
   const [openingStockTo, setOpeningStockTo] = useState(() => toIsoDateLocal(new Date()));
   const openingStockRangeInvalid = openingStockFrom > openingStockTo;
-
-  const {
-    data: openingStockData,
-    isPending: openingStockPending,
-    isError: openingStockError,
-    error: openingStockErrorDetail,
-  } = useQuery({
-    queryKey: ["livestockOpeningStock", openingStockFrom, openingStockTo],
-    enabled: !openingStockRangeInvalid,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const result = await getOpeningStock(openingStockFrom, openingStockTo);
-      if (!result.ok) {
-        if (result.status === 401) navigate("/login");
-        throw new Error(result.error);
-      }
-      return result.data;
-    },
-  });
-
-  const openingStockErrorMessage = openingStockError
-    ? openingStockErrorDetail instanceof Error && openingStockErrorDetail.message.trim()
-      ? openingStockErrorDetail.message
-      : t("Opening stock data is not available yet.")
-    : null;
 
   const {
     data: livestockCategories = [],
@@ -312,6 +316,179 @@ export default function LiveProductPage() {
       );
     });
   }, [livestockItems, livestockCategories, searchQuery, selectedCategoryId]);
+
+  const todayIso = toIsoDateLocal(new Date());
+  const clientStockMode: LivestockClientStockMode =
+    openingStockTo === todayIso ? "reconciled" : "movementOnly";
+
+  const {
+    data: livestockHistoryForOpeningStock = [],
+    isPending: livestockHistoryOpeningStockPending,
+    isError: livestockHistoryOpeningStockError,
+    error: livestockHistoryOpeningStockErrorDetail,
+  } = useQuery({
+    queryKey: [
+      "livestockInventoryHistory",
+      "openingClosingRange",
+      openingStockFrom,
+      openingStockTo,
+      clientStockMode,
+      liveStockProductIds.join(","),
+    ],
+    enabled:
+      mainTab === "openingClosing" &&
+      !openingStockRangeInvalid &&
+      liveStockProductIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const todayLocal = toIsoDateLocal(new Date());
+      const toDate = clientStockMode === "reconciled" ? todayLocal : openingStockTo;
+      const result = await getLivestockInventoryHistory({
+        fromDate: openingStockFrom,
+        toDate,
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const clientLivestockOpeningStockData = useMemo(
+    () =>
+      buildLivestockOpeningStockData({
+        from: openingStockFrom,
+        to: openingStockTo,
+        items: filteredLivestockItems,
+        history: livestockHistoryForOpeningStock,
+        categories: livestockCategories,
+        mode: clientStockMode,
+      }),
+    [
+      openingStockFrom,
+      openingStockTo,
+      filteredLivestockItems,
+      livestockHistoryForOpeningStock,
+      livestockCategories,
+      clientStockMode,
+    ]
+  );
+
+  const openingStockPending =
+    livestockHistoryOpeningStockPending || (livestockItemsLoading && mainTab === "openingClosing");
+  const openingStockError = livestockHistoryOpeningStockError;
+  const openingStockErrorMessage = openingStockError
+    ? livestockHistoryOpeningStockErrorDetail instanceof Error &&
+      livestockHistoryOpeningStockErrorDetail.message.trim()
+      ? livestockHistoryOpeningStockErrorDetail.message
+      : t("Opening stock data is not available yet.")
+    : null;
+
+  useEffect(() => {
+    if (!shouldLogLivestockOpeningStockDebug()) return;
+    if (mainTab !== "openingClosing") return;
+    if (openingStockRangeInvalid) return;
+
+    const toDateSent =
+      clientStockMode === "reconciled" ? toIsoDateLocal(new Date()) : openingStockTo;
+
+    const hist = livestockHistoryForOpeningStock;
+    const historyRowsInUiRange = hist.filter((h) => {
+      const day = localCalendarDayFromCreatedAt(h.createdAt);
+      return day >= openingStockFrom && day <= openingStockTo;
+    });
+
+    console.groupCollapsed("[livestock-opening-stock] filters & API request");
+    console.log("UI date range (what the tables use)", {
+      from: openingStockFrom,
+      to: openingStockTo,
+      clientStockMode,
+    });
+    console.log("GET /products/livestock/history body", {
+      fromDate: openingStockFrom,
+      toDate: toDateSent,
+      note:
+        clientStockMode === "reconciled"
+          ? "toDate is extended to today so post-range rows can anchor closing."
+          : "toDate matches UI end date.",
+    });
+    console.log("Inventory filter", {
+      filteredRowCount: filteredLivestockItems.length,
+      categoryId: selectedCategoryId,
+      searchQuery: searchQuery.trim() || "(empty)",
+    });
+    console.log("Fetch state", {
+      pending: livestockHistoryOpeningStockPending,
+      error: livestockHistoryOpeningStockError,
+    });
+    console.groupEnd();
+
+    if (livestockHistoryOpeningStockPending || livestockHistoryOpeningStockError) {
+      console.log("[livestock-opening-stock] skip row dump (still loading or error)");
+      return;
+    }
+
+    console.groupCollapsed("[livestock-opening-stock] raw history (" + hist.length + " rows)");
+    console.table(
+      hist.map((h) => ({
+        livestockItemId: h.livestockItemId,
+        type: h.type,
+        quantity: h.quantity,
+        weight: h.weight,
+        createdAt: h.createdAt,
+        localDay: localCalendarDayFromCreatedAt(h.createdAt),
+        inUiRange:
+          localCalendarDayFromCreatedAt(h.createdAt) >= openingStockFrom &&
+          localCalendarDayFromCreatedAt(h.createdAt) <= openingStockTo
+            ? "yes"
+            : "no",
+      }))
+    );
+    console.log("Rows whose localDay falls inside [from, to]", historyRowsInUiRange.length, "of", hist.length);
+    if (hist.length > 0 && historyRowsInUiRange.length === 0) {
+      console.warn(
+        "[livestock-opening-stock] API returned " +
+          hist.length +
+          " rows but none fall on a local calendar day in [" +
+          openingStockFrom +
+          " … " +
+          openingStockTo +
+          "]. Movement totals for that range stay 0. Check: backend date filter, timezone vs createdAt, and rows with null quantity/weight (count as 0)."
+      );
+    }
+    console.groupEnd();
+
+    console.groupCollapsed(
+      "[livestock-opening-stock] built openingStockByDate (" +
+        clientLivestockOpeningStockData.openingStockByDate.length +
+        " days)"
+    );
+    console.table(
+      clientLivestockOpeningStockData.openingStockByDate.map((d) => ({
+        date: d.date,
+        totalAdded: d.totalAdded,
+        totalConsumed: d.totalConsumed,
+        totalOpening: d.totalOpening,
+        totalClosing: d.totalClosing,
+        itemCount: d.items.length,
+      }))
+    );
+    console.groupEnd();
+  }, [
+    mainTab,
+    openingStockRangeInvalid,
+    openingStockFrom,
+    openingStockTo,
+    clientStockMode,
+    livestockHistoryForOpeningStock,
+    livestockHistoryOpeningStockPending,
+    livestockHistoryOpeningStockError,
+    filteredLivestockItems,
+    selectedCategoryId,
+    searchQuery,
+    clientLivestockOpeningStockData,
+  ]);
 
   const orderedLivestockItems = useMemo(() => {
     const toTimestamp = (item: LivestockItem): number => {
@@ -1168,20 +1345,34 @@ export default function LiveProductPage() {
             </p>
           )}
         </div>
+        {!openingStockRangeInvalid && clientStockMode === "movementOnly" && (
+          <div className="openingClosingStockBanner openingClosingStockBannerInfo" role="status">
+            {t(
+              "Past date range: only manual restock and deduct movements are shown. Set \"Date to\" to today to see opening and closing balances. Send-to-processing is not included in this history."
+            )}
+          </div>
+        )}
         {!openingStockRangeInvalid && (
           <div className="openingClosingStockGrid">
             <OpeningStockTable
               from={openingStockFrom}
               to={openingStockTo}
-              openingStockData={openingStockData}
+              openingStockData={clientLivestockOpeningStockData}
               isPending={openingStockPending}
               isError={openingStockError}
               errorMessage={openingStockErrorMessage}
+              footnote={
+                clientStockMode === "reconciled"
+                  ? t(
+                      ""
+                    )
+                  : null
+              }
             />
             <ClosingStockTable
               from={openingStockFrom}
               to={openingStockTo}
-              openingStockData={openingStockData}
+              openingStockData={clientLivestockOpeningStockData}
               isPending={openingStockPending}
               isError={openingStockError}
               errorMessage={openingStockErrorMessage}

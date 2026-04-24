@@ -600,6 +600,11 @@ const translations: Record<string, string> = {
   Added: "थपिएको",
   Consumed: "खपत",
   Closing: "बन्द",
+  "Total (O+A)": "जम्मा (खुल्ला + थप)",
+  "Past date range: only manual restock and deduct movements are shown. Set \"Date to\" to today to see opening and closing balances. Send-to-processing is not included in this history.":
+    "बिगतको मिति दायरा: मात्र म्यानुअल पुनः भण्डारण र कटौती चाल देखाइन्छ। खुल्ला र बन्द मात्रा हेर्न \"मिति सम्म\" आज मिति राख्नुहोस्। प्रशोधनमा पठाइएको यस इतिहासमा समावेश हुँदैन।",
+  "Livestock stock note: Opening and closing are estimated from current stock and manual restock/deduct history. Quantities sent to processing may not appear here.":
+    "लाइभस्टक स्टक टिप्पणी: खुल्ला र बन्द हालको स्टक र म्यानुअल पुनः भण्डारण/कटौती इतिहासबाट अनुमान गरिन्छ। प्रशोधनमा पठाइएको परिमाण यहाँ नदेखिन सक्छ।",
   "Product #": "उत्पादन #",
   Restock: "पुनः भण्डारण",
   Deduct: "कटौती",

@@ -96,15 +96,26 @@ export default function AccountsAnalyticsPage() {
     },
   });
 
-  const filteredRows = useMemo(() => {
-    if (outletFilter === "all") return attendanceRows;
-    return attendanceRows.filter((r) => rowOutletId(r) === outletFilter);
-  }, [attendanceRows, outletFilter]);
+  /** Staff assigned to the outlet(s) currently selected in the filter (or whole list when "all"). */
+  const employeesForSelectedOutlet = useMemo(() => {
+    if (outletFilter === "all") return employees;
+    return employees.filter((e) => e.outletId === outletFilter);
+  }, [employees, outletFilter]);
 
   const employeesInScope = useMemo(() => {
     if (!isScoped || !rowFilterOutletId) return employees;
     return employees.filter((e) => e.outletId === rowFilterOutletId);
   }, [employees, isScoped, rowFilterOutletId]);
+
+  const filteredRows = useMemo(() => {
+    if (outletFilter === "all") return attendanceRows;
+    return attendanceRows.filter((r) => {
+      const rid = rowOutletId(r);
+      if (rid === outletFilter) return true;
+      if (rid && rid !== outletFilter) return false;
+      return employeesForSelectedOutlet.some((e) => e.id === r.employeeId);
+    });
+  }, [attendanceRows, outletFilter, employeesForSelectedOutlet]);
 
   const presentTodayCount = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));

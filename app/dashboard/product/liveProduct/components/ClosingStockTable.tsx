@@ -20,6 +20,10 @@ function formatConsumedCell(quantity: number, unit: string): string {
   return quantity > 0 ? `−${base}` : base;
 }
 
+function dashNum(value: number | null): string {
+  return value === null ? "\u2014" : String(value);
+}
+
 export default function ClosingStockTable({
   from,
   to,
@@ -96,7 +100,7 @@ export default function ClosingStockTable({
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div className="openingClosingStockDayTotals">
                       <span className="openingClosingStockTotalOpening">
-                        <strong>{t("Opening")}:</strong> {dayData.totalOpening}
+                        <strong>{t("Opening")}:</strong> {dashNum(dayData.totalOpening)}
                       </span>
                       <span className="openingClosingStockTotalAdded">
                         <strong>{t("Added")}:</strong> {dayData.totalAdded}
@@ -105,7 +109,7 @@ export default function ClosingStockTable({
                         <strong>{t("Consumed")}:</strong> {dayData.totalConsumed}
                       </span>
                       <span className="openingClosingStockTotalClosing">
-                        <strong>{t("Closing")}:</strong> {dayData.totalClosing}
+                        <strong>{t("Closing")}:</strong> {dashNum(dayData.totalClosing)}
                       </span>
                     </div>
                     <span className="openingClosingStockChevron" aria-hidden>
@@ -119,7 +123,7 @@ export default function ClosingStockTable({
                 </div>
                 <div className="openingClosingStockDayTotalsMobile">
                   <span className="openingClosingStockTotalOpening">
-                    {t("Opening")}: {dayData.totalOpening}
+                    {t("Opening")}: {dashNum(dayData.totalOpening)}
                   </span>
                   <span className="openingClosingStockTotalAdded">
                     {t("Added")}: {dayData.totalAdded}
@@ -128,7 +132,7 @@ export default function ClosingStockTable({
                     {t("Consumed")}: {dayData.totalConsumed}
                   </span>
                   <span className="openingClosingStockTotalClosing">
-                    {t("Closing")}: {dayData.totalClosing}
+                    {t("Closing")}: {dashNum(dayData.totalClosing)}
                   </span>
                 </div>
               </button>

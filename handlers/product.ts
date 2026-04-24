@@ -1100,20 +1100,24 @@ export type OpeningStockItem = {
   productName: string;
   productNumber: string;
   unit: string;
-  openingQuantity: number;
+  /** Null when the UI is movement-only (end date before today) and balances are not shown. */
+  openingQuantity: number | null;
   addedQuantity: number;
   consumedQuantity: number;
-  closingQuantity: number;
+  /** Null when the UI is movement-only (end date before today) and balances are not shown. */
+  closingQuantity: number | null;
   buyingPrice?: number;
   totalPrice?: number;
 };
 
 export type OpeningStockByDate = {
   date: string;
-  totalOpening: number;
+  /** Null in movement-only mode (no reconciled opening balances). */
+  totalOpening: number | null;
   totalAdded: number;
   totalConsumed: number;
-  totalClosing: number;
+  /** Null in movement-only mode (no reconciled closing balances). */
+  totalClosing: number | null;
   items: OpeningStockItem[];
 };
 

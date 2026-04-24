@@ -88,13 +88,28 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
       : typeof row._id === "string"
         ? row._id
         : `livestock-history-${index}`;
-  const livestockItemId =
-    typeof row.livestockItemId === "string"
-      ? row.livestockItemId
-      : typeof (row as { livestock_item_id?: unknown }).livestock_item_id === "string"
-        ? String((row as { livestock_item_id: string }).livestock_item_id)
-        : "";
   const nested = row.livestockItem;
+  const nestedRecord = nested && typeof nested === "object" ? (nested as Record<string, unknown>) : null;
+  const fromNested =
+    nestedRecord && typeof nestedRecord.id === "string" && nestedRecord.id.trim()
+      ? nestedRecord.id.trim()
+      : nestedRecord && typeof nestedRecord._id === "string" && nestedRecord._id.trim()
+        ? nestedRecord._id.trim()
+        : nestedRecord &&
+            typeof nestedRecord.livestockItemId === "string" &&
+            nestedRecord.livestockItemId.trim()
+          ? nestedRecord.livestockItemId.trim()
+          : "";
+  const fromRow =
+    typeof row.livestockItemId === "string" && row.livestockItemId.trim()
+      ? row.livestockItemId.trim()
+      : typeof (row as { livestock_item_id?: unknown }).livestock_item_id === "string"
+        ? String((row as { livestock_item_id: string }).livestock_item_id).trim()
+        : typeof (row as { itemId?: unknown }).itemId === "string" && (row as { itemId: string }).itemId.trim()
+          ? (row as { itemId: string }).itemId.trim()
+          : "";
+  /** Inventory row this history line applies to — never fall back to the history row's own `id`. */
+  const livestockItemId = fromRow || fromNested;
   const livestockItem =
     nested && typeof nested === "object"
       ? parseItemSnapshot(nested)
@@ -113,6 +128,7 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
         ? createdAtRaw.toISOString()
         : "";
   if (!createdAt) return null;
+  if (!livestockItemId) return null;
   const quantity = row.quantity === null ? null : parseNum(row.quantity);
   const weight = row.weight === null ? null : parseNum(row.weight);
   const buyingPrice =
@@ -125,7 +141,7 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
     parseNum((row as { selling_price?: unknown }).selling_price);
   return {
     id,
-    livestockItemId: livestockItemId || id,
+    livestockItemId,
     livestockItem,
     quantity,
     weight,

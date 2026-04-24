@@ -4,7 +4,8 @@ export function formatStockDateLabel(dateString: string): string {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export function qtyWithUnit(quantity: number, unit: string): string {
+export function qtyWithUnit(quantity: number | null, unit: string): string {
+  if (quantity === null) return "\u2014";
   const u = unit.trim();
   return u ? `${quantity} ${u}` : String(quantity);
 }

@@ -13,7 +13,13 @@ type OpeningStockTableProps = {
   isPending: boolean;
   isError: boolean;
   errorMessage: string | null;
+  /** Shown under the table when set (e.g. livestock reconciled-mode disclaimer). */
+  footnote?: string | null;
 };
+
+function dashNum(value: number | null): string {
+  return value === null ? "\u2014" : String(value);
+}
 
 export default function OpeningStockTable({
   from,
@@ -22,6 +28,7 @@ export default function OpeningStockTable({
   isPending,
   isError,
   errorMessage,
+  footnote,
 }: OpeningStockTableProps) {
   const { t } = useI18n();
   const [expandedDates, setExpandedDates] = useState<string[]>([]);
@@ -71,96 +78,115 @@ export default function OpeningStockTable({
 
       {!isPending && hasRows && (
         <div>
-          {days.map((dayData) => (
-            <div key={dayData.date} className="openingClosingStockDay">
-              <button
-                type="button"
-                className="openingClosingStockDayHeader"
-                onClick={() => toggleDate(dayData.date)}
-                aria-expanded={expandedDates.includes(dayData.date)}
-              >
-                <div className="openingClosingStockDayHeaderTop">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span className="openingClosingStockDayDate">
-                      {formatStockDateLabel(dayData.date)}
-                    </span>
-                    <span className="openingClosingStockDayBadge">
-                      {dayData.items.length} {t("items")}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div className="openingClosingStockDayTotals">
-                      <span className="openingClosingStockTotalOpening">
-                        <strong>{t("Opening")}:</strong> {dayData.totalOpening}
+          {days.map((dayData) => {
+            const totalOpeningPlusAdded =
+              dayData.totalOpening !== null ? dayData.totalOpening + dayData.totalAdded : null;
+            return (
+              <div key={dayData.date} className="openingClosingStockDay">
+                <button
+                  type="button"
+                  className="openingClosingStockDayHeader"
+                  onClick={() => toggleDate(dayData.date)}
+                  aria-expanded={expandedDates.includes(dayData.date)}
+                >
+                  <div className="openingClosingStockDayHeaderTop">
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      <span className="openingClosingStockDayDate">
+                        {formatStockDateLabel(dayData.date)}
                       </span>
-                      <span className="openingClosingStockTotalAdded">
-                        <strong>{t("Added")}:</strong> {dayData.totalAdded}
-                      </span>
-                      <span className="openingClosingStockTotalConsumed">
-                        <strong>{t("Consumed")}:</strong> {dayData.totalConsumed}
-                      </span>
-                      <span className="openingClosingStockTotalClosing">
-                        <strong>{t("Closing")}:</strong> {dayData.totalClosing}
+                      <span className="openingClosingStockDayBadge">
+                        {dayData.items.length} {t("items")}
                       </span>
                     </div>
-                    <span className="openingClosingStockChevron" aria-hidden>
-                      {expandedDates.includes(dayData.date) ? (
-                        <MdKeyboardArrowUp size={22} />
-                      ) : (
-                        <MdKeyboardArrowDown size={22} />
-                      )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div className="openingClosingStockDayTotals">
+                        <span className="openingClosingStockTotalOpening">
+                          <strong>{t("Opening")}:</strong> {dashNum(dayData.totalOpening)}
+                        </span>
+                        <span className="openingClosingStockTotalAdded">
+                          <strong>{t("Added")}:</strong> {dayData.totalAdded}
+                        </span>
+                        <span className="openingClosingStockTotalConsumed">
+                          <strong>{t("Consumed")}:</strong> {dayData.totalConsumed}
+                        </span>
+                        <span className="openingClosingStockTotalClosing">
+                          <strong>{t("Total (O+A)")}:</strong> {dashNum(totalOpeningPlusAdded)}
+                        </span>
+                      </div>
+                      <span className="openingClosingStockChevron" aria-hidden>
+                        {expandedDates.includes(dayData.date) ? (
+                          <MdKeyboardArrowUp size={22} />
+                        ) : (
+                          <MdKeyboardArrowDown size={22} />
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="openingClosingStockDayTotalsMobile">
+                    <span className="openingClosingStockTotalOpening">
+                      {t("Opening")}: {dashNum(dayData.totalOpening)}
+                    </span>
+                    <span className="openingClosingStockTotalAdded">
+                      {t("Added")}: {dayData.totalAdded}
+                    </span>
+                    <span className="openingClosingStockTotalConsumed">
+                      {t("Consumed")}: {dayData.totalConsumed}
+                    </span>
+                    <span className="openingClosingStockTotalClosing">
+                      {t("Total (O+A)")}: {dashNum(totalOpeningPlusAdded)}
                     </span>
                   </div>
-                </div>
-                <div className="openingClosingStockDayTotalsMobile">
-                  <span className="openingClosingStockTotalOpening">
-                    {t("Opening")}: {dayData.totalOpening}
-                  </span>
-                  <span className="openingClosingStockTotalAdded">
-                    {t("Added")}: {dayData.totalAdded}
-                  </span>
-                  <span className="openingClosingStockTotalConsumed">
-                    {t("Consumed")}: {dayData.totalConsumed}
-                  </span>
-                  <span className="openingClosingStockTotalClosing">
-                    {t("Closing")}: {dayData.totalClosing}
-                  </span>
-                </div>
-              </button>
-              {expandedDates.includes(dayData.date) && (
-                <div className="openingClosingStockTableWrap">
-                  <table className="openingClosingStockTable">
-                    <thead>
-                      <tr>
-                        <th scope="col">{t("Product")}</th>
-                        <th scope="col" className="openingClosingStockThNumeric">
-                          {t("Opening")}
-                        </th>
-                        <th scope="col" className="openingClosingStockThNumeric">
-                          {t("Added")}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dayData.items.map((item, index) => (
-                        <tr key={`${item.inventoryId}-${index}`}>
-                          <td>{item.productName}</td>
-                          <td className="openingClosingStockTdNumeric">
-                            {qtyWithUnit(item.openingQuantity, item.unit)}
-                          </td>
-                          <td className="openingClosingStockTdNumeric">
-                            {item.addedQuantity > 0
-                              ? `+${qtyWithUnit(item.addedQuantity, item.unit)}`
-                              : qtyWithUnit(item.addedQuantity, item.unit)}
-                          </td>
+                </button>
+                {expandedDates.includes(dayData.date) && (
+                  <div className="openingClosingStockTableWrap">
+                    <table className="openingClosingStockTable">
+                      <thead>
+                        <tr>
+                          <th scope="col">{t("Product")}</th>
+                          <th scope="col" className="openingClosingStockThNumeric">
+                            {t("Opening")}
+                          </th>
+                          <th scope="col" className="openingClosingStockThNumeric">
+                            {t("Added")}
+                          </th>
+                          <th scope="col" className="openingClosingStockThNumeric">
+                            {t("Total (O+A)")}
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))}
+                      </thead>
+                      <tbody>
+                        {dayData.items.map((item, index) => {
+                          const rowTotal =
+                            item.openingQuantity !== null ? item.openingQuantity + item.addedQuantity : null;
+                          return (
+                            <tr key={`${item.inventoryId}-${index}`}>
+                              <td>{item.productName}</td>
+                              <td className="openingClosingStockTdNumeric">
+                                {qtyWithUnit(item.openingQuantity, item.unit)}
+                              </td>
+                              <td className="openingClosingStockTdNumeric">
+                                {item.addedQuantity > 0
+                                  ? `+${qtyWithUnit(item.addedQuantity, item.unit)}`
+                                  : qtyWithUnit(item.addedQuantity, item.unit)}
+                              </td>
+                              <td className="openingClosingStockTdNumeric">
+                                {qtyWithUnit(rowTotal, item.unit)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {footnote ? (
+            <p className="openingClosingStockFootnote" role="note">
+              {footnote}
+            </p>
+          ) : null}
         </div>
       )}
     </div>
