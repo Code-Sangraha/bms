@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { fetchSalesByProductId } from "@/lib/api/salesByProduct";
 import { SALES_ROUTES } from "@/lib/api/routes";
 
 export type SaleItemPayload = {
@@ -7,9 +8,9 @@ export type SaleItemPayload = {
   customerTypeId: string;
   productId: string;
   outletId: string;
-  /** For Live products: weight in kg */
+  /** Sale line amount in kg; processed stock is deducted by weight */
   weight?: number;
-  /** For Processed products: quantity (units) */
+  /** Legacy/alternate backends only; POS sends `weight` for processed sales */
   quantity?: number;
   paymentMethod: string;
 };
@@ -20,6 +21,9 @@ export type SaleTransaction = {
   transactionId?: string;
   date?: string;
   createdAt?: string;
+  /** Per-line sale weight (kg); primary field for processed stock deduction per get-by-product-id. */
+  weight?: number | null;
+  quantity?: number | null;
   name?: string;
   customer?: string | { id?: string; name?: string };
   contact?: string;
@@ -244,23 +248,21 @@ export async function getSales(): Promise<
   return { ok: true, data };
 }
 
-/** POST /sales/get-by-product-id with body { productId } */
+/**
+ * GET /v1/sales/get-by-product-id with JSON body `{ productId }` (axios).
+ * Backend registers GET only and reads `req.body` — same pattern as livestock history.
+ */
 export async function getSalesByProductId(
   productId: string
 ): Promise<
   | { ok: true; data: SaleTransaction[] }
   | { ok: false; error: string; status: number }
 > {
-  const result = await apiRequest<GetSalesResponse>(
-    SALES_ROUTES.GET_BY_PRODUCT_ID,
-    {
-      method: "POST",
-      body: JSON.stringify({ productId }),
-    }
-  );
+  const result = await fetchSalesByProductId(productId);
   if (!result.ok) return result;
-  const raw = result.data?.data ?? result.data?.sales ?? result.data?.transactions;
-  const data = normalizeTransactionList(raw);
+  const raw =
+    result.data?.data ?? result.data?.sales ?? result.data?.transactions;
+  const data = normalizeTransactionList(raw as GetSalesResponse["data"]);
   return { ok: true, data };
 }
 
@@ -271,11 +273,43 @@ export async function createSale(items: SaleItemPayload[]) {
   });
 }
 
-export async function createLivestockSale(items: LivestockSalePayload[]) {
-  return apiRequest<CreateSaleResponse>(SALES_ROUTES.LIVESTOCK_CREATE, {
-    method: "POST",
-    body: JSON.stringify(items),
+/** Body shape for POST /sales/livestock/create — backends often validate `quantity`, not only `itemQuantityOrWeight`. */
+function toLivestockSaleCreateBody(items: LivestockSalePayload[]) {
+  return items.map((item) => {
+    const qty = item.itemQuantityOrWeight;
+    return {
+      name: item.name,
+      contact: item.contact,
+      livestockItemId: item.livestockItemId,
+      amount: item.amount,
+      paymentMethod: item.paymentMethod,
+      itemQuantityOrWeight: qty,
+      quantity: qty,
+      weight: qty,
+    };
   });
+}
+
+export async function createLivestockSale(
+  items: LivestockSalePayload[]
+): Promise<
+  | { ok: true; data: CreateSaleResponse }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<CreateSaleResponse>(SALES_ROUTES.LIVESTOCK_CREATE, {
+    method: "POST",
+    body: JSON.stringify(toLivestockSaleCreateBody(items)),
+  });
+  if (!result.ok) return result;
+  const data = result.data;
+  if (data && typeof data === "object" && data.success === false) {
+    const msg =
+      typeof data.message === "string" && data.message.trim()
+        ? data.message.trim()
+        : "Request failed.";
+    return { ok: false, error: msg, status: 400 };
+  }
+  return result;
 }
 
 export async function getLivestockSales(): Promise<

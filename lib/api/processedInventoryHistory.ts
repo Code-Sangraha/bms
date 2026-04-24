@@ -1,7 +1,8 @@
 import { apiRequest } from "@/lib/api/client";
 import { PRODUCT_ROUTES } from "@/lib/api/routes";
 
-export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT";
+/** RESTOCK/DEDUCT = manual movement; IN = processing completion stock-in (InventoryTransaction IN when backend exposes it). */
+export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "IN";
 
 export type ProcessedInventoryHistoryFilters = {
   productId?: string;
@@ -19,6 +20,7 @@ export type ProcessedInventoryHistoryEntry = {
   createdAt: string;
   buyingPrice?: number | null;
   sellingPrice?: number | null;
+  batchId?: string | null;
 };
 
 type ProcessedInventoryHistoryApiResponse = {
@@ -39,10 +41,10 @@ function parseNum(value: unknown): number | null {
 }
 
 function parseHistoryType(raw: unknown): ProcessedInventoryHistoryType | null {
-  if (raw === "RESTOCK" || raw === "DEDUCT") return raw;
+  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "IN") return raw;
   if (typeof raw === "string") {
     const u = raw.toUpperCase();
-    if (u === "RESTOCK" || u === "DEDUCT") return u;
+    if (u === "RESTOCK" || u === "DEDUCT" || u === "IN") return u;
   }
   return null;
 }
@@ -86,6 +88,9 @@ function parseEntry(raw: unknown, index: number): ProcessedInventoryHistoryEntry
     parseNum(row.buyingPrice) ?? parseNum((row as { buying_price?: unknown }).buying_price);
   const sellingPrice =
     parseNum(row.sellingPrice) ?? parseNum((row as { selling_price?: unknown }).selling_price);
+  const batchIdRaw = row.batchId ?? row.batch_id;
+  const batchId =
+    typeof batchIdRaw === "string" && batchIdRaw.trim() ? batchIdRaw.trim() : null;
   return {
     id,
     productId,
@@ -95,13 +100,16 @@ function parseEntry(raw: unknown, index: number): ProcessedInventoryHistoryEntry
     createdAt,
     buyingPrice: buyingPrice ?? null,
     sellingPrice: sellingPrice ?? null,
+    batchId,
   };
 }
 
 function buildQueryString(filters: ProcessedInventoryHistoryFilters): string {
   const sp = new URLSearchParams();
   if (filters.productId?.trim()) sp.set("productId", filters.productId.trim());
-  if (filters.type === "RESTOCK" || filters.type === "DEDUCT") sp.set("type", filters.type);
+  if (filters.type === "RESTOCK" || filters.type === "DEDUCT" || filters.type === "IN") {
+    sp.set("type", filters.type);
+  }
   if (filters.fromDate?.trim()) sp.set("fromDate", filters.fromDate.trim());
   if (filters.toDate?.trim()) sp.set("toDate", filters.toDate.trim());
   const qs = sp.toString();

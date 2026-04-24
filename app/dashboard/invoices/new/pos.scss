@@ -328,15 +328,39 @@ $radius-pill: 9999px;
   }
 }
 
-.posError {
+.posErrorBlock {
   margin: 14px 0 0;
   padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #b91c1c;
   background: rgba(220, 38, 38, 0.06);
   border: 1px solid rgba(220, 38, 38, 0.2);
   border-radius: $radius-control;
+}
+
+.posError {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b91c1c;
+  background: transparent;
+  border: none;
+}
+
+.posErrorHint {
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.posErrorLink {
+  color: #047857;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #065f46;
+  }
 }
 
 .posTableWrap {

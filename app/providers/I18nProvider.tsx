@@ -271,6 +271,27 @@ const translations: Record<string, string> = {
   Products: "उत्पादनहरू",
   "Product Type": "उत्पादन प्रकार",
   Pricelist: "मूल्यसूची",
+  "Open Pricelist": "मूल्यसूची खोल्नुहोस्",
+  "No pricelist (add under Pricelist)": "मूल्यसूची छैन (मूल्यसूचीबाट थप्नुहोस्)",
+  "No pricelist entry for this product at the selected outlet, or the price for this customer type is zero. Add or update prices under Pricelist before selling.":
+    "यस आउटलेटमा यो उत्पादनको मूल्यसूची छैन वा यो ग्राहक प्रकारको मूल्य शून्य छ। बिक्री अघि मूल्यसूचीमा मूल्य थप्नुहोस् वा अद्यावधिक गर्नुहोस्।",
+  "Every line must have a positive pricelist price for this outlet. Remove invalid lines or add prices under Pricelist.":
+    "प्रत्येक लाइनमा यस आउटलेटको लागि सकारात्मक मूल्यसूची मूल्य हुनुपर्छ। अमान्य लाइन हटाउनुहोस् वा मूल्यसूचीमा मूल्य थप्नुहोस्।",
+  "Set Pricelist for new product": "नयाँ उत्पादनको मूल्यसूची सेट गर्नुहोस्",
+  "Retail price per kg": "खुद्रा मूल्य (प्रति केजी)",
+  "Wholesale price per kg": "थोक मूल्य (प्रति केजी)",
+  "These prices apply to every outlet row listed below. They are saved as Pricelist entries, not on the product.":
+    "तल सूचीबद्ध प्रत्येक आउटलेट पंक्तिमा यी मूल्यहरू लागू हुन्छन्। यी मूल्यसूची प्रविष्टिको रूपमा सेभ हुन्छन्, उत्पादनमा होइन।",
+  "Save pricelist": "मूल्यसूची सेभ गर्नुहोस्",
+  "Saving pricelist…": "मूल्यसूची सेभ हुँदैछ…",
+  "Pricelist saved for the new product outlets.": "नयाँ उत्पादनका आउटलेटहरूको मूल्यसूची सेभ भयो।",
+  "Could not save all pricelist rows. Check Pricelist and try again.":
+    "सबै मूल्यसूची पंक्तिहरू सेभ गर्न सकिएन। मूल्यसूची जाँच गरी फेरि प्रयास गर्नुहोस्।",
+  "Product created. Ask an admin to add Pricelist entries for this product before selling.":
+    "उत्पादन सिर्जना भयो। बिक्री अघि प्रशासकलाई यस उत्पादनको मूल्यसूची थप्न अनुरोध गर्नुहोस्।",
+  "Skip for now": "अहिले छोड्नुहोस्",
+  "Retail price must be greater than 0.": "खुद्रा मूल्य ० भन्दा ठूलो हुनुपर्छ।",
+  "Wholesale price must be greater than 0.": "थोक मूल्य ० भन्दा ठूलो हुनुपर्छ।",
   Live: "ताजा",
   Processed: "प्रशोधित",
   "Clock In/Out": "हाजिरी लगाउने/निस्कने",
@@ -723,8 +744,8 @@ const translations: Record<string, string> = {
   "Add product line": "उत्पादन लाइन थप्नुहोस्",
   "Line items": "लाइन वस्तुहरू",
   "No products in this sale yet": "यस बिक्रीमा अझै कुनै उत्पादन छैन",
-  "Select product, retail or wholesale type, and quantity above, then use Add Product.":
-    "माथि उत्पादन, खुद्रा वा थोक प्रकार र परिमाण छान्नुहोस्, अनि उत्पादन थप्नुहोस्।",
+  "Select product, retail or wholesale type, and weight (kg) above, then use Add Product.":
+    "माथि उत्पादन, खुद्रा वा थोक प्रकार र तौल (केजी) भर्नुहोस्, अनि उत्पादन थप्नुहोस्।",
   "No lines in this sale yet": "यस बिक्रीमा अझै कुनै लाइन छैन",
   "Choose an item, quantity, and amount above, then use Add Livestock.":
     "माथि वस्तु, परिमाण र रकम भर्नुहोस्, अनि लाइभस्टक थप्नुहोस्।",
@@ -786,6 +807,18 @@ const translations: Record<string, string> = {
   "Storage reduced successfully.": "भण्डारण सफलतापूर्वक घटाइयो।",
   "Date range applies to consumed (sales) history. Storage and waste tabs summarize API limits.":
     "मिति दायरा बिक्री (खपत) इतिहासमा लागू हुन्छ। भण्डारण र फोहोर ट्याब API सीमाको सार देखाउँछन्।",
+  "Date range filters storage movements (GET processed history), sales lines (consumed), and waste rows returned by the API.":
+    "मिति दायराले भण्डारण चाल (प्रशोधित इतिहास), बिक्री लाइन (खपत), र API ले फर्काएका फोहोर पंक्तिहरू फिल्टर गर्छ।",
+  "Processed storage history note":
+    "तलका पंक्तिहरू GET /products/processed/history बाट आउँछन्: पुनः भण्डारण (RESTOCK) र प्रशोधन पूरा भएको स्टक-भित्र (IN)। सर्भरले लग नगरेका चाल यहाँ देखिँदैनन्।",
+  "Current stock (kg)": "हालको स्टक (केजी)",
+  "Failed to load processed storage history.": "प्रशोधित भण्डारण इतिहास लोड गर्न सकिएन।",
+  "Processing (stock in)": "प्रशोधन (स्टक भित्र)",
+  "Processed waste history note":
+    "फोहोर प्रायः प्रशोधन ब्याचमा (साझा wasteWeight) हुन्छ। तलका पंक्तिहरू API ले दिएमा मात्र; जम्मा फोहोर उत्पादनमा भए देखाइन्छ।",
+  "Failed to load waste history.": "फोहोर इतिहास लोड गर्न सकिएन।",
+  "Customer type": "ग्राहक प्रकार",
+  "Waste (kg)": "फोहोर (केजी)",
   "There is no API to list storage-in events for processed products. Restocks only update current weight; processing completions are stored in the database but are not exposed as rows here.":
     "प्रशोधित उत्पादनका लागि भण्डारण-भित्र घटनाहरू सूचीबद्ध गर्ने API छैन। पुनः भण्डारणले मात्र हालको तौल अद्यावधिक गर्छ; प्रशोधन पूरा भएका लेनदेन डेटाबेसमा छन् तर यहाँ पंक्ति रूपमा देखाइँदैनन्।",
   "Consumed history lists sales for this product in the selected date range. Manual product deducts are not included.":

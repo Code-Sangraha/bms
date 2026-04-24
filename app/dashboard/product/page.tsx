@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
+import { useToast } from "@/app/providers/ToastProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
@@ -17,18 +19,26 @@ import {
   updateProduct as updateProductApi,
   type Product,
 } from "@/handlers/product";
+import { getDualPricings } from "@/handlers/dualPricing";
+import { hasDualPricingForProductOutlet } from "@/lib/dualPricingLookup";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
 import "./product.scss";
 import ProductEditModal from "./ProductEditModal";
+import SetPricelistAfterCreateModal, {
+  type PricelistOutletTarget,
+} from "./SetPricelistAfterCreateModal";
 
 const PRODUCTS_QUERY_KEY = ["products"];
+const DUAL_PRICING_QUERY_KEY = ["dualPricing"];
 
 export default function ProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { canCreate } = usePermissions();
+  const { showToast } = useToast();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -37,6 +47,8 @@ export default function ProductPage() {
   const [addProductName, setAddProductName] = useState("");
   const [addFormError, setAddFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pricelistModalOpen, setPricelistModalOpen] = useState(false);
+  const [pricelistTargets, setPricelistTargets] = useState<PricelistOutletTarget[]>([]);
   const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -70,6 +82,18 @@ export default function ProductPage() {
     queryFn: async () => {
       const result = await getOutlets();
       if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const { data: dualPricings = [] } = useQuery({
+    queryKey: DUAL_PRICING_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getDualPricings();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
       return result.data;
     },
   });
@@ -256,12 +280,60 @@ export default function ProductPage() {
 
       return { ok: true as const };
     },
-    onSuccess: (result) => {
+    onSuccess: async (result, createdName: string) => {
       if (result.ok) {
         setIsAddModalOpen(false);
         setAddProductName("");
         setAddFormError(null);
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+        await queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+        let fresh: Product[] = [];
+        try {
+          fresh = await queryClient.fetchQuery({
+            queryKey: PRODUCTS_QUERY_KEY,
+            queryFn: async () => {
+              const r = await getProducts();
+              if (!r.ok) {
+                if (r.status === 401) navigate("/login");
+                throw new Error(r.error);
+              }
+              return r.data;
+            },
+          });
+        } catch {
+          showToast(t("Something went wrong. Please try again."), "error");
+          return;
+        }
+        const normalized = createdName.trim().toLowerCase();
+        const typeId = processedProductTypeId;
+        const targets: PricelistOutletTarget[] = fresh
+          .filter((p) => {
+            const n = p.name?.trim().toLowerCase() ?? "";
+            const isProc =
+              (typeId !== "" && p.productTypeId === typeId) ||
+              (typeof p.productType === "object" &&
+                p.productType?.name?.toLowerCase() === "processed");
+            return isProc && n === normalized;
+          })
+          .map((p) => ({
+            productId: p.id,
+            outletId: p.outletId,
+            productName: p.name,
+            outletName:
+              (typeof p.outlet === "object" && p.outlet?.name) ||
+              outlets.find((o) => o.id === p.outletId)?.name ||
+              p.outletId,
+          }));
+        if (targets.length > 0 && canCreate) {
+          setPricelistTargets(targets);
+          setPricelistModalOpen(true);
+        } else if (targets.length > 0 && !canCreate) {
+          showToast(
+            t(
+              "Product created. Ask an admin to add Pricelist entries for this product before selling."
+            ),
+            "info"
+          );
+        }
       } else {
         if (result.status === 401) {
           navigate("/login");
@@ -362,7 +434,19 @@ export default function ProductPage() {
             <article key={product.id} className="card">
               <div className="cardTop">
                 <div className="cardTitleBlock">
-                  <h2 className="cardTitle">{product.name}</h2>
+                  <div className="cardTitleRow">
+                    <h2 className="cardTitle">{product.name}</h2>
+                    {isProcessedTypeId(product.productTypeId) &&
+                      !hasDualPricingForProductOutlet(
+                        dualPricings,
+                        product.id,
+                        product.outletId
+                      ) && (
+                        <span className="productPricelistBadge">
+                          {t("No pricelist (add under Pricelist)")}
+                        </span>
+                      )}
+                  </div>
                 </div>
                 <div className="cardTopActions">
                   <div
@@ -479,6 +563,20 @@ export default function ProductPage() {
         loading={deleteMutation.isPending}
         onClose={() => setProductToDelete(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      <SetPricelistAfterCreateModal
+        isOpen={pricelistModalOpen}
+        targets={pricelistTargets}
+        onClose={() => {
+          setPricelistModalOpen(false);
+          setPricelistTargets([]);
+        }}
+        onSaved={() => {
+          void queryClient.invalidateQueries({ queryKey: DUAL_PRICING_QUERY_KEY });
+          void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+          showToast(t("Pricelist saved for the new product outlets."), "success");
+        }}
       />
 
       <Modal

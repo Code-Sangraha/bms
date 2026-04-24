@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
@@ -9,7 +9,8 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
-import { getDualPricings, type DualPricing } from "@/handlers/dualPricing";
+import { getDualPricings } from "@/handlers/dualPricing";
+import { getUnitPrice } from "@/lib/dualPricingLookup";
 import { getOutlets } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
@@ -30,24 +31,44 @@ const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
 type LineItem = {
   productId: string;
   productName: string;
-  quantity: number;
+  /** Sold amount in kg (processed inventory is tracked by weight) */
+  weight: number;
   unitPrice: number;
   customerTypeId: string;
   typeName: string;
   stockAvailable: number;
 };
 
-function getUnitPrice(
-  dualPricings: DualPricing[],
-  productId: string,
-  outletId: string,
-  isWholesale: boolean
-): number {
-  const dp = dualPricings.find(
-    (d) => d.productId === productId && d.outletId === outletId
+/** Parsed numeric or null (not 0 — zero is valid stock). */
+function parseKgField(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Available kg for processed POS: prefer weight-style fields (coerced), then quantity.
+ * Avoids treating `quantity: 0` as stock when the API only populated weight (possibly as string or alternate key).
+ */
+function getProcessedProductAvailableKg(product: Product | undefined): number {
+  if (!product) return 0;
+  const r = product as Record<string, unknown>;
+  return (
+    parseKgField(product.weight) ??
+    parseKgField(r.weight) ??
+    parseKgField(r.stockWeight) ??
+    parseKgField(r.availableWeight) ??
+    parseKgField(r.currentWeight) ??
+    parseKgField(r.totalWeight) ??
+    parseKgField(r.outputWeight) ??
+    parseKgField(r.itemQuantityOrWeight) ??
+    parseKgField(product.quantity) ??
+    parseKgField(r.quantity) ??
+    0
   );
-  if (!dp) return 0;
-  return isWholesale ? dp.wholesalePrice : dp.retailPrice;
 }
 
 export default function PointOfSalePage() {
@@ -61,9 +82,10 @@ export default function PointOfSalePage() {
   const [outletId, setOutletId] = useState("");
   const [productId, setProductId] = useState("");
   const [lineTypeId, setLineTypeId] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [lineWeightInput, setLineWeightInput] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorShowPricelistLink, setErrorShowPricelistLink] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
     DEFAULT_SALE_PAYMENT_METHOD
@@ -160,26 +182,25 @@ export default function PointOfSalePage() {
 
   const handleAddProduct = () => {
     if (!productId || !outletId) {
+      setErrorShowPricelistLink(false);
       setError(t("Select product and outlet."));
       return;
     }
     if (!lineTypeId) {
+      setErrorShowPricelistLink(false);
       setError(t("Select type (Retail/Wholesale) for this product."));
       return;
     }
     const product = products.find((p: Product) => p.id === productId);
-    const stockAvailable =
-      typeof product?.weight === "number"
-        ? product.weight
-        : typeof product?.quantity === "number"
-          ? product.quantity
-          : 0;
-    const selectedQty = Number(quantity);
-    if (!Number.isFinite(selectedQty) || selectedQty <= 0) {
-      setError(t("Quantity must be greater than 0."));
+    const stockAvailable = getProcessedProductAvailableKg(product);
+    const selectedWeight = Number(lineWeightInput);
+    if (!Number.isFinite(selectedWeight) || selectedWeight <= 0) {
+      setErrorShowPricelistLink(false);
+      setError(t("Weight must be greater than 0."));
       return;
     }
-    if (selectedQty > stockAvailable) {
+    if (selectedWeight > stockAvailable) {
+      setErrorShowPricelistLink(false);
       setError(
         t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockAvailable}).`)
       );
@@ -193,21 +214,32 @@ export default function PointOfSalePage() {
       outletId,
       isWholesale
     );
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      setError(
+        t(
+          "No pricelist entry for this product at the selected outlet, or the price for this customer type is zero. Add or update prices under Pricelist before selling."
+        )
+      );
+      setErrorShowPricelistLink(true);
+      return;
+    }
+    setErrorShowPricelistLink(false);
     setLineItems((prev) => [
       ...prev,
       {
         productId,
         productName: product?.name ?? "-",
-        quantity: selectedQty,
+        weight: selectedWeight,
         unitPrice,
         customerTypeId: lineTypeId,
         typeName: selectedType?.name ?? "-",
         stockAvailable,
       },
     ]);
-    setQuantity("");
+    setLineWeightInput("");
     setProductId("");
     setError(null);
+    setErrorShowPricelistLink(false);
   };
 
   const removeLine = (index: number) => {
@@ -215,7 +247,7 @@ export default function PointOfSalePage() {
   };
 
   const total = lineItems.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
+    (sum, item) => sum + item.unitPrice * item.weight,
     0
   );
 
@@ -226,8 +258,7 @@ export default function PointOfSalePage() {
       customerTypeId: string;
       productId: string;
       outletId: string;
-      weight?: number;
-      quantity?: number;
+      weight: number;
       paymentMethod: string;
     }[]) =>
       createSale(items),
@@ -255,14 +286,27 @@ export default function PointOfSalePage() {
   });
 
   const doCheckout = () => {
+    const invalidPrice = lineItems.some(
+      (item) => !Number.isFinite(item.unitPrice) || item.unitPrice <= 0
+    );
+    if (invalidPrice) {
+      setCheckoutConfirmOpen(false);
+      setError(
+        t(
+          "Every line must have a positive pricelist price for this outlet. Remove invalid lines or add prices under Pricelist."
+        )
+      );
+      setErrorShowPricelistLink(true);
+      return;
+    }
+    setErrorShowPricelistLink(false);
     const items = lineItems.map((item) => ({
       name: customerName.trim(),
       contact: customerContact.trim(),
       customerTypeId: item.customerTypeId,
       productId: item.productId,
       outletId,
-      // For processed sales backend stock checks align better with weight.
-      weight: item.quantity,
+      weight: item.weight,
       paymentMethod,
     }));
     createSaleMutation.mutate(items);
@@ -272,13 +316,28 @@ export default function PointOfSalePage() {
   const handleCheckout = () => {
     if (!outletId || lineItems.length === 0) {
       setError(t("Add at least one product and select an outlet."));
+      setErrorShowPricelistLink(false);
       return;
     }
     if (!customerName.trim()) {
       setError(t("Enter customer details."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
+    const invalidPrice = lineItems.some(
+      (item) => !Number.isFinite(item.unitPrice) || item.unitPrice <= 0
+    );
+    if (invalidPrice) {
+      setError(
+        t(
+          "Every line must have a positive pricelist price for this outlet. Remove invalid lines or add prices under Pricelist."
+        )
+      );
+      setErrorShowPricelistLink(true);
       return;
     }
     setError(null);
+    setErrorShowPricelistLink(false);
     setCheckoutConfirmOpen(true);
   };
 
@@ -429,16 +488,16 @@ export default function PointOfSalePage() {
               </select>
             </label>
             <label className="posField posFieldQty">
-              <span className="posLabel">{t("Quantity")}</span>
+              <span className="posLabel">{t("Weight (kg)")}</span>
               <input
                 className="posInput"
                 type="number"
-                min={1}
-                step={1}
-                value={quantity}
+                min={0}
+                step="any"
+                value={lineWeightInput}
                 onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => setQuantity(e.target.value)}
-                aria-label={t("Quantity")}
+                onChange={(e) => setLineWeightInput(e.target.value)}
+                aria-label={t("Weight (kg)")}
               />
             </label>
             <button type="button" className="posAddBtn" onClick={handleAddProduct}>
@@ -448,9 +507,16 @@ export default function PointOfSalePage() {
         </section>
 
         {error && (
-          <p className="posError" role="alert">
-            {error}
-          </p>
+          <div className="posErrorBlock" role="alert">
+            <p className="posError">{error}</p>
+            {errorShowPricelistLink && (
+              <p className="posErrorHint">
+                <Link className="posErrorLink" to="/dashboard/dualPricing">
+                  {t("Open Pricelist")}
+                </Link>
+              </p>
+            )}
+          </div>
         )}
 
         <section className="posSection posSection--flush" aria-labelledby="pos-section-cart">
@@ -470,7 +536,7 @@ export default function PointOfSalePage() {
                 <tr>
                   <th>{t("PRODUCT NAME")}</th>
                   <th>{t("TYPE")}</th>
-                  <th>{t("QUANTITY")}</th>
+                  <th>{t("Weight (kg)")}</th>
                   <th>{t("SUB-TOTAL")}</th>
                   <th className="posRemoveHeader">{t("Actions")}</th>
                 </tr>
@@ -483,7 +549,7 @@ export default function PointOfSalePage() {
                         <p className="posEmptyStateTitle">{t("No products in this sale yet")}</p>
                         <p className="posEmptyStateHint">
                           {t(
-                            "Select product, retail or wholesale type, and quantity above, then use Add Product."
+                            "Select product, retail or wholesale type, and weight (kg) above, then use Add Product."
                           )}
                         </p>
                       </div>
@@ -492,16 +558,16 @@ export default function PointOfSalePage() {
                 ) : (
                   lineItems.map((item, index) => {
                     const subTotal =
-                      item.quantity !== 1
-                        ? `${item.unitPrice}x${item.quantity}`
-                        : String(item.unitPrice * item.quantity);
+                      item.weight !== 1
+                        ? `${item.unitPrice}x${item.weight}`
+                        : String(item.unitPrice * item.weight);
                     return (
                       <tr key={`${item.productId}-${index}`}>
                         <td data-label={t("PRODUCT NAME")}>{item.productName}</td>
                         <td data-label={t("TYPE")}>
                           <span className="posLineTypeBadge">{item.typeName}</span>
                         </td>
-                        <td data-label={t("QUANTITY")}>{item.quantity}</td>
+                        <td data-label={t("Weight (kg)")}>{item.weight}</td>
                         <td data-label={t("SUB-TOTAL")}>{subTotal}</td>
                         <td data-label={t("Actions")} className="posTableCell--action">
                           <button

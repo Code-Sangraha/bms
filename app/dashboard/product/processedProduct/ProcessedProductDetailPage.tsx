@@ -200,6 +200,11 @@ export default function ProcessedProductDetailPage() {
                 ? Number(product.wasteWeight)
                 : null
             }
+            currentStockWeightKg={
+              product.weight != null && Number.isFinite(Number(product.weight))
+                ? Number(product.weight)
+                : null
+            }
           />
 
           {openRestockModal && canMutate && (

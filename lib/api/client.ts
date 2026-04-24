@@ -5,7 +5,8 @@ import { clearStoredUser } from "@/lib/auth/user";
 export const getBaseUrl = (): string => {
   const configuredBaseUrl = (import.meta.env.VITE_API_URL ?? "").trim();
   if (!configuredBaseUrl) return "";
-  return configuredBaseUrl.replace(/\/$/, "");
+  // Express mounts `/v1` (lowercase). Normalize a trailing `/V1` from env so requests hit registered routes.
+  return configuredBaseUrl.replace(/\/$/, "").replace(/\/V1$/i, "/v1");
 };
 
 export type ApiError = {

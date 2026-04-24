@@ -139,6 +139,12 @@ export async function getProducts(): Promise<
   return { ok: true, data };
 }
 
+/**
+ * Processed `POST /products/create` (when `options.isProcessed`): the UI sends one request per new
+ * name; the backend may return one product row or fan out per outlet — response shape varies.
+ * DualPricing is not created here; callers should add `/dual-pricing/create` rows per
+ * `(productId, outletId)` used at POS (`lib/dualPricingLookup.ts`).
+ */
 export async function createProduct(
   payload: CreateProductFormValues,
   options?: { isProcessed?: boolean }
@@ -1419,7 +1425,12 @@ export async function getProcessedProductWasteHistory(
     `${PRODUCT_ROUTES.PROCESSED_WASTE_HISTORY}${qs}`,
     { method: "GET" }
   );
-  if (!result.ok) return result;
+  if (!result.ok) {
+    if (result.status === 404 || result.status === 405) {
+      return { ok: true, data: [] };
+    }
+    return result;
+  }
   const payload = result.data;
   let list: unknown[] = [];
   const nested = payload?.data;
