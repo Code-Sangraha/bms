@@ -63,6 +63,8 @@ export const PRODUCT_ROUTES = {
   PROCESSED_OPENING_STOCK: "/products/processed/opening-stock",
   /** GET ?productId= — waste history for a processed product row */
   PROCESSED_WASTE_HISTORY: "/products/processed/waste-history",
+  /** GET ?fromDate=&toDate=&productId=&type= — restock/deduct movement (query only; no GET body) */
+  PROCESSED_INVENTORY_HISTORY: "/products/processed/history",
 } as const;
 
 export const ROLE_ROUTES = {

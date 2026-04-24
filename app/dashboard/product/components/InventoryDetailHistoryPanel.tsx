@@ -18,12 +18,8 @@ import {
   type LivestockInventoryHistoryEntry,
   type LivestockWasteHistoryEntry,
 } from "@/handlers/product";
-import {
-  DUMMY_CONSUMPTION_ROWS,
-  DUMMY_STORAGE_ROWS,
-  DUMMY_WASTE_TABLE_ROWS,
-  SHOW_DUMMY_WASTE_WHEN_EMPTY,
-} from "@/app/dashboard/product/lib/inventoryDetailMocks";
+import { getSalesByProductId, type SaleTransaction } from "@/handlers/sale";
+import { DUMMY_WASTE_TABLE_ROWS, SHOW_DUMMY_WASTE_WHEN_EMPTY } from "@/app/dashboard/product/lib/inventoryDetailMocks";
 import {
   isDateInRange,
   toIsoDateLocal,
@@ -45,6 +41,8 @@ type InventoryDetailHistoryPanelProps = {
   productShellStyle?: boolean;
   /** Shown in storage “selling price” column when a row has no sellingPrice from the API. */
   storagePriceFallback?: number;
+  /** Cumulative waste weight from GET products when the backend exposes it. */
+  processedCumulativeWasteKg?: number | null;
 };
 
 type HistoryTabId = "storage" | "consumed" | "waste";
@@ -62,12 +60,56 @@ function formatPriceCell(n: number | null | undefined): string {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function localCalendarDayFromIso(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    const s = iso.trim();
+    return s.length >= 10 ? s.slice(0, 10) : "";
+  }
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function saleCalendarDay(tx: SaleTransaction): string {
+  return localCalendarDayFromIso(tx.createdAt ?? tx.date ?? "");
+}
+
+function transactionWeightKg(tx: SaleTransaction): number {
+  const items = tx.items;
+  if (!Array.isArray(items) || items.length === 0) return 0;
+  let sum = 0;
+  for (const i of items) {
+    const w = i.weight;
+    if (typeof w === "number" && Number.isFinite(w)) sum += w;
+  }
+  return sum;
+}
+
+function saleCustomerTypeLabel(tx: SaleTransaction): string {
+  if (typeof tx.type === "string" && tx.type.trim()) return tx.type.trim();
+  if (tx.type && typeof tx.type === "object" && "name" in tx.type) {
+    const n = (tx.type as { name?: string }).name;
+    if (typeof n === "string" && n.trim()) return n.trim();
+  }
+  const ct = tx.customerType;
+  if (typeof ct === "string" && ct.trim()) return ct.trim();
+  if (ct && typeof ct === "object" && "name" in ct) {
+    const n = (ct as { name?: string }).name;
+    if (typeof n === "string" && n.trim()) return n.trim();
+  }
+  return typeof tx.name === "string" && tx.name.trim() ? tx.name.trim() : "\u2014";
+}
+
 export default function InventoryDetailHistoryPanel({
   variant,
   wasteHistoryId,
   dateFilterAffectsStorage = true,
   productShellStyle = false,
   storagePriceFallback,
+  processedCumulativeWasteKg = null,
 }: InventoryDetailHistoryPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -137,6 +179,26 @@ export default function InventoryDetailHistoryPanel({
     },
   });
 
+  const processedPanelEnabled = !isLivestock && Boolean(wasteHistoryId);
+
+  const {
+    data: processedSalesByProduct = [],
+    isPending: processedSalesPending,
+    isError: processedSalesError,
+  } = useQuery({
+    queryKey: ["salesByProductId", "inventoryDetail", wasteHistoryId],
+    enabled: processedPanelEnabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const result = await getSalesByProductId(wasteHistoryId!);
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
   const {
     data: wasteEntriesRaw = [],
     isPending: wastePending,
@@ -149,7 +211,7 @@ export default function InventoryDetailHistoryPanel({
       appliedFrom,
       appliedTo,
     ],
-    enabled: Boolean(wasteHistoryId),
+    enabled: Boolean(wasteHistoryId) && isLivestock,
     staleTime: 30_000,
     queryFn: async () => {
       const range = { from: appliedFrom, to: appliedTo };
@@ -178,25 +240,17 @@ export default function InventoryDetailHistoryPanel({
     [wasteEntriesRaw, appliedFrom, appliedTo]
   );
 
-  const storageRows = useMemo(
+  const processedSalesInDateRange = useMemo(
     () =>
-      DUMMY_STORAGE_ROWS.filter((row) =>
-        isDateInRange(row.date, appliedFrom, appliedTo)
-      ),
-    [appliedFrom, appliedTo]
-  );
-
-  const consumedRows = useMemo(
-    () =>
-      DUMMY_CONSUMPTION_ROWS.filter(
-        (row) =>
-          row.type === "Consumed" &&
-          isDateInRange(row.date, appliedFrom, appliedTo)
-      ),
-    [appliedFrom, appliedTo]
+      processedSalesByProduct.filter((tx) => {
+        const day = saleCalendarDay(tx);
+        return day && day >= appliedFrom && day <= appliedTo;
+      }),
+    [processedSalesByProduct, appliedFrom, appliedTo]
   );
 
   const wasteTableRows: LivestockWasteHistoryEntry[] = useMemo(() => {
+    if (!isLivestock) return [];
     if (wastePending) return [];
     const mapDummy = (): LivestockWasteHistoryEntry[] =>
       DUMMY_WASTE_TABLE_ROWS.map((r, i) => ({
@@ -223,6 +277,7 @@ export default function InventoryDetailHistoryPanel({
     wasteEntriesFiltered,
     appliedFrom,
     appliedTo,
+    isLivestock,
   ]);
 
   const handleApplyFilter = () => {
@@ -274,12 +329,7 @@ export default function InventoryDetailHistoryPanel({
             </span>
           </td>
           <td>{row.livestockItem.name}</td>
-          <td>
-            {amt.display}
-            <span className="inventoryDetailAmountUnit">
-              {amt.isLegacyWeight ? t("Qty (kg)") : t("Quantity")}
-            </span>
-          </td>
+          <td>{amt.display}</td>
         </tr>
       );
     });
@@ -294,12 +344,7 @@ export default function InventoryDetailHistoryPanel({
       return (
         <tr key={row.id} className="inventoryDetailTableRowFixed">
           <td>{formatHistoryDateTime(row.createdAt)}</td>
-          <td>
-            {amt.display}
-            <span className="inventoryDetailAmountUnit">
-              {amt.isLegacyWeight ? t("Qty (kg)") : t("Quantity")}
-            </span>
-          </td>
+          <td>{amt.display}</td>
           <td>{formatPriceCell(row.buyingPrice)}</td>
           <td>{formatPriceCell(selling ?? null)}</td>
         </tr>
@@ -326,6 +371,11 @@ export default function InventoryDetailHistoryPanel({
       {productShellStyle && isLivestock && !dateFilterAffectsStorage && (
         <p className="inventoryDetailDateScopeHint" role="note">
           {t("Date range applies to Consumed and Waste history only.")}
+        </p>
+      )}
+      {!isLivestock && (
+        <p className="inventoryDetailDateScopeHint" role="note">
+          {t("Date range applies to consumed (sales) history. Storage and waste tabs summarize API limits.")}
         </p>
       )}
       <div className="inventoryDetailDateRow">
@@ -469,32 +519,11 @@ export default function InventoryDetailHistoryPanel({
           ) : (
             <>
               <p className="inventoryDetailSampleBanner" role="status">
-                {t("Sample data (API pending)")}
+                {t(
+                  "There is no API to list storage-in events for processed products. Restocks only update current weight; processing completions are stored in the database but are not exposed as rows here."
+                )}
               </p>
-              {storageRows.length === 0 ? (
-                <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
-              ) : (
-                <div className="inventoryDetailSampleTableWrap">
-                  <table className="inventoryDetailSampleTable">
-                    <thead>
-                      <tr>
-                        <th>{t("Column date")}</th>
-                        <th>{t("Column quantity")}</th>
-                        <th>{t("Column note")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {storageRows.map((row) => (
-                        <tr key={row.date + row.note}>
-                          <td>{row.date}</td>
-                          <td>{row.quantity}</td>
-                          <td>{row.note}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <p className="inventoryDetailEmptyTab">{t("No storage history records.")}</p>
             </>
           )}
         </div>
@@ -541,26 +570,49 @@ export default function InventoryDetailHistoryPanel({
           ) : (
             <>
               <p className="inventoryDetailSampleBanner" role="status">
-                {t("Sample data (API pending)")}
+                {t(
+                  "Consumed history lists sales for this product in the selected date range. Manual product deducts are not included."
+                )}
               </p>
-              {consumedRows.length === 0 ? (
-                <p className="inventoryDetailEmptyTab">{t("No rows in this date range.")}</p>
+              {processedSalesPending ? (
+                <p className="productsMessage">{t("Loading stock history…")}</p>
+              ) : processedSalesError ? (
+                <p className="inventoryDetailRangeError" role="alert">
+                  {t("Failed to load sales for this product.")}
+                </p>
+              ) : processedSalesInDateRange.length === 0 ? (
+                <p className="inventoryDetailEmptyTab">{t("No sales in this date range.")}</p>
               ) : (
                 <div className="inventoryDetailSampleTableWrap">
                   <table className="inventoryDetailSampleTable">
                     <thead>
                       <tr>
                         <th>{t("Column date")}</th>
-                        <th>{t("Column quantity")}</th>
+                        <th>{t("Column type")}</th>
+                        <th>{t("Column item")}</th>
+                        <th>{t("Weight (kg)")}</th>
+                        <th>{t("Amount")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {consumedRows.map((row) => (
-                        <tr key={row.date + row.type}>
-                          <td>{row.date}</td>
-                          <td>{row.quantity}</td>
-                        </tr>
-                      ))}
+                      {processedSalesInDateRange.map((tx) => {
+                        const iso = tx.createdAt ?? tx.date ?? "";
+                        const wkg = transactionWeightKg(tx);
+                        const amt = tx.totalAmount ?? tx.amount ?? tx.total;
+                        return (
+                          <tr key={tx.id || tx.transactionId || iso}>
+                            <td>{iso ? formatHistoryDateTime(iso) : "\u2014"}</td>
+                            <td>
+                              <span className="inventoryDetailTypeBadge inventoryDetailTypeBadgeDeduct">
+                                {t("Sale")}
+                              </span>
+                            </td>
+                            <td>{saleCustomerTypeLabel(tx)}</td>
+                            <td>{wkg > 0 ? String(wkg) : "\u2014"}</td>
+                            <td>{formatPriceCell(typeof amt === "number" ? amt : null)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -583,6 +635,22 @@ export default function InventoryDetailHistoryPanel({
                 ? t("Unable to load waste history: missing product ID.")
                 : t("Unable to load waste history: missing item record ID from API.")}
             </p>
+          ) : variant === "processed" ? (
+            <>
+              <p className="inventoryDetailSampleBanner" role="status">
+                {t(
+                  "There is no API for per-date processing waste. Cumulative waste on the product (when returned by GET products) is shown below when available."
+                )}
+              </p>
+              {processedCumulativeWasteKg != null && Number.isFinite(processedCumulativeWasteKg) ? (
+                <p className="inventoryDetailEmptyTab">
+                  <strong>{t("Cumulative waste (on product)")}:</strong>{" "}
+                  {String(processedCumulativeWasteKg)} kg
+                </p>
+              ) : (
+                <p className="inventoryDetailEmptyTab">{t("No waste history records.")}</p>
+              )}
+            </>
           ) : wastePending ? (
             <p className="productsMessage">{t("Loading waste history…")}</p>
           ) : wasteTableRows.length === 0 ? (

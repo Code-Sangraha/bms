@@ -5,16 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
-import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
+import { TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useToast } from "@/app/providers/ToastProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import {
   getProcessingPlants,
   mergeProcessingPlantOutletFromUsers,
-  type ProcessingPlant,
 } from "@/handlers/processingPlant";
 import { getOutlets } from "@/handlers/outlet";
 import { getUsers } from "@/handlers/user";
@@ -452,7 +450,6 @@ export default function Sidebar() {
   const location = useLocation();
   const { canCreate } = usePermissions();
   const { t, locale } = useI18n();
-  const { showToast } = useToast();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [highlandContext, setHighlandContext] = useState<HighlandStoredContext>(() => {
     const stored = readHighlandContextFromStorage();
@@ -717,34 +714,32 @@ export default function Sidebar() {
     if (!el?.showDialog && el?.show) el.show();
   }, [deferredInstallPrompt]);
 
-  const handleSelectPlant = useCallback(
-    (plant: ProcessingPlant) => {
-      const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
-      if (!resolved) {
-        showToast(t("Processing plant has no linked outlet yet."));
-        return;
-      }
-      const nextCtx: HighlandStoredContext = {
-        mode: "plant",
-        plantId: plant.id,
-        outletId: resolved,
-        plantName: plant.name,
-      };
-      setHighlandContext(nextCtx);
-      writeHighlandContextToStorage(nextCtx);
-      setActiveMenuId("highland");
-      // Do not navigate to a route here — the user chooses a page from the drawer. If the
-      // URL still had `?outletId=` from another scope, remove it so URL sync cannot override
-      // the plant we just selected.
-      if (readOutletScopeFromSearch(locationSearch) != null) {
-        navigate(
-          buildPathWithOutletScope(pathname, null, locationSearch),
-          { replace: true }
-        );
-      }
-    },
-    [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
-  );
+  // Sub-outlet (per processing plant) rail buttons — re-enable with the block in <nav> below.
+  // const handleSelectPlant = useCallback(
+  //   (plant: ProcessingPlant) => {
+  //     const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
+  //     if (!resolved) {
+  //       showToast(t("Processing plant has no linked outlet yet."));
+  //       return;
+  //     }
+  //     const nextCtx: HighlandStoredContext = {
+  //       mode: "plant",
+  //       plantId: plant.id,
+  //       outletId: resolved,
+  //       plantName: plant.name,
+  //     };
+  //     setHighlandContext(nextCtx);
+  //     writeHighlandContextToStorage(nextCtx);
+  //     setActiveMenuId("highland");
+  //     if (readOutletScopeFromSearch(locationSearch) != null) {
+  //       navigate(
+  //         buildPathWithOutletScope(pathname, null, locationSearch),
+  //         { replace: true }
+  //       );
+  //     }
+  //   },
+  //   [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
+  // );
 
   return (
     <div className="sidebarWrapper">
@@ -782,7 +777,8 @@ export default function Sidebar() {
               })}
             </div>
           ))}
-          {processingPlantsForRail.map((plant: ProcessingPlant) => {
+          {/* Sub-outlet rail: one button per processing plant. Restore with handleSelectPlant + TbBuildingFactory2 + ProcessingPlant import. */}
+          {/* {processingPlantsForRail.map((plant: ProcessingPlant) => {
             const hasOutlet = Boolean(
               resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
             );
@@ -809,7 +805,7 @@ export default function Sidebar() {
                 <span className="mobileRailLabel">{plant.name}</span>
               </button>
             );
-          })}
+          })} */}
         </nav>
 
         <div className="footer">

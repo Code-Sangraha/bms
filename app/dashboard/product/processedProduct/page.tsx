@@ -14,6 +14,7 @@ import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   deleteProduct as deleteProductApi,
   deductProduct,
+  getProcessedInventoryHistory,
   getProcessedOpeningStock,
   getProducts,
   updateProduct as updateProductApi,
@@ -21,6 +22,11 @@ import {
 } from "@/handlers/product";
 import OpeningStockTable from "../liveProduct/components/OpeningStockTable";
 import ClosingStockTable from "../liveProduct/components/ClosingStockTable";
+import {
+  buildProcessedOpeningStockData,
+  type ProcessedClientStockMode,
+} from "./lib/buildProcessedOpeningStockData";
+import { getProcessedStockWeight } from "./lib/processedStockWeight";
 import type { ProcessedDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
@@ -32,21 +38,27 @@ import "./processedProduct.scss";
 const PRODUCT_TYPE_NAME = "Processed";
 const PRODUCTS_QUERY_KEY = ["products"];
 
-/** Quantity fallback when `weight` is missing (legacy rows). */
-function getProcessedQuantity(product: Product): number {
-  const raw = product.quantity;
-  const num = typeof raw === "number" ? raw : Number(raw);
-  return Number.isFinite(num) ? num : 0;
+/** Dev: set `localStorage.setItem('DEBUG_PROCESSED_STOCK','1')` then refresh. */
+function shouldLogProcessedOpeningStockDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("DEBUG_PROCESSED_STOCK") === "1";
+  } catch {
+    return false;
+  }
 }
 
-/** Stock weight for caps and deduct; prefers `weight`, falls back to `quantity`. */
-function getProcessedStockWeight(product: Product): number {
-  const w = product.weight;
-  if (w != null) {
-    const n = typeof w === "number" ? w : Number(w);
-    if (Number.isFinite(n)) return n;
+function localCalendarDayFromCreatedAt(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    const s = iso.trim();
+    return s.length >= 10 ? s.slice(0, 10) : s;
   }
-  return getProcessedQuantity(product);
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 /** Stored stock weight for processed products (backend increments `weight` on complete processing). */
@@ -248,16 +260,32 @@ export default function ProcessedProductPage() {
 
   const invalidateProducts = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ["processedInventoryHistory"] });
+    queryClient.invalidateQueries({ queryKey: ["processedOpeningStock"] });
+    queryClient.invalidateQueries({ queryKey: ["salesByProductId"] });
   }, [queryClient]);
 
+  const todayIso = toIsoDateLocal(new Date());
+  const clientStockMode: ProcessedClientStockMode =
+    openingStockTo === todayIso ? "reconciled" : "movementOnly";
+
+  const filteredProductIdsKey = useMemo(
+    () =>
+      [...filteredProducts]
+        .map((p) => p.id)
+        .sort()
+        .join(","),
+    [filteredProducts]
+  );
+
   const {
-    data: processedOpeningStockData,
-    isPending: processedOpeningStockPending,
-    isError: processedOpeningStockError,
-    error: processedOpeningStockErrorDetail,
+    data: processedOpeningStockServer,
+    isPending: processedOpeningStockServerPending,
+    isError: processedOpeningStockServerError,
+    isSuccess: processedOpeningStockServerSuccess,
   } = useQuery({
     queryKey: ["processedOpeningStock", openingStockFrom, openingStockTo],
-    enabled: !openingStockRangeInvalid,
+    enabled: mainTab === "openingClosing" && !openingStockRangeInvalid,
     staleTime: 60_000,
     queryFn: async () => {
       const result = await getProcessedOpeningStock(openingStockFrom, openingStockTo);
@@ -269,11 +297,224 @@ export default function ProcessedProductPage() {
     },
   });
 
-  const processedOpeningStockErrorMessage = processedOpeningStockError
-    ? processedOpeningStockErrorDetail instanceof Error && processedOpeningStockErrorDetail.message.trim()
-      ? processedOpeningStockErrorDetail.message
-      : t("Opening stock data is not available yet.")
+  const {
+    data: processedHistoryForOpening,
+    isPending: processedHistoryOpeningPending,
+    isError: processedHistoryOpeningError,
+    error: processedHistoryOpeningErrorDetail,
+  } = useQuery({
+    queryKey: [
+      "processedInventoryHistory",
+      "openingClosingRange",
+      openingStockFrom,
+      openingStockTo,
+      clientStockMode,
+      filteredProductIdsKey,
+    ],
+    enabled:
+      mainTab === "openingClosing" &&
+      !openingStockRangeInvalid &&
+      filteredProducts.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const todayLocal = toIsoDateLocal(new Date());
+      const toDate = clientStockMode === "reconciled" ? todayLocal : openingStockTo;
+      const result = await getProcessedInventoryHistory({
+        fromDate: openingStockFrom,
+        toDate,
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const historyRowsForOpening = processedHistoryForOpening ?? [];
+
+  const historyFilteredForOpening = useMemo(() => {
+    const ids = new Set(filteredProducts.map((p) => p.id.trim()).filter(Boolean));
+    return historyRowsForOpening.filter((h) => ids.has(h.productId.trim()));
+  }, [historyRowsForOpening, filteredProducts]);
+
+  const clientProcessedOpeningStockData = useMemo(
+    () =>
+      buildProcessedOpeningStockData({
+        from: openingStockFrom,
+        to: openingStockTo,
+        products: filteredProducts,
+        history: historyFilteredForOpening,
+        mode: clientStockMode,
+      }),
+    [
+      openingStockFrom,
+      openingStockTo,
+      filteredProducts,
+      historyFilteredForOpening,
+      clientStockMode,
+    ]
+  );
+
+  const serverOpeningAuthoritative = useMemo(() => {
+    const s = processedOpeningStockServer;
+    if (!s || s.openingStockByDate.length === 0) return false;
+    return (
+      (s.totalRecords ?? 0) > 0 ||
+      s.openingStockByDate.some(
+        (d) =>
+          d.totalAdded > 0 ||
+          d.totalConsumed > 0 ||
+          d.totalOpening != null ||
+          d.totalClosing != null ||
+          d.items.some(
+            (i) =>
+              i.addedQuantity > 0 ||
+              i.consumedQuantity > 0 ||
+              i.openingQuantity != null ||
+              i.closingQuantity != null
+          )
+      )
+    );
+  }, [processedOpeningStockServer]);
+
+  const mergedOpeningStockData = useMemo(() => {
+    if (serverOpeningAuthoritative && processedOpeningStockServer) {
+      return processedOpeningStockServer;
+    }
+    return clientProcessedOpeningStockData;
+  }, [serverOpeningAuthoritative, processedOpeningStockServer, clientProcessedOpeningStockData]);
+
+  const dataSourceIsClient = mergedOpeningStockData === clientProcessedOpeningStockData;
+
+  const openingStockPending =
+    mainTab === "openingClosing" &&
+    !openingStockRangeInvalid &&
+    (processedHistoryOpeningPending ||
+      processedOpeningStockServerPending ||
+      (filteredProducts.length > 0 && productsLoading));
+
+  const openingStockError =
+    processedHistoryOpeningError && !serverOpeningAuthoritative;
+
+  const openingStockErrorMessage = openingStockError
+    ? processedHistoryOpeningErrorDetail instanceof Error &&
+      processedHistoryOpeningErrorDetail.message.trim()
+      ? processedHistoryOpeningErrorDetail.message
+      : t("Could not load processed movement history.")
     : null;
+
+  useEffect(() => {
+    if (!shouldLogProcessedOpeningStockDebug()) return;
+    if (mainTab !== "openingClosing") return;
+    if (openingStockRangeInvalid) return;
+
+    const toDateSent =
+      clientStockMode === "reconciled" ? toIsoDateLocal(new Date()) : openingStockTo;
+
+    const hist = historyRowsForOpening;
+    const historyRowsInUiRange = hist.filter((h) => {
+      const day = localCalendarDayFromCreatedAt(h.createdAt);
+      return day >= openingStockFrom && day <= openingStockTo;
+    });
+
+    console.groupCollapsed("[processed-opening-stock] filters & API request");
+    console.log("UI date range (what the tables use)", {
+      from: openingStockFrom,
+      to: openingStockTo,
+      clientStockMode,
+    });
+    console.log("GET /products/processed/history query", {
+      fromDate: openingStockFrom,
+      toDate: toDateSent,
+      note:
+        clientStockMode === "reconciled"
+          ? "toDate is extended to today so post-range rows can anchor closing."
+          : "toDate matches UI end date.",
+    });
+    console.log("GET /products/processed/opening-stock", {
+      from: openingStockFrom,
+      to: openingStockTo,
+    });
+    console.log("Inventory filter", {
+      filteredProductCount: filteredProducts.length,
+      selectedOutletId,
+      searchQuery: searchQuery.trim() || "(empty)",
+    });
+    console.log("Fetch state", {
+      historyPending: processedHistoryOpeningPending,
+      historyError: processedHistoryOpeningError,
+      serverPending: processedOpeningStockServerPending,
+      serverError: processedOpeningStockServerError,
+      serverSuccess: processedOpeningStockServerSuccess,
+      serverAuthoritative: serverOpeningAuthoritative,
+      displayFromClient: dataSourceIsClient,
+    });
+    console.groupEnd();
+
+    if (processedHistoryOpeningPending || processedHistoryOpeningError) {
+      console.log("[processed-opening-stock] skip history row dump (still loading or error)");
+    } else {
+      console.groupCollapsed("[processed-opening-stock] raw history (" + hist.length + " rows)");
+      console.table(
+        hist.map((h) => ({
+          productId: h.productId,
+          type: h.type,
+          quantity: h.quantity,
+          weight: h.weight,
+          createdAt: h.createdAt,
+          localDay: localCalendarDayFromCreatedAt(h.createdAt),
+          inUiRange:
+            localCalendarDayFromCreatedAt(h.createdAt) >= openingStockFrom &&
+            localCalendarDayFromCreatedAt(h.createdAt) <= openingStockTo
+              ? "yes"
+              : "no",
+        }))
+      );
+      console.log("Rows whose localDay falls inside [from, to]", historyRowsInUiRange.length, "of", hist.length);
+      if (hist.length > 0 && historyRowsInUiRange.length === 0) {
+        console.warn(
+          "[processed-opening-stock] API returned rows but none fall on a local calendar day in the selected range."
+        );
+      }
+      console.groupEnd();
+    }
+
+    console.groupCollapsed(
+      "[processed-opening-stock] merged openingStockByDate (" +
+        mergedOpeningStockData.openingStockByDate.length +
+        " days)"
+    );
+    console.table(
+      mergedOpeningStockData.openingStockByDate.map((d) => ({
+        date: d.date,
+        totalAdded: d.totalAdded,
+        totalConsumed: d.totalConsumed,
+        totalOpening: d.totalOpening,
+        totalClosing: d.totalClosing,
+        itemCount: d.items.length,
+      }))
+    );
+    console.groupEnd();
+  }, [
+    mainTab,
+    openingStockRangeInvalid,
+    openingStockFrom,
+    openingStockTo,
+    clientStockMode,
+    historyRowsForOpening,
+    processedHistoryOpeningPending,
+    processedHistoryOpeningError,
+    processedOpeningStockServerPending,
+    processedOpeningStockServerError,
+    processedOpeningStockServerSuccess,
+    serverOpeningAuthoritative,
+    dataSourceIsClient,
+    filteredProducts.length,
+    selectedOutletId,
+    searchQuery,
+    mergedOpeningStockData,
+  ]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: CreateProductFormValues }) =>
@@ -688,23 +929,36 @@ export default function ProcessedProductPage() {
             </p>
           )}
         </div>
+        {!openingStockRangeInvalid && clientStockMode === "movementOnly" && (
+          <div className="openingClosingStockBanner openingClosingStockBannerInfo" role="status">
+            {t(
+              "Past date range: only restock and deduct movements from history are shown. Set \"Date to\" to today for opening and closing balances. Sales and processing-based stock changes may be missing until the backend includes them in history or opening-stock."
+            )}
+          </div>
+        )}
         {!openingStockRangeInvalid && (
           <div className="openingClosingStockGrid">
             <OpeningStockTable
               from={openingStockFrom}
               to={openingStockTo}
-              openingStockData={processedOpeningStockData}
-              isPending={processedOpeningStockPending}
-              isError={processedOpeningStockError}
-              errorMessage={processedOpeningStockErrorMessage}
+              openingStockData={mergedOpeningStockData}
+              isPending={openingStockPending}
+              isError={openingStockError}
+              errorMessage={openingStockErrorMessage}
+              footnote={
+                dataSourceIsClient && clientStockMode === "reconciled"
+                  ? t(
+""                    )
+                  : null
+              }
             />
             <ClosingStockTable
               from={openingStockFrom}
               to={openingStockTo}
-              openingStockData={processedOpeningStockData}
-              isPending={processedOpeningStockPending}
-              isError={processedOpeningStockError}
-              errorMessage={processedOpeningStockErrorMessage}
+              openingStockData={mergedOpeningStockData}
+              isPending={openingStockPending}
+              isError={openingStockError}
+              errorMessage={openingStockErrorMessage}
             />
           </div>
         )}

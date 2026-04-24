@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { MdAddCircleOutline, MdRemoveCircleOutline } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { getProducts, type Product } from "@/handlers/product";
 import { getOutlets } from "@/handlers/outlet";
@@ -10,7 +11,10 @@ import { getProductTypes } from "@/handlers/productType";
 import ProcessedProductDetailContent from "@/app/dashboard/product/components/ProcessedProductDetailContent";
 import InventoryDetailHistoryPanel from "@/app/dashboard/product/components/InventoryDetailHistoryPanel";
 import type { ProcessedDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
+import ProcessedProductRestockDetailModal from "./ProcessedProductRestockDetailModal";
+import ProcessedProductReduceDetailModal from "./ProcessedProductReduceDetailModal";
 import "../inventoryDetailPage.scss";
+import "../liveProduct/livestockDetailShell.scss";
 import "./processedProduct.scss";
 
 const PRODUCT_TYPE_NAME = "Processed";
@@ -21,6 +25,8 @@ export default function ProcessedProductDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const [openRestockModal, setOpenRestockModal] = useState(false);
+  const [openReduceModal, setOpenReduceModal] = useState(false);
 
   const productId = productIdParam ? decodeURIComponent(productIdParam) : "";
   const snapshot = (location.state as ProcessedDetailLocationState | null)?.productSnapshot;
@@ -95,6 +101,11 @@ export default function ProcessedProductDetailPage() {
 
   const invalidParams = !productId;
 
+  const canMutate =
+    product != null &&
+    Boolean(product.id?.trim()) &&
+    Boolean(product.outletId?.trim());
+
   return (
     <section className="inventoryDetailPage processedProductPage">
       <div className="breadcrumb">
@@ -141,7 +152,6 @@ export default function ProcessedProductDetailPage() {
         <>
           <header className="inventoryDetailHeader">
             <h1 className="inventoryDetailTitle">{t("Processed product details")}</h1>
-            <p className="inventoryDetailSubtitle">{product.name}</p>
             {productsError && snapshot && (
               <p className="pageSubtitle" role="status">
                 {t("Showing cached row; could not verify with server.")}
@@ -149,16 +159,64 @@ export default function ProcessedProductDetailPage() {
             )}
           </header>
 
-          <ProcessedProductDetailContent
-            product={product}
-            typeName={getTypeName(product.productTypeId)}
-            outletName={getOutletName(product.outletId)}
-          />
+          <div className="livestockDetailCard">
+            <div className="livestockDetailShellTop">
+              <div className="livestockDetailFacts">
+                <h1 className="livestockDetailName">{product.name}</h1>
+                <ProcessedProductDetailContent
+                  product={product}
+                  typeName={getTypeName(product.productTypeId)}
+                  outletName={getOutletName(product.outletId)}
+                />
+              </div>
+              <div className="livestockDetailActions">
+                <button
+                  type="button"
+                  className="livestockDetailBtnGhost"
+                  disabled={!canMutate}
+                  onClick={() => setOpenRestockModal(true)}
+                >
+                  <MdAddCircleOutline aria-hidden />
+                  {t("Restock Storage")}
+                </button>
+                <button
+                  type="button"
+                  className="livestockDetailBtnGhost livestockDetailBtnReduce"
+                  disabled={!canMutate}
+                  onClick={() => setOpenReduceModal(true)}
+                >
+                  <MdRemoveCircleOutline aria-hidden />
+                  {t("Reduce Storage")}
+                </button>
+              </div>
+            </div>
+          </div>
 
           <InventoryDetailHistoryPanel
             variant="processed"
             wasteHistoryId={product.id?.trim() ? product.id : null}
+            processedCumulativeWasteKg={
+              product.wasteWeight != null && Number.isFinite(Number(product.wasteWeight))
+                ? Number(product.wasteWeight)
+                : null
+            }
           />
+
+          {openRestockModal && canMutate && (
+            <ProcessedProductRestockDetailModal
+              isOpen
+              product={product}
+              onClose={() => setOpenRestockModal(false)}
+            />
+          )}
+
+          {openReduceModal && canMutate && (
+            <ProcessedProductReduceDetailModal
+              isOpen
+              product={product}
+              onClose={() => setOpenReduceModal(false)}
+            />
+          )}
         </>
       )}
     </section>

@@ -157,6 +157,19 @@ type I18nContextValue = {
     "सर्भरमा मात्र परिमाण पठाइन्छ; कैफियत वैकल्पिक स्थानीय टिप्पणी हो।",
   "Consumption recorded successfully.": "खपत सफलतापूर्वक दर्ता भयो।",
   "Restock completed successfully.": "पुनः भण्डारण सफल भयो।",
+  "Storage reduced successfully.": "भण्डारण सफलतापूर्वक घटाइयो।",
+  "Date range applies to consumed (sales) history. Storage and waste tabs summarize API limits.":
+    "मिति दायरा बिक्री (खपत) इतिहासमा लागू हुन्छ। भण्डारण र फोहोर ट्याब API सीमाको सार देखाउँछन्।",
+  "There is no API to list storage-in events for processed products. Restocks only update current weight; processing completions are stored in the database but are not exposed as rows here.":
+    "प्रशोधित उत्पादनका लागि भण्डारण-भित्र घटनाहरू सूचीबद्ध गर्ने API छैन। पुनः भण्डारणले मात्र हालको तौल अद्यावधिक गर्छ; प्रशोधन पूरा भएका लेनदेन डेटाबेसमा छन् तर यहाँ पंक्ति रूपमा देखाइँदैनन्।",
+  "Consumed history lists sales for this product in the selected date range. Manual product deducts are not included.":
+    "खपत इतिहासले छानिएको मिति दायरामा यस उत्पादनका बिक्रीहरू देखाउँछ। म्यानुअल कटौती समावेश छैन।",
+  "There is no API for per-date processing waste. Cumulative waste on the product (when returned by GET products) is shown below when available.":
+    "मिति अनुसार प्रशोधन फोहोरको API छैन। उत्पादनमा जम्मा फोहोर (GET products ले फर्काउँछ) उपलब्ध भए तल देखाइन्छ।",
+  "Failed to load sales for this product.": "यस उत्पादनका बिक्री लोड गर्न सकिएन।",
+  "No sales in this date range.": "यस मिति दायरामा कुनै बिक्री छैन।",
+  "Cumulative waste (on product)": "जम्मा फोहोर (उत्पादनमा)",
+  Sale: "बिक्री",
   Unit: "एकाइ",
 };
 
@@ -770,6 +783,19 @@ const translations: Record<string, string> = {
     "सर्भरमा मात्र परिमाण पठाइन्छ; कैफियत वैकल्पिक स्थानीय टिप्पणी हो।",
   "Consumption recorded successfully.": "खपत सफलतापूर्वक दर्ता भयो।",
   "Restock completed successfully.": "पुनः भण्डारण सफल भयो।",
+  "Storage reduced successfully.": "भण्डारण सफलतापूर्वक घटाइयो।",
+  "Date range applies to consumed (sales) history. Storage and waste tabs summarize API limits.":
+    "मिति दायरा बिक्री (खपत) इतिहासमा लागू हुन्छ। भण्डारण र फोहोर ट्याब API सीमाको सार देखाउँछन्।",
+  "There is no API to list storage-in events for processed products. Restocks only update current weight; processing completions are stored in the database but are not exposed as rows here.":
+    "प्रशोधित उत्पादनका लागि भण्डारण-भित्र घटनाहरू सूचीबद्ध गर्ने API छैन। पुनः भण्डारणले मात्र हालको तौल अद्यावधिक गर्छ; प्रशोधन पूरा भएका लेनदेन डेटाबेसमा छन् तर यहाँ पंक्ति रूपमा देखाइँदैनन्।",
+  "Consumed history lists sales for this product in the selected date range. Manual product deducts are not included.":
+    "खपत इतिहासले छानिएको मिति दायरामा यस उत्पादनका बिक्रीहरू देखाउँछ। म्यानुअल कटौती समावेश छैन।",
+  "There is no API for per-date processing waste. Cumulative waste on the product (when returned by GET products) is shown below when available.":
+    "मिति अनुसार प्रशोधन फोहोरको API छैन। उत्पादनमा जम्मा फोहोर (GET products ले फर्काउँछ) उपलब्ध भए तल देखाइन्छ।",
+  "Failed to load sales for this product.": "यस उत्पादनका बिक्री लोड गर्न सकिएन।",
+  "No sales in this date range.": "यस मिति दायरामा कुनै बिक्री छैन।",
+  "Cumulative waste (on product)": "जम्मा फोहोर (उत्पादनमा)",
+  Sale: "बिक्री",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

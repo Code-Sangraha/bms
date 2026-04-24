@@ -401,6 +401,13 @@ export type {
 } from "@/lib/api/livestockInventoryHistory";
 export { getLivestockInventoryHistory, formatLivestockHistoryAmount } from "@/lib/api/livestockInventoryHistory";
 
+export type {
+  ProcessedInventoryHistoryType,
+  ProcessedInventoryHistoryFilters,
+  ProcessedInventoryHistoryEntry,
+} from "@/lib/api/processedInventoryHistory";
+export { getProcessedInventoryHistory, formatProcessedHistoryAmount } from "@/lib/api/processedInventoryHistory";
+
 export type LivestockCategory = {
   id: string;
   name: string;
@@ -1326,16 +1333,28 @@ function shouldUseDummyOpeningStockFallback(error: string, status: number): bool
   return false;
 }
 
+type OpeningStockRouteOptions = {
+  /**
+   * When false, do not substitute dummy opening data on 404/route errors (processed list should use client builder instead).
+   * @default true
+   */
+  useDummyFallback?: boolean;
+};
+
 async function getOpeningStockByRoute(
   route: string,
   from: string,
-  to: string
+  to: string,
+  options?: OpeningStockRouteOptions
 ): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
   const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const result = await apiRequest<OpeningStockApiResponse>(`${route}${qs}`, { method: "GET" });
   if (!result.ok) {
     if (result.status === 401) return result;
-    if (shouldUseDummyOpeningStockFallback(result.error, result.status)) {
+    if (
+      options?.useDummyFallback !== false &&
+      shouldUseDummyOpeningStockFallback(result.error, result.status)
+    ) {
       return { ok: true, data: buildDummyOpeningStockData(from, to) };
     }
     return result;
@@ -1378,7 +1397,9 @@ export async function getProcessedOpeningStock(
   from: string,
   to: string
 ): Promise<{ ok: true; data: OpeningStockData } | { ok: false; error: string; status: number }> {
-  return getOpeningStockByRoute(PRODUCT_ROUTES.PROCESSED_OPENING_STOCK, from, to);
+  return getOpeningStockByRoute(PRODUCT_ROUTES.PROCESSED_OPENING_STOCK, from, to, {
+    useDummyFallback: false,
+  });
 }
 
 type ProcessedWasteHistoryApiResponse = LivestockWasteHistoryApiResponse;
