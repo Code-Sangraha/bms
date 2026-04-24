@@ -66,6 +66,9 @@
   font-weight: 600;
   color: #02955a;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .dashboardSectionLink:hover {
@@ -121,6 +124,22 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.dashboardCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboardCardIcon {
+  display: none;
+}
+
+.dashboardCardIconSvg {
+  width: 18px;
+  height: 18px;
 }
 
 .dashboardCardLabel {
@@ -283,6 +302,11 @@
   font-size: 13px;
   font-weight: 600;
   color: #047857;
+}
+
+.dashboardMobileList,
+.dashboardMobileMiniList {
+  display: none;
 }
 
 .dashboardAttendanceTableWrap {
@@ -495,7 +519,11 @@
   }
 
   .dashboardHero {
-    margin-bottom: 2px;
+    padding: 6px 2px 0;
+  }
+
+  .dashboardHero .dashboardSubtitle {
+    max-width: 30ch;
   }
 
   .dashboardTitle {
@@ -516,12 +544,24 @@
     gap: 8px;
   }
 
+  .dashboardSectionLink {
+    font-size: 12px;
+    gap: 4px;
+  }
+
+  .dashboardSectionLinkIcon {
+    width: 14px;
+    height: 14px;
+  }
+
   .dashboardSectionTitle {
     font-size: 16px;
   }
 
-  .dashboardSectionLink {
-    font-size: 13px;
+  .dashboardCards {
+    padding: 14px;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboardBlock {
@@ -533,31 +573,55 @@
     font-size: 13px;
   }
 
-  .dashboardCards {
-    padding: 14px;
-    gap: 12px;
-    grid-template-columns: 1fr;
-  }
-
   .dashboardCardsAttendance {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboardCardsLivestock {
     padding: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboardCard {
-    padding: 14px;
-    border-radius: 10px;
+    padding: 16px 14px;
+    border-radius: 16px;
+    min-height: 138px;
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  }
+
+  .dashboardCardTop {
+    align-items: center;
+  }
+
+  .dashboardCardIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #111827;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  }
+
+  .dashboardCardLabel {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    max-width: 10ch;
   }
 
   .dashboardCardValue {
-    font-size: 38px;
+    font-size: clamp(1.6rem, 5vw, 2.25rem);
+    line-height: 1.05;
   }
 
   .dashboardCardValueSm {
     font-size: 16px;
+  }
+
+  .dashboardCardSub {
+    font-size: 12px;
   }
 
   .dashboardCharts {
@@ -613,13 +677,24 @@
 
   .dashboardTrendingHead,
   .dashboardTrendingRow {
-    grid-template-columns: 24px 1fr 76px 90px;
-    gap: 8px;
+    grid-template-columns: 24px minmax(0, 1fr) 68px 82px;
+    gap: 6px;
     padding: 10px 12px;
   }
 
   .dashboardTrendingHead {
     font-size: 10px;
+    align-items: end;
+  }
+
+  .dashboardTrendingHead span:nth-child(3) {
+    justify-self: center;
+    text-align: center;
+  }
+
+  .dashboardTrendingHead span:nth-child(4) {
+    justify-self: end;
+    text-align: right;
   }
 
   .dashboardTrendingRank {
@@ -628,16 +703,22 @@
 
   .dashboardTrendingItem {
     font-size: 12px;
+    min-width: 0;
+    line-height: 1.35;
+    word-break: break-word;
   }
 
   .dashboardTrendingQty {
     font-size: 11px;
     min-width: 34px;
     padding: 2px 8px;
+    justify-self: center;
   }
 
   .dashboardTrendingAmount {
     font-size: 12px;
+    min-width: 0;
+    text-align: right;
   }
 
   .dashboardSalesTable {
@@ -658,5 +739,17 @@
   .dashboardAttendanceTable th,
   .dashboardAttendanceTable td {
     padding: 10px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboardCards,
+  .dashboardCardsAttendance,
+  .dashboardCardsLivestock {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardCard {
+    min-height: 0;
   }
 }

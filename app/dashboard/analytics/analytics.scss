@@ -61,12 +61,27 @@
   gap: 20px;
 }
 
+.dashboardAnalyticsMobile {
+  display: none;
+}
+
 .dashboardAnalyticsCard {
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: #fef3e2;
   border-color: rgba(251, 146, 60, 0.2);
+}
+
+.dashboardAnalyticsCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboardAnalyticsCardIcon {
+  display: none;
 }
 
 .dashboardAnalyticsCardRevenue {
@@ -137,4 +152,193 @@
   margin: 0;
   color: #111827;
   word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .breadcrumb {
+    display: none;
+  }
+
+  .dashboardAnalyticsPage {
+    gap: 14px;
+  }
+
+  .dashboardAnalyticsHeader {
+    align-items: flex-start;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+    max-width: 30ch;
+  }
+
+  .dashboardAnalyticsMobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .dashboardAnalyticsMobileCards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .dashboardAnalyticsMobileCard {
+    padding: 16px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: #fef3e2;
+    border-color: rgba(251, 146, 60, 0.2);
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  }
+
+  .dashboardAnalyticsMobileCardRevenue {
+    background: #ecfdf5;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+
+  .dashboardAnalyticsMobileCardTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .dashboardAnalyticsMobileIcon,
+  .dashboardAnalyticsMobileSectionIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #374151;
+    flex-shrink: 0;
+  }
+
+  .dashboardAnalyticsMobileValue {
+    font-size: clamp(1.5rem, 5vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.05;
+    color: #111827;
+  }
+
+  .dashboardAnalyticsMobileSection {
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: #ffffff;
+    padding: 14px;
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.05);
+  }
+
+  .dashboardAnalyticsMobileSectionHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .dashboardAnalyticsMobileSectionHead h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .dashboardAnalyticsMobileStatList,
+  .dashboardAnalyticsMobileStacks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dashboardAnalyticsMobileStatRow,
+  .dashboardAnalyticsMobileStackRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: #f9fafb;
+  }
+
+  .dashboardAnalyticsMobileStatRow span,
+  .dashboardAnalyticsMobileStackRow span {
+    font-size: 13px;
+    color: #4b5563;
+  }
+
+  .dashboardAnalyticsMobileStatRow strong,
+  .dashboardAnalyticsMobileStackRow strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    text-align: right;
+  }
+
+  .dashboardAnalyticsMobilePills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .dashboardAnalyticsMobilePill {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #f9fafb;
+  }
+
+  .dashboardAnalyticsMobilePill span {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .dashboardAnalyticsMobilePill strong {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .dashboardAnalyticsMobileStack {
+    padding: 12px;
+    border-radius: 14px;
+    background: #f9fafb;
+  }
+
+  .dashboardAnalyticsMobileStackTitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .dashboardAnalyticsCards,
+  .dashboardAnalyticsData {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboardAnalyticsMobileCards,
+  .dashboardAnalyticsMobilePills {
+    grid-template-columns: 1fr;
+  }
 }

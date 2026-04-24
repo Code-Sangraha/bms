@@ -1,7 +1,20 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { type ComponentType, useMemo } from "react";
+import {
+  LuArrowRight,
+  LuBeef,
+  LuBoxes,
+  LuCircleDollarSign,
+  LuClipboardList,
+  LuPackage,
+  LuReceiptText,
+  LuScale,
+  LuStore,
+  LuUsers,
+  LuWallet,
+} from "react-icons/lu";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
@@ -40,6 +53,35 @@ const STATIC_ATTENDANCE_PREVIEW = [
   { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "David Chen", clockIn: "—", clockOut: "—", status: "Absent" as const },
 ];
+
+type DashboardMetricCardProps = {
+  label: string;
+  value: string;
+  sub?: string;
+  toneClassName?: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+function DashboardMetricCard({
+  label,
+  value,
+  sub,
+  toneClassName,
+  icon: Icon,
+}: DashboardMetricCardProps) {
+  return (
+    <div className={`dashboardCard ${toneClassName ?? ""}`.trim()}>
+      <div className="dashboardCardTop">
+        <span className="dashboardCardLabel">{label}</span>
+        <span className="dashboardCardIcon" aria-hidden="true">
+          <Icon className="dashboardCardIconSvg" />
+        </span>
+      </div>
+      <span className="dashboardCardValue">{value}</span>
+      {sub ? <span className="dashboardCardSub">{sub}</span> : null}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -490,6 +532,48 @@ export default function DashboardPage() {
     .slice(0, 8);
 
   const maxOutletAmount = Math.max(...salesByOutlet.map((o) => o.totalAmount ?? 0), 1);
+  const salesMetricCards = [
+    {
+      label: t("Total Revenue"),
+      value: `Rs.${totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      icon: LuWallet,
+      toneClassName: "dashboardCardRevenue",
+    },
+    {
+      label: t("Transactions"),
+      value: String(totalTransactions),
+      icon: LuReceiptText,
+      toneClassName: "dashboardCardTransactions",
+    },
+    {
+      label: t("Weight Sold"),
+      value: `${totalWeight} kg`,
+      icon: LuScale,
+      toneClassName: "dashboardCardWeight",
+    },
+    {
+      label: t("Quantity Sold"),
+      value: String(totalQuantity),
+      icon: LuBoxes,
+      toneClassName: "dashboardCardQuantity",
+    },
+  ];
+  const attendanceMetricCards = [
+    {
+      label: t("Total Staff"),
+      value: "32",
+      sub: t("4 departments"),
+      icon: LuUsers,
+      toneClassName: "dashboardCardStaff",
+    },
+    {
+      label: t("Present Today"),
+      value: "20",
+      sub: t("70% present"),
+      icon: LuClipboardList,
+      toneClassName: "dashboardCardPresent",
+    },
+  ];
 
   return (
     <section className="dashboardOverview">
@@ -510,7 +594,8 @@ export default function DashboardPage() {
             )}
             className="dashboardSectionLink"
           >
-            {t("View full analytics")} →
+            <span>{t("View full analytics")}</span>
+            <LuArrowRight className="dashboardSectionLinkIcon" aria-hidden="true" />
           </Link>
         </div>
 
@@ -526,24 +611,16 @@ export default function DashboardPage() {
         {!salesLoading && !salesError && (
           <>
             <div className="dashboardCards">
-              <div className="dashboardCard dashboardCardRevenue">
-                <span className="dashboardCardLabel">{t("Total Revenue")}</span>
-                <span className="dashboardCardValue">
-                  Rs.{totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="dashboardCard dashboardCardTransactions">
-                <span className="dashboardCardLabel">{t("Transactions")}</span>
-                <span className="dashboardCardValue">{totalTransactions}</span>
-              </div>
-              <div className="dashboardCard dashboardCardWeight">
-                <span className="dashboardCardLabel">{t("Weight Sold")}</span>
-                <span className="dashboardCardValue">{totalWeight} kg</span>
-              </div>
-              <div className="dashboardCard dashboardCardQuantity">
-                <span className="dashboardCardLabel">{t("Quantity Sold")}</span>
-                <span className="dashboardCardValue">{totalQuantity}</span>
-              </div>
+              {salesMetricCards.map((card) => (
+                <DashboardMetricCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  sub={card.sub}
+                  toneClassName={card.toneClassName}
+                  icon={card.icon}
+                />
+              ))}
             </div>
 
             {dailySalesRows.length > 0 && (
@@ -581,6 +658,19 @@ export default function DashboardPage() {
                 {salesByOutlet.length > 0 && (
                   <div className="dashboardChartBlock">
                     <h3 className="dashboardChartTitle">{t("Top outlets")}</h3>
+                    <div className="dashboardMobileMiniList">
+                      {salesByOutlet.map((row: SalesByOutletItem) => (
+                        <div key={row.outletId} className="dashboardMobileMiniRow">
+                          <span className="dashboardMobileMiniIcon" aria-hidden="true">
+                            <LuStore />
+                          </span>
+                          <span className="dashboardMobileMiniLabel">{row.outletName}</span>
+                          <span className="dashboardMobileMiniValue">
+                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     <div className="dashboardOutletBars">
                       {salesByOutlet.map((row: SalesByOutletItem) => {
                         const amount = row.totalAmount ?? 0;
@@ -601,6 +691,19 @@ export default function DashboardPage() {
                 {salesByProduct.length > 0 && (
                   <div className="dashboardChartBlock">
                     <h3 className="dashboardChartTitle">{t("Top products")}</h3>
+                    <div className="dashboardMobileMiniList">
+                      {salesByProduct.map((row: SalesByProductItem) => (
+                        <div key={row.productId} className="dashboardMobileMiniRow">
+                          <span className="dashboardMobileMiniIcon" aria-hidden="true">
+                            <LuPackage />
+                          </span>
+                          <span className="dashboardMobileMiniLabel">{row.productName}</span>
+                          <span className="dashboardMobileMiniValue">
+                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     <div className="dashboardProductList">
                       {salesByProduct.map((row: SalesByProductItem) => (
                         <div key={row.productId} className="dashboardProductRow">
@@ -616,6 +719,19 @@ export default function DashboardPage() {
                 {salesByCustomer.length > 0 && (
                   <div className="dashboardChartBlock">
                     <h3 className="dashboardChartTitle">{t("Top customers")}</h3>
+                    <div className="dashboardMobileMiniList">
+                      {salesByCustomer.map((row: SalesByCustomerItem, idx: number) => (
+                        <div key={idx} className="dashboardMobileMiniRow">
+                          <span className="dashboardMobileMiniIcon" aria-hidden="true">
+                            <LuUsers />
+                          </span>
+                          <span className="dashboardMobileMiniLabel">{row.customerName}</span>
+                          <span className="dashboardMobileMiniValue">
+                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     <div className="dashboardProductList">
                       {salesByCustomer.map((row: SalesByCustomerItem, idx: number) => (
                         <div key={idx} className="dashboardProductRow">
@@ -638,20 +754,24 @@ export default function DashboardPage() {
             <div className="dashboardChartBlock dashboardLiveStockBlock">
               <h3 className="dashboardChartTitle">{t("Processed Sales Details")}</h3>
               <div className="dashboardCards dashboardCardsLivestock">
-                <div className="dashboardCard dashboardCardRevenue">
-                  <span className="dashboardCardLabel">{t("Processed Revenue")}</span>
-                  <span className="dashboardCardValue">
-                    Rs.{processedRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="dashboardCard dashboardCardTransactions">
-                  <span className="dashboardCardLabel">{t("Processed Transactions")}</span>
-                  <span className="dashboardCardValue">{processedTransactions}</span>
-                </div>
-                <div className="dashboardCard dashboardCardWeight">
-                  <span className="dashboardCardLabel">{t("Processed Weight Sold")}</span>
-                  <span className="dashboardCardValue">{processedWeight} kg</span>
-                </div>
+                <DashboardMetricCard
+                  label={t("Processed Revenue")}
+                  value={`Rs.${processedRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  toneClassName="dashboardCardRevenue"
+                  icon={LuWallet}
+                />
+                <DashboardMetricCard
+                  label={t("Processed Transactions")}
+                  value={String(processedTransactions)}
+                  toneClassName="dashboardCardTransactions"
+                  icon={LuReceiptText}
+                />
+                <DashboardMetricCard
+                  label={t("Processed Weight Sold")}
+                  value={`${processedWeight} kg`}
+                  toneClassName="dashboardCardWeight"
+                  icon={LuScale}
+                />
               </div>
               {processedProductsSold.length > 0 && (
                 <div className="dashboardTrendingCard">
@@ -718,24 +838,30 @@ export default function DashboardPage() {
             <div className="dashboardChartBlock dashboardLiveStockBlock">
               <h3 className="dashboardChartTitle">{t("Live Stock Sale Details")}</h3>
               <div className="dashboardCards dashboardCardsLivestock">
-                <div className="dashboardCard dashboardCardRevenue">
-                  <span className="dashboardCardLabel">{t("Livestock Revenue")}</span>
-                  <span className="dashboardCardValue">
-                    Rs.{livestockRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="dashboardCard dashboardCardTransactions">
-                  <span className="dashboardCardLabel">{t("Livestock Transactions")}</span>
-                  <span className="dashboardCardValue">{livestockTransactions}</span>
-                </div>
-                <div className="dashboardCard dashboardCardWeight">
-                  <span className="dashboardCardLabel">{t("Livestock Weight Sold")}</span>
-                  <span className="dashboardCardValue">{livestockWeight} kg</span>
-                </div>
-                <div className="dashboardCard dashboardCardQuantity">
-                  <span className="dashboardCardLabel">{t("Livestock Quantity Sold")}</span>
-                  <span className="dashboardCardValue">{livestockQuantity}</span>
-                </div>
+                <DashboardMetricCard
+                  label={t("Livestock Revenue")}
+                  value={`Rs.${livestockRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  toneClassName="dashboardCardRevenue"
+                  icon={LuWallet}
+                />
+                <DashboardMetricCard
+                  label={t("Livestock Transactions")}
+                  value={String(livestockTransactions)}
+                  toneClassName="dashboardCardTransactions"
+                  icon={LuReceiptText}
+                />
+                <DashboardMetricCard
+                  label={t("Livestock Weight Sold")}
+                  value={`${livestockWeight} kg`}
+                  toneClassName="dashboardCardWeight"
+                  icon={LuScale}
+                />
+                <DashboardMetricCard
+                  label={t("Livestock Quantity Sold")}
+                  value={String(livestockQuantity)}
+                  toneClassName="dashboardCardQuantity"
+                  icon={LuBoxes}
+                />
               </div>
               {livestockSalesLoading && (
                 <div className="dashboardBlock dashboardMessage dashboardMessageInline">
@@ -806,20 +932,21 @@ export default function DashboardPage() {
             )}
             className="dashboardSectionLink"
           >
-            {t("View full analytics")} →
+            <span>{t("View full analytics")}</span>
+            <LuArrowRight className="dashboardSectionLinkIcon" aria-hidden="true" />
           </Link>
         </div>
         <div className="dashboardCards dashboardCardsAttendance">
-          <div className="dashboardCard dashboardCardStaff">
-            <span className="dashboardCardLabel">{t("Total Staff")}</span>
-            <span className="dashboardCardValue">32</span>
-            <span className="dashboardCardSub">{t("4 departments")}</span>
-          </div>
-          <div className="dashboardCard dashboardCardPresent">
-            <span className="dashboardCardLabel">{t("Present Today")}</span>
-            <span className="dashboardCardValue">20</span>
-            <span className="dashboardCardSub">{t("70% present")}</span>
-          </div>
+          {attendanceMetricCards.map((card) => (
+            <DashboardMetricCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              sub={card.sub}
+              toneClassName={card.toneClassName}
+              icon={card.icon}
+            />
+          ))}
         </div>
         <div className="dashboardChartBlock">
           <h3 className="dashboardChartTitle">{t("Daily attendance")}</h3>
