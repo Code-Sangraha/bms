@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -57,7 +56,6 @@ export default function DirectoryPage() {
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const { t } = useI18n();
-  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -129,16 +127,8 @@ export default function DirectoryPage() {
   });
 
   useEffect(() => {
-    if (!isModalOpen) {
-      reset(defaultFormValues);
-      return;
-    }
-    if (isScoped && rowFilterOutletId) {
-      reset({ ...defaultFormValues, outletId: rowFilterOutletId });
-    } else {
-      reset(defaultFormValues);
-    }
-  }, [isModalOpen, isScoped, rowFilterOutletId, reset]);
+    reset(defaultFormValues);
+  }, [isModalOpen, reset]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -169,9 +159,6 @@ export default function DirectoryPage() {
   const filteredEmployees = useMemo(
     () =>
       employees.filter((emp) => {
-        if (isScoped && rowFilterOutletId && emp.outletId !== rowFilterOutletId) {
-          return false;
-        }
         const q = searchQuery.trim().toLowerCase();
         if (q) {
           const match =
@@ -189,7 +176,7 @@ export default function DirectoryPage() {
         }
         return true;
       }),
-    [employees, searchQuery, departmentFilter, isScoped, rowFilterOutletId]
+    [employees, searchQuery, departmentFilter]
   );
 
   const {
@@ -451,16 +438,9 @@ export default function DirectoryPage() {
           </label>
           <label className="modalField">
             <span className="label">{t("Outlet")}</span>
-            <select
-              className="select"
-              {...register("outletId")}
-              disabled={Boolean(isScoped && rowFilterOutletId)}
-            >
+            <select className="select" {...register("outletId")}>
               <option value="">{t("Select outlet")}</option>
-              {(isScoped && rowFilterOutletId
-                ? outlets.filter((o) => o.id === rowFilterOutletId)
-                : outlets
-              ).map((o) => (
+              {outlets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
                 </option>

@@ -7,7 +7,6 @@ import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useToast } from "@/app/providers/ToastProvider";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
@@ -39,7 +38,6 @@ export default function ProductPage() {
   const { t } = useI18n();
   const { canCreate } = usePermissions();
   const { showToast } = useToast();
-  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -140,14 +138,10 @@ export default function ProductPage() {
   const processedProductTypeId = processedProductType?.id ?? "";
 
   const filteredProducts = useMemo(() => {
-    let list = products;
-    if (isScoped && rowFilterOutletId) {
-      list = list.filter((p) => p.outletId === rowFilterOutletId);
-    }
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, searchQuery, isScoped, rowFilterOutletId]);
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, searchQuery]);
 
   const {
     currentPage,
@@ -442,9 +436,7 @@ export default function ProductPage() {
                         product.id,
                         product.outletId
                       ) && (
-                        <span className="productPricelistBadge">
-                          {t("No pricelist (add under Pricelist)")}
-                        </span>
+                      <></>
                       )}
                   </div>
                 </div>

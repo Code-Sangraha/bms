@@ -415,6 +415,8 @@ const translations: Record<string, string> = {
   items: "वस्तुहरू",
   "Sales and revenue overview from dashboard.":
     "ड्यासबोर्डबाट बिक्री र आम्दानीको अवलोकन।",
+  "Data shown for this outlet (client filter)":
+    "यस आउटलेटको लागि मात्र (क्लाइन्ट फिल्टर)",
   "Loading dashboard sales…": "ड्यासबोर्ड बिक्री लोड हुँदैछ…",
   "Failed to load dashboard sales": "ड्यासबोर्ड बिक्री लोड गर्न सकिएन",
   "Total Sales": "कुल बिक्री",

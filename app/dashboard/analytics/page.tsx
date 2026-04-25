@@ -14,7 +14,8 @@ import {
 } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { getDashboardSales, type DashboardSalesResponse } from "@/handlers/sale";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
+import { getDashboardSales } from "@/handlers/sale";
 import "./analytics.scss";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
@@ -41,9 +42,21 @@ function formatMetricLabel(key: string): string {
     .replace(/^\w/, (char) => char.toUpperCase());
 }
 
+function filterRowsByRowOutletId<T>(rows: T[] | undefined, rowFilterOutletId: string | null, isScoped: boolean): T[] {
+  if (!isScoped || !rowFilterOutletId || !Array.isArray(rows) || rows.length === 0) {
+    return Array.isArray(rows) ? rows : [];
+  }
+  return rows.filter((row) => {
+    if (row == null || typeof row !== "object" || !("outletId" in row)) return false;
+    const id = (row as { outletId: unknown }).outletId;
+    return typeof id === "string" && id === rowFilterOutletId;
+  });
+}
+
 export default function DashboardAnalyticsPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const {
     data: dashboardData,
     isLoading,
@@ -63,16 +76,119 @@ export default function DashboardAnalyticsPage() {
 
   const raw = dashboardData ?? {};
   const data = isPlainObject(raw.data) ? (raw.data as Record<string, unknown>) : (raw as Record<string, unknown>);
-  const totalSales = data.totalSales ?? data.totalOrders ?? data.totalTransactions;
-  const totalRevenue = data.totalRevenue ?? data.revenue;
-  const dataEntries = useMemo(() => Object.entries(data), [data]);
+
+  const salesByOutletAll = useMemo(
+    () => (Array.isArray(data.salesByOutlet) ? data.salesByOutlet : []),
+    [data.salesByOutlet]
+  );
+  const matchedOutletRow = useMemo(() => {
+    if (!isScoped || !rowFilterOutletId) return null;
+    return salesByOutletAll.find(
+      (o) => isPlainObject(o) && (o as { outletId?: string }).outletId === rowFilterOutletId
+    ) as Record<string, unknown> | null | undefined;
+  }, [isScoped, rowFilterOutletId, salesByOutletAll]);
+
+  const salesByOutlet = useMemo(() => {
+    if (isScoped && rowFilterOutletId) {
+      return matchedOutletRow != null && isPlainObject(matchedOutletRow) ? [matchedOutletRow] : [];
+    }
+    return salesByOutletAll.slice(0, 3) as unknown[];
+  }, [isScoped, rowFilterOutletId, matchedOutletRow, salesByOutletAll]);
+
+  const productRowsFull = useMemo(
+    () => (Array.isArray(data.salesByProduct) ? data.salesByProduct : []),
+    [data.salesByProduct]
+  );
+  const customerRowsFull = useMemo(
+    () => (Array.isArray(data.salesByCustomer) ? data.salesByCustomer : []),
+    [data.salesByCustomer]
+  );
+
+  const salesByProduct = useMemo(
+    () =>
+      (isScoped && rowFilterOutletId
+        ? filterRowsByRowOutletId(productRowsFull, rowFilterOutletId, isScoped)
+        : productRowsFull
+      ).slice(0, 3),
+    [isScoped, rowFilterOutletId, productRowsFull]
+  );
+  const salesByCustomer = useMemo(
+    () =>
+      (isScoped && rowFilterOutletId
+        ? filterRowsByRowOutletId(customerRowsFull, rowFilterOutletId, isScoped)
+        : customerRowsFull
+      ).slice(0, 3),
+    [isScoped, rowFilterOutletId, customerRowsFull]
+  );
+
+  const orgTotalSales = data.totalSales ?? data.totalOrders ?? data.totalTransactions;
+  const orgTotalRevenue = data.totalRevenue ?? data.revenue;
+
+  /** When scoped, prefer per-outlet row; top-level totals are org-wide. */
+  const totalSales = (() => {
+    if (!isScoped || !rowFilterOutletId) return orgTotalSales;
+    if (matchedOutletRow == null) return undefined;
+    const tx = (matchedOutletRow as Record<string, unknown>).totalTransactions;
+    if (typeof tx === "number") return tx;
+    return undefined;
+  })();
+
+  const totalRevenue = (() => {
+    if (!isScoped || !rowFilterOutletId) return orgTotalRevenue;
+    if (matchedOutletRow == null) return undefined;
+    const a = (matchedOutletRow as Record<string, unknown>).totalAmount;
+    return typeof a === "number" ? a : undefined;
+  })();
+
+  const viewData = useMemo((): Record<string, unknown> => {
+    if (!isScoped) return { ...data };
+    return {
+      ...data,
+      totalRevenue,
+      totalSales,
+      salesByOutlet: matchedOutletRow != null && isPlainObject(matchedOutletRow) ? [matchedOutletRow] : [],
+      salesByProduct: filterRowsByRowOutletId(
+        productRowsFull as unknown[],
+        rowFilterOutletId,
+        isScoped
+      ),
+      salesByCustomer: filterRowsByRowOutletId(
+        customerRowsFull as unknown[],
+        rowFilterOutletId,
+        isScoped
+      ),
+    };
+  }, [
+    data,
+    isScoped,
+    totalRevenue,
+    totalSales,
+    matchedOutletRow,
+    productRowsFull,
+    customerRowsFull,
+    rowFilterOutletId,
+  ]);
+
+  const dataForDisplay = isScoped ? viewData : data;
+
+  const dataEntries = useMemo(
+    () => Object.entries(dataForDisplay),
+    [dataForDisplay]
+  );
   const featuredStats = useMemo(
     () =>
-      dataEntries
-        .filter(([key, value]) => !["totalSales", "totalOrders", "totalTransactions", "totalRevenue", "revenue"].includes(key))
-        .filter(([, value]) => !Array.isArray(value) && !isPlainObject(value))
-        .slice(0, 4),
-    [dataEntries]
+      isScoped && rowFilterOutletId
+        ? []
+        : dataEntries
+            .filter(
+              ([key, value]) =>
+                !["totalSales", "totalOrders", "totalTransactions", "totalRevenue", "revenue", "_orgTotalRevenue"].includes(
+                  key
+                )
+            )
+            .filter(([, value]) => !Array.isArray(value) && !isPlainObject(value))
+            .slice(0, 4),
+    [isScoped, rowFilterOutletId, dataEntries]
   );
   const collectionStats = useMemo(
     () =>
@@ -80,14 +196,11 @@ export default function DashboardAnalyticsPage() {
         .filter(([, value]) => Array.isArray(value) || isPlainObject(value))
         .map(([key, value]) => ({
           key,
-          count: Array.isArray(value) ? value.length : Object.keys(value).length,
+          count: Array.isArray(value) ? value.length : Object.keys(value as object).length,
         }))
         .slice(0, 4),
     [dataEntries]
   );
-  const salesByOutlet = Array.isArray(data.salesByOutlet) ? data.salesByOutlet.slice(0, 3) : [];
-  const salesByProduct = Array.isArray(data.salesByProduct) ? data.salesByProduct.slice(0, 3) : [];
-  const salesByCustomer = Array.isArray(data.salesByCustomer) ? data.salesByCustomer.slice(0, 3) : [];
 
   return (
     <section className="dashboardAnalyticsPage">
@@ -294,11 +407,11 @@ export default function DashboardAnalyticsPage() {
               )}
             </div>
           )}
-          {isPlainObject(data) && Object.keys(data).length > 0 && (
+          {isPlainObject(dataForDisplay) && Object.keys(dataForDisplay).length > 0 && (
             <div className="dashboardAnalyticsData">
               <h2 className="dashboardAnalyticsDataTitle">{t("Dashboard data")}</h2>
               <dl className="dashboardAnalyticsDataList">
-                {Object.entries(data).map(([key, value]) => (
+                {Object.entries(dataForDisplay).map(([key, value]) => (
                   <div key={key} className="dashboardAnalyticsDataRow">
                     <dt>{key}</dt>
                     <dd>
@@ -311,7 +424,7 @@ export default function DashboardAnalyticsPage() {
               </dl>
             </div>
           )}
-          {(!isPlainObject(data) || Object.keys(data).length === 0) &&
+          {(!isPlainObject(dataForDisplay) || Object.keys(dataForDisplay).length === 0) &&
             totalSales == null &&
             totalRevenue == null && (
               <div className="dashboardAnalyticsMessage">

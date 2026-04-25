@@ -736,12 +736,7 @@ export default function Sidebar() {
       setHighlandContext(nextCtx);
       writeHighlandContextToStorage(nextCtx);
       setActiveMenuId("highland");
-      if (readOutletScopeFromSearch(locationSearch) != null) {
-        navigate(
-          buildPathWithOutletScope(pathname, null, locationSearch),
-          { replace: true }
-        );
-      }
+      navigate(buildPathWithOutletScope(pathname, resolved, locationSearch), { replace: true });
     },
     [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
   );

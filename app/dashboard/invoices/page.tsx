@@ -93,14 +93,16 @@ function isInRange(timestamp: number, now: number, rangeMs: number): boolean {
 export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
 
   useEffect(() => {
     if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
-    else if (!isScoped) setOutletFilter("all");
   }, [isScoped, rowFilterOutletId]);
+
+  const effectiveOutletFilter =
+    isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -234,24 +236,24 @@ export default function InvoicesAnalyticsPage() {
     return sales.filter((tx: SaleTransaction) => {
       const timestamp = toTimestamp(tx.createdAt ?? tx.date);
       if (!isInRange(timestamp, now, rangeMs)) return false;
-      if (outletFilter === "all") return true;
+      if (effectiveOutletFilter === "all") return true;
       const outletId =
         (typeof tx.outletId === "string" && tx.outletId) ||
         (tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "");
-      return outletId === outletFilter;
+      return outletId === effectiveOutletFilter;
     });
-  }, [sales, now, rangeMs, outletFilter]);
+  }, [sales, now, rangeMs, effectiveOutletFilter]);
 
   const filteredLivestockSales = useMemo(() => {
     return livestockSales.filter((sale: LivestockSale) => {
       const timestamp = toTimestamp(sale.createdAt ?? sale.date);
       if (!isInRange(timestamp, now, rangeMs)) return false;
-      if (outletFilter === "all") return true;
+      if (effectiveOutletFilter === "all") return true;
       const itemId = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
       const outletId = itemId ? (livestockMetaById.get(itemId)?.outletId ?? null) : null;
-      return outletId === outletFilter;
+      return outletId === effectiveOutletFilter;
     });
-  }, [livestockSales, now, rangeMs, outletFilter, livestockMetaById]);
+  }, [livestockSales, now, rangeMs, effectiveOutletFilter, livestockMetaById]);
 
   const normalLines = useMemo(() => {
     const lines: SaleLine[] = [];
@@ -476,11 +478,7 @@ export default function InvoicesAnalyticsPage() {
             ))}
           </div>
           <div className="toolbarRight">
-            {isScoped && rowFilterOutletId ? (
-              <span className="outletSelect outletSelectReadonly" aria-live="polite">
-                {outletNameById.get(rowFilterOutletId) ?? scopeLabel ?? rowFilterOutletId}
-              </span>
-            ) : (
+            {!isScoped ? (
               <select
                 className="outletSelect"
                 value={outletFilter}
@@ -494,7 +492,7 @@ export default function InvoicesAnalyticsPage() {
                   </option>
                 ))}
               </select>
-            )}
+            ) : null}
             <span className="lastSync">{t("Live filter")}</span>
           </div>
         </div>

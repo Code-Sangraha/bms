@@ -45,14 +45,16 @@ function rowOutletId(row: AttendanceRecord): string | undefined {
 
 export default function AccountsAnalyticsPage() {
   const navigate = useNavigate();
-  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [outletFilter, setOutletFilter] = useState("all");
   const { t } = useI18n();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
 
   useEffect(() => {
     if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
-    else if (!isScoped) setOutletFilter("all");
   }, [isScoped, rowFilterOutletId]);
+
+  const effectiveOutletKey =
+    isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -96,26 +98,29 @@ export default function AccountsAnalyticsPage() {
     },
   });
 
-  /** Staff assigned to the outlet(s) currently selected in the filter (or whole list when "all"). */
+  /** Staff for the current filter (URL scope when in sub-outlet, else dropdown). */
   const employeesForSelectedOutlet = useMemo(() => {
-    if (outletFilter === "all") return employees;
-    return employees.filter((e) => e.outletId === outletFilter);
-  }, [employees, outletFilter]);
+    if (effectiveOutletKey === "all") return employees;
+    return employees.filter((e) => e.outletId === effectiveOutletKey);
+  }, [employees, effectiveOutletKey]);
 
-  const employeesInScope = useMemo(() => {
-    if (!isScoped || !rowFilterOutletId) return employees;
-    return employees.filter((e) => e.outletId === rowFilterOutletId);
-  }, [employees, isScoped, rowFilterOutletId]);
+  const employeesInScope = useMemo(
+    () =>
+      isScoped && rowFilterOutletId
+        ? employees.filter((e) => e.outletId === rowFilterOutletId)
+        : employees,
+    [employees, isScoped, rowFilterOutletId]
+  );
 
   const filteredRows = useMemo(() => {
-    if (outletFilter === "all") return attendanceRows;
+    if (effectiveOutletKey === "all") return attendanceRows;
     return attendanceRows.filter((r) => {
       const rid = rowOutletId(r);
-      if (rid === outletFilter) return true;
-      if (rid && rid !== outletFilter) return false;
+      if (rid === effectiveOutletKey) return true;
+      if (rid && rid !== effectiveOutletKey) return false;
       return employeesForSelectedOutlet.some((e) => e.id === r.employeeId);
     });
-  }, [attendanceRows, outletFilter, employeesForSelectedOutlet]);
+  }, [attendanceRows, effectiveOutletKey, employeesForSelectedOutlet]);
 
   const presentTodayCount = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
@@ -150,11 +155,7 @@ export default function AccountsAnalyticsPage() {
           <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
-          {isScoped && rowFilterOutletId ? (
-            <span className="analyticsOutletSelect analyticsOutletReadonly" aria-live="polite">
-              {scopeLabel || outlets.find((o) => o.id === rowFilterOutletId)?.name || rowFilterOutletId}
-            </span>
-          ) : (
+          {!isScoped ? (
             <select
               className="analyticsOutletSelect"
               value={outletFilter}
@@ -169,7 +170,7 @@ export default function AccountsAnalyticsPage() {
                 </option>
               ))}
             </select>
-          )}
+          ) : null}
           <span className="analyticsLastSync">
             {lastUpdatedLabel ? `${t("Last updated")}: ${lastUpdatedLabel}` : ""}
           </span>
@@ -185,7 +186,9 @@ export default function AccountsAnalyticsPage() {
           <div className="analyticsCardSub">
             {outletsLoading
               ? "—"
-              : `${isScoped && rowFilterOutletId ? 1 : outlets.length} ${t("Outlets")}`}
+              : isScoped
+                ? `1 ${t("Outlets")}`
+                : `${outlets.length} ${t("Outlets")}`}
           </div>
         </div>
         <div className="analyticsCard analyticsCardPresent">

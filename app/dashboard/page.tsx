@@ -17,14 +17,8 @@ import {
 } from "react-icons/lu";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
-import {
-  getLivestockItemsByProduct,
-  getProducts,
-  resolveLivestockItemId,
-  type LivestockItem,
-  type Product,
-} from "@/handlers/product";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import {
@@ -45,9 +39,6 @@ const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
 const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
-const LIVESTOCK_ITEMS_QUERY_KEY = ["dashboardLivestockItemsByProduct"];
-const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
-
 const STATIC_ATTENDANCE_PREVIEW = [
   { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
@@ -86,7 +77,7 @@ function DashboardMetricCard({
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { isScoped, rowFilterOutletId, scopedOutletId } = useRowFilterOutletId();
+  const { isScoped, scopedOutletId } = useOutletScope();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -150,96 +141,7 @@ export default function DashboardPage() {
     },
   });
 
-  const liveTypeIds = useMemo(() => {
-    const ids = new Set<string>();
-    productTypes.forEach((pt) => {
-      if (LIVE_PRODUCT_TYPE_NAMES.includes(pt.name.toLowerCase())) ids.add(pt.id);
-    });
-    return ids;
-  }, [productTypes]);
-
-  const liveStockProducts = useMemo(
-    () =>
-      products.filter((p: Product) => {
-        const productTypeName =
-          typeof p.productType === "object" && typeof p.productType?.name === "string"
-            ? p.productType.name.toLowerCase()
-            : "";
-        return liveTypeIds.has(p.productTypeId) || LIVE_PRODUCT_TYPE_NAMES.includes(productTypeName);
-      }),
-    [products, liveTypeIds]
-  );
-
-  const liveStockProductIds = useMemo(
-    () => liveStockProducts.map((product) => product.id).sort(),
-    [liveStockProducts]
-  );
-
-  const { data: livestockItemsForScope = [] } = useQuery({
-    queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds, isScoped, rowFilterOutletId],
-    enabled: isScoped && liveStockProductIds.length > 0,
-    queryFn: async () => {
-      const results = await Promise.all(
-        liveStockProductIds.map((productId) => getLivestockItemsByProduct(productId))
-      );
-      const merged: LivestockItem[] = [];
-      for (const result of results) {
-        if (!result.ok) {
-          if (result.status === 401) navigate("/login");
-          throw new Error(result.error);
-        }
-        merged.push(...result.data);
-      }
-      return merged;
-    },
-  });
-
-  const productOutletById = useMemo(
-    () => new Map(products.map((product: Product) => [product.id, product.outletId])),
-    [products]
-  );
-
-  const livestockMetaByOutletId = useMemo(() => {
-    const map = new Map<string, string | null>();
-    for (const item of livestockItemsForScope) {
-      const id = resolveLivestockItemId(item);
-      if (!id) continue;
-      const outletId = productOutletById.get(item.productId) ?? null;
-      map.set(id, outletId);
-    }
-    return map;
-  }, [livestockItemsForScope, productOutletById]);
-
-  const salesTransactionsScoped = useMemo(() => {
-    if (!isScoped || !rowFilterOutletId) return salesTransactions;
-    return salesTransactions.filter((tx: SaleTransaction) => {
-      const oid =
-        (typeof tx.outletId === "string" && tx.outletId) ||
-        (tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "");
-      return oid === rowFilterOutletId;
-    });
-  }, [salesTransactions, isScoped, rowFilterOutletId]);
-
-  const livestockSalesScoped = useMemo(() => {
-    if (!isScoped || !rowFilterOutletId) return livestockSales;
-    return livestockSales.filter((sale: LivestockSale) => {
-      const itemId = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
-      if (!itemId) return false;
-      return (livestockMetaByOutletId.get(itemId) ?? null) === rowFilterOutletId;
-    });
-  }, [livestockSales, isScoped, rowFilterOutletId, livestockMetaByOutletId]);
-
-  const salesData: DashboardSalesData | undefined = useMemo(() => {
-    const raw = salesResponse?.data;
-    if (!raw) return undefined;
-    if (!isScoped || !rowFilterOutletId) return raw;
-    return {
-      ...raw,
-      salesByOutlet: (raw.salesByOutlet ?? []).filter((o) => o.outletId === rowFilterOutletId),
-      salesByProduct: [],
-      salesByCustomer: [],
-    };
-  }, [salesResponse?.data, isScoped, rowFilterOutletId]);
+  const salesData: DashboardSalesData | undefined = salesResponse?.data;
 
   const apiTotalRevenue = salesData?.totalRevenue ?? 0;
   const apiTotalTransactions = salesData?.totalTransactions ?? 0;
@@ -295,7 +197,7 @@ export default function DashboardPage() {
       date: string;
     }> = [];
 
-    for (const tx of salesTransactionsScoped as SaleTransaction[]) {
+    for (const tx of salesTransactions as SaleTransaction[]) {
       const items = Array.isArray(tx.items) ? tx.items : [];
       const txCustomer =
         (typeof tx.name === "string" && tx.name) ||
@@ -343,7 +245,7 @@ export default function DashboardPage() {
     }
 
     return rows;
-  }, [salesTransactionsScoped, processedProductIdSet, processedProductNameSet, t]);
+  }, [salesTransactions, processedProductIdSet, processedProductNameSet, t]);
 
   const getLivestockDisplay = (sale: LivestockSale): string => {
     const id = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
@@ -368,11 +270,11 @@ export default function DashboardPage() {
     return id || "-";
   };
 
-  const livestockRevenue = livestockSalesScoped.reduce(
+  const livestockRevenue = livestockSales.reduce(
     (sum, row) => sum + (typeof row.amount === "number" ? row.amount : 0),
     0
   );
-  const livestockWeight = livestockSalesScoped.reduce(
+  const livestockWeight = livestockSales.reduce(
     (sum, row) =>
       sum +
       (typeof row.weight === "number"
@@ -384,7 +286,7 @@ export default function DashboardPage() {
             : 0),
     0
   );
-  const livestockQuantity = livestockSalesScoped.reduce(
+  const livestockQuantity = livestockSales.reduce(
     (sum, row) =>
       sum +
       (typeof row.quantity === "number"
@@ -470,7 +372,7 @@ export default function DashboardPage() {
       daily.set(key, current);
     }
 
-    for (const row of livestockSalesScoped) {
+    for (const row of livestockSales) {
       const dateValue =
         (typeof row.createdAt === "string" && row.createdAt) ||
         (typeof row.date === "string" && row.date) ||
@@ -516,14 +418,14 @@ export default function DashboardPage() {
       }))
       .sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1))
       .slice(0, 10);
-  }, [processedLineItems, livestockSalesScoped]);
+  }, [processedLineItems, livestockSales]);
 
   const totalRevenue = processedRevenue + livestockRevenue;
   const totalTransactions = processedTransactions + livestockTransactions;
   const totalWeight = processedWeight + livestockWeight;
   const totalQuantity = processedQuantity + livestockQuantity;
 
-  const livestockSalesRows = [...livestockSalesScoped]
+  const livestockSalesRows = [...livestockSales]
     .sort((a, b) => {
       const aTime = new Date(a.createdAt ?? a.date ?? 0).getTime();
       const bTime = new Date(b.createdAt ?? b.date ?? 0).getTime();

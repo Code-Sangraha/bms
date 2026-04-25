@@ -3,6 +3,9 @@ export const OUTLET_SCOPE_SEARCH_PARAM = "outletId";
 
 export const HIGHLAND_CONTEXT_STORAGE_KEY = "bms_highland_context";
 
+/** Dispatched on `window` when Highland / sub-outlet context is written (same-tab; other listeners can re-read storage). */
+export const BMS_HIGHLAND_CONTEXT_EVENT = "bms_highland_context_changed";
+
 export type HighlandStoredContext =
   | { mode: "main" }
   | { mode: "plant"; plantId: string; outletId: string; plantName: string };
@@ -57,10 +60,29 @@ export function readHighlandContextFromStorage(): HighlandStoredContext | null {
   return null;
 }
 
+/**
+ * For list row filters: `?outletId=` wins. If absent, sub-outlet (Highland) plant mode uses
+ * the resolved `outletId` stored in session (same as product `outletId` for that plant).
+ */
+export function getRowScopeIdFromUrlOrHighlandSearch(search: string): string | null {
+  const fromUrl = readOutletScopeFromSearch(search);
+  if (fromUrl) return fromUrl;
+  if (typeof globalThis.window === "undefined") return null;
+  const highland = readHighlandContextFromStorage();
+  if (highland?.mode === "plant" && highland.outletId.trim() !== "")
+    return highland.outletId;
+  return null;
+}
+
 export function writeHighlandContextToStorage(ctx: HighlandStoredContext): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(HIGHLAND_CONTEXT_STORAGE_KEY, JSON.stringify(ctx));
+    try {
+      window.dispatchEvent(new Event(BMS_HIGHLAND_CONTEXT_EVENT));
+    } catch {
+      // ignore
+    }
   } catch {
     // ignore quota / private mode
   }

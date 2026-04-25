@@ -3,7 +3,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -76,7 +75,6 @@ export default function PointOfSalePage() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
-  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [outletId, setOutletId] = useState("");
@@ -126,25 +124,18 @@ export default function PointOfSalePage() {
   });
 
   const outletsForSelect = useMemo(() => {
-    if (isScoped && rowFilterOutletId) {
-      return outlets.filter((o) => o.id === rowFilterOutletId);
-    }
     if (userOutletId != null) {
       return outlets.filter((o) => o.id === userOutletId);
     }
     return outlets;
-  }, [isScoped, rowFilterOutletId, outlets, userOutletId]);
+  }, [outlets, userOutletId]);
 
   useEffect(() => {
-    if (isScoped && rowFilterOutletId && outlets.some((o) => o.id === rowFilterOutletId)) {
-      setOutletId(rowFilterOutletId);
-      return;
-    }
     if (userOutletId && outlets.length > 0 && !outletId) {
       const allowed = outlets.some((o) => o.id === userOutletId);
       if (allowed) setOutletId(userOutletId);
     }
-  }, [userOutletId, outlets, outletId, isScoped, rowFilterOutletId]);
+  }, [userOutletId, outlets, outletId]);
 
   const { data: dualPricings = [] } = useQuery({
     queryKey: DUAL_PRICING_QUERY_KEY,
@@ -397,28 +388,19 @@ export default function PointOfSalePage() {
           <div className="posFormRow posFormRow--outletPayment">
             <label className="posField">
               <span className="posLabel">{t("Outlet")}</span>
-              {isScoped && rowFilterOutletId ? (
-                <span className="posSelect posSelectReadonly" aria-live="polite">
-                  {outletsForSelect.find((o) => o.id === outletId)?.name ??
-                    outletsForSelect[0]?.name ??
-                    scopeLabel ??
-                    rowFilterOutletId}
-                </span>
-              ) : (
-                <select
-                  className="posSelect"
-                  value={outletId}
-                  onChange={(e) => setOutletId(e.target.value)}
-                  aria-label={t("Outlet")}
-                >
-                  <option value="">{t("Select outlet")}</option>
-                  {outletsForSelect.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                className="posSelect"
+                value={outletId}
+                onChange={(e) => setOutletId(e.target.value)}
+                aria-label={t("Outlet")}
+              >
+                <option value="">{t("Select outlet")}</option>
+                {outletsForSelect.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <div className="posField posField--payment">
               <span className="posLabel" id="pos-payment-method-label">

@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProcessingPlants, mergeProcessingPlantOutletFromUsers } from "@/handlers/processingPlant";
 import { getUsers } from "@/handlers/user";
+import {
+  BMS_HIGHLAND_CONTEXT_EVENT,
+  getRowScopeIdFromUrlOrHighlandSearch,
+} from "@/lib/outletScope";
 import { resolveRowFilterOutletId, resolveScopeLabel } from "@/lib/rowFilterOutlet";
 
 const OUTLETS_KEY = ["outlets"];
@@ -13,9 +17,9 @@ const PROCESSING_PLANTS_KEY = ["processingPlants"];
 const USERS_KEY = ["users"];
 
 /**
- * Resolves `?outletId=` to the id that appears on list rows. When that still does not
- * match backend row data, fixing data is a backend concern; this hook fixes plant-id vs
- * product `outletId` mismatches for sub-outlet navigation.
+ * Resolves scope to the id used on list rows (`product.outletId`, etc.):
+ * - `?outletId=` in the URL, or if missing, sub-outlet (Highland) plant mode from session.
+ * Plant vs branch-outlet mismatches are fixed via `resolveRowFilterOutletId`.
  */
 export function useRowFilterOutletId(): {
   isScoped: boolean;
@@ -26,7 +30,19 @@ export function useRowFilterOutletId(): {
   outlets: Outlet[];
   mergedPlants: ReturnType<typeof mergeProcessingPlantOutletFromUsers>;
 } {
-  const { isScoped, scopedOutletId } = useOutletScope();
+  const location = useLocation();
+  const [highlandTick, setHighlandTick] = useState(0);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setHighlandTick((n) => n + 1);
+    window.addEventListener(BMS_HIGHLAND_CONTEXT_EVENT, bump);
+    return () => window.removeEventListener(BMS_HIGHLAND_CONTEXT_EVENT, bump);
+  }, []);
+  const scopedOutletId = useMemo(
+    () => getRowScopeIdFromUrlOrHighlandSearch(location.search),
+    [location.search, highlandTick]
+  );
+  const isScoped = Boolean(scopedOutletId);
   const scopeEnabled = Boolean(scopedOutletId);
 
   const { data: outlets = [] } = useQuery({

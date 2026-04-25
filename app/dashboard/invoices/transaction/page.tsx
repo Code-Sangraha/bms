@@ -3,11 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
   getLivestockSales,
@@ -190,15 +190,17 @@ function formatAmount(n: number | null): string {
 export default function TransactionPage() {
   const navigate = useNavigate();
   const { t, locale } = useI18n();
-  const { isScoped, rowFilterOutletId, scopeLabel } = useRowFilterOutletId();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   useEffect(() => {
     if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
-    else if (!isScoped) setOutletFilter("");
   }, [isScoped, rowFilterOutletId]);
+
+  const effectiveOutletFilter =
+    isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   const {
     data: sales = [],
@@ -266,12 +268,12 @@ export default function TransactionPage() {
             formatAmount(tx.amount).toLowerCase().includes(q);
           if (!match) return false;
         }
-        if (outletFilter) {
-          if (!tx.outletId || tx.outletId !== outletFilter) return false;
+        if (effectiveOutletFilter) {
+          if (!tx.outletId || tx.outletId !== effectiveOutletFilter) return false;
         }
         return true;
       }),
-    [transactions, searchQuery, outletFilter]
+    [transactions, searchQuery, effectiveOutletFilter]
   );
 
   const {
@@ -319,11 +321,7 @@ export default function TransactionPage() {
           />
         </div>
         <div className="transactionFilterWrap">
-          {isScoped && rowFilterOutletId ? (
-            <span className="transactionFilterSelect transactionFilterReadonly" aria-live="polite">
-              {scopeLabel || outlets.find((o) => o.id === rowFilterOutletId)?.name || rowFilterOutletId}
-            </span>
-          ) : (
+          {!isScoped ? (
             <select
               className="transactionFilterSelect"
               value={outletFilter}
@@ -337,7 +335,7 @@ export default function TransactionPage() {
                 </option>
               ))}
             </select>
-          )}
+          ) : null}
         </div>
         <span className="transactionLastSync">{t("Last sync: 2mins")}</span>
       </div>

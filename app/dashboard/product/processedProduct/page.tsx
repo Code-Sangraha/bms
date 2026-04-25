@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { createPortal } from "react-dom";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -11,6 +10,7 @@ import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
   deleteProduct as deleteProductApi,
   deductProduct,
@@ -106,8 +106,10 @@ export default function ProcessedProductPage() {
 
   useEffect(() => {
     if (isScoped && rowFilterOutletId) setSelectedOutletId(rowFilterOutletId);
-    else if (!isScoped) setSelectedOutletId("all");
   }, [isScoped, rowFilterOutletId]);
+
+  const effectiveSelectedOutletId =
+    isScoped && rowFilterOutletId ? rowFilterOutletId : selectedOutletId;
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
@@ -163,8 +165,8 @@ export default function ProcessedProductPage() {
     let list: Product[] = processedTypeId
       ? products.filter((p) => p.productTypeId === processedTypeId)
       : [];
-    if (selectedOutletId !== "all") {
-      list = list.filter((p) => p.outletId === selectedOutletId);
+    if (effectiveSelectedOutletId !== "all") {
+      list = list.filter((p) => p.outletId === effectiveSelectedOutletId);
     }
     const q = searchQuery.trim().toLowerCase();
     if (q) {
@@ -178,7 +180,7 @@ export default function ProcessedProductPage() {
       });
     }
     return list;
-  }, [products, processedTypeId, selectedOutletId, searchQuery, outlets, productTypes]);
+  }, [products, processedTypeId, effectiveSelectedOutletId, searchQuery, outlets, productTypes]);
 
   const getOutletName = (outletId: string) => outlets.find((o) => o.id === outletId)?.name ?? outletId;
   const getTypeName = (typeId: string) => productTypes.find((pt) => pt.id === typeId)?.name ?? typeId;
@@ -438,7 +440,7 @@ export default function ProcessedProductPage() {
     });
     console.log("Inventory filter", {
       filteredProductCount: filteredProducts.length,
-      selectedOutletId,
+      selectedOutletId: effectiveSelectedOutletId,
       searchQuery: searchQuery.trim() || "(empty)",
     });
     console.log("Fetch state", {
@@ -511,7 +513,7 @@ export default function ProcessedProductPage() {
     serverOpeningAuthoritative,
     dataSourceIsClient,
     filteredProducts.length,
-    selectedOutletId,
+    effectiveSelectedOutletId,
     searchQuery,
     mergedOpeningStockData,
   ]);
@@ -599,7 +601,7 @@ export default function ProcessedProductPage() {
           <p className="pageSubtitle">{t("Products of type Processed")}</p>
         </div>
         <div className="processedProductFilters">
-          {!isScoped && (
+          {!isScoped ? (
             <label className="processedProductOutletFilter">
               <span className="processedProductOutletLabel">{t("Outlet")}</span>
               <select
@@ -619,7 +621,7 @@ export default function ProcessedProductPage() {
                 ))}
               </select>
             </label>
-          )}
+          ) : null}
           <div className="processedProductSearch">
             <span className="searchIcon">🔍</span>
             <input
