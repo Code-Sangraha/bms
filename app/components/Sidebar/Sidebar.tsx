@@ -5,14 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
-import { TbLayoutDashboard } from "react-icons/tb";
+import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
+import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import {
   getProcessingPlants,
   mergeProcessingPlantOutletFromUsers,
+  type ProcessingPlant,
 } from "@/handlers/processingPlant";
 import { getOutlets } from "@/handlers/outlet";
 import { getUsers } from "@/handlers/user";
@@ -26,6 +28,7 @@ import {
   writeHighlandContextToStorage,
   type HighlandStoredContext,
 } from "@/lib/outletScope";
+import { twoLetterLabelFromPlantName } from "@/lib/processingPlantButtonLabel";
 
 /** Menu link; permission "create" means link is shown only when user can create. */
 type TranslationKey =
@@ -450,6 +453,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { canCreate } = usePermissions();
   const { t, locale } = useI18n();
+  const { showToast } = useToast();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [highlandContext, setHighlandContext] = useState<HighlandStoredContext>(() => {
     const stored = readHighlandContextFromStorage();
@@ -630,6 +634,7 @@ export default function Sidebar() {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [subOutletPickerOpen, setSubOutletPickerOpen] = useState(false);
   /** Grouped drawer (e.g. Highland): which section accordion is expanded. */
   const [groupedDrawerAccordionKey, setGroupedDrawerAccordionKey] =
     useState<TranslationKey | null>(null);
@@ -714,32 +719,91 @@ export default function Sidebar() {
     if (!el?.showDialog && el?.show) el.show();
   }, [deferredInstallPrompt]);
 
-  // Sub-outlet (per processing plant) rail buttons — re-enable with the block in <nav> below.
-  // const handleSelectPlant = useCallback(
-  //   (plant: ProcessingPlant) => {
-  //     const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
-  //     if (!resolved) {
-  //       showToast(t("Processing plant has no linked outlet yet."));
-  //       return;
-  //     }
-  //     const nextCtx: HighlandStoredContext = {
-  //       mode: "plant",
-  //       plantId: plant.id,
-  //       outletId: resolved,
-  //       plantName: plant.name,
-  //     };
-  //     setHighlandContext(nextCtx);
-  //     writeHighlandContextToStorage(nextCtx);
-  //     setActiveMenuId("highland");
-  //     if (readOutletScopeFromSearch(locationSearch) != null) {
-  //       navigate(
-  //         buildPathWithOutletScope(pathname, null, locationSearch),
-  //         { replace: true }
-  //       );
-  //     }
-  //   },
-  //   [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
-  // );
+  const handleSelectPlant = useCallback(
+    (plant: ProcessingPlant) => {
+      setSubOutletPickerOpen(false);
+      const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
+      if (!resolved) {
+        showToast(t("Processing plant has no linked outlet yet."));
+        return;
+      }
+      const nextCtx: HighlandStoredContext = {
+        mode: "plant",
+        plantId: plant.id,
+        outletId: resolved,
+        plantName: plant.name,
+      };
+      setHighlandContext(nextCtx);
+      writeHighlandContextToStorage(nextCtx);
+      setActiveMenuId("highland");
+      if (readOutletScopeFromSearch(locationSearch) != null) {
+        navigate(
+          buildPathWithOutletScope(pathname, null, locationSearch),
+          { replace: true }
+        );
+      }
+    },
+    [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
+  );
+
+  const subOutletCount = processingPlantsForRail.length;
+  const activeSubOutletPlant = useMemo(
+    () =>
+      highlandContext.mode === "plant" && highlandContext.plantId
+        ? processingPlantsForRail.find((p) => p.id === highlandContext.plantId) ?? null
+        : null,
+    [highlandContext.mode, highlandContext.plantId, processingPlantsForRail]
+  );
+  const hasUsableSubOutlet = useMemo(
+    () =>
+      processingPlantsForRail.some((p) =>
+        Boolean(resolvedScopeOutletIdForPlant(p, outlets, processingPlantsForRail))
+      ),
+    [processingPlantsForRail, outlets]
+  );
+  const singleSubOutletPlant = subOutletCount === 1 ? processingPlantsForRail[0] : null;
+
+  const handleSubOutletHubClick = useCallback(() => {
+    if (!hasUsableSubOutlet) {
+      showToast(t("Processing plant has no linked outlet yet."));
+      return;
+    }
+    if (subOutletCount === 1) {
+      if (singleSubOutletPlant) {
+        void handleSelectPlant(singleSubOutletPlant);
+      }
+      return;
+    }
+    setSubOutletPickerOpen((o) => !o);
+  }, [
+    hasUsableSubOutlet,
+    handleSelectPlant,
+    showToast,
+    subOutletCount,
+    singleSubOutletPlant,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!isMobile) setSubOutletPickerOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (subOutletCount === 0) setSubOutletPickerOpen(false);
+  }, [subOutletCount]);
+
+  useEffect(() => {
+    if (activeMenuId != null) setSubOutletPickerOpen(false);
+  }, [activeMenuId]);
+
+  useEffect(() => {
+    if (!subOutletPickerOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setSubOutletPickerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [subOutletPickerOpen]);
 
   return (
     <div className="sidebarWrapper">
@@ -777,35 +841,87 @@ export default function Sidebar() {
               })}
             </div>
           ))}
-          {/* Sub-outlet rail: one button per processing plant. Restore with handleSelectPlant + TbBuildingFactory2 + ProcessingPlant import. */}
-          {/* {processingPlantsForRail.map((plant: ProcessingPlant) => {
-            const hasOutlet = Boolean(
-              resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
-            );
-            const isActivePlant =
-              highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
-            return (
-              <button
-                key={`plant-${plant.id}`}
-                type="button"
-                className={isActivePlant ? "link active" : "link"}
-                disabled={!hasOutlet}
-                title={
-                  hasOutlet
-                    ? plant.name
-                    : t("Processing plant has no linked outlet yet.")
-                }
-                aria-label={plant.name}
-                aria-pressed={isActivePlant}
-                onClick={() => handleSelectPlant(plant)}
-              >
-                <span className="mobileRailIcon" aria-hidden>
+          {subOutletCount > 0 && !isMobile && (
+            <div
+              className="subOutletRailTrack"
+              role="group"
+              aria-label={t("Sub-outlet plant switcher")}
+            >
+              {processingPlantsForRail.map((plant) => {
+                const hasOutlet = Boolean(
+                  resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
+                );
+                const isActivePlant =
+                  highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
+                return (
+                  <button
+                    key={`plant-${plant.id}`}
+                    type="button"
+                    className={
+                      isActivePlant
+                        ? "link subOutletRail active"
+                        : "link subOutletRail"
+                    }
+                    disabled={!hasOutlet}
+                    title={
+                      hasOutlet
+                        ? plant.name
+                        : t("Processing plant has no linked outlet yet.")
+                    }
+                    aria-label={plant.name}
+                    aria-pressed={isActivePlant}
+                    onClick={() => handleSelectPlant(plant)}
+                  >
+                    <span className="mobileRailIcon plantRailBadge" aria-hidden>
+                      {twoLetterLabelFromPlantName(plant.name)}
+                    </span>
+                    <span className="mobileRailLabel">{plant.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {subOutletCount > 0 && isMobile && (
+            <button
+              type="button"
+              className={[
+                "link",
+                "subOutletRail",
+                "subOutletHub",
+                (highlandContext.mode === "plant" && activeSubOutletPlant) || subOutletPickerOpen
+                  ? "active"
+                  : "",
+                subOutletPickerOpen ? "subOutletHubOpen" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={
+                subOutletCount > 1
+                  ? t("Sub-outlet plants")
+                  : singleSubOutletPlant?.name ?? t("Sub-outlet plants")
+              }
+              disabled={!hasUsableSubOutlet}
+              aria-label={t("Sub-outlet plants")}
+              aria-haspopup={subOutletCount > 1 ? "dialog" : undefined}
+              aria-expanded={subOutletCount > 1 ? subOutletPickerOpen : undefined}
+              aria-controls={subOutletCount > 1 ? "sub-outlet-picker" : undefined}
+              onClick={handleSubOutletHubClick}
+            >
+              <span className="mobileRailIcon" aria-hidden>
+                {subOutletCount === 1 && singleSubOutletPlant ? (
+                  <span className="plantRailBadge">
+                    {twoLetterLabelFromPlantName(singleSubOutletPlant.name)}
+                  </span>
+                ) : activeSubOutletPlant ? (
+                  <span className="plantRailBadge">
+                    {twoLetterLabelFromPlantName(activeSubOutletPlant.name)}
+                  </span>
+                ) : (
                   <TbBuildingFactory2 size={20} />
-                </span>
-                <span className="mobileRailLabel">{plant.name}</span>
-              </button>
-            );
-          })} */}
+                )}
+              </span>
+            </button>
+          )}
         </nav>
 
         <div className="footer">
@@ -846,6 +962,55 @@ export default function Sidebar() {
             ))}
         </div>
       </aside>
+
+      {isMobile && subOutletPickerOpen && subOutletCount > 1 && (
+        <>
+          <div
+            className="subOutletPickerBackdrop"
+            onClick={() => setSubOutletPickerOpen(false)}
+            aria-hidden
+          />
+          <div
+            className="subOutletPicker"
+            id="sub-outlet-picker"
+            role="dialog"
+            aria-label={t("Sub-outlet plants")}
+          >
+            <div className="subOutletPickerHeader">{t("Sub-outlet plants")}</div>
+            <ul className="subOutletPickerList" role="listbox" aria-label={t("Sub-outlet plants")}>
+              {processingPlantsForRail.map((plant) => {
+                const hasOutlet = Boolean(
+                  resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
+                );
+                const isActive =
+                  highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
+                return (
+                  <li key={plant.id} className="subOutletPickerItem">
+                    <button
+                      type="button"
+                      className={isActive ? "subOutletPickerItemBtn active" : "subOutletPickerItemBtn"}
+                      role="option"
+                      aria-selected={isActive}
+                      disabled={!hasOutlet}
+                      title={
+                        hasOutlet
+                          ? plant.name
+                          : t("Processing plant has no linked outlet yet.")
+                      }
+                      onClick={() => handleSelectPlant(plant)}
+                    >
+                      <span className="subOutletPickerItemBadge" aria-hidden>
+                        {twoLetterLabelFromPlantName(plant.name)}
+                      </span>
+                      <span className="subOutletPickerItemName">{plant.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      )}
 
       {activeMenu && (
         <button

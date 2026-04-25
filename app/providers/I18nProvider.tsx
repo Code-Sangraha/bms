@@ -81,6 +81,9 @@ type I18nContextValue = {
   "Send History": "पठाइएको इतिहास",
   "No send history yet.": "अहिलेसम्म पठाइएको इतिहास छैन।",
   "Select processing plant": "प्रोसेसिङ प्लान्ट छान्नुहोस्",
+  "Sub-outlet plant switcher":
+    "उप-आउटलेट प्रशोधन केन्द्र स्विच (धेरै भए क्षैतिज स्क्रोल)",
+  "Sub-outlet plants": "उप-आउटलेट प्लान्ट",
   "Failed to load processing plants": "प्रोसेसिङ प्लान्ट लोड गर्न सकिएन",
   "Failed to create processing plant": "प्रोसेसिङ प्लान्ट सिर्जना गर्न सकिएन",
   "Failed to send livestock to processing plant.": "लाइभस्टक प्रोसेसिङ प्लान्टमा पठाउन सकिएन।",
@@ -541,6 +544,10 @@ const translations: Record<string, string> = {
   "e.g. 601756be-54be-4623-8e97-7ff891e43081":
     "जस्तै: 601756be-54be-4623-8e97-7ff891e43081",
   "Install App": "एप इन्स्टल गर्नुहोस्",
+  "Sub-outlet plant switcher":
+    "उप-आउटलेट प्रशोधन केन्द्र स्विच (धेरै भए क्षैतिज स्क्रोल)",
+  "Sub-outlet plants": "उप-आउटलेट प्लान्ट",
+
   "Install BMS on your device for quick access.":
     "छिटो पहुँचको लागि आफ्नो उपकरणमा BMS इन्स्टल गर्नुहोस्।",
   "Edit Product": "उत्पादन सम्पादन गर्नुहोस्",
