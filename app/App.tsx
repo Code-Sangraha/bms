@@ -29,48 +29,50 @@ import RolesCreatePage from "./dashboard/accounts/roles/create/page";
 import DirectoryPage from "./dashboard/accounts/directory/page";
 import ClockInOutPage from "./dashboard/accounts/clock-in-out/page";
 import AccountsAnalyticsPage from "./dashboard/accounts/analytics/page";
+import MorePage from "./dashboard/more/page";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-zinc-50 font-sans antialiased">
       <QueryProvider>
         <I18nProvider>
-        <InstallPrompt />
-        <Routes>
-          <Route path="/" element={<LayoutWrapper />}>
-            <Route index element={<Navigate to="/login" replace />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="register" element={<RegisterPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="dashboard/outlet" element={<OutletPage />} />
-            <Route path="dashboard/users" element={<UsersPage />} />
-            <Route path="dashboard/dualPricing" element={<DualPricingPage />} />
-            <Route path="dashboard/departments" element={<DepartmentsPage />} />
-            <Route path="dashboard/processingPlant" element={<ProcessingPlantPage />} />
-            <Route path="dashboard/product" element={<ProductPage />} />
-            <Route path="dashboard/product/productType" element={<ProductTypePage />} />
-            <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />
-            <Route
-              path="dashboard/product/liveProduct/:productId/item/:itemId"
-              element={<LivestockItemDetailPage />}
-            />
-            <Route path="dashboard/product/liveProduct" element={<LiveProductPage />} />
-            <Route
-              path="dashboard/product/processedProduct/:productId"
-              element={<ProcessedProductDetailPage />}
-            />
-            <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
-            <Route path="dashboard/invoices" element={<InvoicesPage />} />
-            <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />
-            <Route path="dashboard/invoices/livestock-sales" element={<LivestockSalesPage />} />
-            <Route path="dashboard/invoices/transaction" element={<TransactionPage />} />
-            <Route path="dashboard/invoices/customer-types" element={<CustomerTypesPage />} />
-            <Route path="dashboard/analytics" element={<AnalyticsPage />} />
-            <Route path="dashboard/accounts/roles" element={<RolesPage />} />
-            <Route path="dashboard/accounts/roles/create" element={<RolesCreatePage />} />
-            <Route path="dashboard/accounts/directory" element={<DirectoryPage />} />
-            <Route path="dashboard/accounts/clock-in-out" element={<ClockInOutPage />} />
+          <InstallPrompt />
+          <Routes>
+            <Route path="/" element={<LayoutWrapper />}>
+              <Route index element={<Navigate to="/login" replace />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="register" element={<RegisterPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="dashboard/outlet" element={<OutletPage />} />
+              <Route path="dashboard/users" element={<UsersPage />} />
+              <Route path="dashboard/dualPricing" element={<DualPricingPage />} />
+              <Route path="dashboard/departments" element={<DepartmentsPage />} />
+              <Route path="dashboard/processingPlant" element={<ProcessingPlantPage />} />
+              <Route path="dashboard/product" element={<ProductPage />} />
+              <Route path="dashboard/product/productType" element={<ProductTypePage />} />
+              <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />
+              <Route
+                path="dashboard/product/liveProduct/:productId/item/:itemId"
+                element={<LivestockItemDetailPage />}
+              />
+              <Route path="dashboard/product/liveProduct" element={<LiveProductPage />} />
+              <Route
+                path="dashboard/product/processedProduct/:productId"
+                element={<ProcessedProductDetailPage />}
+              />
+              <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
+              <Route path="dashboard/invoices" element={<InvoicesPage />} />
+              <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />
+              <Route path="dashboard/invoices/livestock-sales" element={<LivestockSalesPage />} />
+              <Route path="dashboard/invoices/transaction" element={<TransactionPage />} />
+              <Route path="dashboard/invoices/customer-types" element={<CustomerTypesPage />} />
+              <Route path="dashboard/analytics" element={<AnalyticsPage />} />
+              <Route path="dashboard/accounts/roles" element={<RolesPage />} />
+              <Route path="dashboard/accounts/roles/create" element={<RolesCreatePage />} />
+              <Route path="dashboard/accounts/directory" element={<DirectoryPage />} />
+              <Route path="dashboard/accounts/clock-in-out" element={<ClockInOutPage />} />
               <Route path="dashboard/accounts/analytics" element={<AccountsAnalyticsPage />} />
+              <Route path="dashboard/more" element={<MorePage />} />
             </Route>
           </Routes>
         </I18nProvider>

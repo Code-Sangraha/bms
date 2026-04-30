@@ -1,0 +1,14 @@
+@use "../styles/mobile-tokens" as *;
+
+@media (max-width: 768px) {
+  .mainScroll.mainScroll--mobileShell {
+    background: var(--mobile-page-bg);
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 12px;
+    /* Optional plant strip + 5-tab nav + safe area */
+    padding-bottom: calc(
+      var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0px) + 12px
+    );
+  }
+}

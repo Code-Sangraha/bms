@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { IoSettingsOutline } from "react-icons/io5";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -16,6 +17,7 @@ import {
   type SaleTransaction,
 } from "@/handlers/sale";
 import type { Locale } from "@/app/providers/I18nProvider";
+import { buildPathWithOutletScope } from "@/lib/outletScope";
 import "./transaction.scss";
 
 const SALES_QUERY_KEY = ["sales"];
@@ -189,6 +191,7 @@ function formatAmount(n: number | null): string {
 
 export default function TransactionPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { t, locale } = useI18n();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
@@ -200,6 +203,11 @@ export default function TransactionPage() {
 
   const effectiveOutletFilter =
     isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
+  const moreHref = buildPathWithOutletScope(
+    "/dashboard/more",
+    isScoped && rowFilterOutletId ? rowFilterOutletId : null,
+    search
+  );
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   const {
@@ -302,11 +310,14 @@ export default function TransactionPage() {
 
       <div className="transactionHeader">
         <div className="transactionHeaderText">
-          <h1 className="pageTitle">{t("Recent Transactions")}</h1>
+          <h1 className="pageTitle">{t("Transactions")}</h1>
           <p className="pageSubtitle">
             {t("View and manage recent sales transactions")}
           </p>
         </div>
+        <Link to={moreHref} className="transactionHeaderSettings" aria-label={t("Settings")}>
+          <IoSettingsOutline size={22} aria-hidden />
+        </Link>
       </div>
 
       <div className="transactionToolbar">

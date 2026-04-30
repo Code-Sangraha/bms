@@ -1,3 +1,5 @@
+@use "../../styles/mobile-tokens" as *;
+
 $mobile-breakpoint: 768px;
 
 .sidebarWrapper {
@@ -211,7 +213,7 @@ $mobile-breakpoint: 768px;
 .subOutletPickerBackdrop {
   position: fixed;
   inset: 0;
-  bottom: calc(64px + env(safe-area-inset-bottom, 0));
+  bottom: calc(var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0));
   z-index: 32;
   background: rgba(17, 24, 39, 0.4);
 }
@@ -220,7 +222,7 @@ $mobile-breakpoint: 768px;
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(64px + env(safe-area-inset-bottom, 0));
+  bottom: calc(var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0));
   z-index: 33;
   max-height: min(50vh, 360px);
   display: flex;
@@ -416,7 +418,7 @@ $mobile-breakpoint: 768px;
 
   @media (max-width: $mobile-breakpoint) {
     width: 100%;
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0px));
     max-height: min(70vh, 480px);
     min-height: unset;
     visibility: visible;
@@ -634,5 +636,73 @@ $mobile-breakpoint: 768px;
 .drawerItemLogout:hover {
   background: rgba(220, 38, 38, 0.08);
   color: #b91c1c;
+}
+
+@media (max-width: $mobile-breakpoint) {
+  .mobileBottomChrome {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    box-shadow: 0 -2px 12px rgba(17, 24, 39, 0.06);
+  }
+
+  .mobilePlantStrip {
+    display: flex;
+    align-items: center;
+    min-height: var(--mobile-plant-strip-height);
+    padding: 0 8px;
+    border-bottom: 1px solid var(--mobile-border);
+    background: #fafafa;
+  }
+
+  .mobilePlantStrip__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    text-align: left;
+  }
+
+  .mobilePlantStrip__btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .mobilePlantStrip__btn--active {
+    color: var(--mobile-teal);
+  }
+
+  .mobilePlantStrip__btn--open {
+    box-shadow: inset 0 0 0 1px rgba(51, 179, 140, 0.35);
+  }
+
+  .mobilePlantStrip__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobilePlantStrip__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 

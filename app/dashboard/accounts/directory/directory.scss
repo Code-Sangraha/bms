@@ -24,6 +24,34 @@
   gap: 12px;
 }
 
+.directoryHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.directoryHeaderSettings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #33b38c;
+  border: 1px solid rgba(51, 179, 140, 0.35);
+  background: #fff;
+  text-decoration: none;
+}
+
+.directoryHeaderSettings:hover {
+  background: rgba(51, 179, 140, 0.08);
+}
+
+.directoryFab {
+  display: none;
+}
+
 .directoryHeaderText {
   display: flex;
   flex-direction: column;
@@ -361,7 +389,30 @@
   }
 
   .directoryHeaderAddBtn {
-    width: 100%;
+    display: none;
+  }
+
+  .directoryFab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0px) + 12px);
+    z-index: 25;
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: #33b38c;
+    box-shadow: 0 4px 16px rgba(51, 179, 140, 0.35);
+    cursor: pointer;
+  }
+
+  .directoryFab:hover {
+    filter: brightness(1.05);
   }
 
   .directoryRowHeader {

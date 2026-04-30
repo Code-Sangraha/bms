@@ -1,0 +1,125 @@
+@use "../../styles/mobile-tokens" as *;
+
+.morePage {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-bottom: 24px;
+  color: var(--mobile-text);
+}
+
+.morePage__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.morePage__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.morePage__titles {
+  min-width: 0;
+}
+
+.morePage__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.morePage__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--mobile-text-muted);
+}
+
+.morePage__sectionLabel {
+  margin: 16px 0 8px;
+  padding-left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mobile-text-muted);
+}
+
+.morePage__card {
+  background: var(--mobile-card-bg);
+  border-radius: var(--mobile-card-radius);
+  border: 1px solid var(--mobile-border);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.morePage__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-bottom: 1px solid var(--mobile-border);
+  background: transparent;
+  text-align: left;
+  font-size: 15px;
+  color: var(--mobile-text);
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.morePage__row:last-child {
+  border-bottom: none;
+}
+
+.morePage__row:hover {
+  background: rgba(17, 24, 39, 0.03);
+}
+
+.morePage__rowIcon {
+  display: flex;
+  color: var(--mobile-teal);
+  flex-shrink: 0;
+}
+
+.morePage__rowLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.morePage__chevron {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.morePage__logout {
+  color: var(--mobile-coral) !important;
+}
+
+.morePage__logout .morePage__rowIcon {
+  color: var(--mobile-coral);
+}
+
+.morePage__langRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mobile-border);
+}
+
+.morePage__langRow:last-child {
+  border-bottom: none;
+}

@@ -7,6 +7,7 @@ import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
+import MobileBottomNav from "@/app/components/MobileBottomNav/MobileBottomNav";
 import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -742,6 +743,19 @@ export default function Sidebar() {
   );
 
   const subOutletCount = processingPlantsForRail.length;
+
+  useEffect(() => {
+    if (!isMobile) {
+      document.documentElement.style.removeProperty("--mobile-chrome-bottom");
+      return;
+    }
+    const px = subOutletCount > 0 ? 96 : 56;
+    document.documentElement.style.setProperty("--mobile-chrome-bottom", `${px}px`);
+    return () => {
+      document.documentElement.style.removeProperty("--mobile-chrome-bottom");
+    };
+  }, [isMobile, subOutletCount]);
+
   const activeSubOutletPlant = useMemo(
     () =>
       highlandContext.mode === "plant" && highlandContext.plantId
@@ -800,8 +814,14 @@ export default function Sidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [subOutletPickerOpen]);
 
+  const mobileScopeOutletId =
+    highlandContext.mode === "plant" && highlandContext.outletId
+      ? highlandContext.outletId
+      : null;
+
   return (
     <div className="sidebarWrapper">
+      {!isMobile ? (
       <aside className="sidebar" aria-label="Primary">
         <div className="header">
           <h2 className="title">{sidebarConfig.header.title}</h2>
@@ -836,7 +856,7 @@ export default function Sidebar() {
               })}
             </div>
           ))}
-          {subOutletCount > 0 && !isMobile && (
+          {subOutletCount > 0 && (
             <div
               className="subOutletRailTrack"
               role="group"
@@ -875,47 +895,6 @@ export default function Sidebar() {
                 );
               })}
             </div>
-          )}
-          {subOutletCount > 0 && isMobile && (
-            <button
-              type="button"
-              className={[
-                "link",
-                "subOutletRail",
-                "subOutletHub",
-                (highlandContext.mode === "plant" && activeSubOutletPlant) || subOutletPickerOpen
-                  ? "active"
-                  : "",
-                subOutletPickerOpen ? "subOutletHubOpen" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              title={
-                subOutletCount > 1
-                  ? t("Sub-outlet plants")
-                  : singleSubOutletPlant?.name ?? t("Sub-outlet plants")
-              }
-              disabled={!hasUsableSubOutlet}
-              aria-label={t("Sub-outlet plants")}
-              aria-haspopup={subOutletCount > 1 ? "dialog" : undefined}
-              aria-expanded={subOutletCount > 1 ? subOutletPickerOpen : undefined}
-              aria-controls={subOutletCount > 1 ? "sub-outlet-picker" : undefined}
-              onClick={handleSubOutletHubClick}
-            >
-              <span className="mobileRailIcon" aria-hidden>
-                {subOutletCount === 1 && singleSubOutletPlant ? (
-                  <span className="plantRailBadge">
-                    {twoLetterLabelFromPlantName(singleSubOutletPlant.name)}
-                  </span>
-                ) : activeSubOutletPlant ? (
-                  <span className="plantRailBadge">
-                    {twoLetterLabelFromPlantName(activeSubOutletPlant.name)}
-                  </span>
-                ) : (
-                  <TbBuildingFactory2 size={20} />
-                )}
-              </span>
-            </button>
           )}
         </nav>
 
@@ -957,6 +936,57 @@ export default function Sidebar() {
             ))}
         </div>
       </aside>
+      ) : (
+        <div className="mobileBottomChrome">
+          {subOutletCount > 0 ? (
+            <div className="mobilePlantStrip" role="toolbar" aria-label={t("Sub-outlet plants")}>
+              <button
+                type="button"
+                className={[
+                  "mobilePlantStrip__btn",
+                  (highlandContext.mode === "plant" && activeSubOutletPlant) || subOutletPickerOpen
+                    ? "mobilePlantStrip__btn--active"
+                    : "",
+                  subOutletPickerOpen ? "mobilePlantStrip__btn--open" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                title={
+                  subOutletCount > 1
+                    ? t("Sub-outlet plants")
+                    : singleSubOutletPlant?.name ?? t("Sub-outlet plants")
+                }
+                disabled={!hasUsableSubOutlet}
+                aria-label={t("Sub-outlet plants")}
+                aria-haspopup={subOutletCount > 1 ? "dialog" : undefined}
+                aria-expanded={subOutletCount > 1 ? subOutletPickerOpen : undefined}
+                aria-controls={subOutletCount > 1 ? "sub-outlet-picker" : undefined}
+                onClick={handleSubOutletHubClick}
+              >
+                <span className="mobilePlantStrip__icon" aria-hidden>
+                  {subOutletCount === 1 && singleSubOutletPlant ? (
+                    <span className="plantRailBadge">
+                      {twoLetterLabelFromPlantName(singleSubOutletPlant.name)}
+                    </span>
+                  ) : activeSubOutletPlant ? (
+                    <span className="plantRailBadge">
+                      {twoLetterLabelFromPlantName(activeSubOutletPlant.name)}
+                    </span>
+                  ) : (
+                    <TbBuildingFactory2 size={18} />
+                  )}
+                </span>
+                <span className="mobilePlantStrip__label">
+                  {activeSubOutletPlant?.name ??
+                    singleSubOutletPlant?.name ??
+                    t("Sub-outlet plants")}
+                </span>
+              </button>
+            </div>
+          ) : null}
+          <MobileBottomNav scopedOutletId={mobileScopeOutletId} />
+        </div>
+      )}
 
       {isMobile && subOutletPickerOpen && subOutletCount > 1 && (
         <>

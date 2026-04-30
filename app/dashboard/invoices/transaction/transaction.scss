@@ -1,4 +1,4 @@
-$brand: #02955a;
+$brand: #33b38c;
 $border: rgba(0, 0, 0, 0.08);
 
 .transactionPage {
@@ -25,6 +25,24 @@ $border: rgba(0, 0, 0, 0.08);
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.transactionHeaderSettings {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #33b38c;
+  border: 1px solid rgba(51, 179, 140, 0.35);
+  background: #fff;
+  text-decoration: none;
+}
+
+.transactionHeaderSettings:hover {
+  background: rgba(51, 179, 140, 0.08);
 }
 
 .transactionHeaderText {
@@ -362,7 +380,7 @@ $border: rgba(0, 0, 0, 0.08);
   .transactionCardMobileId {
     font-size: 12px;
     font-weight: 600;
-    color: #374151;
+    color: #33b38c;
     word-break: break-word;
   }
 

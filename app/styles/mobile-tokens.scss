@@ -1,0 +1,19 @@
+/* Reference-aligned mobile design tokens — load with `@use "…/mobile-tokens" as *;` from component SCSS. */
+:root {
+  --mobile-page-bg: #f5f6f8;
+  --mobile-card-bg: #ffffff;
+  --mobile-card-radius: 12px;
+  --mobile-border: rgba(0, 0, 0, 0.08);
+  --mobile-teal: #33b38c;
+  --mobile-teal-dark: #02955a;
+  --mobile-teal-soft: rgba(51, 179, 140, 0.12);
+  --mobile-coral: #e85d6f;
+  --mobile-coral-soft: rgba(232, 93, 111, 0.12);
+  --mobile-lavender: #e8e4f5;
+  --mobile-text: #1f2937;
+  --mobile-text-muted: #6b7280;
+  --mobile-nav-height: 56px;
+  --mobile-plant-strip-height: 40px;
+  /* Set by Sidebar on mobile: nav-only (56) or nav+plant strip (96) */
+  --mobile-chrome-bottom: 96px;
+}

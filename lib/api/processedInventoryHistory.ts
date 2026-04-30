@@ -1,8 +1,14 @@
-import { apiRequest } from "@/lib/api/client";
+import axios from "axios";
+import { getBaseUrl, tryRefresh } from "@/lib/api/client";
 import { PRODUCT_ROUTES } from "@/lib/api/routes";
+import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
+import { clearStoredUser } from "@/lib/auth/user";
 
-/** RESTOCK/DEDUCT = manual movement; IN = processing completion stock-in (InventoryTransaction IN when backend exposes it). */
-export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "IN";
+/**
+ * Backend `ProcessedInventoryHistory`: RESTOCK (incl. processing output), DEDUCT, SALE.
+ * `IN` is accepted if ever sent by an older API build.
+ */
+export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "SALE" | "IN";
 
 export type ProcessedInventoryHistoryFilters = {
   productId?: string;
@@ -41,10 +47,10 @@ function parseNum(value: unknown): number | null {
 }
 
 function parseHistoryType(raw: unknown): ProcessedInventoryHistoryType | null {
-  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "IN") return raw;
+  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "SALE" || raw === "IN") return raw;
   if (typeof raw === "string") {
     const u = raw.toUpperCase();
-    if (u === "RESTOCK" || u === "DEDUCT" || u === "IN") return u;
+    if (u === "RESTOCK" || u === "DEDUCT" || u === "SALE" || u === "IN") return u;
   }
   return null;
 }
@@ -104,16 +110,20 @@ function parseEntry(raw: unknown, index: number): ProcessedInventoryHistoryEntry
   };
 }
 
-function buildQueryString(filters: ProcessedInventoryHistoryFilters): string {
-  const sp = new URLSearchParams();
-  if (filters.productId?.trim()) sp.set("productId", filters.productId.trim());
-  if (filters.type === "RESTOCK" || filters.type === "DEDUCT" || filters.type === "IN") {
-    sp.set("type", filters.type);
+function buildRequestBody(filters: ProcessedInventoryHistoryFilters): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (filters.productId?.trim()) body.productId = filters.productId.trim();
+  if (
+    filters.type === "RESTOCK" ||
+    filters.type === "DEDUCT" ||
+    filters.type === "SALE" ||
+    filters.type === "IN"
+  ) {
+    body.type = filters.type;
   }
-  if (filters.fromDate?.trim()) sp.set("fromDate", filters.fromDate.trim());
-  if (filters.toDate?.trim()) sp.set("toDate", filters.toDate.trim());
-  const qs = sp.toString();
-  return qs ? `?${qs}` : "";
+  if (filters.fromDate?.trim()) body.fromDate = filters.fromDate.trim();
+  if (filters.toDate?.trim()) body.toDate = filters.toDate.trim();
+  return body;
 }
 
 function extractList(payload: ProcessedInventoryHistoryApiResponse): unknown[] {
@@ -144,42 +154,125 @@ function errorMessageFromPayload(data: unknown): string {
   return "Request failed.";
 }
 
+/** Prefer weight (kg), then quantity — absolute value for movement magnitude. */
+export function processedHistoryMovementAmount(entry: ProcessedInventoryHistoryEntry): number {
+  const w = entry.weight;
+  if (w != null && Number.isFinite(w)) return Math.abs(w);
+  const q = entry.quantity;
+  if (q != null && Number.isFinite(q)) return Math.abs(q);
+  return 0;
+}
+
 /**
- * GET processed restock/deduct history with **query** params (no GET body).
- * Per inventory-feature.md: prefer query or POST for date-filtered movement.
+ * Key used to pair SALE + DEDUCT rows emitted for the same sale line (same weight, same second).
+ */
+export function saleMirrorKeyForProcessedHistory(entry: ProcessedInventoryHistoryEntry): string {
+  const t = Date.parse(entry.createdAt);
+  const sec = Number.isFinite(t) ? Math.floor(t / 1000) : 0;
+  const amt = processedHistoryMovementAmount(entry);
+  return `${entry.productId}|${sec}|${amt}`;
+}
+
+export function buildProcessedSaleMirrorKeySet(
+  history: readonly ProcessedInventoryHistoryEntry[]
+): ReadonlySet<string> {
+  const s = new Set<string>();
+  for (const e of history) {
+    if (e.type === "SALE") s.add(saleMirrorKeyForProcessedHistory(e));
+  }
+  return s;
+}
+
+/** True when this DEDUCT row is the stock leg of a sale (mirror of a SALE row). */
+export function isProcessedDeductMirroredBySale(
+  entry: ProcessedInventoryHistoryEntry,
+  saleMirrorKeys: ReadonlySet<string>
+): boolean {
+  return entry.type === "DEDUCT" && saleMirrorKeys.has(saleMirrorKeyForProcessedHistory(entry));
+}
+
+/**
+ * Consumption credited from history without double-counting SALE + mirror DEDUCT.
+ * Use SALE for sale-driven outflow; use DEDUCT only when not paired to a SALE.
+ */
+export function processedHistoryConsumedAmountForLedger(
+  entry: ProcessedInventoryHistoryEntry,
+  saleMirrorKeys: ReadonlySet<string>
+): number {
+  if (entry.type === "SALE") return processedHistoryMovementAmount(entry);
+  if (entry.type === "DEDUCT" && !isProcessedDeductMirroredBySale(entry, saleMirrorKeys)) {
+    return processedHistoryMovementAmount(entry);
+  }
+  return 0;
+}
+
+/**
+ * GET `/v1/products/processed/history` with JSON body (axios — `fetch` cannot attach a body to GET).
+ * Backend reads `req.body`: productId, optional type, optional fromDate / toDate.
  */
 export async function getProcessedInventoryHistory(
   filters: ProcessedInventoryHistoryFilters
 ): Promise<
   { ok: true; data: ProcessedInventoryHistoryEntry[] } | { ok: false; error: string; status: number }
 > {
-  const qs = buildQueryString(filters);
-  const result = await apiRequest<ProcessedInventoryHistoryApiResponse>(
-    `${PRODUCT_ROUTES.PROCESSED_INVENTORY_HISTORY}${qs}`,
-    { method: "GET" }
-  );
+  const url = `${getBaseUrl()}${PRODUCT_ROUTES.PROCESSED_INVENTORY_HISTORY}`;
+  const body = buildRequestBody(filters);
 
-  if (!result.ok) {
-    if (result.status === 404 || result.status === 405) {
+  const requestWithToken = (token: string | null) =>
+    axios.get<ProcessedInventoryHistoryApiResponse>(url, {
+      data: body,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      withCredentials: true,
+      validateStatus: () => true,
+    });
+
+  try {
+    let token = getAuthToken();
+    let res = await requestWithToken(token);
+
+    if (res.status === 401) {
+      const newToken = await tryRefresh();
+      if (newToken) {
+        token = newToken;
+        res = await requestWithToken(token);
+      } else {
+        clearAuthToken();
+        clearStoredUser();
+      }
+    }
+
+    if (res.status === 404 || res.status === 405) {
       return { ok: true, data: [] };
     }
-    return result;
-  }
 
-  const payload = result.data ?? {};
-  if (payload.success === false) {
-    return {
-      ok: false,
-      error: errorMessageFromPayload(payload),
-      status: 200,
-    };
-  }
+    if (res.status < 200 || res.status >= 300) {
+      return {
+        ok: false,
+        error: errorMessageFromPayload(res.data),
+        status: res.status,
+      };
+    }
 
-  const list = extractList(payload);
-  const data = sortByCreatedAtDesc(
-    list.map((row, i) => parseEntry(row, i)).filter((x): x is ProcessedInventoryHistoryEntry => x !== null)
-  );
-  return { ok: true, data };
+    const payload = res.data ?? {};
+    if (payload.success === false) {
+      return {
+        ok: false,
+        error: errorMessageFromPayload(payload),
+        status: res.status,
+      };
+    }
+
+    const list = extractList(payload);
+    const data = sortByCreatedAtDesc(
+      list.map((row, i) => parseEntry(row, i)).filter((x): x is ProcessedInventoryHistoryEntry => x !== null)
+    );
+    return { ok: true, data };
+  } catch {
+    return { ok: false, error: "Something went wrong. Please try again.", status: 0 };
+  }
 }
 
 /** Display amount for processed rows: prefer weight (kg), then quantity. */

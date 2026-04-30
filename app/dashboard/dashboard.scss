@@ -753,3 +753,14 @@
     min-height: 0;
   }
 }
+
+@media (max-width: 768px) {
+  .dashboardSectionSales .dashboardChartBlock,
+  .dashboardSectionSales .dashboardCharts {
+    display: none;
+  }
+
+  .dashboardSectionAttendance {
+    display: none;
+  }
+}

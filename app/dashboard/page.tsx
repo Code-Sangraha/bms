@@ -15,9 +15,10 @@ import {
   LuUsers,
   LuWallet,
 } from "react-icons/lu";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
@@ -33,6 +34,7 @@ import {
   type SalesByProductItem,
 } from "@/handlers/sale";
 import "./dashboard.scss";
+import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
@@ -76,8 +78,10 @@ function DashboardMetricCard({
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { t } = useI18n();
   const { isScoped, scopedOutletId } = useOutletScope();
+  const { canCreate } = usePermissions();
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -420,6 +424,50 @@ export default function DashboardPage() {
       .slice(0, 10);
   }, [processedLineItems, livestockSales]);
 
+  const cashflowLast7Days = useMemo((): CashflowDay[] => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const toDateKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const toLabel = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const toKeyFromString = (value: string): string | null => {
+      const dt = new Date(value);
+      if (!Number.isFinite(dt.getTime())) return null;
+      return toDateKey(dt);
+    };
+
+    const map = new Map<string, number>();
+
+    for (const row of processedLineItems) {
+      const k = toKeyFromString(row.date);
+      if (!k) continue;
+      map.set(k, (map.get(k) ?? 0) + (row.amount || 0));
+    }
+    for (const row of livestockSales) {
+      const raw =
+        (typeof row.createdAt === "string" && row.createdAt) ||
+        (typeof row.date === "string" && row.date) ||
+        "";
+      const k = toKeyFromString(raw);
+      if (!k) continue;
+      map.set(k, (map.get(k) ?? 0) + (typeof row.amount === "number" ? row.amount : 0));
+    }
+
+    const days: CashflowDay[] = [];
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateKey = toDateKey(d);
+      days.push({
+        dateKey,
+        label: toLabel(d),
+        moneyIn: map.get(dateKey) ?? 0,
+        moneyOut: 0,
+      });
+    }
+    return days;
+  }, [processedLineItems, livestockSales]);
+
   const totalRevenue = processedRevenue + livestockRevenue;
   const totalTransactions = processedTransactions + livestockTransactions;
   const totalWeight = processedWeight + livestockWeight;
@@ -479,7 +527,17 @@ export default function DashboardPage() {
 
   return (
     <section className="dashboardOverview">
-      <div className="dashboardHero">
+      <DashboardMobileHome
+        t={t}
+        scopedOutletId={isScoped && scopedOutletId ? scopedOutletId : null}
+        search={search}
+        totalRevenue={totalRevenue}
+        totalTransactions={totalTransactions}
+        totalWeight={totalWeight}
+        cashflowDays={cashflowLast7Days}
+        canCreate={canCreate}
+      />
+      <div className="dashboardHero dashboardHero--hideOnMobile">
         <h1 className="dashboardTitle">{t("Dashboard")}</h1>
         <p className="dashboardSubtitle">{t("Sales, billing and attendance at a glance.")}</p>
       </div>

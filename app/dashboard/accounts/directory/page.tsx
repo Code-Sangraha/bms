@@ -2,8 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { IoPersonAddOutline, IoSettingsOutline } from "react-icons/io5";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -22,6 +23,7 @@ import {
   createEmployeeSchema,
   type CreateEmployeeFormValues,
 } from "@/schema/employee";
+import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
 import { MdMoreHoriz } from "react-icons/md";
 import "./directory.scss";
 
@@ -53,9 +55,12 @@ function resolveName(
 
 export default function DirectoryPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const { t } = useI18n();
+  const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
+  const moreHref = buildPathWithOutletScope("/dashboard/more", scopedOutletId, search);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -225,20 +230,23 @@ export default function DirectoryPage() {
 
       <div className="directoryHeader">
         <div className="directoryHeaderText">
-          <h1 className="pageTitle">{t("Employee Directory")}</h1>
-          <p className="pageSubtitle">
-            {t("Manage employee information and roles")}
-          </p>
+          <h1 className="pageTitle">{t("Parties")}</h1>
+          <p className="pageSubtitle">{t("Employee Directory")}</p>
         </div>
-        {canCreate && (
-          <button
-            type="button"
-            className="button buttonPrimary directoryHeaderAddBtn"
-            onClick={() => setIsModalOpen(true)}
-          >
-            {t("Add Employees")}
-          </button>
-        )}
+        <div className="directoryHeaderActions">
+          <Link to={moreHref} className="directoryHeaderSettings" aria-label={t("Settings")}>
+            <IoSettingsOutline size={22} aria-hidden />
+          </Link>
+          {canCreate ? (
+            <button
+              type="button"
+              className="button buttonPrimary directoryHeaderAddBtn"
+              onClick={() => setIsModalOpen(true)}
+            >
+              {t("Add Employees")}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="directorySearch">
@@ -490,6 +498,12 @@ export default function DirectoryPage() {
           </label>
         </form>
       </Modal>
+      {canCreate ? (
+        <button type="button" className="directoryFab" onClick={() => setIsModalOpen(true)}>
+          <IoPersonAddOutline size={20} aria-hidden />
+          <span>{t("Add Employees")}</span>
+        </button>
+      ) : null}
     </section>
   );
 }

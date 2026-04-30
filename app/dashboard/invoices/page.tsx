@@ -2,8 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { IoListOutline, IoPricetagOutline } from "react-icons/io5";
+import { LuBeef, LuShoppingCart } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
@@ -19,6 +22,7 @@ import {
   type LivestockSale,
   type SaleTransaction,
 } from "@/handlers/sale";
+import { buildPathWithOutletScope } from "@/lib/outletScope";
 import "./invoicesAnalytics.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
@@ -92,7 +96,9 @@ function isInRange(timestamp: number, now: number, rangeMs: number): boolean {
 
 export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { t } = useI18n();
+  const { canCreate } = usePermissions();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
@@ -103,6 +109,9 @@ export default function InvoicesAnalyticsPage() {
 
   const effectiveOutletFilter =
     isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
+
+  const hubScope = isScoped && rowFilterOutletId ? rowFilterOutletId : null;
+  const hubTo = (path: string) => buildPathWithOutletScope(path, hubScope, search);
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -455,6 +464,37 @@ export default function InvoicesAnalyticsPage() {
         <span>{t("Sales & Billing")}</span>
         <span className="separator">&nbsp;&gt;&nbsp;</span>
         <span>{t("Analytics")}</span>
+      </div>
+
+      <div className="invoicesMobileHub" aria-label={t("Quick links")}>
+        <Link to={hubTo("/dashboard/invoices/transaction")} className="invoicesMobileHub__card">
+          <span className="invoicesMobileHub__icon" aria-hidden>
+            <IoListOutline size={24} />
+          </span>
+          <span className="invoicesMobileHub__label">{t("Transactions")}</span>
+        </Link>
+        {canCreate ? (
+          <Link to={hubTo("/dashboard/invoices/new")} className="invoicesMobileHub__card">
+            <span className="invoicesMobileHub__icon" aria-hidden>
+              <LuShoppingCart size={24} />
+            </span>
+            <span className="invoicesMobileHub__label">{t("Processed Sale")}</span>
+          </Link>
+        ) : null}
+        {canCreate ? (
+          <Link to={hubTo("/dashboard/invoices/livestock-sales")} className="invoicesMobileHub__card">
+            <span className="invoicesMobileHub__icon" aria-hidden>
+              <LuBeef size={24} />
+            </span>
+            <span className="invoicesMobileHub__label">{t("Livestock Sales")}</span>
+          </Link>
+        ) : null}
+        <Link to={hubTo("/dashboard/invoices/customer-types")} className="invoicesMobileHub__card">
+          <span className="invoicesMobileHub__icon" aria-hidden>
+            <IoPricetagOutline size={24} />
+          </span>
+          <span className="invoicesMobileHub__label">{t("Customer Types")}</span>
+        </Link>
       </div>
 
       <div className="invoicesAnalyticsHeader">

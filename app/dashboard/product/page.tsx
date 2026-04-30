@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MdMoreHoriz } from "react-icons/md";
+import { IoGridOutline, IoLayersOutline, IoSettingsOutline } from "react-icons/io5";
+import { LuBeef, LuBoxes, LuTag } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -20,6 +22,7 @@ import {
 } from "@/handlers/product";
 import { getDualPricings } from "@/handlers/dualPricing";
 import { hasDualPricingForProductOutlet } from "@/lib/dualPricingLookup";
+import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
@@ -34,9 +37,12 @@ const DUAL_PRICING_QUERY_KEY = ["dualPricing"];
 
 export default function ProductPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { canCreate } = usePermissions();
+  const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
+  const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
   const { showToast } = useToast();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -359,14 +365,44 @@ export default function ProductPage() {
         <span>{t("Product")}</span> {"›"} {t("Products")}
       </div>
 
+      <div className="inventoryMobileHub" aria-label={t("Quick links")}>
+        <Link to={invTo("/dashboard/product/liveProduct")} className="inventoryMobileHub__chip">
+          <LuBeef size={18} aria-hidden />
+          <span>{t("Live Stock Inventory")}</span>
+        </Link>
+        <Link to={invTo("/dashboard/product/processedProduct")} className="inventoryMobileHub__chip">
+          <LuBoxes size={18} aria-hidden />
+          <span>{t("Processed Inventory")}</span>
+        </Link>
+        <Link to={invTo("/dashboard/product/livestockCategory")} className="inventoryMobileHub__chip">
+          <IoLayersOutline size={18} aria-hidden />
+          <span>{t("Livestock Category")}</span>
+        </Link>
+        <Link to={invTo("/dashboard/product/productType")} className="inventoryMobileHub__chip">
+          <IoGridOutline size={18} aria-hidden />
+          <span>{t("Product Type")}</span>
+        </Link>
+        <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
+          <LuTag size={18} aria-hidden />
+          <span>{t("Pricelist")}</span>
+        </Link>
+      </div>
+
       <div className="productHeader">
         <div className="productHeaderText">
-          <h1 className="pageTitle">{t("Products")}</h1>
+          <h1 className="pageTitle">{t("Inventory")}</h1>
           <p className="pageSubtitle">
             {t("Create and manage products by type and outlet")}
           </p>
         </div>
         <div className="productHeaderActions">
+          <Link
+            to={buildPathWithOutletScope("/dashboard/more", scopedOutletId, search)}
+            className="productHeaderSettings"
+            aria-label={t("Settings")}
+          >
+            <IoSettingsOutline size={22} aria-hidden />
+          </Link>
           <div className="productSearch">
             <span className="searchIcon" aria-hidden>
               🔍

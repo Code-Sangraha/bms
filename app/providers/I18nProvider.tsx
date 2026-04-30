@@ -816,15 +816,27 @@ const translations: Record<string, string> = {
   "Storage reduced successfully.": "भण्डारण सफलतापूर्वक घटाइयो।",
   "Date range applies to consumed (sales) history. Storage and waste tabs summarize API limits.":
     "मिति दायरा बिक्री (खपत) इतिहासमा लागू हुन्छ। भण्डारण र फोहोर ट्याब API सीमाको सार देखाउँछन्।",
-  "Date range filters storage movements (GET processed history), sales lines (consumed), and waste rows returned by the API.":
-    "मिति दायराले भण्डारण चाल (प्रशोधित इतिहास), बिक्री लाइन (खपत), र API ले फर्काएका फोहोर पंक्तिहरू फिल्टर गर्छ।",
+  "Date range filters processed movement history (storage and manual deducts), sales (consumed), and applies to any future waste timeline API.":
+    "मिति दायराले प्रशोधित चाल इतिहास (भण्डारण र म्यानुअल कटौती), बिक्री (खपत), र भविष्यका फोहोर टाइमलाइन API लाई फिल्टर गर्छ।",
   "Processed storage history note":
-    "तलका पंक्तिहरू GET /products/processed/history बाट आउँछन्: पुनः भण्डारण (RESTOCK) र प्रशोधन पूरा भएको स्टक-भित्र (IN)। सर्भरले लग नगरेका चाल यहाँ देखिँदैनन्।",
+    "तलका पंक्तिहरू GET /v1/products/processed/history (RESTOCK) बाट आउँछन् — प्रशोधन पूरा हुँदा स्टक भित्र। म्यानुअल पुनः भण्डारणले यो लेजरमा पंक्ति बनाउँदैन।",
   "Current stock (kg)": "हालको स्टक (केजी)",
   "Failed to load processed storage history.": "प्रशोधित भण्डारण इतिहास लोड गर्न सकिएन।",
   "Processing (stock in)": "प्रशोधन (स्टक भित्र)",
   "Processed waste history note":
-    "फोहोर प्रायः प्रशोधन ब्याचमा (साझा wasteWeight) हुन्छ। तलका पंक्तिहरू API ले दिएमा मात्र; जम्मा फोहोर उत्पादनमा भए देखाइन्छ।",
+    "फोहोर ProcessingBatch.wasteWeight मा ब्याच-स्तरमा रहन्छ; उत्पादन अनुसार मिति-दरिलो सूची API यस रिपोमा छैन।",
+  "Processed consumed history note":
+    "बिक्री बिक्री API बाट (ग्राहक/आउटलेट)। म्यानुअल स्टक घटाउने प्रशोधित इतिहासको DEDUCT बाट — बिक्रीसँग जोडिएका DEDUCT पंक्तिहरू (SALE को दोहोरो) हटाइएका छन्।",
+  "Consumed sales section caption":
+    "बिक्री (ग्राहक र मूल्य सन्दर्भको लागि प्राधिकृत स्रोत)",
+  "Manual deduct section caption":
+    "म्यानुअल स्टक घटाउ (प्रशोधित इतिहास DEDUCT, बिक्री-जोडी बाहेक)",
+  "No consumed movements in this date range.": "यस मिति दायरामा कुनै खपत चाल छैन।",
+  "Failed to load consumed history.": "खपत इतिहास लोड गर्न सकिएन।",
+  "Processed waste no cumulative hint":
+    "उत्पादन प्रतिक्रियामा जम्मा फोहोर (wasteWeight) छैन। ब्याच फोहोर टाइमलाइनको लागि पछाडि API चाहिन्छ।",
+  "Processed waste batch level note":
+    "फोहोर आउटपुट SKU प्रति होइन — पूरा भएको ब्याचको साझा wasteWeight हो।",
   "Failed to load waste history.": "फोहोर इतिहास लोड गर्न सकिएन।",
   "Customer type": "ग्राहक प्रकार",
   "Waste (kg)": "फोहोर (केजी)",
@@ -837,7 +849,37 @@ const translations: Record<string, string> = {
   "Failed to load sales for this product.": "यस उत्पादनका बिक्री लोड गर्न सकिएन।",
   "No sales in this date range.": "यस मिति दायरामा कुनै बिक्री छैन।",
   "Cumulative waste (on product)": "जम्मा फोहोर (उत्पादनमा)",
-  Sale: "बिक्री",
+  Primary: "प्राथमिक",
+  "Quick links": "द्रुत लिंकहरू",
+  Home: "घर",
+  Parties: "पक्षहरू",
+  More: "थप",
+  "To Receive": "प्राप्त गर्नुपर्ने",
+  "To Give": "तिर्नुपर्ने",
+  Sales: "बिक्री",
+  Purchase: "खरिद",
+  Expense: "खर्च",
+  "Add Item": "वस्तु थप्नुहोस्",
+  "Total Balance": "कुल मौज्दात",
+  "Cash & Bank": "नगद र बैंक",
+  "Explore App": "एप अन्वेषण",
+  "Quick Entry": "द्रुत प्रविष्टि",
+  "Quick POS": "द्रुत POS",
+  "View Reports": "प्रतिवेदन हेर्नुहोस्",
+  Shortcuts: "द्रुत मार्ग",
+  "Edit Menu": "मेनु सम्पादन",
+  "Cashflow (Last 7 Days)": "नगद प्रवाह (पछिल्लो ७ दिन)",
+  Daily: "दैनिक",
+  "Total Money In": "कुल पैसा भित्र",
+  "Total Money Out": "कुल पैसा बाहिर",
+  Done: "सम्पन्न",
+  Others: "अन्य",
+  Language: "भाषा",
+  Admin: "प्रशासक",
+  "Use Desktop Web Version": "डेस्कटप वेब संस्करण",
+  "Help and Support": "मद्दत र समर्थन",
+  "Backup Information": "ब्याकअप जानकारी",
+  "About this App": "यो एप बारे",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

@@ -6,6 +6,11 @@ import type {
 } from "@/handlers/product";
 import type { ProcessedInventoryHistoryEntry } from "@/lib/api/processedInventoryHistory";
 import {
+  buildProcessedSaleMirrorKeySet,
+  processedHistoryConsumedAmountForLedger,
+  processedHistoryMovementAmount,
+} from "@/lib/api/processedInventoryHistory";
+import {
   compareIsoDates,
   enumerateLocalDaysInclusive,
 } from "@/app/dashboard/product/liveProduct/lib/buildLivestockOpeningStockData";
@@ -28,11 +33,7 @@ function localCalendarDateFromTimestamp(iso: string): string {
 
 /** Prefer weight (kg) for processed movement; fall back to quantity. */
 export function processedHistoryEntryAmount(entry: ProcessedInventoryHistoryEntry): number {
-  const w = entry.weight;
-  if (w != null && Number.isFinite(w)) return Math.abs(w);
-  const q = entry.quantity;
-  if (q != null && Number.isFinite(q)) return Math.abs(q);
-  return 0;
+  return processedHistoryMovementAmount(entry);
 }
 
 function stableProductKey(product: Product): string {
@@ -94,6 +95,7 @@ export function buildProcessedOpeningStockData(params: BuildProcessedOpeningStoc
   const productKeys = new Set(products.flatMap((p) => candidateKeysForProduct(p)));
 
   const bucket = new Map<string, Map<string, { added: number; consumed: number }>>();
+  const saleMirrorKeys = buildProcessedSaleMirrorKeySet(history);
 
   function ensureBucket(key: string, date: string): { added: number; consumed: number } {
     let byDate = bucket.get(key);
@@ -118,10 +120,12 @@ export function buildProcessedOpeningStockData(params: BuildProcessedOpeningStoc
     const day = localCalendarDateFromTimestamp(entry.createdAt);
     if (compareIsoDates(day, from) < 0 || compareIsoDates(day, to) > 0) continue;
 
-    const amt = processedHistoryEntryAmount(entry);
     const cell = ensureBucket(canonical, day);
-    if (entry.type === "RESTOCK") cell.added += amt;
-    else cell.consumed += amt;
+    if (entry.type === "RESTOCK" || entry.type === "IN") {
+      cell.added += processedHistoryEntryAmount(entry);
+    } else {
+      cell.consumed += processedHistoryConsumedAmountForLedger(entry, saleMirrorKeys);
+    }
   }
 
   function netHistoryAfterTo(canonicalKey: string): number {
@@ -133,9 +137,11 @@ export function buildProcessedOpeningStockData(params: BuildProcessedOpeningStoc
       if (canonical !== canonicalKey) continue;
       const day = localCalendarDateFromTimestamp(entry.createdAt);
       if (compareIsoDates(day, to) <= 0) continue;
-      const amt = processedHistoryEntryAmount(entry);
-      if (entry.type === "RESTOCK") restock += amt;
-      else deduct += amt;
+      const addedAmt =
+        entry.type === "RESTOCK" || entry.type === "IN" ? processedHistoryEntryAmount(entry) : 0;
+      const consumedAmt = processedHistoryConsumedAmountForLedger(entry, saleMirrorKeys);
+      restock += addedAmt;
+      deduct += consumedAmt;
     }
     return restock - deduct;
   }

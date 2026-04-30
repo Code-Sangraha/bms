@@ -40,6 +40,24 @@
   justify-content: flex-end;
 }
 
+.productHeaderSettings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #33b38c;
+  border: 1px solid rgba(51, 179, 140, 0.35);
+  background: #fff;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.productHeaderSettings:hover {
+  background: rgba(51, 179, 140, 0.08);
+}
+
 .productSearch {
   display: flex;
   align-items: center;
@@ -497,4 +515,38 @@
 
 .setPricelistTargetOutlet {
   color: #6b7280;
+}
+
+$inv-hub-teal: #33b38c;
+
+.inventoryMobileHub {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .inventoryMobileHub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .inventoryMobileHub__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-decoration: none;
+  }
+
+  .inventoryMobileHub__chip svg {
+    flex-shrink: 0;
+    color: $inv-hub-teal;
+  }
 }

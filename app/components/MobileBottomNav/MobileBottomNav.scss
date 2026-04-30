@@ -1,0 +1,52 @@
+@use "../../styles/mobile-tokens" as *;
+
+.mobileBottomNav {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-around;
+  width: 100%;
+  min-height: var(--mobile-nav-height);
+  padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: #ffffff;
+  border-top: 1px solid var(--mobile-border);
+  box-sizing: border-box;
+}
+
+.mobileBottomNav__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 2px;
+  text-decoration: none;
+  color: var(--mobile-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  border-top: 3px solid transparent;
+  margin-top: -1px;
+  box-sizing: border-box;
+}
+
+.mobileBottomNav__tab--active {
+  color: var(--mobile-teal);
+  border-top-color: var(--mobile-teal);
+}
+
+.mobileBottomNav__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobileBottomNav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

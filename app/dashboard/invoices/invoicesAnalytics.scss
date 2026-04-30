@@ -299,3 +299,53 @@
     text-align: left;
   }
 }
+
+$mobile-teal: #33b38c;
+
+.invoicesMobileHub {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .invoicesMobileHub {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .invoicesMobileHub__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    min-height: 88px;
+    box-sizing: border-box;
+  }
+
+  .invoicesMobileHub__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(51, 179, 140, 0.12);
+    color: $mobile-teal;
+  }
+
+  .invoicesMobileHub__label {
+    line-height: 1.25;
+    max-width: 100%;
+  }
+}

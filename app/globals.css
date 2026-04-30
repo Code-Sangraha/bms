@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Mobile redesign tokens (see app/styles/mobile-tokens.scss for full set) */
+  --mobile-page-bg: #f5f6f8;
+  --mobile-teal: #33b38c;
+  --mobile-coral: #e85d6f;
 }
 
 @theme inline {
