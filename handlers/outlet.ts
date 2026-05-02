@@ -10,6 +10,33 @@ export type Outlet = {
   status: boolean;
 };
 
+function parentOutletIdFromRow(o: Outlet): string | null {
+  const r = o as Outlet & Record<string, unknown>;
+  const raw = r.parentOutletId ?? r.parent_outlet_id;
+  return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : null;
+}
+
+/**
+ * Sub-outlets for Highland scope: when the API sets `parentOutletId` / `parent_outlet_id`,
+ * returns outlets whose parent is the organization main outlet. Otherwise returns every
+ * outlet except the one named "Main Outlet" (case-insensitive), matching outlet-management
+ * and processing-plant main-outlet detection.
+ */
+export function getSubOutletsForScope(outlets: Outlet[]): Outlet[] {
+  if (outlets.length === 0) return [];
+  const main =
+    outlets.find((o) => o.name.trim().toLowerCase() === "main outlet") ?? null;
+  const withParent = outlets.filter((o) => parentOutletIdFromRow(o) != null);
+  if (withParent.length > 0 && main) {
+    return outlets.filter((o) => {
+      const pid = parentOutletIdFromRow(o);
+      return pid === main.id;
+    });
+  }
+  if (main) return outlets.filter((o) => o.id !== main.id);
+  return [];
+}
+
 export type GetOutletsResponse = {
   data?: Outlet[];
   outlets?: Outlet[];

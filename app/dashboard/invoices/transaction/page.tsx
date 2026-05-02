@@ -348,7 +348,6 @@ export default function TransactionPage() {
             </select>
           ) : null}
         </div>
-        <span className="transactionLastSync">{t("Last sync: 2mins")}</span>
       </div>
 
       <div className="transactionTable">

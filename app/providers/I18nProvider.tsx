@@ -81,6 +81,10 @@ type I18nContextValue = {
   "Send History": "पठाइएको इतिहास",
   "No send history yet.": "अहिलेसम्म पठाइएको इतिहास छैन।",
   "Select processing plant": "प्रोसेसिङ प्लान्ट छान्नुहोस्",
+  "Sub-outlet switcher": "उप-आउटलेट स्विच (धेरै भए क्षैतिज स्क्रोल)",
+  "Sub-outlets": "उप-आउटलेट",
+  "This outlet is inactive.": "यो आउटलेट निष्क्रिय छ।",
+  "No active sub-outlets available.": "कुनै सक्रिय उप-आउटलेट उपलब्ध छैन।",
   "Sub-outlet plant switcher":
     "उप-आउटलेट प्रशोधन केन्द्र स्विच (धेरै भए क्षैतिज स्क्रोल)",
   "Sub-outlet plants": "उप-आउटलेट प्लान्ट",
@@ -546,6 +550,10 @@ const translations: Record<string, string> = {
   "e.g. 601756be-54be-4623-8e97-7ff891e43081":
     "जस्तै: 601756be-54be-4623-8e97-7ff891e43081",
   "Install App": "एप इन्स्टल गर्नुहोस्",
+  "Sub-outlet switcher": "उप-आउटलेट स्विच (धेरै भए क्षैतिज स्क्रोल)",
+  "Sub-outlets": "उप-आउटलेट",
+  "This outlet is inactive.": "यो आउटलेट निष्क्रिय छ।",
+  "No active sub-outlets available.": "कुनै सक्रिय उप-आउटलेट उपलब्ध छैन।",
   "Sub-outlet plant switcher":
     "उप-आउटलेट प्रशोधन केन्द्र स्विच (धेरै भए क्षैतिज स्क्रोल)",
   "Sub-outlet plants": "उप-आउटलेट प्लान्ट",
@@ -876,10 +884,6 @@ const translations: Record<string, string> = {
   Others: "अन्य",
   Language: "भाषा",
   Admin: "प्रशासक",
-  "Use Desktop Web Version": "डेस्कटप वेब संस्करण",
-  "Help and Support": "मद्दत र समर्थन",
-  "Backup Information": "ब्याकअप जानकारी",
-  "About this App": "यो एप बारे",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

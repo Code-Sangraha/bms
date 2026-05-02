@@ -12,14 +12,7 @@ import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
-import {
-  getProcessingPlants,
-  mergeProcessingPlantOutletFromUsers,
-  type ProcessingPlant,
-} from "@/handlers/processingPlant";
-import { getOutlets } from "@/handlers/outlet";
-import { getUsers } from "@/handlers/user";
-import { resolveRowFilterOutletId, resolvedScopeOutletIdForPlant } from "@/lib/rowFilterOutlet";
+import { getOutlets, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 import {
@@ -125,11 +118,9 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   highland: "Highland",
 };
 
-const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
-const USERS_QUERY_KEY = ["users"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
-/** Highland drawer: reduced menu when a processing plant (outlet scope) is selected. */
+/** Highland drawer: reduced menu when a sub-outlet scope is selected (`?outletId=`). */
 const highlandPlantMenuSections: MenuSectionBlock[] = [
   {
     titleKey: "dashboard",
@@ -471,24 +462,6 @@ export default function Sidebar() {
   const pathname = location.pathname;
   const locationSearch = location.search;
 
-  const { data: processingPlants = [] } = useQuery({
-    queryKey: PROCESSING_PLANTS_QUERY_KEY,
-    queryFn: async () => {
-      const result = await getProcessingPlants();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-  });
-
-  const { data: users = [] } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: async () => {
-      const result = await getUsers();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-  });
-
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
     queryFn: async () => {
@@ -498,9 +471,9 @@ export default function Sidebar() {
     },
   });
 
-  const processingPlantsForRail = useMemo(
-    () => mergeProcessingPlantOutletFromUsers(processingPlants, users),
-    [processingPlants, users]
+  const subOutletsForRail = useMemo(
+    () => getSubOutletsForScope(outlets),
+    [outlets]
   );
 
   const highlandMainSections = useMemo((): MenuSectionBlock[] => {
@@ -513,20 +486,13 @@ export default function Sidebar() {
   useEffect(() => {
     const oid = readOutletScopeFromSearch(locationSearch);
     if (!oid) return;
-    const plant =
-      processingPlantsForRail.find((p) => p.id === oid) ??
-      processingPlantsForRail.find(
-        (p) => resolveRowFilterOutletId(p.id, outlets, processingPlantsForRail) === oid
-      ) ??
-      processingPlantsForRail.find((p) => p.outletId === oid);
-    if (!plant) return;
-    const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
-    if (!resolved) return;
+    const sub = subOutletsForRail.find((o) => o.id === oid);
+    if (!sub) return;
     const next: HighlandStoredContext = {
       mode: "plant",
-      plantId: plant.id,
-      outletId: resolved,
-      plantName: plant.name,
+      plantId: sub.id,
+      outletId: sub.id,
+      plantName: sub.name,
     };
     setHighlandContext((prev) => {
       if (
@@ -539,7 +505,7 @@ export default function Sidebar() {
       return next;
     });
     writeHighlandContextToStorage(next);
-  }, [locationSearch, processingPlantsForRail, outlets]);
+  }, [locationSearch, subOutletsForRail]);
 
   const primaryRailItems = useMemo(
     () => [
@@ -720,29 +686,31 @@ export default function Sidebar() {
     if (!el?.showDialog && el?.show) el.show();
   }, [deferredInstallPrompt]);
 
-  const handleSelectPlant = useCallback(
-    (plant: ProcessingPlant) => {
+  const handleSelectSubOutlet = useCallback(
+    (subOutlet: Outlet) => {
       setSubOutletPickerOpen(false);
-      const resolved = resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail);
-      if (!resolved) {
-        showToast(t("Processing plant has no linked outlet yet."));
+      if (!subOutlet.status) {
+        showToast(t("This outlet is inactive."));
         return;
       }
       const nextCtx: HighlandStoredContext = {
         mode: "plant",
-        plantId: plant.id,
-        outletId: resolved,
-        plantName: plant.name,
+        plantId: subOutlet.id,
+        outletId: subOutlet.id,
+        plantName: subOutlet.name,
       };
       setHighlandContext(nextCtx);
       writeHighlandContextToStorage(nextCtx);
       setActiveMenuId("highland");
-      navigate(buildPathWithOutletScope(pathname, resolved, locationSearch), { replace: true });
+      navigate(
+        buildPathWithOutletScope(pathname, subOutlet.id, locationSearch),
+        { replace: true }
+      );
     },
-    [locationSearch, navigate, outlets, pathname, processingPlantsForRail, showToast, t]
+    [locationSearch, navigate, pathname, showToast, t]
   );
 
-  const subOutletCount = processingPlantsForRail.length;
+  const subOutletCount = subOutletsForRail.length;
 
   useEffect(() => {
     if (!isMobile) {
@@ -756,40 +724,37 @@ export default function Sidebar() {
     };
   }, [isMobile, subOutletCount]);
 
-  const activeSubOutletPlant = useMemo(
+  const activeSubOutlet = useMemo(
     () =>
       highlandContext.mode === "plant" && highlandContext.plantId
-        ? processingPlantsForRail.find((p) => p.id === highlandContext.plantId) ?? null
+        ? subOutletsForRail.find((o) => o.id === highlandContext.plantId) ?? null
         : null,
-    [highlandContext.mode, highlandContext.plantId, processingPlantsForRail]
+    [highlandContext.mode, highlandContext.plantId, subOutletsForRail]
   );
   const hasUsableSubOutlet = useMemo(
-    () =>
-      processingPlantsForRail.some((p) =>
-        Boolean(resolvedScopeOutletIdForPlant(p, outlets, processingPlantsForRail))
-      ),
-    [processingPlantsForRail, outlets]
+    () => subOutletsForRail.some((o) => o.status),
+    [subOutletsForRail]
   );
-  const singleSubOutletPlant = subOutletCount === 1 ? processingPlantsForRail[0] : null;
+  const singleSubOutlet = subOutletCount === 1 ? subOutletsForRail[0] : null;
 
   const handleSubOutletHubClick = useCallback(() => {
     if (!hasUsableSubOutlet) {
-      showToast(t("Processing plant has no linked outlet yet."));
+      showToast(t("No active sub-outlets available."));
       return;
     }
     if (subOutletCount === 1) {
-      if (singleSubOutletPlant) {
-        void handleSelectPlant(singleSubOutletPlant);
+      if (singleSubOutlet) {
+        void handleSelectSubOutlet(singleSubOutlet);
       }
       return;
     }
     setSubOutletPickerOpen((o) => !o);
   }, [
     hasUsableSubOutlet,
-    handleSelectPlant,
+    handleSelectSubOutlet,
     showToast,
     subOutletCount,
-    singleSubOutletPlant,
+    singleSubOutlet,
     t,
   ]);
 
@@ -860,37 +825,34 @@ export default function Sidebar() {
             <div
               className="subOutletRailTrack"
               role="group"
-              aria-label={t("Sub-outlet plant switcher")}
+              aria-label={t("Sub-outlet switcher")}
             >
-              {processingPlantsForRail.map((plant) => {
-                const hasOutlet = Boolean(
-                  resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
-                );
-                const isActivePlant =
-                  highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
+              {subOutletsForRail.map((subOutlet) => {
+                const canSelect = subOutlet.status;
+                const isActiveSub =
+                  highlandContext.mode === "plant" &&
+                  highlandContext.plantId === subOutlet.id;
                 return (
                   <button
-                    key={`plant-${plant.id}`}
+                    key={`sub-outlet-${subOutlet.id}`}
                     type="button"
                     className={
-                      isActivePlant
-                        ? "link subOutletRail active"
-                        : "link subOutletRail"
+                      isActiveSub ? "link subOutletRail active" : "link subOutletRail"
                     }
-                    disabled={!hasOutlet}
+                    disabled={!canSelect}
                     title={
-                      hasOutlet
-                        ? plant.name
-                        : t("Processing plant has no linked outlet yet.")
+                      canSelect
+                        ? subOutlet.name
+                        : t("This outlet is inactive.")
                     }
-                    aria-label={plant.name}
-                    aria-pressed={isActivePlant}
-                    onClick={() => handleSelectPlant(plant)}
+                    aria-label={subOutlet.name}
+                    aria-pressed={isActiveSub}
+                    onClick={() => handleSelectSubOutlet(subOutlet)}
                   >
                     <span className="mobileRailIcon plantRailBadge" aria-hidden>
-                      {twoLetterLabelFromPlantName(plant.name)}
+                      {twoLetterLabelFromPlantName(subOutlet.name)}
                     </span>
-                    <span className="mobileRailLabel">{plant.name}</span>
+                    <span className="mobileRailLabel">{subOutlet.name}</span>
                   </button>
                 );
               })}
@@ -939,12 +901,12 @@ export default function Sidebar() {
       ) : (
         <div className="mobileBottomChrome">
           {subOutletCount > 0 ? (
-            <div className="mobilePlantStrip" role="toolbar" aria-label={t("Sub-outlet plants")}>
+            <div className="mobilePlantStrip" role="toolbar" aria-label={t("Sub-outlets")}>
               <button
                 type="button"
                 className={[
                   "mobilePlantStrip__btn",
-                  (highlandContext.mode === "plant" && activeSubOutletPlant) || subOutletPickerOpen
+                  (highlandContext.mode === "plant" && activeSubOutlet) || subOutletPickerOpen
                     ? "mobilePlantStrip__btn--active"
                     : "",
                   subOutletPickerOpen ? "mobilePlantStrip__btn--open" : "",
@@ -953,33 +915,33 @@ export default function Sidebar() {
                   .join(" ")}
                 title={
                   subOutletCount > 1
-                    ? t("Sub-outlet plants")
-                    : singleSubOutletPlant?.name ?? t("Sub-outlet plants")
+                    ? t("Sub-outlets")
+                    : singleSubOutlet?.name ?? t("Sub-outlets")
                 }
                 disabled={!hasUsableSubOutlet}
-                aria-label={t("Sub-outlet plants")}
+                aria-label={t("Sub-outlets")}
                 aria-haspopup={subOutletCount > 1 ? "dialog" : undefined}
                 aria-expanded={subOutletCount > 1 ? subOutletPickerOpen : undefined}
                 aria-controls={subOutletCount > 1 ? "sub-outlet-picker" : undefined}
                 onClick={handleSubOutletHubClick}
               >
                 <span className="mobilePlantStrip__icon" aria-hidden>
-                  {subOutletCount === 1 && singleSubOutletPlant ? (
+                  {subOutletCount === 1 && singleSubOutlet ? (
                     <span className="plantRailBadge">
-                      {twoLetterLabelFromPlantName(singleSubOutletPlant.name)}
+                      {twoLetterLabelFromPlantName(singleSubOutlet.name)}
                     </span>
-                  ) : activeSubOutletPlant ? (
+                  ) : activeSubOutlet ? (
                     <span className="plantRailBadge">
-                      {twoLetterLabelFromPlantName(activeSubOutletPlant.name)}
+                      {twoLetterLabelFromPlantName(activeSubOutlet.name)}
                     </span>
                   ) : (
                     <TbBuildingFactory2 size={18} />
                   )}
                 </span>
                 <span className="mobilePlantStrip__label">
-                  {activeSubOutletPlant?.name ??
-                    singleSubOutletPlant?.name ??
-                    t("Sub-outlet plants")}
+                  {activeSubOutlet?.name ??
+                    singleSubOutlet?.name ??
+                    t("Sub-outlets")}
                 </span>
               </button>
             </div>
@@ -999,35 +961,33 @@ export default function Sidebar() {
             className="subOutletPicker"
             id="sub-outlet-picker"
             role="dialog"
-            aria-label={t("Sub-outlet plants")}
+            aria-label={t("Sub-outlets")}
           >
-            <div className="subOutletPickerHeader">{t("Sub-outlet plants")}</div>
-            <ul className="subOutletPickerList" role="listbox" aria-label={t("Sub-outlet plants")}>
-              {processingPlantsForRail.map((plant) => {
-                const hasOutlet = Boolean(
-                  resolvedScopeOutletIdForPlant(plant, outlets, processingPlantsForRail)
-                );
+            <div className="subOutletPickerHeader">{t("Sub-outlets")}</div>
+            <ul className="subOutletPickerList" role="listbox" aria-label={t("Sub-outlets")}>
+              {subOutletsForRail.map((subOutlet) => {
+                const canSelect = subOutlet.status;
                 const isActive =
-                  highlandContext.mode === "plant" && highlandContext.plantId === plant.id;
+                  highlandContext.mode === "plant" && highlandContext.plantId === subOutlet.id;
                 return (
-                  <li key={plant.id} className="subOutletPickerItem">
+                  <li key={subOutlet.id} className="subOutletPickerItem">
                     <button
                       type="button"
                       className={isActive ? "subOutletPickerItemBtn active" : "subOutletPickerItemBtn"}
                       role="option"
                       aria-selected={isActive}
-                      disabled={!hasOutlet}
+                      disabled={!canSelect}
                       title={
-                        hasOutlet
-                          ? plant.name
-                          : t("Processing plant has no linked outlet yet.")
+                        canSelect
+                          ? subOutlet.name
+                          : t("This outlet is inactive.")
                       }
-                      onClick={() => handleSelectPlant(plant)}
+                      onClick={() => handleSelectSubOutlet(subOutlet)}
                     >
                       <span className="subOutletPickerItemBadge" aria-hidden>
-                        {twoLetterLabelFromPlantName(plant.name)}
+                        {twoLetterLabelFromPlantName(subOutlet.name)}
                       </span>
-                      <span className="subOutletPickerItemName">{plant.name}</span>
+                      <span className="subOutletPickerItemName">{subOutlet.name}</span>
                     </button>
                   </li>
                 );

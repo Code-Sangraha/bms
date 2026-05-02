@@ -5,10 +5,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   IoBusinessOutline,
   IoChevronForward,
-  IoCloudOutline,
-  IoDesktopOutline,
-  IoHeadsetOutline,
-  IoInformationCircleOutline,
   IoLogOutOutline,
   IoPeopleOutline,
   IoPersonOutline,
@@ -180,33 +176,6 @@ export default function MorePage() {
             <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
           </button>
         ) : null}
-        <button type="button" className="morePage__row" disabled aria-disabled>
-          <span className="morePage__rowIcon" aria-hidden>
-            <IoDesktopOutline size={22} />
-          </span>
-          <span className="morePage__rowLabel">{t("Use Desktop Web Version")}</span>
-        </button>
-        <button type="button" className="morePage__row" disabled aria-disabled>
-          <span className="morePage__rowIcon" aria-hidden>
-            <IoHeadsetOutline size={22} />
-          </span>
-          <span className="morePage__rowLabel">{t("Help and Support")}</span>
-          <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
-        </button>
-        <button type="button" className="morePage__row" disabled aria-disabled>
-          <span className="morePage__rowIcon" aria-hidden>
-            <IoCloudOutline size={22} />
-          </span>
-          <span className="morePage__rowLabel">{t("Backup Information")}</span>
-          <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
-        </button>
-        <button type="button" className="morePage__row" disabled aria-disabled>
-          <span className="morePage__rowIcon" aria-hidden>
-            <IoInformationCircleOutline size={22} />
-          </span>
-          <span className="morePage__rowLabel">{t("About this App")}</span>
-          <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
-        </button>
       </div>
 
       <div className="morePage__card" style={{ marginTop: 16 }}>
