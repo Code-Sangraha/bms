@@ -10,6 +10,15 @@ export type Outlet = {
   status: boolean;
 };
 
+/** Main outlet by display name (case-insensitive). Matches processing-plant / Highland defaults. */
+export function getMainOutlet(outlets: Outlet[]): Outlet | null {
+  return outlets.find((o) => o.name.trim().toLowerCase() === "main outlet") ?? null;
+}
+
+export function getMainOutletId(outlets: Outlet[]): string | null {
+  return getMainOutlet(outlets)?.id ?? null;
+}
+
 function parentOutletIdFromRow(o: Outlet): string | null {
   const r = o as Outlet & Record<string, unknown>;
   const raw = r.parentOutletId ?? r.parent_outlet_id;
@@ -24,8 +33,7 @@ function parentOutletIdFromRow(o: Outlet): string | null {
  */
 export function getSubOutletsForScope(outlets: Outlet[]): Outlet[] {
   if (outlets.length === 0) return [];
-  const main =
-    outlets.find((o) => o.name.trim().toLowerCase() === "main outlet") ?? null;
+  const main = getMainOutlet(outlets);
   const withParent = outlets.filter((o) => parentOutletIdFromRow(o) != null);
   if (withParent.length > 0 && main) {
     return outlets.filter((o) => {

@@ -13,6 +13,7 @@ import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
   createProduct as createProductApi,
   deleteProduct as deleteProductApi,
@@ -22,8 +23,8 @@ import {
 } from "@/handlers/product";
 import { getDualPricings } from "@/handlers/dualPricing";
 import { hasDualPricingForProductOutlet } from "@/lib/dualPricingLookup";
-import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
-import { getOutlets } from "@/handlers/outlet";
+import { buildPathWithOutletScope } from "@/lib/outletScope";
+import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
 import "./product.scss";
@@ -41,7 +42,7 @@ export default function ProductPage() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { canCreate } = usePermissions();
-  const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
+  const { scopedOutletId, isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
   const { showToast } = useToast();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -143,11 +144,24 @@ export default function ProductPage() {
   );
   const processedProductTypeId = processedProductType?.id ?? "";
 
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+
+  /** Sub-outlet scope: restrict list to that outlet; main or unscoped: all outlets. */
+  const subOutletRowFilterId = useMemo(() => {
+    if (!isScoped || !rowFilterOutletId) return null;
+    if (mainOutletId && rowFilterOutletId === mainOutletId) return null;
+    return rowFilterOutletId;
+  }, [isScoped, rowFilterOutletId, mainOutletId]);
+
   const filteredProducts = useMemo(() => {
+    let list = products;
+    if (subOutletRowFilterId) {
+      list = list.filter((p) => p.outletId === subOutletRowFilterId);
+    }
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, searchQuery]);
+    if (!q) return list;
+    return list.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, searchQuery, subOutletRowFilterId]);
 
   const {
     currentPage,
@@ -161,7 +175,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, setCurrentPage]);
+  }, [searchQuery, subOutletRowFilterId, setCurrentPage]);
 
   const paginatedProducts = useMemo(
     () => paginate(filteredProducts, startIndex, endIndex),

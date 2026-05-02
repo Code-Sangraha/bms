@@ -28,7 +28,7 @@ import {
 } from "./lib/buildProcessedOpeningStockData";
 import { getProcessedStockWeight } from "./lib/processedStockWeight";
 import type { ProcessedDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
-import { getOutlets } from "@/handlers/outlet";
+import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
@@ -104,12 +104,6 @@ export default function ProcessedProductPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOutletId, setSelectedOutletId] = useState("all");
 
-  useEffect(() => {
-    if (isScoped && rowFilterOutletId) setSelectedOutletId(rowFilterOutletId);
-  }, [isScoped, rowFilterOutletId]);
-
-  const effectiveSelectedOutletId =
-    isScoped && rowFilterOutletId ? rowFilterOutletId : selectedOutletId;
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
   const rowMenuPortalRef = useRef<HTMLDivElement>(null);
@@ -155,6 +149,26 @@ export default function ProcessedProductPage() {
       return result.data;
     },
   });
+
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+
+  useEffect(() => {
+    if (!isScoped || !rowFilterOutletId) return;
+    if (mainOutletId && rowFilterOutletId === mainOutletId) {
+      setSelectedOutletId("all");
+      return;
+    }
+    setSelectedOutletId(rowFilterOutletId);
+  }, [isScoped, rowFilterOutletId, mainOutletId]);
+
+  /** Main outlet scope → all processed products; sub-outlet scope → that outlet only; else manual filter. */
+  const effectiveSelectedOutletId = useMemo(() => {
+    if (isScoped && rowFilterOutletId) {
+      if (mainOutletId && rowFilterOutletId === mainOutletId) return "all";
+      return rowFilterOutletId;
+    }
+    return selectedOutletId;
+  }, [isScoped, rowFilterOutletId, mainOutletId, selectedOutletId]);
 
   const processedTypeId = useMemo(
     () => productTypes.find((pt) => pt.name.toLowerCase() === PRODUCT_TYPE_NAME.toLowerCase())?.id ?? null,
