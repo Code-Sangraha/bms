@@ -125,18 +125,19 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
   };
 }
 
-/** Next `itemId` for create: max positive integer string among same-`productId` rows + 1, or `"1"`. Non-numeric legacy `itemId`s are skipped for the max. */
-function computeNextLivestockItemId(productId: string, items: LivestockItem[]): string {
-  let max = 0;
-  for (const item of items) {
-    if (item.productId !== productId) continue;
-    const s = typeof item.itemId === "string" ? item.itemId.trim() : "";
-    if (!/^\d+$/.test(s)) continue;
-    const n = Number(s);
-    if (Number.isInteger(n) && n > 0 && n > max) max = n;
-  }
-  return String(max + 1);
-}
+// Auto-assign next numeric itemId on create — disabled for now; users enter Item ID manually.
+// /** Next `itemId` for create: max positive integer string among same-`productId` rows + 1, or `"1"`. Non-numeric legacy `itemId`s are skipped for the max. */
+// function computeNextLivestockItemId(productId: string, items: LivestockItem[]): string {
+//   let max = 0;
+//   for (const item of items) {
+//     if (item.productId !== productId) continue;
+//     const s = typeof item.itemId === "string" ? item.itemId.trim() : "";
+//     if (!/^\d+$/.test(s)) continue;
+//     const n = Number(s);
+//     if (Number.isInteger(n) && n > 0 && n > max) max = n;
+//   }
+//   return String(max + 1);
+// }
 
 /** Table "Quantity" column: only API `quantity` (head count / units), never body weight (kg). */
 function formatLivestockTableQuantity(item: LivestockItem): string {
@@ -724,6 +725,8 @@ export default function LiveProductPage() {
     const sellingPrice = parsePriceFieldForSubmit(form.sellingPrice);
 
     if (!form.productId) return setError(t("Please select live stock product category.")), null;
+    const trimmedItemId = form.itemId.trim();
+    if (!trimmedItemId) return setError(t("Item ID is required.")), null;
     if (!trimmedName) return setError(t("Name is required.")), null;
     if (!Number.isFinite(weight) || weight <= 0) return setError(t("Quantity must be greater than 0.")), null;
     if (form.buyingPrice.trim() === "") {
@@ -743,7 +746,7 @@ export default function LiveProductPage() {
     return {
       productId: form.productId,
       name: trimmedName,
-      itemId: computeNextLivestockItemId(form.productId, livestockItems),
+      itemId: trimmedItemId,
       quantity: weight,
       buyingPrice,
       sellingPrice,
@@ -1412,6 +1415,7 @@ export default function LiveProductPage() {
               disabled={
                 livestockMutation.isPending ||
                 !livestockForm.productId ||
+                !livestockForm.itemId.trim() ||
                 !livestockForm.name.trim() ||
                 Number(livestockForm.weight) <= 0 ||
                 !livestockForm.buyingPrice.trim() ||
@@ -1441,6 +1445,17 @@ export default function LiveProductPage() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="productActionModalLabel">
+            {t("Item ID")}
+            <input
+              type="text"
+              value={livestockForm.itemId}
+              onChange={(e) => setLivestockForm((prev) => ({ ...prev, itemId: e.target.value }))}
+              className="productActionModalInput"
+              placeholder={t("Enter item ID")}
+              autoComplete="off"
+            />
           </label>
           <label className="productActionModalLabel">
             {t("Name of Livestock Item")}

@@ -18,8 +18,8 @@ import {
   type DualPricing,
   updateDualPricing as updateDualPricingApi,
 } from "@/handlers/dualPricing";
-import { getOutlets } from "@/handlers/outlet";
-import { getProducts } from "@/handlers/product";
+import { getOutlets, type Outlet } from "@/handlers/outlet";
+import { getProducts, type Product } from "@/handlers/product";
 import {
   dualPricingSchema,
   type DualPricingFormValues,
@@ -56,6 +56,24 @@ function resolveName(
   if (typeof value === "string") return value;
   if (typeof value === "object" && "name" in value) return value.name;
   return fallback;
+}
+
+/** Resolve outlet/plant name from nested product relation or fallback list */
+function outletLabelFromProduct(product: Product, outletsList: Outlet[]): string {
+  if (typeof product.outlet === "object" && product.outlet?.name) {
+    return product.outlet.name;
+  }
+  return outletsList.find((o) => o.id === product.outletId)?.name ?? "";
+}
+
+/** e.g. "Pork 1 thigh (Dharan outlet)" */
+function formatNameWithOutlet(
+  primaryName: string,
+  outletName: string
+): string {
+  const trimmed = outletName.trim();
+  if (!trimmed || trimmed === "—") return primaryName;
+  return `${primaryName} (${trimmed})`;
 }
 
 export default function DualPricingPage() {
@@ -215,9 +233,12 @@ export default function DualPricingPage() {
   const filteredItems = items.filter((item) => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
+    const labeled = formatNameWithOutlet(
+      getProductName(item),
+      getOutletName(item)
+    );
     return (
-      getProductName(item).toLowerCase().includes(q) ||
-      getOutletName(item).toLowerCase().includes(q) ||
+      labeled.toLowerCase().includes(q) ||
       String(item.wholesalePrice).includes(q) ||
       String(item.retailPrice).includes(q)
     );
@@ -294,7 +315,12 @@ export default function DualPricingPage() {
           filteredItems.map((item) => (
             <div key={item.id} className="dualPricingCard">
               <div className="dualPricingCardTop">
-                <h3 className="dualPricingCardTitle">{getProductName(item)}</h3>
+                <h3 className="dualPricingCardTitle">
+                  {formatNameWithOutlet(
+                    getProductName(item),
+                    getOutletName(item)
+                  )}
+                </h3>
                 {(canUpdate || canDelete) && (
                   <div className="dualPricingCardActions">
                     {canDelete && (
@@ -408,7 +434,10 @@ export default function DualPricingPage() {
               <option value="">{t("Select product")}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {formatNameWithOutlet(
+                    p.name,
+                    outletLabelFromProduct(p, outlets)
+                  )}
                 </option>
               ))}
             </select>
@@ -515,7 +544,10 @@ export default function DualPricingPage() {
               <option value="">{t("Select product")}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {formatNameWithOutlet(
+                    p.name,
+                    outletLabelFromProduct(p, outlets)
+                  )}
                 </option>
               ))}
             </select>

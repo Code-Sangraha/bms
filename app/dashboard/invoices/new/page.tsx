@@ -10,7 +10,7 @@ import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
 import { getDualPricings } from "@/handlers/dualPricing";
 import { getUnitPrice } from "@/lib/dualPricingLookup";
-import { getOutlets } from "@/handlers/outlet";
+import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { createSale } from "@/handlers/sale";
@@ -123,12 +123,15 @@ export default function PointOfSalePage() {
     },
   });
 
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+
   const outletsForSelect = useMemo(() => {
-    if (userOutletId != null) {
-      return outlets.filter((o) => o.id === userOutletId);
+    if (userOutletId == null) return outlets;
+    if (mainOutletId != null && userOutletId === mainOutletId) {
+      return outlets;
     }
-    return outlets;
-  }, [outlets, userOutletId]);
+    return outlets.filter((o) => o.id === userOutletId);
+  }, [outlets, userOutletId, mainOutletId]);
 
   useEffect(() => {
     if (userOutletId && outlets.length > 0 && !outletId) {
