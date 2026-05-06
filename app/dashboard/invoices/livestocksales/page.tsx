@@ -72,6 +72,22 @@ function resolveLivestockItemId(item: LivestockItem): string | null {
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
+/** Available quantity for dropdown labels: API head count, then legacy combined field. */
+function resolveLivestockQuantityLabel(item: LivestockItem): string {
+  const formatN = (n: number) =>
+    Number.isInteger(n) || n % 1 === 0 ? String(n) : n.toFixed(2);
+  if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
+    return formatN(item.quantity);
+  }
+  if (
+    typeof item.itemQuantityOrWeight === "number" &&
+    Number.isFinite(item.itemQuantityOrWeight)
+  ) {
+    return formatN(item.itemQuantityOrWeight);
+  }
+  return "\u2014";
+}
+
 export default function LivestockSalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -177,7 +193,7 @@ export default function LivestockSalesPage() {
         if (!id) return null;
         return {
           value: id,
-          label: `${item.itemId} - ${item.name}`,
+          label: `${item.itemId} - ${item.name} (${resolveLivestockQuantityLabel(item)})`,
         };
       })
       .filter((option): option is { value: string; label: string } => option != null);
