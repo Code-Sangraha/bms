@@ -75,28 +75,10 @@
   box-sizing: border-box;
 }
 
-.dashboardMobileHome__summaryCell--green {
-  background: rgba(51, 179, 140, 0.1);
-  border-color: rgba(51, 179, 140, 0.25);
-}
-
-.dashboardMobileHome__summaryCell--pink {
-  background: var(--mobile-coral-soft);
-  border-color: rgba(232, 93, 111, 0.25);
-}
-
 .dashboardMobileHome__summaryValue {
   font-size: 16px;
   font-weight: 700;
   color: var(--mobile-text);
-}
-
-.dashboardMobileHome__summaryCell--green .dashboardMobileHome__summaryValue {
-  color: var(--mobile-teal-dark);
-}
-
-.dashboardMobileHome__summaryCell--pink .dashboardMobileHome__summaryValue {
-  color: var(--mobile-coral);
 }
 
 .dashboardMobileHome__summaryLabel {
