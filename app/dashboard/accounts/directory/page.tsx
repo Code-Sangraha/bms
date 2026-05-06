@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IoPersonAddOutline, IoSettingsOutline } from "react-icons/io5";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -24,7 +24,7 @@ import {
   type CreateEmployeeFormValues,
 } from "@/schema/employee";
 import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
-import { MdMoreHoriz } from "react-icons/md";
+// import { MdMoreHoriz } from "react-icons/md";
 import "./directory.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
@@ -64,8 +64,8 @@ export default function DirectoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
+  // const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: employees = [],
@@ -135,19 +135,19 @@ export default function DirectoryPage() {
     reset(defaultFormValues);
   }, [isModalOpen, reset]);
 
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
+  // useEffect(() => {
+  //   if (!openMenuId) return;
+  //   const handleClickOutside = (e: MouseEvent) => {
+  //     if (
+  //       menuButtonRef.current &&
+  //       !menuButtonRef.current.contains(e.target as Node)
+  //     ) {
+  //       setOpenMenuId(null);
+  //     }
+  //   };
+  //   document.addEventListener("mousedown", handleClickOutside);
+  //   return () => document.removeEventListener("mousedown", handleClickOutside);
+  // }, [openMenuId]);
 
   const getRoleName = (emp: Employee) => {
     const name = resolveName(emp.role, "");
@@ -316,6 +316,7 @@ export default function DirectoryPage() {
                   <span className="directoryContactSecondary">{emp.email}</span>
                 )}
               </span>
+              {/* Row "more" menu (Edit / Delete) — disabled
               <div
                 className="directoryMenuWrap"
                 ref={openMenuId === emp.id ? menuButtonRef : undefined}
@@ -342,6 +343,8 @@ export default function DirectoryPage() {
                   </div>
                 )}
               </div>
+              */}
+              <span aria-hidden="true" />
             </div>
           ))}
       </div>

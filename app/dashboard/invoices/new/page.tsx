@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
@@ -23,6 +23,7 @@ import {
   SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
+import { readOutletScopeFromSearch } from "@/lib/outletScope";
 import "./pos.scss";
 
 const PRODUCTS_QUERY_KEY = ["products"];
@@ -90,8 +91,18 @@ function formatProcessedProductOptionLabel(
   return `${withOutlet} — ${kgText} kg`;
 }
 
+/** Match API rows that expose outlet on `outletId` and/or nested `outlet.id`. */
+function productOutletIdForFilter(p: Product): string {
+  const nested =
+    typeof p.outlet === "object" && p.outlet && "id" in p.outlet
+      ? String((p.outlet as { id?: string }).id ?? "").trim()
+      : "";
+  return String(p.outletId ?? nested).trim();
+}
+
 export default function PointOfSalePage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
@@ -160,6 +171,16 @@ export default function PointOfSalePage() {
     }
   }, [userOutletId, outlets, outletId]);
 
+  const outletScopeFromUrl = useMemo(() => readOutletScopeFromSearch(search), [search]);
+
+  /** Highland / sidebar links include `?outletId=` for the selected sub-outlet. */
+  useEffect(() => {
+    if (!outletScopeFromUrl || outlets.length === 0) return;
+    const allowed = outlets.some((o) => o.id === outletScopeFromUrl);
+    if (!allowed) return;
+    setOutletId((prev) => (prev === outletScopeFromUrl ? prev : outletScopeFromUrl));
+  }, [outletScopeFromUrl, outlets]);
+
   const { data: dualPricings = [] } = useQuery({
     queryKey: DUAL_PRICING_QUERY_KEY,
     queryFn: async () => {
@@ -193,6 +214,28 @@ export default function PointOfSalePage() {
       return ptName.toLowerCase() === "processed";
     });
   }, [products, productTypes]);
+
+  /**
+   * Processed-sale product list is always scoped to the chosen outlet (dropdown) or deep-linked
+   * `?outletId=`. Until an outlet is known, the product dropdown stays empty so main-outlet users
+   * do not see every plant’s inventory at once.
+   */
+  const effectiveOutletForProductList = outletId.trim() || outletScopeFromUrl;
+
+  const processedProductsForDropdown = useMemo(() => {
+    const scopeId = String(effectiveOutletForProductList ?? "").trim();
+    if (!scopeId) return [];
+    return processedProducts.filter(
+      (p) => productOutletIdForFilter(p) === scopeId
+    );
+  }, [processedProducts, effectiveOutletForProductList]);
+
+  useEffect(() => {
+    if (!productId) return;
+    if (!processedProductsForDropdown.some((p) => p.id === productId)) {
+      setProductId("");
+    }
+  }, [processedProductsForDropdown, productId]);
 
   const handleAddProduct = () => {
     if (!productId || !outletId) {
@@ -469,7 +512,7 @@ export default function PointOfSalePage() {
                 aria-label={t("Product")}
               >
                 <option value="">{t("Select product")}</option>
-                {processedProducts.map((p: Product) => (
+                {processedProductsForDropdown.map((p: Product) => (
                   <option key={p.id} value={p.id}>
                     {formatProcessedProductOptionLabel(
                       p,
