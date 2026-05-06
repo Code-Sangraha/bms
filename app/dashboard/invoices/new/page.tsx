@@ -10,7 +10,11 @@ import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
 import { getDualPricings } from "@/handlers/dualPricing";
 import { getUnitPrice } from "@/lib/dualPricingLookup";
-import { getMainOutletId, getOutlets } from "@/handlers/outlet";
+import {
+  formatNameWithOutlet,
+  outletLabelFromProduct,
+} from "@/lib/productDisplay";
+import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { createSale } from "@/handlers/sale";
@@ -68,6 +72,22 @@ function getProcessedProductAvailableKg(product: Product | undefined): number {
     parseKgField(r.quantity) ??
     0
   );
+}
+
+function formatProcessedProductOptionLabel(
+  product: Product,
+  outletsList: Outlet[],
+  availableKg: number
+): string {
+  const withOutlet = formatNameWithOutlet(
+    product.name,
+    outletLabelFromProduct(product, outletsList)
+  );
+  const kgText =
+    Number.isInteger(availableKg) || availableKg % 1 === 0
+      ? String(availableKg)
+      : availableKg.toFixed(2);
+  return `${withOutlet} — ${kgText} kg`;
 }
 
 export default function PointOfSalePage() {
@@ -451,7 +471,11 @@ export default function PointOfSalePage() {
                 <option value="">{t("Select product")}</option>
                 {processedProducts.map((p: Product) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {formatProcessedProductOptionLabel(
+                      p,
+                      outlets,
+                      getProcessedProductAvailableKg(p)
+                    )}
                   </option>
                 ))}
               </select>

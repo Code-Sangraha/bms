@@ -132,7 +132,7 @@ export default function ProductEditModal({
           )}
         </label>
         <label className="modalField">
-          <span className="label">{t("Quantity")}</span>
+          <span className="label">{t("Weight")}</span>
           <input
             className="input"
             type="number"

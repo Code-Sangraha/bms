@@ -309,11 +309,8 @@ export default function OutletPage() {
               </label>
             </div>
 
-            <div className="cardActions">
-              <button type="button" className="button">
-                {t("View details")}
-              </button>
-              {canUpdate && (
+            {canUpdate && (
+              <div className="cardActions">
                 <button
                   type="button"
                   className="button buttonPrimary"
@@ -321,8 +318,8 @@ export default function OutletPage() {
                 >
                   {t("Edit")}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </article>
           ))}
       </div>
