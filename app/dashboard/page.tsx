@@ -18,6 +18,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
@@ -81,7 +82,9 @@ export default function DashboardPage() {
   const { search } = useLocation();
   const { t } = useI18n();
   const { isScoped, scopedOutletId } = useOutletScope();
+  const { accessTier } = useOutletAccess();
   const { canCreate } = usePermissions();
+  const hideLivestockAndOutletBreakdown = accessTier === "outlet_manager";
 
   const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
@@ -536,6 +539,7 @@ export default function DashboardPage() {
         totalWeight={totalWeight}
         cashflowDays={cashflowLast7Days}
         canCreate={canCreate}
+        outletScopedMobile={hideLivestockAndOutletBreakdown}
       />
       <div className="dashboardHero dashboardHero--hideOnMobile">
         <h1 className="dashboardTitle">{t("Dashboard")}</h1>
@@ -615,7 +619,7 @@ export default function DashboardPage() {
 
             {(salesByOutlet.length > 0 || salesByProduct.length > 0 || salesByCustomer.length > 0) && (
               <div className="dashboardCharts">
-                {salesByOutlet.length > 0 && (
+                {salesByOutlet.length > 0 && !hideLivestockAndOutletBreakdown && (
                   <div className="dashboardChartBlock">
                     <h3 className="dashboardChartTitle">{t("Top outlets")}</h3>
                     <div className="dashboardMobileMiniList">
@@ -795,6 +799,7 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {!hideLivestockAndOutletBreakdown && (
             <div className="dashboardChartBlock dashboardLiveStockBlock">
               <h3 className="dashboardChartTitle">{t("Live Stock Sale Details")}</h3>
               <div className="dashboardCards dashboardCardsLivestock">
@@ -876,6 +881,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            )}
           </>
         )}
       </div>

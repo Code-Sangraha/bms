@@ -6,7 +6,12 @@
 const STORED_USER_KEY = "bms_stored_user";
 
 export type StoredUser = {
+  /** Auth user id from login response when present. */
+  id?: string | null;
+  email?: string | null;
   outletId?: string | null;
+  /** From login `user.outlet.name`; not present in JWT — refresh does not clear it. */
+  outletName?: string | null;
   [key: string]: unknown;
 };
 
@@ -45,4 +50,11 @@ export function getStoredOutletId(): string | null {
   const user = getStoredUser();
   const id = user?.outletId;
   return typeof id === "string" && id.trim() !== "" ? id : null;
+}
+
+/** Outlet display name from last login, if returned by API. */
+export function getStoredOutletName(): string | null {
+  const user = getStoredUser();
+  const n = user?.outletName;
+  return typeof n === "string" && n.trim() !== "" ? n.trim() : null;
 }

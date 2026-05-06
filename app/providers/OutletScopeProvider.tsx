@@ -15,6 +15,7 @@ import { getOutlets } from "@/handlers/outlet";
 import { getProcessingPlants, mergeProcessingPlantOutletFromUsers } from "@/handlers/processingPlant";
 import { getUsers } from "@/handlers/user";
 import { useToast } from "@/app/providers/ToastProvider";
+import { useOptionalOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { readOutletScopeFromSearch, buildPathWithOutletScope } from "@/lib/outletScope";
 import { useI18n } from "@/app/providers/I18nProvider";
 
@@ -32,6 +33,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { t } = useI18n();
+  const lockedOutletId = useOptionalOutletAccess()?.lockedOutletId ?? null;
 
   const scopedOutletId = useMemo(
     () => readOutletScopeFromSearch(location.search),
@@ -83,6 +85,10 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
       invalidHandledRef.current = null;
       return;
     }
+    if (lockedOutletId && scopedOutletId === lockedOutletId) {
+      invalidHandledRef.current = null;
+      return;
+    }
     if (!isFetched) return;
     if (isError) return;
     if (!isSuccess || !outlets) return;
@@ -117,6 +123,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
     navigate,
     showToast,
     t,
+    lockedOutletId,
   ]);
 
   const clearOutletScopeFromUrl = useCallback(() => {

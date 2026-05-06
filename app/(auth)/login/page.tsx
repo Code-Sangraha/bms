@@ -11,6 +11,7 @@ import {
   getUserFromAuthResponse,
   login as loginApi,
 } from "@/handlers/auth";
+import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
 import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { setStoredUser } from "@/lib/auth/user";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -34,7 +35,7 @@ export default function LoginPage() {
   const mutation = useMutation({
     mutationFn: (values: LoginFormValues) =>
       loginApi({ email: values.email, password: values.password }),
-    onSuccess: (result) => {
+    onSuccess: (result, values) => {
       if (result.ok) {
         const token = getTokenFromAuthResponse(result.data);
         if (token) {
@@ -43,8 +44,43 @@ export default function LoginPage() {
           if (refreshToken) setRefreshToken(refreshToken);
           const user = getUserFromAuthResponse(result.data);
           if (user != null && typeof user === "object") {
-            setStoredUser({ outletId: user.outletId ?? null });
+            const outlet = "outlet" in user ? user.outlet : null;
+            const nestedId =
+              outlet != null &&
+              typeof outlet === "object" &&
+              outlet !== null &&
+              "id" in outlet &&
+              typeof (outlet as { id?: unknown }).id === "string"
+                ? (outlet as { id: string }).id.trim() || null
+                : null;
+            const nestedName =
+              outlet != null &&
+              typeof outlet === "object" &&
+              outlet !== null &&
+              "name" in outlet &&
+              typeof (outlet as { name?: unknown }).name === "string"
+                ? (outlet as { name: string }).name.trim() || null
+                : null;
+            const topOutletId =
+              "outletId" in user &&
+              typeof user.outletId === "string" &&
+              user.outletId.trim() !== ""
+                ? user.outletId.trim()
+                : null;
+            const fromApiEmail =
+              "email" in user && typeof user.email === "string" && user.email.trim() !== ""
+                ? user.email.trim()
+                : undefined;
+            setStoredUser({
+              outletId: topOutletId ?? nestedId,
+              outletName: nestedName,
+              id: "id" in user && typeof user.id === "string" ? user.id : undefined,
+              email: fromApiEmail ?? values.email.trim(),
+            });
+          } else {
+            setStoredUser({ email: values.email.trim() });
           }
+          syncStoredOutletFromAccessToken(token);
           navigate("/dashboard");
         } else {
           setError("root", { message: t("No token received. Please try again.") });

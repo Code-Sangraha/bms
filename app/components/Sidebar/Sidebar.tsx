@@ -3,13 +3,14 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
+import { IoBusinessOutline, IoChevronDown, IoTimeOutline } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import MobileBottomNav from "@/app/components/MobileBottomNav/MobileBottomNav";
 import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import { getOutlets, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
@@ -150,6 +151,18 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
     ],
   },
 ];
+
+/** Outlet-scoped manager tier: same links as Highland plant scope (plan allowlist). */
+const outletScopedManagerMenuSections = highlandPlantMenuSections;
+
+const outletStaffDrawerSections: MenuSectionBlock[] = [
+  {
+    titleKey: "attendance",
+    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" }],
+  },
+];
+
+const STAFF_HUB_ID = "staff_hub";
 
 const sidebarConfig = {
   header: { title: "HMP" },
@@ -444,19 +457,40 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { canCreate } = usePermissions();
+  const { accessTier, lockedOutletId } = useOutletAccess();
   const { t, locale } = useI18n();
   const { showToast } = useToast();
+  const showSubOutletSwitcher = lockedOutletId == null;
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [highlandContext, setHighlandContext] = useState<HighlandStoredContext>(() => {
     const stored = readHighlandContextFromStorage();
     return stored ?? { mode: "main" };
   });
-  const allItems = useMemo(
-    () => [
-      ...sidebarConfig.sections.flatMap((section) => section.items),
-      ...sidebarConfig.footer.flatMap((section) => section.items),
-    ],
+
+  const staffRailItem = useMemo(
+    (): (typeof sidebarConfig.sections)[number]["items"][number] => ({
+      id: STAFF_HUB_ID,
+      href: "#",
+      icon: <IoTimeOutline size={20} />,
+      menu: {
+        titleKey: "attendance" as const,
+        sections: outletStaffDrawerSections,
+      },
+    }),
     []
+  );
+
+  const sectionRailItems = useMemo(() => {
+    if (accessTier === "outlet_staff") return [staffRailItem];
+    if (accessTier === "outlet_manager") {
+      return sidebarConfig.sections[0].items.filter((i) => i.id === "highland");
+    }
+    return sidebarConfig.sections[0].items;
+  }, [accessTier, staffRailItem]);
+
+  const allItems = useMemo(
+    () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],
+    [sectionRailItems]
   );
 
   const pathname = location.pathname;
@@ -508,11 +542,8 @@ export default function Sidebar() {
   }, [locationSearch, subOutletsForRail]);
 
   const primaryRailItems = useMemo(
-    () => [
-      ...sidebarConfig.sections.flatMap((section) => section.items),
-      ...sidebarConfig.footer.flatMap((section) => section.items),
-    ],
-    []
+    () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],
+    [sectionRailItems]
   );
   const activePrimaryId = useMemo(
     () =>
@@ -532,15 +563,29 @@ export default function Sidebar() {
     const visible = getFlatMenuItems(activeMenu as RailMenu).filter(
       (entry) => entry.permission !== "create" || canCreate
     );
-    if (activeMenuId === "highland" && isGroupedRailMenu(activeMenu as RailMenu)) {
-      const sections =
-        highlandContext.mode === "plant" && highlandContext.outletId
-          ? highlandPlantMenuSections
-          : highlandMainSections;
+    if (activeMenuId === STAFF_HUB_ID && isGroupedRailMenu(activeMenu as RailMenu)) {
       const linkFor = (href: string) =>
-        highlandContext.mode === "plant" && highlandContext.outletId
-          ? buildPathWithOutletScope(href, highlandContext.outletId, "")
-          : href;
+        lockedOutletId ? buildPathWithOutletScope(href, lockedOutletId, "") : href;
+      return longestActiveDrawerHref(
+        outletStaffDrawerSections,
+        canCreate,
+        pathname,
+        locationSearch,
+        linkFor
+      );
+    }
+    if (activeMenuId === "highland" && isGroupedRailMenu(activeMenu as RailMenu)) {
+      const useScopedPlantMenu =
+        (highlandContext.mode === "plant" && Boolean(highlandContext.outletId)) ||
+        (accessTier === "outlet_manager" && Boolean(lockedOutletId));
+      const sections = useScopedPlantMenu
+        ? outletScopedManagerMenuSections
+        : highlandMainSections;
+      const scopeId =
+        lockedOutletId ??
+        (highlandContext.mode === "plant" ? highlandContext.outletId : null);
+      const linkFor = (href: string) =>
+        scopeId ? buildPathWithOutletScope(href, scopeId, "") : href;
       return longestActiveDrawerHref(
         sections,
         canCreate,
@@ -558,6 +603,8 @@ export default function Sidebar() {
     activeMenuId,
     highlandContext,
     highlandMainSections,
+    accessTier,
+    lockedOutletId,
   ]);
   const getSidebarLabel = useCallback(
     (key: TranslationKey) => {
@@ -576,7 +623,7 @@ export default function Sidebar() {
     (id: string) => {
       setActiveMenuId((current) => {
         const next = current === id ? null : id;
-        if (id === "highland" && next === "highland") {
+        if (id === "highland" && next === "highland" && !lockedOutletId) {
           const nextCtx: HighlandStoredContext = { mode: "main" };
           setHighlandContext(nextCtx);
           writeHighlandContextToStorage(nextCtx);
@@ -587,7 +634,7 @@ export default function Sidebar() {
         return next;
       });
     },
-    [navigate, pathname, locationSearch]
+    [navigate, pathname, locationSearch, lockedOutletId]
   );
 
   const handleLogout = async () => {
@@ -612,9 +659,13 @@ export default function Sidebar() {
     if (!menu || !isGroupedRailMenu(menu as RailMenu)) return;
 
     const sections =
-      activeMenuId === "highland" && highlandContext.mode === "plant" && highlandContext.outletId
-        ? highlandPlantMenuSections
-        : (menu as RailMenu & { sections: MenuSectionBlock[] }).sections;
+      activeMenuId === STAFF_HUB_ID
+        ? outletStaffDrawerSections
+        : activeMenuId === "highland" &&
+            ((highlandContext.mode === "plant" && highlandContext.outletId) ||
+              (accessTier === "outlet_manager" && lockedOutletId))
+          ? highlandPlantMenuSections
+          : (menu as RailMenu & { sections: MenuSectionBlock[] }).sections;
     const visibleBlocks = sections
       .map((section) => ({
         section,
@@ -624,10 +675,11 @@ export default function Sidebar() {
       }))
       .filter((b) => b.items.length > 0);
 
-    const linkFor =
-      activeMenuId === "highland" && highlandContext.mode === "plant" && highlandContext.outletId
-        ? (href: string) => buildPathWithOutletScope(href, highlandContext.outletId, "")
-        : (href: string) => href;
+    const scopeId =
+      lockedOutletId ??
+      (highlandContext.mode === "plant" ? highlandContext.outletId : null);
+    const linkFor = (href: string) =>
+      scopeId ? buildPathWithOutletScope(href, scopeId, "") : href;
 
     const withActive = visibleBlocks.find((b) =>
       b.items.some((entry) =>
@@ -644,6 +696,8 @@ export default function Sidebar() {
     activeHrefInOpenMenu,
     allItems,
     highlandContext,
+    accessTier,
+    lockedOutletId,
   ]);
 
   useEffect(() => {
@@ -780,9 +834,10 @@ export default function Sidebar() {
   }, [subOutletPickerOpen]);
 
   const mobileScopeOutletId =
-    highlandContext.mode === "plant" && highlandContext.outletId
+    lockedOutletId ??
+    (highlandContext.mode === "plant" && highlandContext.outletId
       ? highlandContext.outletId
-      : null;
+      : null);
 
   return (
     <div className="sidebarWrapper">
@@ -793,35 +848,33 @@ export default function Sidebar() {
         </div>
 
         <nav className="nav">
-          {sidebarConfig.sections.map((section) => (
-            <div key={section.items[0].id}>
-              {section.items.map((item) => {
-                const isHighland = item.id === "highland";
-                const railActive =
-                  activePrimaryId === item.id &&
-                  (!isHighland || highlandContext.mode === "main");
-                return (
-                  <button
-                    key={item.id}
-                    className={railActive ? "link active" : "link"}
-                    type="button"
-                    aria-label={getSidebarLabel(item.menu.titleKey)}
-                    aria-pressed={activeMenuId === item.id}
-                    title={getSidebarLabel(item.menu.titleKey)}
-                    onClick={() => handleMenuToggle(item.id)}
-                  >
-                    <span className="mobileRailIcon" aria-hidden>
-                      {item.icon}
-                    </span>
-                    <span className="mobileRailLabel">
-                      {getSidebarLabel(item.menu.titleKey)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          {subOutletCount > 0 && (
+          <div key="primary-rail">
+            {sectionRailItems.map((item) => {
+              const isHighland = item.id === "highland";
+              const railActive =
+                activePrimaryId === item.id &&
+                (!isHighland || highlandContext.mode === "main");
+              return (
+                <button
+                  key={item.id}
+                  className={railActive ? "link active" : "link"}
+                  type="button"
+                  aria-label={getSidebarLabel(item.menu.titleKey)}
+                  aria-pressed={activeMenuId === item.id}
+                  title={getSidebarLabel(item.menu.titleKey)}
+                  onClick={() => handleMenuToggle(item.id)}
+                >
+                  <span className="mobileRailIcon" aria-hidden>
+                    {item.icon}
+                  </span>
+                  <span className="mobileRailLabel">
+                    {getSidebarLabel(item.menu.titleKey)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {showSubOutletSwitcher && subOutletCount > 0 && (
             <div
               className="subOutletRailTrack"
               role="group"
@@ -900,7 +953,7 @@ export default function Sidebar() {
       </aside>
       ) : (
         <div className="mobileBottomChrome">
-          {subOutletCount > 0 ? (
+          {showSubOutletSwitcher && subOutletCount > 0 ? (
             <div className="mobilePlantStrip" role="toolbar" aria-label={t("Sub-outlets")}>
               <button
                 type="button"
@@ -946,11 +999,15 @@ export default function Sidebar() {
               </button>
             </div>
           ) : null}
-          <MobileBottomNav scopedOutletId={mobileScopeOutletId} />
+          <MobileBottomNav
+            scopedOutletId={mobileScopeOutletId}
+            accessTier={accessTier}
+            lockedOutletId={lockedOutletId}
+          />
         </div>
       )}
 
-      {isMobile && subOutletPickerOpen && subOutletCount > 1 && (
+      {isMobile && showSubOutletSwitcher && subOutletPickerOpen && subOutletCount > 1 && (
         <>
           <div
             className="subOutletPickerBackdrop"
@@ -1023,9 +1080,15 @@ export default function Sidebar() {
           {activeMenu &&
             (isGroupedRailMenu(activeMenu as RailMenu)
               ? (
-                  activeMenuId === "highland" && highlandContext.mode === "plant"
-                    ? highlandPlantMenuSections
-                    : (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections
+                  (() => {
+                    if (activeMenuId === STAFF_HUB_ID) return outletStaffDrawerSections;
+                    const useScopedPlantMenu =
+                      activeMenuId === "highland" &&
+                      ((highlandContext.mode === "plant" && highlandContext.outletId) ||
+                        (accessTier === "outlet_manager" && Boolean(lockedOutletId)));
+                    if (useScopedPlantMenu) return highlandPlantMenuSections;
+                    return (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections;
+                  })()
                 ).map((section) => {
                         const visibleItems = section.items.filter((entry) =>
                           entry.permission === "create" ? canCreate : true
@@ -1071,16 +1134,12 @@ export default function Sidebar() {
                                 aria-labelledby={`drawer-trigger-${section.titleKey}`}
                               >
                                 {visibleItems.map((entry) => {
-                                  const to =
-                                    activeMenuId === "highland" &&
-                                    highlandContext.mode === "plant" &&
-                                    highlandContext.outletId
-                                      ? buildPathWithOutletScope(
-                                          entry.href,
-                                          highlandContext.outletId,
-                                          ""
-                                        )
-                                      : entry.href;
+                                  const scopeId =
+                                    lockedOutletId ??
+                                    (highlandContext.mode === "plant" ? highlandContext.outletId : null);
+                                  const to = scopeId
+                                    ? buildPathWithOutletScope(entry.href, scopeId, "")
+                                    : entry.href;
                                   const isActive = drawerLinkIsActive(
                                     to,
                                     pathname,

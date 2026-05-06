@@ -5,8 +5,10 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { getTokenFromAuthResponse, register as registerApi } from "@/handlers/auth";
+import { getTokenFromAuthResponse, getUserFromAuthResponse, register as registerApi } from "@/handlers/auth";
+import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
 import { setAuthToken } from "@/lib/auth/token";
+import { setStoredUser } from "@/lib/auth/user";
 import { registerSchema, type RegisterFormValues } from "@/schema/auth";
 import "../auth.scss";
 
@@ -38,11 +40,50 @@ export default function RegisterPage() {
         password: values.password,
         confirmPassword: values.confirmPassword,
       }),
-    onSuccess: (result) => {
+    onSuccess: (result, values) => {
       if (result.ok) {
         const token = getTokenFromAuthResponse(result.data);
         if (token) {
           setAuthToken(token);
+          syncStoredOutletFromAccessToken(token);
+          const user = getUserFromAuthResponse(result.data);
+          if (user != null && typeof user === "object") {
+            const outlet = "outlet" in user ? user.outlet : null;
+            const nestedId =
+              outlet != null &&
+              typeof outlet === "object" &&
+              outlet !== null &&
+              "id" in outlet &&
+              typeof (outlet as { id?: unknown }).id === "string"
+                ? (outlet as { id: string }).id.trim() || null
+                : null;
+            const nestedName =
+              outlet != null &&
+              typeof outlet === "object" &&
+              outlet !== null &&
+              "name" in outlet &&
+              typeof (outlet as { name?: unknown }).name === "string"
+                ? (outlet as { name: string }).name.trim() || null
+                : null;
+            const topOutletId =
+              "outletId" in user &&
+              typeof user.outletId === "string" &&
+              user.outletId.trim() !== ""
+                ? user.outletId.trim()
+                : null;
+            const fromApiEmail =
+              "email" in user && typeof user.email === "string" && user.email.trim() !== ""
+                ? user.email.trim()
+                : undefined;
+            setStoredUser({
+              outletId: topOutletId ?? nestedId,
+              outletName: nestedName,
+              id: "id" in user && typeof user.id === "string" ? user.id : undefined,
+              email: fromApiEmail ?? values.email.trim(),
+            });
+          } else {
+            setStoredUser({ email: values.email.trim() });
+          }
           navigate("/dashboard");
         } else {
           navigate("/login");

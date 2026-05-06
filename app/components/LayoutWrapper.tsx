@@ -2,7 +2,9 @@ import { useLayoutEffect, useRef } from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import ToastProvider from "@/app/providers/ToastProvider";
+import { OutletAccessProvider } from "@/app/providers/OutletAccessProvider";
 import { OutletScopeProvider } from "@/app/providers/OutletScopeProvider";
+import ScopedRoutesGuard from "./ScopedRoutesGuard";
 import PageBackBar from "./PageBackBar";
 import Sidebar from "./Sidebar/Sidebar";
 import "./PageBackBar.scss";
@@ -31,20 +33,24 @@ export default function LayoutWrapper() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <OutletScopeProvider>
-          <div className="flex h-dvh max-h-dvh min-h-0 w-full overflow-x-hidden overflow-y-hidden">
-            <Sidebar />
-            <main
-              ref={mainScrollRef}
-              className="mainScroll mainScroll--mobileShell flex min-h-0 min-w-0 flex-1 flex-col items-stretch overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 max-md:px-3 max-md:pt-3 md:px-8 md:pb-[7px] max-md:pb-0"
-            >
-              <div className="mainContentWrap flex w-full max-w-full flex-1 flex-col self-stretch">
-                <PageBackBar />
-                <Outlet />
-              </div>
-            </main>
-          </div>
-        </OutletScopeProvider>
+        <OutletAccessProvider>
+          <OutletScopeProvider>
+            <div className="flex h-dvh max-h-dvh min-h-0 w-full overflow-x-hidden overflow-y-hidden">
+              <Sidebar />
+              <main
+                ref={mainScrollRef}
+                className="mainScroll mainScroll--mobileShell flex min-h-0 min-w-0 flex-1 flex-col items-stretch overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 max-md:px-3 max-md:pt-3 md:px-8 md:pb-[7px] max-md:pb-0"
+              >
+                <div className="mainContentWrap flex w-full max-w-full flex-1 flex-col self-stretch">
+                  <PageBackBar />
+                  <ScopedRoutesGuard>
+                    <Outlet />
+                  </ScopedRoutesGuard>
+                </div>
+              </main>
+            </div>
+          </OutletScopeProvider>
+        </OutletAccessProvider>
       </ToastProvider>
     </AuthProvider>
   );

@@ -302,6 +302,8 @@ const translations: Record<string, string> = {
   Live: "ताजा",
   Processed: "प्रशोधित",
   "Clock In/Out": "हाजिरी लगाउने/निस्कने",
+  "We could not match your login to an employee. Select your name or ask an admin to link your account.":
+    "तपाईंको लगइन कर्मचारी रेकर्डसँग मिल्न सकेन। आफ्नो नाम छान्नुहोस् वा प्रशासकलाई खाता जोड्न अनुरोध गर्नुहोस्।",
   Directory: "डाइरेक्टरी",
   Logout: "लगआउट",
   "Close menu": "मेनु बन्द गर्नुहोस्",

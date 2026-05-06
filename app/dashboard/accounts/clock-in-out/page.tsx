@@ -4,6 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
+import { getUserIdFromToken } from "@/lib/auth/role";
+import { getStoredUser } from "@/lib/auth/user";
 import { getEmployees } from "@/handlers/employee";
 import {
   clockIn as clockInApi,
@@ -85,6 +89,9 @@ export default function ClockInOutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { userOutletId } = useAuth();
+  const { accessTier } = useOutletAccess();
+  const staffLocksEmployeeSelect = accessTier === "outlet_staff";
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [clockError, setClockError] = useState<string | null>(null);
@@ -100,6 +107,31 @@ export default function ClockInOutPage() {
       return result.data;
     },
   });
+
+  /** Outlet staff only: limit picker to their outlet + auto-select. Man/admins keep full list. */
+  const employeesForDropdown = useMemo(() => {
+    if (!staffLocksEmployeeSelect || !userOutletId) return employees;
+    return employees.filter((e) => e.outletId === userOutletId);
+  }, [employees, userOutletId, staffLocksEmployeeSelect]);
+
+  useEffect(() => {
+    if (!staffLocksEmployeeSelect || employeesForDropdown.length === 0) return;
+    if (selectedEmployeeId) return;
+    const jwtId = getUserIdFromToken();
+    const stored = getStoredUser();
+    const email = stored?.email?.trim().toLowerCase();
+    const byUser = jwtId
+      ? employeesForDropdown.find((e) => e.userId === jwtId || e.id === jwtId)
+      : undefined;
+    const byEmail =
+      !byUser && email
+        ? employeesForDropdown.find(
+            (e) => typeof e.email === "string" && e.email.trim().toLowerCase() === email
+          )
+        : undefined;
+    const pick = byUser ?? byEmail;
+    if (pick) setSelectedEmployeeId(pick.id);
+  }, [staffLocksEmployeeSelect, employeesForDropdown, selectedEmployeeId]);
 
   const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
     queryKey: ATTENDANCES_QUERY_KEY,
@@ -138,7 +170,7 @@ export default function ClockInOutPage() {
   const stats = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
     const presentIds = new Set(todayRows.map((r) => r.employeeId));
-    const totalStaff = employees.length;
+    const totalStaff = staffLocksEmployeeSelect ? employeesForDropdown.length : employees.length;
     const presentToday = presentIds.size;
     const absentToday = totalStaff > 0 ? Math.max(0, totalStaff - presentToday) : 0;
     const pct =
@@ -161,7 +193,7 @@ export default function ClockInOutPage() {
       pctPresent: pct,
       weeklyWorkLabel: formatWeeklyHours(weeklyHours),
     };
-  }, [attendanceRows, employees.length]);
+  }, [attendanceRows, employees.length, employeesForDropdown.length, staffLocksEmployeeSelect]);
 
   const clockInMutation = useMutation({
     mutationFn: (employeeId: string) => clockInApi(employeeId),
@@ -256,10 +288,13 @@ export default function ClockInOutPage() {
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
                 aria-label={t("Select employee")}
-                disabled={isClockedIn}
+                disabled={
+                  isClockedIn ||
+                  (staffLocksEmployeeSelect && Boolean(selectedEmployeeId))
+                }
               >
                 <option value="">{t("Select employee")}</option>
-                {employees.map((emp) => (
+                {employeesForDropdown.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name} ({emp.employeeId})
                   </option>
@@ -267,6 +302,15 @@ export default function ClockInOutPage() {
               </select>
             </div>
           )}
+          {staffLocksEmployeeSelect &&
+            employeesForDropdown.length > 0 &&
+            !selectedEmployeeId && (
+              <p className="clockInOutHint" role="status">
+                {t(
+                  "We could not match your login to an employee. Select your name or ask an admin to link your account."
+                )}
+              </p>
+            )}
           {clockError && (
             <p className="clockInOutError" role="alert">
               {clockError}

@@ -34,6 +34,8 @@ type DashboardMobileHomeProps = {
   totalWeight: number;
   cashflowDays: CashflowDay[];
   canCreate: boolean;
+  /** Hide livestock and org-only shortcuts (outlet manager tier). */
+  outletScopedMobile?: boolean;
 };
 
 function workspaceInitial(): string {
@@ -75,14 +77,15 @@ export default function DashboardMobileHome({
   totalWeight,
   cashflowDays,
   canCreate,
+  outletScopedMobile = false,
 }: DashboardMobileHomeProps) {
   const to = useCallback(
     (path: string) => buildPathWithOutletScope(path, scopedOutletId, search),
     [scopedOutletId, search]
   );
 
-  const allShortcuts = useMemo<ShortcutDef[]>(
-    () => [
+  const allShortcuts = useMemo<ShortcutDef[]>(() => {
+    const raw: ShortcutDef[] = [
       {
         id: "pos",
         labelKey: "Processed Sale",
@@ -121,9 +124,10 @@ export default function DashboardMobileHome({
         href: to("/dashboard/invoices"),
         icon: <IoStatsChartOutline size={22} />,
       },
-    ],
-    [to]
-  );
+    ];
+    if (outletScopedMobile) return raw.filter((s) => s.id !== "livestock");
+    return raw;
+  }, [to, outletScopedMobile]);
 
   const defaultVisibility = useMemo(() => {
     const o: Record<string, boolean> = {};
@@ -237,7 +241,7 @@ export default function DashboardMobileHome({
             </span>
             <span>{t("Quick Entry")}</span>
           </Link>
-          {canCreate ? (
+          {canCreate && !outletScopedMobile ? (
             <Link to={to("/dashboard/invoices/livestock-sales")} className="dashboardMobileHome__exploreCard">
               <span className="dashboardMobileHome__exploreIcon" aria-hidden>
                 <LuShoppingCart size={26} />

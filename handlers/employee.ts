@@ -13,6 +13,8 @@ export type Employee = {
   status: boolean;
   contact: string;
   email?: string;
+  /** When API links employee to auth user. */
+  userId?: string;
   department?: { name: string } | string;
   role?: { name: string } | string;
   [key: string]: unknown;

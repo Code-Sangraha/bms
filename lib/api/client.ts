@@ -1,4 +1,6 @@
 import { AUTH_ROUTES } from "@/lib/api/routes";
+import { notifyAuthContextUpdated } from "@/lib/auth/authEvents";
+import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
 import { clearAuthToken, getAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
@@ -48,7 +50,9 @@ export async function tryRefresh(): Promise<string | null> {
   const nextRefreshToken = data.data?.refreshToken ?? data.refreshToken;
   if (!res.ok || !accessToken) return null;
   setAuthToken(accessToken);
+  syncStoredOutletFromAccessToken(accessToken);
   if (nextRefreshToken) setRefreshToken(nextRefreshToken);
+  notifyAuthContextUpdated();
   return accessToken;
 }
 

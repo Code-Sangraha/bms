@@ -16,6 +16,7 @@ import {
 import { LuDownload } from "react-icons/lu";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import { clearAuthToken } from "@/lib/auth/token";
@@ -48,6 +49,7 @@ export default function MorePage() {
   const { search } = useLocation();
   const { t } = useI18n();
   const { roleName } = usePermissions();
+  const { accessTier } = useOutletAccess();
   const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
 
   const to = useCallback(
@@ -100,21 +102,20 @@ export default function MorePage() {
     navigate("/login");
   };
 
-  const mainLinks = useMemo(
-    () =>
-      [
-        { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
-        { href: to("/dashboard/users"), label: t("Users"), icon: IoPeopleOutline },
-        { href: to("/dashboard/departments"), label: t("Departments"), icon: IoSchoolOutline },
-        { href: to("/dashboard/processingPlant"), label: t("Processing Plant"), icon: IoBusinessOutline },
-        { href: to("/dashboard/accounts/roles"), label: t("Roles"), icon: IoPersonOutline },
-      ] as const,
-    [t, to]
-  );
+  const mainLinks = useMemo(() => {
+    if (accessTier !== "global") return [];
+    return [
+      { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
+      { href: to("/dashboard/users"), label: t("Users"), icon: IoPeopleOutline },
+      { href: to("/dashboard/departments"), label: t("Departments"), icon: IoSchoolOutline },
+      { href: to("/dashboard/processingPlant"), label: t("Processing Plant"), icon: IoBusinessOutline },
+      { href: to("/dashboard/accounts/roles"), label: t("Roles"), icon: IoPersonOutline },
+    ] as const;
+  }, [accessTier, t, to]);
 
-  const otherLinks = useMemo(
-    () =>
-      [
+  const otherLinks = useMemo(() => {
+    if (accessTier === "global") {
+      return [
         { href: to("/dashboard/accounts/analytics"), label: t("Attendance"), icon: IoStatsChartOutline },
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
         { href: to("/dashboard/invoices/customer-types"), label: t("Customer Types"), icon: IoPricetagOutline },
@@ -123,9 +124,22 @@ export default function MorePage() {
           label: t("Sales & Billing"),
           icon: IoStatsChartOutline,
         },
-      ] as const,
-    [t, to]
-  );
+      ] as const;
+    }
+    if (accessTier === "outlet_manager") {
+      return [
+        { href: to("/dashboard/accounts/analytics"), label: t("Attendance"), icon: IoStatsChartOutline },
+        { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
+        { href: to("/dashboard/accounts/directory"), label: t("Directory"), icon: IoPeopleOutline },
+        {
+          href: to("/dashboard/invoices"),
+          label: t("Sales & Billing"),
+          icon: IoStatsChartOutline,
+        },
+      ] as const;
+    }
+    return [] as const;
+  }, [accessTier, t, to]);
 
   return (
     <section className="morePage">
@@ -139,18 +153,22 @@ export default function MorePage() {
         </div>
       </header>
 
-      <h2 className="morePage__sectionLabel">{t("Settings")}</h2>
-      <div className="morePage__card">
-        {mainLinks.map((row) => (
-          <Link key={row.href} to={row.href} className="morePage__row">
-            <span className="morePage__rowIcon" aria-hidden>
-              <row.icon size={22} />
-            </span>
-            <span className="morePage__rowLabel">{row.label}</span>
-            <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
-          </Link>
-        ))}
-      </div>
+      {mainLinks.length > 0 ? (
+        <>
+          <h2 className="morePage__sectionLabel">{t("Settings")}</h2>
+          <div className="morePage__card">
+            {mainLinks.map((row) => (
+              <Link key={row.href} to={row.href} className="morePage__row">
+                <span className="morePage__rowIcon" aria-hidden>
+                  <row.icon size={22} />
+                </span>
+                <span className="morePage__rowLabel">{row.label}</span>
+                <IoChevronForward className="morePage__chevron" size={18} aria-hidden />
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <h2 className="morePage__sectionLabel">{t("Others")}</h2>
       <div className="morePage__card">
