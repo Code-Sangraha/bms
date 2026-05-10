@@ -20,10 +20,7 @@ import {
 } from "@/handlers/dualPricing";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
-import {
-  formatNameWithOutlet,
-  outletLabelFromProduct,
-} from "@/lib/productDisplay";
+import { formatNameWithOutlet, productOutletId } from "@/lib/productDisplay";
 import {
   dualPricingSchema,
   type DualPricingFormValues,
@@ -130,6 +127,43 @@ export default function DualPricingPage() {
   useEffect(() => {
     if (editingItem) editForm.reset(toFormValues(editingItem));
   }, [editingItem, editForm.reset]);
+
+  const addOutletId = addForm.watch("outletId");
+  const editOutletId = editForm.watch("outletId");
+
+  const productsForAddOutlet = useMemo(() => {
+    if (!addOutletId) return [];
+    return products.filter((p) => productOutletId(p) === addOutletId);
+  }, [products, addOutletId]);
+
+  const productsForEditOutlet = useMemo(() => {
+    if (!editOutletId) return [];
+    return products.filter((p) => productOutletId(p) === editOutletId);
+  }, [products, editOutletId]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    if (!addOutletId) {
+      addForm.setValue("productId", "");
+      return;
+    }
+    const pid = addForm.getValues("productId");
+    if (!pid) return;
+    const ok = productsForAddOutlet.some((p) => p.id === pid);
+    if (!ok) addForm.setValue("productId", "");
+  }, [isModalOpen, addOutletId, productsForAddOutlet, addForm]);
+
+  useEffect(() => {
+    if (!editingItem) return;
+    if (!editOutletId) {
+      editForm.setValue("productId", "");
+      return;
+    }
+    const pid = editForm.getValues("productId");
+    if (!pid) return;
+    const ok = productsForEditOutlet.some((p) => p.id === pid);
+    if (!ok) editForm.setValue("productId", "");
+  }, [editingItem, editOutletId, productsForEditOutlet, editForm]);
 
   const createMutation = useMutation({
     mutationFn: (values: DualPricingFormValues) =>
@@ -409,25 +443,6 @@ export default function DualPricingPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">{t("Product")}</span>
-            <select className="select" {...editForm.register("productId")}>
-              <option value="">{t("Select product")}</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {formatNameWithOutlet(
-                    p.name,
-                    outletLabelFromProduct(p, outlets)
-                  )}
-                </option>
-              ))}
-            </select>
-            {editForm.formState.errors.productId && (
-              <span className="dualPricingFieldError">
-                {editForm.formState.errors.productId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
             <span className="label">{t("Outlet")}</span>
             <select className="select" {...editForm.register("outletId")}>
               <option value="">{t("Select outlet")}</option>
@@ -440,6 +455,24 @@ export default function DualPricingPage() {
             {editForm.formState.errors.outletId && (
               <span className="dualPricingFieldError">
                 {editForm.formState.errors.outletId.message}
+              </span>
+            )}
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Product")}</span>
+            <select className="select" {...editForm.register("productId")}>
+              <option value="">
+                {editOutletId ? t("Select product") : t("Select outlet first")}
+              </option>
+              {productsForEditOutlet.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {editForm.formState.errors.productId && (
+              <span className="dualPricingFieldError">
+                {editForm.formState.errors.productId.message}
               </span>
             )}
           </label>
@@ -519,25 +552,6 @@ export default function DualPricingPage() {
             </p>
           )}
           <label className="modalField">
-            <span className="label">{t("Product")}</span>
-            <select className="select" {...addForm.register("productId")}>
-              <option value="">{t("Select product")}</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {formatNameWithOutlet(
-                    p.name,
-                    outletLabelFromProduct(p, outlets)
-                  )}
-                </option>
-              ))}
-            </select>
-            {addForm.formState.errors.productId && (
-              <span className="dualPricingFieldError">
-                {addForm.formState.errors.productId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
             <span className="label">{t("Outlet")}</span>
             <select className="select" {...addForm.register("outletId")}>
               <option value="">{t("Select outlet")}</option>
@@ -550,6 +564,24 @@ export default function DualPricingPage() {
             {addForm.formState.errors.outletId && (
               <span className="dualPricingFieldError">
                 {addForm.formState.errors.outletId.message}
+              </span>
+            )}
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Product")}</span>
+            <select className="select" {...addForm.register("productId")}>
+              <option value="">
+                {addOutletId ? t("Select product") : t("Select outlet first")}
+              </option>
+              {productsForAddOutlet.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {addForm.formState.errors.productId && (
+              <span className="dualPricingFieldError">
+                {addForm.formState.errors.productId.message}
               </span>
             )}
           </label>

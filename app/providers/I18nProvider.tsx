@@ -370,6 +370,7 @@ const translations: Record<string, string> = {
   "Customer contact": "ग्राहक सम्पर्क",
   Outlet: "आउटलेट",
   "Select outlet": "आउटलेट छान्नुहोस्",
+  "Select outlet first": "पहिले आउटलेट छान्नुहोस्",
   "Product Name": "उत्पादन नाम",
   "Select product": "उत्पादन छान्नुहोस्",
   Type: "प्रकार",
