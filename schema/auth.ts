@@ -1,7 +1,8 @@
 import { z } from "zod";
 
+/** Sign-in accepts app user emails or backend employee identifiers (`employeeId` in the API field named `email`). */
 export const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  email: z.string().trim().min(1, "Email or Employee ID is required"),
   password: z.string().min(1, "Password is required"),
 });
 

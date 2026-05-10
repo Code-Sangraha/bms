@@ -10,7 +10,6 @@ import { getEmployees } from "@/handlers/employee";
 import { getOutlets } from "@/handlers/outlet";
 import "./analytics.scss";
 
-const ATTENDANCES_QUERY_KEY = ["attendances"];
 const EMPLOYEES_QUERY_KEY = ["employees"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
@@ -86,9 +85,10 @@ export default function AccountsAnalyticsPage() {
     isFetching: attendancesFetching,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey: ["attendances", effectiveOutletKey === "all" ? "all" : effectiveOutletKey],
     queryFn: async () => {
-      const result = await getAttendances();
+      const outletArg = effectiveOutletKey === "all" ? null : effectiveOutletKey;
+      const result = await getAttendances(outletArg);
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);

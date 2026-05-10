@@ -67,15 +67,28 @@ export default function LoginPage() {
               user.outletId.trim() !== ""
                 ? user.outletId.trim()
                 : null;
+            const apiEmployeeId =
+              "employeeId" in user &&
+              typeof (user as { employeeId?: unknown }).employeeId === "string" &&
+              (user as { employeeId: string }).employeeId.trim() !== ""
+                ? (user as { employeeId: string }).employeeId.trim()
+                : undefined;
+            const apiEmployeeName =
+              "name" in user && typeof (user as { name?: unknown }).name === "string"
+                ? (user as { name: string }).name.trim()
+                : undefined;
             const fromApiEmail =
               "email" in user && typeof user.email === "string" && user.email.trim() !== ""
                 ? user.email.trim()
                 : undefined;
+            const loggedInIdentity = values.email.trim();
             setStoredUser({
-              outletId: topOutletId ?? nestedId,
-              outletName: nestedName,
-              id: "id" in user && typeof user.id === "string" ? user.id : undefined,
-              email: fromApiEmail ?? values.email.trim(),
+              outletId: topOutletId ?? nestedId ?? null,
+              outletName: nestedName ?? null,
+              id: "id" in user && typeof user.id === "string" ? user.id.trim() || null : undefined,
+              email: fromApiEmail ?? apiEmployeeId ?? loggedInIdentity,
+              employeeId: apiEmployeeId ?? null,
+              fullName: apiEmployeeName ?? undefined,
             });
           } else {
             setStoredUser({ email: values.email.trim() });
@@ -113,13 +126,13 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="authForm">
           {errors.root?.message && <p className="authError">{errors.root.message}</p>}
           <label htmlFor="login-email" className="authField">
-            <span className="authLabel">{t("Email")}</span>
+            <span className="authLabel">{t("Email or Employee ID")}</span>
             <input
               id="login-email"
-              type="email"
-              placeholder="you@example.com"
+              type="text"
+              placeholder={t("e.g. you@example.com or staff ID")}
               className="authInput"
-              autoComplete="email"
+              autoComplete="username"
               {...registerField("email")}
             />
             {errors.email && <span className="authFieldError">{errors.email.message}</span>}
@@ -148,7 +161,7 @@ export default function LoginPage() {
           </label>
           <div className="authActions">
             <button type="submit" className="authButton authButtonPrimary" disabled={loading}>
-              {loading ? t("Signing inâ€¦") : t("Sign in")}
+              {loading ? t("Signing in…") : t("Sign in")}
             </button>
           </div>
         </form>

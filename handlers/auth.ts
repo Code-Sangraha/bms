@@ -15,18 +15,25 @@ export type RegisterPayload = {
   status: boolean;
 };
 
+/** `user` is app `User` or `Employee`-shaped payload from `/auth/login` (same field name per API). */
+export type AuthLoggedInProfile = {
+  id?: string;
+  outletId?: string | null;
+  outlet?: { id?: string; name?: string };
+  email?: string;
+  /** Employee record: backend login key matches `employeeId`; may omit `email`. */
+  employeeId?: string;
+  name?: string;
+  [key: string]: unknown;
+};
+
 export type AuthResponseData = {
   success?: boolean;
   message?: string;
   accessToken?: string;
   refreshToken?: string;
   token?: string;
-  user?: {
-    id?: string;
-    outletId?: string | null;
-    outlet?: { id?: string; name?: string };
-    [key: string]: unknown;
-  };
+  user?: AuthLoggedInProfile;
   [key: string]: unknown;
 };
 
@@ -64,7 +71,7 @@ export function getRefreshTokenFromAuthResponse(response: LoginResponse): string
   return (data as AuthResponseData).refreshToken ?? (response as LoginResponse).refreshToken;
 }
 
-/** Get user from login/register API response for storing outletId (Manager/Staff). */
+/** Get user/profile from login/register API response for storing outlet/User or Employee fields. */
 export function getUserFromAuthResponse(response: LoginResponse | RegisterResponse): AuthResponseData["user"] {
   const data = response.data ?? response;
   return (data as AuthResponseData).user;

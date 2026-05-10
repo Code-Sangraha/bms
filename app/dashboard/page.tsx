@@ -26,6 +26,7 @@ import { buildPathWithOutletScope } from "@/lib/outletScope";
 import {
   getDashboardSales,
   getLivestockSales,
+  LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
   getSales,
   type DashboardSalesData,
   type LivestockSale,
@@ -38,7 +39,8 @@ import "./dashboard.scss";
 import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
-const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
+/** Up to LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT rows for aggregates (pagination on list endpoints). */
+const LIVESTOCK_SALES_SUMMARY_QUERY_KEY = ["livestockSales", "summary"];
 const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
@@ -104,14 +106,17 @@ export default function DashboardPage() {
     isError: livestockSalesError,
     error: livestockSalesErrorDetail,
   } = useQuery({
-    queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    queryKey: LIVESTOCK_SALES_SUMMARY_QUERY_KEY,
     queryFn: async () => {
-      const result = await getLivestockSales();
+      const result = await getLivestockSales({
+        page: 1,
+        limit: LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
-      return result.data;
+      return result.data.rows;
     },
   });
 

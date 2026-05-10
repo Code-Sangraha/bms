@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
@@ -37,6 +38,7 @@ export default function OutletPage() {
   const queryClient = useQueryClient();
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [selectedOutletId, setSelectedOutletId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -127,6 +129,7 @@ export default function OutletPage() {
         queryClient.invalidateQueries({ queryKey: OUTLETS_QUERY_KEY });
       } else {
         if (result.status === 401) navigate("/login");
+        else showToast(result.error);
       }
     },
   });

@@ -12,6 +12,7 @@ import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
   getLivestockSales,
+  LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
   getSales,
   type LivestockSale,
   type SaleTransaction,
@@ -21,7 +22,7 @@ import { buildPathWithOutletScope } from "@/lib/outletScope";
 import "./transaction.scss";
 
 const SALES_QUERY_KEY = ["sales"];
-const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
+const LIVESTOCK_SUMMARY_QUERY_KEY = ["livestockSales", "summary"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
 type TransactionDetailItem = {
@@ -233,14 +234,17 @@ export default function TransactionPage() {
     isError: livestockError,
     error: livestockErrorDetail,
   } = useQuery({
-    queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    queryKey: LIVESTOCK_SUMMARY_QUERY_KEY,
     queryFn: async () => {
-      const result = await getLivestockSales();
+      const result = await getLivestockSales({
+        page: 1,
+        limit: LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
-      return result.data;
+      return result.data.rows;
     },
   });
 

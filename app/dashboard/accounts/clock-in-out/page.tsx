@@ -1,14 +1,17 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useMemo, useEffect, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
+import { getRowScopeIdFromUrlOrHighlandSearch } from "@/lib/outletScope";
 import { getUserIdFromToken } from "@/lib/auth/role";
 import { getStoredUser } from "@/lib/auth/user";
 import { getEmployees } from "@/handlers/employee";
+import { findEmployeeMatchingAuthSubject } from "@/handlers/employeeMatch";
 import {
   clockIn as clockInApi,
   clockOut as clockOutApi,
@@ -18,7 +21,10 @@ import {
 import "./clock-in-out.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
-const ATTENDANCES_QUERY_KEY = ["attendances"];
+
+function attendanceQueryKey(base: string | null) {
+  return ["attendances", base ?? "all"] as const;
+}
 
 function startOfLocalDay(d: Date): Date {
   const x = new Date(d);
@@ -59,11 +65,11 @@ function isInCurrentWeek(clockInIso: string): boolean {
 
 function findOpenAttendanceToday(
   rows: AttendanceRecord[],
-  employeeId: string
+  employeeRowId: string
 ): AttendanceRecord | undefined {
   return rows.find(
     (r) =>
-      r.employeeId === employeeId &&
+      r.employeeId === employeeRowId &&
       r.clockIn &&
       isClockInToday(r.clockIn) &&
       (r.clockOut == null || r.clockOut === "")
@@ -88,13 +94,21 @@ function formatWeeklyHours(totalDecimal: number): string {
 export default function ClockInOutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { search } = useLocation();
   const { t } = useI18n();
   const { userOutletId } = useAuth();
   const { accessTier } = useOutletAccess();
-  const staffLocksEmployeeSelect = accessTier === "outlet_staff";
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const staffLocksOutlet = accessTier === "outlet_staff";
+  const { rowFilterOutletId } = useRowFilterOutletId();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [clockError, setClockError] = useState<string | null>(null);
+
+  const attendanceOutletId = useMemo(() => {
+    const fromHighlandUrl = getRowScopeIdFromUrlOrHighlandSearch(search);
+    return rowFilterOutletId ?? fromHighlandUrl ?? userOutletId ?? null;
+  }, [search, rowFilterOutletId, userOutletId]);
+
+  const attendancesKey = attendanceQueryKey(attendanceOutletId);
 
   const { data: employees = [] } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -108,35 +122,23 @@ export default function ClockInOutPage() {
     },
   });
 
-  /** Outlet staff only: limit picker to their outlet + auto-select. Man/admins keep full list. */
-  const employeesForDropdown = useMemo(() => {
-    if (!staffLocksEmployeeSelect || !userOutletId) return employees;
-    return employees.filter((e) => e.outletId === userOutletId);
-  }, [employees, userOutletId, staffLocksEmployeeSelect]);
+  const employeesInScope = useMemo(() => {
+    if (!attendanceOutletId) return employees;
+    return employees.filter((e) => e.outletId === attendanceOutletId);
+  }, [employees, attendanceOutletId]);
 
-  useEffect(() => {
-    if (!staffLocksEmployeeSelect || employeesForDropdown.length === 0) return;
-    if (selectedEmployeeId) return;
+  const selfEmployee = useMemo(() => {
     const jwtId = getUserIdFromToken();
     const stored = getStoredUser();
-    const email = stored?.email?.trim().toLowerCase();
-    const byUser = jwtId
-      ? employeesForDropdown.find((e) => e.userId === jwtId || e.id === jwtId)
-      : undefined;
-    const byEmail =
-      !byUser && email
-        ? employeesForDropdown.find(
-            (e) => typeof e.email === "string" && e.email.trim().toLowerCase() === email
-          )
-        : undefined;
-    const pick = byUser ?? byEmail;
-    if (pick) setSelectedEmployeeId(pick.id);
-  }, [staffLocksEmployeeSelect, employeesForDropdown, selectedEmployeeId]);
+    return findEmployeeMatchingAuthSubject(employeesInScope, jwtId, stored);
+  }, [employeesInScope]);
+
+  const selfEmployeeDisplay = selfEmployee ? `${selfEmployee.name} (${selfEmployee.employeeId})` : null;
 
   const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey: attendancesKey,
     queryFn: async () => {
-      const result = await getAttendances();
+      const result = await getAttendances(attendanceOutletId);
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -146,10 +148,12 @@ export default function ClockInOutPage() {
     },
   });
 
+  const employeeRowId = selfEmployee?.id ?? "";
+
   const openRecord = useMemo(() => {
-    if (!selectedEmployeeId) return undefined;
-    return findOpenAttendanceToday(attendanceRows, selectedEmployeeId);
-  }, [attendanceRows, selectedEmployeeId]);
+    if (!employeeRowId) return undefined;
+    return findOpenAttendanceToday(attendanceRows, employeeRowId);
+  }, [attendanceRows, employeeRowId]);
 
   const isClockedIn = !!openRecord;
 
@@ -170,11 +174,11 @@ export default function ClockInOutPage() {
   const stats = useMemo(() => {
     const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
     const presentIds = new Set(todayRows.map((r) => r.employeeId));
-    const totalStaff = staffLocksEmployeeSelect ? employeesForDropdown.length : employees.length;
+    const roster = attendanceOutletId ? employeesInScope : employees;
+    const totalStaff = roster.length;
     const presentToday = presentIds.size;
     const absentToday = totalStaff > 0 ? Math.max(0, totalStaff - presentToday) : 0;
-    const pct =
-      totalStaff > 0 ? Math.round((presentToday / totalStaff) * 100) : 0;
+    const pct = totalStaff > 0 ? Math.round((presentToday / totalStaff) * 100) : 0;
     const weeklyHours = attendanceRows.reduce((sum, r) => {
       if (
         r.clockIn &&
@@ -193,14 +197,14 @@ export default function ClockInOutPage() {
       pctPresent: pct,
       weeklyWorkLabel: formatWeeklyHours(weeklyHours),
     };
-  }, [attendanceRows, employees.length, employeesForDropdown.length, staffLocksEmployeeSelect]);
+  }, [attendanceRows, attendanceOutletId, employees, employeesInScope]);
 
   const clockInMutation = useMutation({
-    mutationFn: (employeeId: string) => clockInApi(employeeId),
+    mutationFn: () => clockInApi(),
     onSuccess: async (result) => {
       if (result.ok) {
         setClockError(null);
-        await queryClient.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY });
+        await queryClient.invalidateQueries({ queryKey: ["attendances"] });
       } else {
         if (result.status === 401) navigate("/login");
         else setClockError(result.error);
@@ -210,11 +214,11 @@ export default function ClockInOutPage() {
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: (employeeId: string) => clockOutApi(employeeId),
+    mutationFn: () => clockOutApi(),
     onSuccess: async (result) => {
       if (result.ok) {
         setClockError(null);
-        await queryClient.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY });
+        await queryClient.invalidateQueries({ queryKey: ["attendances"] });
       } else {
         if (result.status === 401) navigate("/login");
         else setClockError(result.error);
@@ -224,25 +228,26 @@ export default function ClockInOutPage() {
   });
 
   const handleClockIn = () => {
-    if (!selectedEmployeeId) {
-      setClockError(t("Please select an employee."));
+    if (!employeeRowId) {
+      setClockError(
+        t("We could not match your login to an employee in this outlet. Ask an admin to verify your employee record.")
+      );
       return;
     }
     setClockError(null);
-    clockInMutation.mutate(selectedEmployeeId);
+    clockInMutation.mutate();
   };
 
   const handleClockOut = () => {
-    if (!selectedEmployeeId) return;
+    if (!employeeRowId) return;
     setClockError(null);
-    clockOutMutation.mutate(selectedEmployeeId);
+    clockOutMutation.mutate();
   };
 
   const { h, m, s } = formatElapsed(elapsedSeconds);
   const loading = clockInMutation.isPending || clockOutMutation.isPending;
 
-  const statPresentSub =
-    stats.totalStaff > 0 ? `${stats.pctPresent}% ${t("Present")}` : "";
+  const statPresentSub = stats.totalStaff > 0 ? `${stats.pctPresent}% ${t("Present")}` : "";
 
   return (
     <section className="clockInOutPage">
@@ -253,9 +258,7 @@ export default function ClockInOutPage() {
       <div className="clockInOutHeader">
         <div className="clockInOutHeaderText">
           <h1 className="pageTitle">{t("Clock-IN/OUT")}</h1>
-          <p className="pageSubtitle">
-            {t("Track staff attendance and working hours")}
-          </p>
+          <p className="pageSubtitle">{t("Track staff attendance and working hours")}</p>
         </div>
       </div>
 
@@ -281,36 +284,23 @@ export default function ClockInOutPage() {
               ? t("You are clocked in. Click Clock-OUT when you finish.")
               : t("Start tracking your time by clocking in.")}
           </p>
-          {employees.length > 0 && (
-            <div className="clockInOutSelectWrap">
-              <select
-                className="clockInOutSelect"
-                value={selectedEmployeeId}
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                aria-label={t("Select employee")}
-                disabled={
-                  isClockedIn ||
-                  (staffLocksEmployeeSelect && Boolean(selectedEmployeeId))
-                }
-              >
-                <option value="">{t("Select employee")}</option>
-                {employeesForDropdown.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.employeeId})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {staffLocksEmployeeSelect &&
-            employeesForDropdown.length > 0 &&
-            !selectedEmployeeId && (
-              <p className="clockInOutHint" role="status">
-                {t(
-                  "We could not match your login to an employee. Select your name or ask an admin to link your account."
-                )}
-              </p>
-            )}
+
+          {selfEmployeeDisplay ? (
+            <p className="clockInOutHint" role="status">
+              <strong>{t("Clocking in as")}:</strong> {selfEmployeeDisplay}
+            </p>
+          ) : employees.length > 0 ? (
+            <p className="clockInOutHint" role="status">
+              {staffLocksOutlet && attendanceOutletId
+                ? t(
+                    "We could not match your login to an employee in this outlet. Ask an admin to verify your employee record."
+                  )
+                : t(
+                    "We could not match your login to an employee record. Adjust outlet scope (?outletId=), or ask an admin to link your account."
+                  )}
+            </p>
+          ) : null}
+
           {clockError && (
             <p className="clockInOutError" role="alert">
               {clockError}
@@ -321,7 +311,7 @@ export default function ClockInOutPage() {
               type="button"
               className="clockInOutBtn clockInOutBtnPrimary"
               onClick={handleClockOut}
-              disabled={loading}
+              disabled={loading || !employeeRowId}
             >
               {loading ? t("Processing…") : t("Clock-OUT")}
             </button>
@@ -330,7 +320,7 @@ export default function ClockInOutPage() {
               type="button"
               className="clockInOutBtn clockInOutBtnPrimary"
               onClick={handleClockIn}
-              disabled={loading || !selectedEmployeeId}
+              disabled={loading || !employeeRowId}
             >
               {loading ? t("Processing…") : t("Clock-IN")}
             </button>
@@ -358,9 +348,7 @@ export default function ClockInOutPage() {
               {attendancesLoading ? "—" : String(stats.absentToday)}
             </span>
             <span className="clockInOutStatSub">
-              {stats.totalStaff > 0
-                ? `${t("Total Staff")}: ${stats.totalStaff}`
-                : ""}
+              {stats.totalStaff > 0 ? `${t("Total Staff")}: ${stats.totalStaff}` : ""}
             </span>
           </div>
           <div className="clockInOutStatCard">

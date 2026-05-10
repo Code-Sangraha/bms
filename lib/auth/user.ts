@@ -9,6 +9,10 @@ export type StoredUser = {
   /** Auth user id from login response when present. */
   id?: string | null;
   email?: string | null;
+  /** Employee business id when logged in as staff with employee profile. */
+  employeeId?: string | null;
+  /** Display name from Employee `name` or similar when present. */
+  fullName?: string | null;
   outletId?: string | null;
   /** From login `user.outlet.name`; not present in JWT — refresh does not clear it. */
   outletName?: string | null;

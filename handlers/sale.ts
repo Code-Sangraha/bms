@@ -144,11 +144,24 @@ export type LivestockSale = {
 export type GetLivestockSalesResponse = {
   success?: boolean;
   message?: string;
+  /** May be `{ data: LivestockSale[], page, limit }` or legacy shapes. */
   data?: LivestockSale[] | Record<string, unknown>;
   sales?: LivestockSale[];
   transactions?: LivestockSale[] | Record<string, unknown>;
   [key: string]: unknown;
 };
+
+/** Parsed result for GET `/sales/livestock/get?page=&limit=` */
+export type LivestockSalesPageResult = {
+  rows: LivestockSale[];
+  page: number;
+  limit: number;
+  /** When true, caller may fetch `page + 1` (`rows.length` reached `limit`). */
+  hasMore: boolean;
+};
+
+export const LIVESTOCK_SALES_LIST_DEFAULT_LIMIT = 10;
+export const LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT = 500;
 
 function getNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -224,17 +237,97 @@ function normalizeSaleEntry(entry: unknown): LivestockSale[] {
   });
 }
 
-function normalizeLivestockSales(raw: unknown): LivestockSale[] {
+/** Normalize legacy payloads (arrays, `{ sales }`, grouped maps) into flat rows. */
+function flattenLegacyLivestockShape(raw: unknown): LivestockSale[] {
   if (raw == null) return [];
   if (Array.isArray(raw)) return raw.flatMap((entry) => normalizeSaleEntry(entry));
   if (typeof raw !== "object") return [];
   const obj = raw as Record<string, unknown>;
-  if (obj.data != null) return normalizeLivestockSales(obj.data);
-  if (obj.sales != null) return normalizeLivestockSales(obj.sales);
-  if (obj.transactions != null) return normalizeLivestockSales(obj.transactions);
+  if ("data" in obj && Array.isArray(obj.data)) {
+    return obj.data.flatMap((entry: unknown) => normalizeSaleEntry(entry));
+  }
+  if ("data" in obj && obj.data != null) return flattenLegacyLivestockShape(obj.data);
+  if (obj.sales != null) return flattenLegacyLivestockShape(obj.sales);
+  if (obj.transactions != null) return flattenLegacyLivestockShape(obj.transactions);
   return Object.values(obj).flatMap((entry) => normalizeSaleEntry(entry));
 }
 
+/** Double-wrapped `{ data: { data, page, limit } }` from some uni-response serializers. */
+function unwrapPaginatedEnvelopeOnce(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const o = body as Record<string, unknown>;
+  if (
+    o.data !== null &&
+    typeof o.data === "object" &&
+    !Array.isArray(o.data) &&
+    Array.isArray((o.data as Record<string, unknown>).data) &&
+    (getNumber((o.data as Record<string, unknown>).page) != null ||
+      getNumber((o.data as Record<string, unknown>).limit) != null)
+  ) {
+    return o.data;
+  }
+  return body;
+}
+
+function parseLivestockSalesPayload(
+  body: unknown,
+  requestPage: number,
+  requestLimit: number
+): LivestockSalesPageResult {
+  const inner = unwrapPaginatedEnvelopeOnce(body);
+  if (inner == null) {
+    return { rows: [], page: Math.max(requestPage, 1), limit: requestLimit, hasMore: false };
+  }
+
+  const pageClamp = Math.max(1, Math.floor(requestPage));
+  const limitClamp = Math.max(1, Math.floor(requestLimit));
+
+  if (Array.isArray(inner)) {
+    const rows = inner.flatMap((entry) => normalizeSaleEntry(entry));
+    const hasMore = rows.length >= limitClamp;
+    return { rows, page: pageClamp, limit: limitClamp, hasMore };
+  }
+
+  if (typeof inner !== "object") {
+    return { rows: [], page: pageClamp, limit: limitClamp, hasMore: false };
+  }
+
+  const o = inner as Record<string, unknown>;
+  const nestedData = o.data;
+  const pageFromApi = getNumber(o.page);
+  const limitFromApi = getNumber(o.limit);
+
+  if (Array.isArray(nestedData) && (pageFromApi != null || limitFromApi != null)) {
+    const rows = nestedData.flatMap((entry: unknown) => normalizeSaleEntry(entry));
+    const page = Math.max(1, pageFromApi ?? pageClamp);
+    const limit = Math.max(1, limitFromApi ?? limitClamp);
+    const hasMore = rows.length >= limit;
+    return { rows, page, limit, hasMore };
+  }
+
+  if (Array.isArray(nestedData)) {
+    const rows = nestedData.flatMap((entry: unknown) => normalizeSaleEntry(entry));
+    const hasMore = rows.length >= limitClamp;
+    return {
+      rows,
+      page: pageClamp,
+      limit: nestedData.length > 0 ? Math.max(limitClamp, nestedData.length) : limitClamp,
+      hasMore,
+    };
+  }
+
+  const rowsFlat = flattenLegacyLivestockShape(inner);
+  const hasMore = rowsFlat.length >= limitClamp;
+  return { rows: rowsFlat, page: pageClamp, limit: limitClamp, hasMore };
+}
+
+function livestockGetQuery(page: number, limit: number): string {
+  const p = Math.max(1, Math.floor(page));
+  const l = Math.max(1, Math.min(Math.floor(limit), LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT));
+  return `?page=${encodeURIComponent(String(p))}&limit=${encodeURIComponent(String(l))}`;
+}
+
+/** Processed sales listing from `/sales/get` — outlet scoping may differ from `/sales/dashboardSales`; confirm with backend when reconciling totals. */
 export async function getSales(): Promise<
   | { ok: true; data: SaleTransaction[] }
   | { ok: false; error: string; status: number }
@@ -312,26 +405,43 @@ export async function createLivestockSale(
   return result;
 }
 
-export async function getLivestockSales(): Promise<
-  | { ok: true; data: LivestockSale[] }
+/** Livestock list is paginated server-side; dashboard summaries use at most LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT rows per request. */
+export async function getLivestockSales(options?: {
+  page?: number;
+  limit?: number;
+}): Promise<
+  | { ok: true; data: LivestockSalesPageResult }
   | { ok: false; error: string; status: number }
 > {
-  const getResult = await apiRequest<GetLivestockSalesResponse>(SALES_ROUTES.LIVESTOCK_GET, {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? LIVESTOCK_SALES_LIST_DEFAULT_LIMIT;
+  const path = `${SALES_ROUTES.LIVESTOCK_GET}${livestockGetQuery(page, limit)}`;
+
+  const getResult = await apiRequest<GetLivestockSalesResponse>(path, {
     method: "GET",
   });
   if (getResult.ok) {
-    const raw = getResult.data?.data ?? getResult.data?.sales ?? getResult.data?.transactions ?? [];
-    return { ok: true, data: normalizeLivestockSales(raw) };
+    const body =
+      getResult.data?.data ??
+      getResult.data?.sales ??
+      getResult.data?.transactions ??
+      [];
+    const data = parseLivestockSalesPayload(body, page, limit);
+    return { ok: true, data };
   }
 
-  // Fallback for backends that define this endpoint as POST.
+  /** Fallback when route is POST-only; include paging in body when possible. */
   const postResult = await apiRequest<GetLivestockSalesResponse>(SALES_ROUTES.LIVESTOCK_GET, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      page: Math.max(1, Math.floor(page)),
+      limit: Math.max(1, Math.floor(limit)),
+    }),
   });
   if (!postResult.ok) return getResult;
-  const raw = postResult.data?.data ?? postResult.data?.sales ?? postResult.data?.transactions ?? [];
-  return { ok: true, data: normalizeLivestockSales(raw) };
+  const body =
+    postResult.data?.data ?? postResult.data?.sales ?? postResult.data?.transactions ?? [];
+  return { ok: true, data: parseLivestockSalesPayload(body, page, limit) };
 }
 
 /** Sales by product item from /sales/dashboardSales */

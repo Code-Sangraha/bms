@@ -18,6 +18,7 @@ import {
 import { getProductTypes } from "@/handlers/productType";
 import {
   getLivestockSales,
+  LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
   getSales,
   type LivestockSale,
   type SaleTransaction,
@@ -27,7 +28,7 @@ import "./invoicesAnalytics.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
 const SALES_QUERY_KEY = ["sales"];
-const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
+const LIVESTOCK_SUMMARY_QUERY_KEY = ["livestockSales", "summary"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
@@ -140,14 +141,17 @@ export default function InvoicesAnalyticsPage() {
     isError: livestockSalesError,
     error: livestockSalesErrorDetail,
   } = useQuery({
-    queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    queryKey: LIVESTOCK_SUMMARY_QUERY_KEY,
     queryFn: async () => {
-      const result = await getLivestockSales();
+      const result = await getLivestockSales({
+        page: 1,
+        limit: LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT,
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
       }
-      return result.data;
+      return result.data.rows;
     },
   });
 

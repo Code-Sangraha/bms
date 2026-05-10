@@ -789,3 +789,29 @@ $radius-pill: 9999px;
     width: 100%;
   }
 }
+
+.livestockListPaging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.livestockPagingSize {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.livestockPagingSize .select {
+  width: auto;
+  min-width: 72px;
+}
+
+.livestockPagingInfo {
+  flex: 1;
+  font-size: 13px;
+  color: #6b7280;
+}

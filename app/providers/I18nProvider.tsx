@@ -184,6 +184,13 @@ const STORAGE_KEY = "app-locale";
 
 const translations: Record<string, string> = {
   "Sign in": "साइन इन",
+  "Email or Employee ID": "इमेल वा कर्मचारी आईडी",
+  "e.g. you@example.com or staff ID": "उदा. you@example.com वा कर्मचारी आईडी",
+  "Clocking in as": "यस व्यक्तिको रूपमा",
+  "We could not match your login to an employee record. Adjust outlet scope (?outletId=), or ask an admin to link your account.":
+    "प्रयोगकर्ता फेला पारिएन। outletId स्कोप मिलाउनुहोस् वा प्रशासकसँग आफ्नो कर्मचारी रेकर्ड लिंक गराउनुहोस्।",
+  "We could not match your login to an employee in this outlet. Ask an admin to verify your employee record.":
+    "यस आउटलेटमा तपाईंको खातासँग जोडिएको कर्मचारी फेला परेन। प्रशासकसँग कर्मचारी रेकर्ड पुष्टि गराउनुहोस्।",
   "Enter your credentials to access Highland Meat Processing.": "Highland Meat Processing पहुँच गर्न आफ्नो विवरण प्रविष्ट गर्नुहोस्।",
   "No token received. Please try again.": "टोकन प्राप्त भएन। कृपया फेरि प्रयास गर्नुहोस्।",
   "Something went wrong. Please try again.": "केही गलत भयो। कृपया फेरि प्रयास गर्नुहोस्।",
@@ -315,6 +322,7 @@ const translations: Record<string, string> = {
   Showing: "देखाइएको",
   of: "मध्ये",
   "per page": "प्रति पृष्ठ",
+  "More pages available.": "अझै पृष्ठहरू छन्।",
   "Items per page": "प्रति पृष्ठ वस्तुहरू",
   "Previous page": "अघिल्लो पृष्ठ",
   Previous: "अघिल्लो",

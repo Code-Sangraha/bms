@@ -15,6 +15,7 @@ import { getProductTypes } from "@/handlers/productType";
 import {
   createLivestockSale,
   getLivestockSales,
+  LIVESTOCK_SALES_LIST_DEFAULT_LIMIT,
   type LivestockSale,
   type LivestockSalePayload,
 } from "@/handlers/sale";
@@ -30,7 +31,6 @@ const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
-const LIVESTOCK_SALES_QUERY_KEY = ["livestockSales"];
 
 type LivestockLineItem = {
   name: string;
@@ -105,6 +105,8 @@ export default function LivestockSalesPage() {
     DEFAULT_SALE_PAYMENT_METHOD
   );
   const [lineIndexToDelete, setLineIndexToDelete] = useState<number | null>(null);
+  const [salesListPage, setSalesListPage] = useState(1);
+  const [salesListPageSize, setSalesListPageSize] = useState(LIVESTOCK_SALES_LIST_DEFAULT_LIMIT);
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -230,18 +232,21 @@ export default function LivestockSalesPage() {
   };
 
   const {
-    data: livestockSales = [],
+    data: livestockPage,
     isLoading: livestockSalesLoading,
     isError: livestockSalesIsError,
     error: livestockSalesErrorDetail,
   } = useQuery({
-    queryKey: LIVESTOCK_SALES_QUERY_KEY,
+    queryKey: ["livestockSales", "list", salesListPage, salesListPageSize],
     staleTime: 30 * 1000,
     retry: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const result = await getLivestockSales();
+      const result = await getLivestockSales({
+        page: salesListPage,
+        limit: salesListPageSize,
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -249,6 +254,8 @@ export default function LivestockSalesPage() {
       return result.data;
     },
   });
+
+  const livestockSales = livestockPage?.rows ?? [];
 
   const livestockTotal = livestockLineItems.reduce(
     (sum, item) => sum + item.weight * item.amount,
@@ -320,7 +327,7 @@ export default function LivestockSalesPage() {
         setLivestockAmount(0);
         setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
         setLivestockError(null);
-        queryClient.invalidateQueries({ queryKey: LIVESTOCK_SALES_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
         queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
         showToast(t("Livestock sale created successfully."), "success");
       } else {
@@ -622,6 +629,50 @@ export default function LivestockSalesPage() {
                 ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="livestockListPaging">
+          <label className="livestockPagingSize">
+            <span>{t("per page")}</span>
+            <select
+              className="select"
+              value={salesListPageSize}
+              disabled={livestockSalesLoading}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (!Number.isFinite(next) || next <= 0) return;
+                setSalesListPageSize(next);
+                setSalesListPage(1);
+              }}
+              aria-label={t("Items per page")}
+            >
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="livestockPagingInfo">
+            {t("Page")} {livestockPage?.page ?? salesListPage}
+            {livestockPage?.hasMore ? ` · ${t("More pages available.")}` : ""}
+          </span>
+          <button
+            type="button"
+            className="button"
+            disabled={salesListPage <= 1 || livestockSalesLoading}
+            onClick={() => setSalesListPage((p) => Math.max(1, p - 1))}
+          >
+            {t("Previous")}
+          </button>
+          <button
+            type="button"
+            className="button"
+            disabled={!livestockPage?.hasMore || livestockSalesLoading}
+            onClick={() => setSalesListPage((p) => p + 1)}
+          >
+            {t("Next")}
+          </button>
         </div>
       </div>
       <ConfirmModal
