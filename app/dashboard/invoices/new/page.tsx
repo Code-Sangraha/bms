@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
@@ -31,6 +31,8 @@ const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 const DUAL_PRICING_QUERY_KEY = ["dualPricing"];
 const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
+const SALES_QUERY_KEY = ["sales"];
+const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 
 type LineItem = {
   productId: string;
@@ -103,6 +105,7 @@ function productOutletIdForFilter(p: Product): string {
 export default function PointOfSalePage() {
   const navigate = useNavigate();
   const { search } = useLocation();
+  const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
@@ -326,6 +329,8 @@ export default function PointOfSalePage() {
         setCustomerContact("");
         setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
         setError(null);
+        void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
+        void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
         navigate("/dashboard/invoices/transaction");
       } else {
         if (result.status === 401) navigate("/login");
