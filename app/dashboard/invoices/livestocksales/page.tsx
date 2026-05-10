@@ -250,7 +250,10 @@ export default function LivestockSalesPage() {
     },
   });
 
-  const livestockTotal = livestockLineItems.reduce((sum, item) => sum + item.amount, 0);
+  const livestockTotal = livestockLineItems.reduce(
+    (sum, item) => sum + item.weight * item.amount,
+    0
+  );
 
   const handleAddLivestockLine = () => {
     if (!customerName.trim() || !customerContact.trim()) {
