@@ -26,3 +26,12 @@ export const createEmployeeSchema = z.object({
 });
 
 export type CreateEmployeeFormValues = z.infer<typeof createEmployeeSchema>;
+
+export const updateEmployeeSchema = z.object({
+  id: uuidSchema,
+  outletId: uuidSchema,
+  roleId: uuidSchema,
+  departmentId: uuidSchema,
+});
+
+export type UpdateEmployeeFormValues = z.infer<typeof updateEmployeeSchema>;

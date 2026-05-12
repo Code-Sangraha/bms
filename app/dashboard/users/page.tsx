@@ -7,10 +7,12 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
+import { getOutlets } from "@/handlers/outlet";
 import { getRoles } from "@/handlers/role";
 import {
   createUser as createUserApi,
@@ -24,6 +26,7 @@ import "./users.scss";
 
 const USERS_QUERY_KEY = ["users"];
 const ROLES_QUERY_KEY = ["roles"];
+const OUTLETS_QUERY_KEY = ["outlets"];
 
 const defaultFormValues: CreateUserFormValues = {
   fullName: "",
@@ -31,6 +34,7 @@ const defaultFormValues: CreateUserFormValues = {
   roleId: "",
   status: "Active",
   contact: "",
+  outletId: "",
 };
 
 
@@ -39,6 +43,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const { canCreate } = usePermissions();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [openActionUserId, setOpenActionUserId] = useState<string | null>(null);
@@ -49,6 +54,7 @@ export default function UsersPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editContact, setEditContact] = useState("");
   const [editRoleId, setEditRoleId] = useState("");
+  const [editOutletId, setEditOutletId] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
 
   const {
@@ -60,6 +66,18 @@ export default function UsersPage() {
     queryKey: USERS_QUERY_KEY,
     queryFn: async () => {
       const result = await getUsers();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const { data: outlets = [] } = useQuery({
+    queryKey: OUTLETS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getOutlets();
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -107,6 +125,7 @@ export default function UsersPage() {
       if (result.ok) {
         setIsModalOpen(false);
         queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["employees"] });
       } else {
         if (result.status === 401) {
           navigate("/login");
@@ -148,21 +167,30 @@ export default function UsersPage() {
       fullName: string;
       email: string;
       roleId: string;
+      status: boolean;
       contact?: string;
+      outletId: string | null;
     }) =>
       updateUserApi({
         id: payload.id,
         fullName: payload.fullName,
         email: payload.email,
         roleId: payload.roleId,
-        status: true,
+        status: payload.status,
         contact: payload.contact,
+        outletId: payload.outletId,
       }),
     onSuccess: (result) => {
       if (result.ok) {
         setEditError(null);
         setEditModalUser(null);
         queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        showToast(
+          t(
+            "User updated. They may need to sign in again for role or outlet changes to apply to their session."
+          )
+        );
       } else if (result.status === 401) {
         navigate("/login");
       } else {
@@ -186,6 +214,10 @@ export default function UsersPage() {
     setEditEmail(typeof user.email === "string" ? user.email : "");
     setEditContact(typeof user.contact === "string" ? user.contact : "");
     setEditRoleId(typeof user.roleId === "string" ? user.roleId : "");
+    const oid = user.outletId;
+    setEditOutletId(
+      typeof oid === "string" && oid.trim() !== "" ? oid.trim() : ""
+    );
   };
 
   const handleEditSubmit = (e: FormEvent) => {
@@ -203,7 +235,9 @@ export default function UsersPage() {
       fullName,
       email,
       roleId,
+      status: editModalUser.status,
       contact: editContact.trim() || undefined,
+      outletId: editOutletId.trim() === "" ? null : editOutletId.trim(),
     });
   };
 
@@ -477,6 +511,20 @@ export default function UsersPage() {
               <span className="usersFieldError">{errors.roleId.message}</span>
             )}
           </label>
+          <label className="modalField">
+            <span className="label">{t("Outlet")}</span>
+            <select className="select" {...register("outletId")}>
+              <option value="">{t("No outlet")}</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+            {errors.outletId && (
+              <span className="usersFieldError">{errors.outletId.message}</span>
+            )}
+          </label>
         </form>
       </Modal>
 
@@ -567,6 +615,21 @@ export default function UsersPage() {
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Outlet")}</span>
+            <select
+              className="select"
+              value={editOutletId}
+              onChange={(e) => setEditOutletId(e.target.value)}
+            >
+              <option value="">{t("No outlet")}</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
                 </option>
               ))}
             </select>

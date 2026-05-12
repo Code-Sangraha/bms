@@ -91,6 +91,7 @@ export const DUAL_PRICING_ROUTES = {
 export const EMPLOYEE_ROUTES = {
   GET: "/employees/get",
   CREATE: "/employees/create",
+  UPDATE: "/employees/update",
 } as const;
 
 export const ATTENDANCE_ROUTES = {

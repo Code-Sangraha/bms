@@ -72,3 +72,23 @@ export async function createEmployee(payload: CreateEmployeeFormValues) {
     body: JSON.stringify(body),
   });
 }
+
+export type UpdateEmployeePayload = {
+  id: string;
+  outletId?: string;
+  roleId?: string;
+  departmentId?: string;
+};
+
+export type UpdateEmployeeResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export async function updateEmployee(payload: UpdateEmployeePayload) {
+  return apiRequest<UpdateEmployeeResponse>(EMPLOYEE_ROUTES.UPDATE, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

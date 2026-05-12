@@ -40,6 +40,7 @@ export type CreateUserPayload = {
   status: boolean;
   email: string;
   contact?: string;
+  outletId?: string | null;
 };
 
 export type CreateUserResponse = {
@@ -56,6 +57,9 @@ export async function createUser(payload: CreateUserFormValues) {
     email: payload.email.trim().toLowerCase(),
   };
   if (payload.contact?.trim()) body.contact = payload.contact.trim();
+  if (payload.outletId != null && String(payload.outletId).trim() !== "") {
+    body.outletId = String(payload.outletId).trim();
+  }
   return apiRequest<CreateUserResponse>(USER_ROUTES.CREATE, {
     method: "POST",
     body: JSON.stringify(body),
@@ -69,6 +73,7 @@ export type UpdateUserPayload = {
   roleId: string;
   status: boolean;
   contact?: string;
+  outletId?: string | null;
 };
 
 export type UpdateUserResponse = {

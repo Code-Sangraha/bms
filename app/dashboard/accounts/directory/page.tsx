@@ -3,17 +3,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { IoPersonAddOutline, IoSettingsOutline } from "react-icons/io5";
 import { useForm } from "react-hook-form";
-import { usePermissions } from "@/app/providers/AuthProvider";
+import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createEmployee as createEmployeeApi,
   getEmployees,
+  updateEmployee as updateEmployeeApi,
   type Employee,
 } from "@/handlers/employee";
 import { getDepartments } from "@/handlers/department";
@@ -21,10 +24,10 @@ import { getOutlets } from "@/handlers/outlet";
 import { getRoles } from "@/handlers/role";
 import {
   createEmployeeSchema,
+  updateEmployeeSchema,
   type CreateEmployeeFormValues,
 } from "@/schema/employee";
 import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
-// import { MdMoreHoriz } from "react-icons/md";
 import "./directory.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
@@ -57,15 +60,23 @@ export default function DirectoryPage() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const queryClient = useQueryClient();
-  const { canCreate } = usePermissions();
+  const { canCreate, canUpdate } = usePermissions();
+  const { accessTier } = useOutletAccess();
+  const { userOutletId } = useAuth();
   const { t } = useI18n();
+  const { showToast } = useToast();
   const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
   const moreHref = buildPathWithOutletScope("/dashboard/more", scopedOutletId, search);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
-  // const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  // const menuButtonRef = useRef<HTMLDivElement>(null);
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [editDepartmentId, setEditDepartmentId] = useState("");
+  const [editOutletId, setEditOutletId] = useState("");
+  const [editRoleIdState, setEditRoleIdState] = useState("");
+  const [editEmployeeError, setEditEmployeeError] = useState<string | null>(
+    null
+  );
 
   const {
     data: employees = [],
@@ -83,6 +94,17 @@ export default function DirectoryPage() {
       return result.data;
     },
   });
+
+  /** UI-only: outlet managers/staff see employees for their outlet (URL scope wins when set). */
+  const directoryOutletFilterId = useMemo(() => {
+    if (accessTier === "global") return null;
+    return scopedOutletId ?? userOutletId ?? null;
+  }, [accessTier, scopedOutletId, userOutletId]);
+
+  const employeesForDirectory = useMemo(() => {
+    if (!directoryOutletFilterId) return employees;
+    return employees.filter((e) => e.outletId === directoryOutletFilterId);
+  }, [employees, directoryOutletFilterId]);
 
   const { data: departments = [] } = useQuery({
     queryKey: DEPARTMENTS_QUERY_KEY,
@@ -135,20 +157,6 @@ export default function DirectoryPage() {
     reset(defaultFormValues);
   }, [isModalOpen, reset]);
 
-  // useEffect(() => {
-  //   if (!openMenuId) return;
-  //   const handleClickOutside = (e: MouseEvent) => {
-  //     if (
-  //       menuButtonRef.current &&
-  //       !menuButtonRef.current.contains(e.target as Node)
-  //     ) {
-  //       setOpenMenuId(null);
-  //     }
-  //   };
-  //   document.addEventListener("mousedown", handleClickOutside);
-  //   return () => document.removeEventListener("mousedown", handleClickOutside);
-  // }, [openMenuId]);
-
   const getRoleName = (emp: Employee) => {
     const name = resolveName(emp.role, "");
     if (name) return name;
@@ -163,7 +171,7 @@ export default function DirectoryPage() {
 
   const filteredEmployees = useMemo(
     () =>
-      employees.filter((emp) => {
+      employeesForDirectory.filter((emp) => {
         const q = searchQuery.trim().toLowerCase();
         if (q) {
           const match =
@@ -181,7 +189,7 @@ export default function DirectoryPage() {
         }
         return true;
       }),
-    [employees, searchQuery, departmentFilter]
+    [employeesForDirectory, searchQuery, departmentFilter, roles, departments]
   );
 
   const {
@@ -204,6 +212,7 @@ export default function DirectoryPage() {
       if (result.ok) {
         setIsModalOpen(false);
         queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
       } else {
         if (result.status === 401) navigate("/login");
         else setError("root", { message: result.error });
@@ -218,6 +227,62 @@ export default function DirectoryPage() {
 
   const onAddSubmit = (data: CreateEmployeeFormValues) => {
     createMutation.mutate(data);
+  };
+
+  const handleOpenEditEmployee = (emp: Employee) => {
+    setEditEmployee(emp);
+    setEditDepartmentId(emp.departmentId);
+    setEditOutletId(emp.outletId);
+    setEditRoleIdState(emp.roleId);
+    setEditEmployeeError(null);
+  };
+
+  const updateEmployeeMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof updateEmployeeApi>[0]) =>
+      updateEmployeeApi(payload),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        else
+          setEditEmployeeError(result.error ?? t("Failed to update employee"));
+        return;
+      }
+      setEditEmployee(null);
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      showToast(
+        t(
+          "Employee updated. Linked users may need to sign in again for outlet changes to apply."
+        )
+      );
+    },
+    onError: () => {
+      setEditEmployeeError(t("Something went wrong. Please try again."));
+    },
+  });
+
+  const handleEditEmployeeSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editEmployee) return;
+    const parsed = updateEmployeeSchema.safeParse({
+      id: editEmployee.id,
+      outletId: editOutletId.trim(),
+      roleId: editRoleIdState.trim(),
+      departmentId: editDepartmentId.trim(),
+    });
+    if (!parsed.success) {
+      const first = parsed.error.flatten().fieldErrors;
+      const msg =
+        first.outletId?.[0] ??
+        first.roleId?.[0] ??
+        first.departmentId?.[0] ??
+        first.id?.[0] ??
+        t("Please select valid outlet, role, and department.");
+      setEditEmployeeError(msg);
+      return;
+    }
+    setEditEmployeeError(null);
+    updateEmployeeMutation.mutate(parsed.data);
   };
 
   const loading = isSubmitting || createMutation.isPending;
@@ -294,6 +359,16 @@ export default function DirectoryPage() {
         {!employeesLoading &&
           !employeesError &&
           employees.length > 0 &&
+          employeesForDirectory.length === 0 && (
+            <div className="directoryRow directoryRowMessage">
+              <span className="directoryMessage">
+                {t("No employees for this outlet.")}
+              </span>
+            </div>
+          )}
+        {!employeesLoading &&
+          !employeesError &&
+          employeesForDirectory.length > 0 &&
           filteredEmployees.length === 0 && (
             <div className="directoryRow directoryRowMessage">
               <span className="directoryMessage">
@@ -316,35 +391,17 @@ export default function DirectoryPage() {
                   <span className="directoryContactSecondary">{emp.email}</span>
                 )}
               </span>
-              {/* Row "more" menu (Edit / Delete) — disabled
-              <div
-                className="directoryMenuWrap"
-                ref={openMenuId === emp.id ? menuButtonRef : undefined}
-              >
+              {canUpdate ? (
                 <button
                   type="button"
-                  className="directoryMenuTrigger"
-                  onClick={() =>
-                    setOpenMenuId((id) => (id === emp.id ? null : emp.id))
-                  }
-                  aria-label={t("More options")}
-                  aria-expanded={openMenuId === emp.id}
+                  className="button"
+                  onClick={() => handleOpenEditEmployee(emp)}
                 >
-                  <MdMoreHoriz aria-hidden size={22} />
+                  {t("Edit")}
                 </button>
-                {openMenuId === emp.id && (
-                  <div className="directoryMenuDropdown">
-                    <button type="button" className="directoryMenuItem">
-                      {t("Edit")}
-                    </button>
-                    <button type="button" className="directoryMenuItem directoryMenuItemDanger">
-                      {t("Delete")}
-                    </button>
-                  </div>
-                )}
-              </div>
-              */}
-              <span aria-hidden="true" />
+              ) : (
+                <span aria-hidden="true" />
+              )}
             </div>
           ))}
       </div>
@@ -501,6 +558,90 @@ export default function DirectoryPage() {
           </label>
         </form>
       </Modal>
+
+      <Modal
+        isOpen={!!editEmployee}
+        title={t("Edit employee")}
+        subtitle={
+          editEmployee
+            ? `${editEmployee.name} · ${editEmployee.employeeId}`
+            : ""
+        }
+        onClose={() => setEditEmployee(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="button modalButton"
+              onClick={() => setEditEmployee(null)}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="submit"
+              form="edit-employee-form"
+              className="button buttonPrimary modalButton"
+              disabled={updateEmployeeMutation.isPending}
+            >
+              {updateEmployeeMutation.isPending ? t("Saving…") : t("Update")}
+            </button>
+          </>
+        }
+      >
+        <form id="edit-employee-form" onSubmit={handleEditEmployeeSubmit} className="directoryForm">
+          {editEmployeeError && (
+            <p className="directoryFormError" role="alert">
+              {editEmployeeError}
+            </p>
+          )}
+          <label className="modalField">
+            <span className="label">{t("Department")}</span>
+            <select
+              className="select"
+              value={editDepartmentId}
+              onChange={(e) => setEditDepartmentId(e.target.value)}
+            >
+              <option value="">{t("Select department")}</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Outlet")}</span>
+            <select
+              className="select"
+              value={editOutletId}
+              onChange={(e) => setEditOutletId(e.target.value)}
+            >
+              <option value="">{t("Select outlet")}</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="modalField">
+            <span className="label">{t("Role")}</span>
+            <select
+              className="select"
+              value={editRoleIdState}
+              onChange={(e) => setEditRoleIdState(e.target.value)}
+            >
+              <option value="">{t("Select role")}</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </form>
+      </Modal>
+
       {canCreate ? (
         <button type="button" className="directoryFab" onClick={() => setIsModalOpen(true)}>
           <IoPersonAddOutline size={20} aria-hidden />

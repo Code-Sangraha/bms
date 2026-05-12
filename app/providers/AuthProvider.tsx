@@ -11,8 +11,12 @@ import {
 import { AUTH_CONTEXT_UPDATED_EVENT } from "@/lib/auth/authEvents";
 import type { Permissions, RoleName } from "@/lib/auth/permissions";
 import { getPermissions, normalizeRoleName } from "@/lib/auth/permissions";
-import { getJwtPermissionNamesFromToken, getRoleFromToken } from "@/lib/auth/role";
-import { getStoredOutletId, getStoredOutletName } from "@/lib/auth/user";
+import {
+  getJwtPermissionNamesFromToken,
+  getOutletIdFromToken,
+  getRoleFromToken,
+} from "@/lib/auth/role";
+import { getStoredOutletId, getStoredOutletName, getStoredUser, setStoredUser } from "@/lib/auth/user";
 
 type AuthContextValue = {
   roleName: RoleName | null;
@@ -38,8 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshRole = useCallback(() => {
     const role = getRoleFromToken();
+    const tokenOutletId = getOutletIdFromToken();
+    const fallbackOutletId = getStoredOutletId();
+    const resolvedOutletId = tokenOutletId ?? fallbackOutletId;
+
+    // Keep storage aligned with token claims (canonical source) on boot/refresh.
+    if (resolvedOutletId && resolvedOutletId !== fallbackOutletId) {
+      const existing = getStoredUser() ?? {};
+      setStoredUser({ ...existing, outletId: resolvedOutletId });
+    }
+
     setRoleName(normalizeRoleName(role));
-    setUserOutletId(getStoredOutletId());
+    setUserOutletId(resolvedOutletId);
     setUserOutletName(getStoredOutletName());
     setJwtPermissionNames(getJwtPermissionNamesFromToken());
   }, []);

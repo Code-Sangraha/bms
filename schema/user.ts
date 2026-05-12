@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const optionalOutletIdSchema = z
+  .union([z.string().uuid("Outlet must be a valid UUID"), z.literal("")])
+  .optional();
+
 export const createUserSchema = z.object({
   fullName: z
     .string()
@@ -9,6 +13,8 @@ export const createUserSchema = z.object({
   roleId: z.string().min(1, "Role is required"),
   status: z.enum(["Active", "Inactive"]).optional().default("Active"),
   contact: z.string().max(50, "Contact is too long").optional(),
+  /** Empty string means no outlet assignment. */
+  outletId: optionalOutletIdSchema,
 });
 
 export type CreateUserFormValues = z.infer<typeof createUserSchema>;

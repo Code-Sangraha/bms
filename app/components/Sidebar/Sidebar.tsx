@@ -9,11 +9,11 @@ import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import MobileBottomNav from "@/app/components/MobileBottomNav/MobileBottomNav";
 import { useToast } from "@/app/providers/ToastProvider";
-import { usePermissions } from "@/app/providers/AuthProvider";
+import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
-import { getOutlets, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
+import { getOutlets, getMainOutletId, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 import {
@@ -457,10 +457,10 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { canCreate } = usePermissions();
+  const { userOutletId } = useAuth();
   const { accessTier, lockedOutletId } = useOutletAccess();
   const { t, locale } = useI18n();
   const { showToast } = useToast();
-  const showSubOutletSwitcher = lockedOutletId == null;
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [highlandContext, setHighlandContext] = useState<HighlandStoredContext>(() => {
     const stored = readHighlandContextFromStorage();
@@ -505,10 +505,18 @@ export default function Sidebar() {
     },
   });
 
-  const subOutletsForRail = useMemo(
-    () => getSubOutletsForScope(outlets),
-    [outlets]
-  );
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+
+  const visibleSubOutlets = useMemo(() => {
+    if (!userOutletId) return getSubOutletsForScope(outlets);
+    /** Main-outlet org users see every plant under scope; plant-bound managers see only their outlet. */
+    if (mainOutletId != null && userOutletId === mainOutletId) {
+      return getSubOutletsForScope(outlets);
+    }
+    return outlets.filter((o) => o.id === userOutletId);
+  }, [outlets, userOutletId, mainOutletId]);
+
+  const showSubOutletSwitcher = visibleSubOutlets.length > 0;
 
   const highlandMainSections = useMemo((): MenuSectionBlock[] => {
     const rail = sidebarConfig.sections[0].items.find((i) => i.id === "highland");
@@ -520,7 +528,7 @@ export default function Sidebar() {
   useEffect(() => {
     const oid = readOutletScopeFromSearch(locationSearch);
     if (!oid) return;
-    const sub = subOutletsForRail.find((o) => o.id === oid);
+    const sub = visibleSubOutlets.find((o) => o.id === oid);
     if (!sub) return;
     const next: HighlandStoredContext = {
       mode: "plant",
@@ -539,7 +547,7 @@ export default function Sidebar() {
       return next;
     });
     writeHighlandContextToStorage(next);
-  }, [locationSearch, subOutletsForRail]);
+  }, [locationSearch, visibleSubOutlets]);
 
   const primaryRailItems = useMemo(
     () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],
@@ -764,7 +772,7 @@ export default function Sidebar() {
     [locationSearch, navigate, pathname, showToast, t]
   );
 
-  const subOutletCount = subOutletsForRail.length;
+  const subOutletCount = visibleSubOutlets.length;
 
   useEffect(() => {
     if (!isMobile) {
@@ -781,15 +789,15 @@ export default function Sidebar() {
   const activeSubOutlet = useMemo(
     () =>
       highlandContext.mode === "plant" && highlandContext.plantId
-        ? subOutletsForRail.find((o) => o.id === highlandContext.plantId) ?? null
+        ? visibleSubOutlets.find((o) => o.id === highlandContext.plantId) ?? null
         : null,
-    [highlandContext.mode, highlandContext.plantId, subOutletsForRail]
+    [highlandContext.mode, highlandContext.plantId, visibleSubOutlets]
   );
   const hasUsableSubOutlet = useMemo(
-    () => subOutletsForRail.some((o) => o.status),
-    [subOutletsForRail]
+    () => visibleSubOutlets.some((o) => o.status),
+    [visibleSubOutlets]
   );
-  const singleSubOutlet = subOutletCount === 1 ? subOutletsForRail[0] : null;
+  const singleSubOutlet = subOutletCount === 1 ? visibleSubOutlets[0] : null;
 
   const handleSubOutletHubClick = useCallback(() => {
     if (!hasUsableSubOutlet) {
@@ -880,7 +888,7 @@ export default function Sidebar() {
               role="group"
               aria-label={t("Sub-outlet switcher")}
             >
-              {subOutletsForRail.map((subOutlet) => {
+              {visibleSubOutlets.map((subOutlet) => {
                 const canSelect = subOutlet.status;
                 const isActiveSub =
                   highlandContext.mode === "plant" &&
@@ -1022,7 +1030,7 @@ export default function Sidebar() {
           >
             <div className="subOutletPickerHeader">{t("Sub-outlets")}</div>
             <ul className="subOutletPickerList" role="listbox" aria-label={t("Sub-outlets")}>
-              {subOutletsForRail.map((subOutlet) => {
+              {visibleSubOutlets.map((subOutlet) => {
                 const canSelect = subOutlet.status;
                 const isActive =
                   highlandContext.mode === "plant" && highlandContext.plantId === subOutlet.id;

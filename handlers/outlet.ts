@@ -95,6 +95,8 @@ export type UpdateOutletPayload = {
   name: string;
   contact: string;
   status: boolean;
+  /** When reassigned; backend updates outlet.managerId only — callers should sync User.outletId via users/update. */
+  managerId?: string;
 };
 
 export type UpdateOutletResponse = {

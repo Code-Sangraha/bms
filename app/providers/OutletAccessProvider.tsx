@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { deriveAccessTier, type AccessTier } from "@/lib/auth/accessTier";
 import {
   buildPathWithOutletScope,
@@ -9,6 +10,9 @@ import {
   writeHighlandContextToStorage,
 } from "@/lib/outletScope";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { getMainOutletId, getOutlets } from "@/handlers/outlet";
+
+const OUTLETS_QUERY_KEY = ["outlets"];
 
 export type OutletAccessContextValue = {
   accessTier: AccessTier;
@@ -23,12 +27,32 @@ export function OutletAccessProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { roleName, userOutletId, userOutletName } = useAuth();
 
+  const { data: outlets = [] } = useQuery({
+    queryKey: OUTLETS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getOutlets();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+
   const value = useMemo<OutletAccessContextValue>(() => {
     const accessTier = deriveAccessTier({ roleName, userOutletId });
-    const lockedOutletId =
-      accessTier === "outlet_manager" || accessTier === "outlet_staff" ? userOutletId : null;
+    let lockedOutletId: string | null = null;
+    if (accessTier === "outlet_staff") {
+      lockedOutletId = userOutletId;
+    } else if (accessTier === "outlet_manager" && userOutletId) {
+      /** Main-outlet managers choose a plant via sidebar; do not force `?outletId=` to main. */
+      if (mainOutletId != null && userOutletId === mainOutletId) {
+        lockedOutletId = null;
+      } else {
+        lockedOutletId = userOutletId;
+      }
+    }
     return { accessTier, lockedOutletId };
-  }, [roleName, userOutletId]);
+  }, [roleName, userOutletId, mainOutletId]);
 
   const { accessTier, lockedOutletId } = value;
 
