@@ -8,6 +8,7 @@ import { IoGridOutline, IoLayersOutline, IoSettingsOutline } from "react-icons/i
 import { LuBeef, LuBoxes, LuTag } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
@@ -42,6 +43,7 @@ export default function ProductPage() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { canCreate } = usePermissions();
+  const { accessTier } = useOutletAccess();
   const { scopedOutletId, isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
   const { showToast } = useToast();
@@ -372,6 +374,7 @@ export default function ProductPage() {
   };
 
   const loading = createMutation.isPending;
+  const canUseGlobalInventoryLinks = accessTier === "global";
 
   return (
     <section className="productPage">
@@ -380,26 +383,32 @@ export default function ProductPage() {
       </div>
 
       <div className="inventoryMobileHub" aria-label={t("Quick links")}>
-        <Link to={invTo("/dashboard/product/liveProduct")} className="inventoryMobileHub__chip">
-          <LuBeef size={18} aria-hidden />
-          <span>{t("Live Stock Inventory")}</span>
-        </Link>
+        {canUseGlobalInventoryLinks ? (
+          <Link to={invTo("/dashboard/product/liveProduct")} className="inventoryMobileHub__chip">
+            <LuBeef size={18} aria-hidden />
+            <span>{t("Live Stock Inventory")}</span>
+          </Link>
+        ) : null}
         <Link to={invTo("/dashboard/product/processedProduct")} className="inventoryMobileHub__chip">
           <LuBoxes size={18} aria-hidden />
           <span>{t("Processed Inventory")}</span>
         </Link>
-        <Link to={invTo("/dashboard/product/livestockCategory")} className="inventoryMobileHub__chip">
-          <IoLayersOutline size={18} aria-hidden />
-          <span>{t("Livestock Category")}</span>
-        </Link>
-        <Link to={invTo("/dashboard/product/productType")} className="inventoryMobileHub__chip">
-          <IoGridOutline size={18} aria-hidden />
-          <span>{t("Product Type")}</span>
-        </Link>
-        <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
-          <LuTag size={18} aria-hidden />
-          <span>{t("Pricelist")}</span>
-        </Link>
+        {canUseGlobalInventoryLinks ? (
+          <>
+            <Link to={invTo("/dashboard/product/livestockCategory")} className="inventoryMobileHub__chip">
+              <IoLayersOutline size={18} aria-hidden />
+              <span>{t("Livestock Category")}</span>
+            </Link>
+            <Link to={invTo("/dashboard/product/productType")} className="inventoryMobileHub__chip">
+              <IoGridOutline size={18} aria-hidden />
+              <span>{t("Product Type")}</span>
+            </Link>
+            <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
+              <LuTag size={18} aria-hidden />
+              <span>{t("Pricelist")}</span>
+            </Link>
+          </>
+        ) : null}
       </div>
 
       <div className="productHeader">

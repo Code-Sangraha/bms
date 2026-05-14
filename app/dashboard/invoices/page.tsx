@@ -7,6 +7,7 @@ import { IoListOutline, IoPricetagOutline } from "react-icons/io5";
 import { LuBeef, LuShoppingCart } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
@@ -100,6 +101,7 @@ export default function InvoicesAnalyticsPage() {
   const { search } = useLocation();
   const { t } = useI18n();
   const { canCreate } = usePermissions();
+  const { accessTier } = useOutletAccess();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
   const [outletFilter, setOutletFilter] = useState("all");
@@ -113,6 +115,7 @@ export default function InvoicesAnalyticsPage() {
 
   const hubScope = isScoped && rowFilterOutletId ? rowFilterOutletId : null;
   const hubTo = (path: string) => buildPathWithOutletScope(path, hubScope, search);
+  const canUseGlobalSalesLinks = accessTier === "global";
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -485,7 +488,7 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Processed Sale")}</span>
           </Link>
         ) : null}
-        {canCreate ? (
+        {canCreate && canUseGlobalSalesLinks ? (
           <Link to={hubTo("/dashboard/invoices/livestock-sales")} className="invoicesMobileHub__card">
             <span className="invoicesMobileHub__icon" aria-hidden>
               <LuBeef size={24} />
@@ -493,12 +496,14 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Livestock Sales")}</span>
           </Link>
         ) : null}
-        <Link to={hubTo("/dashboard/invoices/customer-types")} className="invoicesMobileHub__card">
-          <span className="invoicesMobileHub__icon" aria-hidden>
-            <IoPricetagOutline size={24} />
-          </span>
-          <span className="invoicesMobileHub__label">{t("Customer Types")}</span>
-        </Link>
+        {canUseGlobalSalesLinks ? (
+          <Link to={hubTo("/dashboard/invoices/customer-types")} className="invoicesMobileHub__card">
+            <span className="invoicesMobileHub__icon" aria-hidden>
+              <IoPricetagOutline size={24} />
+            </span>
+            <span className="invoicesMobileHub__label">{t("Customer Types")}</span>
+          </Link>
+        ) : null}
       </div>
 
       <div className="invoicesAnalyticsHeader">

@@ -235,12 +235,14 @@ export default function DashboardMobileHome({
       <div>
         <h2 className="dashboardMobileHome__sectionTitle">{t("Explore App")}</h2>
         <div className="dashboardMobileHome__exploreScroll">
-          <Link to={to("/dashboard/invoices/new")} className="dashboardMobileHome__exploreCard">
-            <span className="dashboardMobileHome__exploreIcon" aria-hidden>
-              <IoCalculatorOutline size={26} />
-            </span>
-            <span>{t("Quick Entry")}</span>
-          </Link>
+          {canCreate ? (
+            <Link to={to("/dashboard/invoices/new")} className="dashboardMobileHome__exploreCard">
+              <span className="dashboardMobileHome__exploreIcon" aria-hidden>
+                <IoCalculatorOutline size={26} />
+              </span>
+              <span>{t("Quick Entry")}</span>
+            </Link>
+          ) : null}
           {canCreate && !outletScopedMobile ? (
             <Link to={to("/dashboard/invoices/livestock-sales")} className="dashboardMobileHome__exploreCard">
               <span className="dashboardMobileHome__exploreIcon" aria-hidden>

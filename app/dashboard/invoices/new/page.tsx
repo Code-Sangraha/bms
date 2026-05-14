@@ -5,6 +5,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
@@ -109,6 +110,7 @@ export default function PointOfSalePage() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { userOutletId } = useAuth();
+  const { accessTier } = useOutletAccess();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [outletId, setOutletId] = useState("");
@@ -566,7 +568,7 @@ export default function PointOfSalePage() {
         {error && (
           <div className="posErrorBlock" role="alert">
             <p className="posError">{error}</p>
-            {errorShowPricelistLink && (
+            {errorShowPricelistLink && accessTier === "global" && (
               <p className="posErrorHint">
                 <Link className="posErrorLink" to="/dashboard/dualPricing">
                   {t("Open Pricelist")}
