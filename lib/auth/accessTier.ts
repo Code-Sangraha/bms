@@ -1,4 +1,7 @@
 import type { RoleName } from "@/lib/auth/permissions";
+import { normalizeRoleName } from "@/lib/auth/permissions";
+import { getOutletIdFromToken, getRoleFromToken } from "@/lib/auth/role";
+import { getStoredEmployeeId, getStoredOutletId } from "@/lib/auth/user";
 
 export type AccessTier = "global" | "outlet_manager" | "outlet_staff";
 
@@ -21,15 +24,15 @@ export const OUTLET_MANAGER_PATH_PREFIXES: string[] = [
   "/dashboard/more",
 ];
 
-export const OUTLET_STAFF_ALLOWED_EXACT: string[] = ["/dashboard/accounts/clock-in-out"];
+export const OUTLET_STAFF_ALLOWED_EXACT: string[] = ["/dashboard/accounts/directory"];
 
 /** Default landing path segments (no query) after guard redirect. */
 export const OUTLET_MANAGER_HOME_PATH = "/dashboard";
-export const OUTLET_STAFF_HOME_PATH = "/dashboard/accounts/clock-in-out";
+export const OUTLET_STAFF_HOME_PATH = "/dashboard/accounts/directory";
 
 export function deriveAccessTier({ roleName, userOutletId }: AccessTierInput): AccessTier {
   if (roleName === "Admin") return "global";
-  if (roleName === "Staff" && userOutletId) return "outlet_staff";
+  if (roleName === "Staff") return "outlet_staff";
   if (userOutletId) return "outlet_manager";
   /** Non-admin without outlet: treat as global-style navigation (rare); avoid locking URL. */
   return "global";
@@ -64,9 +67,7 @@ export function isPathAllowedForTier(pathname: string, tier: AccessTier): boolea
 
 export function defaultPathForTier(tier: AccessTier, withOutletId: string | null): string {
   if (tier === "outlet_staff") {
-    return withOutletId
-      ? `${OUTLET_STAFF_HOME_PATH}?outletId=${encodeURIComponent(withOutletId)}`
-      : OUTLET_STAFF_HOME_PATH;
+    return OUTLET_STAFF_HOME_PATH;
   }
   if (tier === "outlet_manager") {
     return withOutletId
@@ -74,4 +75,16 @@ export function defaultPathForTier(tier: AccessTier, withOutletId: string | null
       : OUTLET_MANAGER_HOME_PATH;
   }
   return OUTLET_MANAGER_HOME_PATH;
+}
+
+/**
+ * Access tier from JWT + stored profile without waiting for AuthProvider state
+ * (avoids one-frame mis-tier after login / user switch).
+ */
+export function getAccessTierFromSessionClaims(): AccessTier {
+  const roleName = normalizeRoleName(getRoleFromToken());
+  return deriveAccessTier({
+    roleName: roleName ?? (getStoredEmployeeId() ? "Staff" : null),
+    userOutletId: getOutletIdFromToken() ?? getStoredOutletId(),
+  });
 }

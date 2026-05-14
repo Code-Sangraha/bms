@@ -15,11 +15,20 @@ import {
   getJwtPermissionNamesFromToken,
   getOutletIdFromToken,
   getRoleFromToken,
+  getUserIdFromToken,
 } from "@/lib/auth/role";
-import { getStoredOutletId, getStoredOutletName, getStoredUser, setStoredUser } from "@/lib/auth/user";
+import {
+  getStoredEmployeeId,
+  getStoredOutletId,
+  getStoredOutletName,
+  getStoredUser,
+  setStoredUser,
+} from "@/lib/auth/user";
 
 type AuthContextValue = {
   roleName: RoleName | null;
+  /** JWT `userId` (trimmed); stable for memo deps when token hydrates after employees load. */
+  authUserId: string | null;
   /** When set (e.g. Manager/Staff), user is restricted to this outlet. */
   userOutletId: string | null;
   /** From login response `user.outlet.name` when available. */
@@ -36,12 +45,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [roleName, setRoleName] = useState<RoleName | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [userOutletId, setUserOutletId] = useState<string | null>(null);
   const [userOutletName, setUserOutletName] = useState<string | null>(null);
   const [jwtPermissionNames, setJwtPermissionNames] = useState<string[]>([]);
 
   const refreshRole = useCallback(() => {
     const role = getRoleFromToken();
+    setAuthUserId(getUserIdFromToken());
     const tokenOutletId = getOutletIdFromToken();
     const fallbackOutletId = getStoredOutletId();
     const resolvedOutletId = tokenOutletId ?? fallbackOutletId;
@@ -52,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStoredUser({ ...existing, outletId: resolvedOutletId });
     }
 
-    setRoleName(normalizeRoleName(role));
+    setRoleName(normalizeRoleName(role) ?? (getStoredEmployeeId() ? "Staff" : null));
     setUserOutletId(resolvedOutletId);
     setUserOutletName(getStoredOutletName());
     setJwtPermissionNames(getJwtPermissionNamesFromToken());
@@ -85,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       roleName,
+      authUserId,
       userOutletId,
       userOutletName,
       jwtPermissionNames,
@@ -92,7 +104,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       permissions,
       refreshRole,
     }),
-    [roleName, userOutletId, userOutletName, jwtPermissionNames, hasJwtPermission, permissions, refreshRole]
+    [
+      roleName,
+      authUserId,
+      userOutletId,
+      userOutletName,
+      jwtPermissionNames,
+      hasJwtPermission,
+      permissions,
+      refreshRole,
+    ]
   );
 
   return (
@@ -105,6 +126,7 @@ export function useAuth(): AuthContextValue {
   if (ctx == null) {
     return {
       roleName: null,
+      authUserId: null,
       userOutletId: null,
       userOutletName: null,
       jwtPermissionNames: [],

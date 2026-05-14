@@ -185,12 +185,24 @@ const STORAGE_KEY = "app-locale";
 const translations: Record<string, string> = {
   "Sign in": "साइन इन",
   "Email or Employee ID": "इमेल वा कर्मचारी आईडी",
+  "Employee Email": "कर्मचारी इमेल",
   "e.g. you@example.com or staff ID": "उदा. you@example.com वा कर्मचारी आईडी",
   "Clocking in as": "यस व्यक्तिको रूपमा",
   "We could not match your login to an employee record. Adjust outlet scope (?outletId=), or ask an admin to link your account.":
     "प्रयोगकर्ता फेला पारिएन। outletId स्कोप मिलाउनुहोस् वा प्रशासकसँग आफ्नो कर्मचारी रेकर्ड लिंक गराउनुहोस्।",
   "We could not match your login to an employee in this outlet. Ask an admin to verify your employee record.":
     "यस आउटलेटमा तपाईंको खातासँग जोडिएको कर्मचारी फेला परेन। प्रशासकसँग कर्मचारी रेकर्ड पुष्टि गराउनुहोस्।",
+  "Possible directory match": "सम्भावित डाइरेक्टरी मिलान",
+  "A directory row matches your login, but clock-in/out only works when your user id matches the employee record id. Ask an admin to link your account (employee primary key = your user id).":
+    "डाइरेक्टरीमा तपाईंको लगइनसँग मिल्ने पंक्ति देखिन्छ, तर हाजिरी लगाउने/निस्कनेका लागि तपाईंको प्रयोगकर्ता आईडी कर्मचारी रेकर्डको आईडीसँग ठ्याक्कै मिल्नुपर्छ। प्रशासकलाई कर्मचारी रेकर्डको प्राथमिक कि प्रयोगकर्ता आईडीसँग मिलाउन अनुरोध गर्नुहोस्।",
+  "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run. You can still change the outlet filter for stats without affecting this check.":
+    "कुनै पनि कर्मचारी रेकर्डले तपाईंको खाता आईडीलाई आफ्नो प्राथमिक कि जस्तो प्रयोग गरेको छैन। हाजिरी लगाउन/निस्कन प्रशासकलाई Employee.id लाई प्रयोगकर्ता आईडीसँग मिलाउन अनुरोध गर्नुहोस्। तथ्याङ्कका लागि आउटलेट फिल्टर बदल्दा यो जाँच प्रभावित हुँदैन।",
+  "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload.":
+    "पहुँच टोकनबाट प्रयोगकर्ता आईडी पढ्न सकिएन। फेरि साइन इन गर्नुहोस् वा प्रशासकलाई टोकनमा userId वा sub समावेश गर्न अनुरोध गर्नुहोस्।",
+  "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run.":
+    "कुनै पनि कर्मचारी रेकर्डले तपाईंको खाता आईडीलाई आफ्नो प्राथमिक कि जस्तो प्रयोग गरेको छैन। हाजिरी लगाउन/निस्कन Employee.id लाई प्रयोगकर्ता आईडीसँग मिलाउन प्रशासकलाई अनुरोध गर्नुहोस्।",
+  "Your employee record belongs to another outlet than the one selected here. You can still clock in/out; present/absent counts below use the selected outlet roster.":
+    "तपाईंको कर्मचारी रेकर्ड यहाँ छानिएको आउटलेटभन्दा फरक आउटलेटमा छ। तपाईं अझै हाजिरी लगाउन/निस्कन सक्नुहुन्छ; तलको उपस्थिति/अनुपस्थिति गणना छानिएको आउटलेटको सूचीमा आधारित छ।",
   "Enter your credentials to access Highland Meat Processing.": "Highland Meat Processing पहुँच गर्न आफ्नो विवरण प्रविष्ट गर्नुहोस्।",
   "No token received. Please try again.": "टोकन प्राप्त भएन। कृपया फेरि प्रयास गर्नुहोस्।",
   "Something went wrong. Please try again.": "केही गलत भयो। कृपया फेरि प्रयास गर्नुहोस्।",

@@ -19,16 +19,40 @@ export function getRoleFromToken(): string | null {
   return null;
 }
 
-/** Auth user id from access token (`userId` claim). */
-export function getUserIdFromToken(): string | null {
-  if (typeof window === "undefined") return null;
-  const token = getAuthToken();
-  if (!token) return null;
-  const decoded = decodeJwtPayload(token);
-  if (!decoded) return null;
-  const v = decoded.userId;
-  if (typeof v === "string" && v.trim() !== "") return v.trim();
+/** Coerce JWT claim values that represent a user/employee row id (string or numeric). */
+function coerceSubjectIdFromClaim(value: unknown): string | null {
+  if (typeof value === "string" && value.trim() !== "") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return null;
+}
+
+/**
+ * Distinct subject ids from the access token, in typical precedence order.
+ * Clock/employee matching may try each until one equals `Employee.id` on the server.
+ */
+export function getCandidateUserIdsFromToken(): string[] {
+  if (typeof window === "undefined") return [];
+  const token = getAuthToken();
+  if (!token) return [];
+  const decoded = decodeJwtPayload(token);
+  if (!decoded) return [];
+  const keys = ["userId", "sub", "user_id", "id"] as const;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const key of keys) {
+    const s = coerceSubjectIdFromClaim(decoded[key]);
+    if (s && !seen.has(s)) {
+      seen.add(s);
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+/** Primary subject id for auth context (first token claim in {@link getCandidateUserIdsFromToken} order). */
+export function getUserIdFromToken(): string | null {
+  const list = getCandidateUserIdsFromToken();
+  return list[0] ?? null;
 }
 
 /** Outlet id claim from access token (`outletId`), if present. */

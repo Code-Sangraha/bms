@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   IoBusinessOutline,
@@ -46,6 +47,7 @@ function userInitial(): string {
 
 export default function MorePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { search } = useLocation();
   const { t } = useI18n();
   const { roleName } = usePermissions();
@@ -97,6 +99,8 @@ export default function MorePage() {
 
   const handleLogout = async () => {
     await logoutApi();
+    void queryClient.cancelQueries();
+    queryClient.clear();
     clearAuthToken();
     clearStoredUser();
     navigate("/login");

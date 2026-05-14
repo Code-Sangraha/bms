@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProcessingPlants, mergeProcessingPlantOutletFromUsers } from "@/handlers/processingPlant";
 import { getUsers } from "@/handlers/user";
+import { getAccessTierFromSessionClaims } from "@/lib/auth/accessTier";
+import { getAuthToken } from "@/lib/auth/token";
 import {
   BMS_HIGHLAND_CONTEXT_EVENT,
   getRowScopeIdFromUrlOrHighlandSearch,
@@ -45,6 +47,13 @@ export function useRowFilterOutletId(): {
   const isScoped = Boolean(scopedOutletId);
   const scopeEnabled = Boolean(scopedOutletId);
 
+  const authTokenSnapshot = typeof window !== "undefined" ? getAuthToken() ?? "" : "";
+  const scopeTier = useMemo(
+    () => getAccessTierFromSessionClaims(),
+    [location.search, highlandTick, authTokenSnapshot]
+  );
+  const scopeHeavyFetchesEnabled = scopeEnabled && scopeTier !== "outlet_staff";
+
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_KEY,
     queryFn: async () => {
@@ -63,7 +72,7 @@ export function useRowFilterOutletId(): {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: scopeEnabled,
+    enabled: scopeHeavyFetchesEnabled,
     staleTime: 60_000,
   });
 
@@ -74,7 +83,7 @@ export function useRowFilterOutletId(): {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: scopeEnabled,
+    enabled: scopeHeavyFetchesEnabled,
     staleTime: 60_000,
   });
 

@@ -4,9 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ComponentType, useMemo } from "react";
 import {
   LuArrowRight,
-  LuBeef,
   LuBoxes,
-  LuCircleDollarSign,
   LuClipboardList,
   LuPackage,
   LuReceiptText,
@@ -19,9 +17,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
-import { usePermissions } from "@/app/providers/AuthProvider";
+import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
+import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import {
   getDashboardSales,
@@ -44,6 +44,7 @@ const LIVESTOCK_SALES_SUMMARY_QUERY_KEY = ["livestockSales", "summary"];
 const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
+const OUTLETS_QUERY_KEY = ["outlets"];
 const STATIC_ATTENDANCE_PREVIEW = [
   { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
@@ -57,6 +58,26 @@ type DashboardMetricCardProps = {
   toneClassName?: string;
   icon: ComponentType<{ className?: string }>;
 };
+
+type ProcessedLineItem = {
+  transactionId: string;
+  customerName: string;
+  contact: string;
+  type: string;
+  productId: string;
+  productName: string;
+  outletId: string;
+  outletName: string;
+  amount: number;
+  weight: number;
+  quantity: number;
+  date: string;
+};
+
+function resolveSaleOutletId(tx: SaleTransaction): string {
+  const nested = tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "";
+  return String(tx.outletId ?? nested).trim();
+}
 
 function DashboardMetricCard({
   label,
@@ -84,11 +105,36 @@ export default function DashboardPage() {
   const { search } = useLocation();
   const { t } = useI18n();
   const { isScoped, scopedOutletId } = useOutletScope();
-  const { accessTier } = useOutletAccess();
+  const { rowFilterOutletId } = useRowFilterOutletId();
+  const { accessTier, lockedOutletId } = useOutletAccess();
+  const { userOutletId } = useAuth();
   const { canCreate } = usePermissions();
-  const hideLivestockAndOutletBreakdown = accessTier === "outlet_manager";
 
-  const { data: salesResponse, isLoading: salesLoading, isError: salesError, error: salesErrorDetail } = useQuery({
+  const { data: outlets = [] } = useQuery({
+    queryKey: OUTLETS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getOutlets();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
+  const effectiveOutletScopeId = useMemo(() => {
+    if (rowFilterOutletId) return rowFilterOutletId;
+    if (lockedOutletId) return lockedOutletId;
+    if (accessTier === "global") return null;
+    if (!userOutletId) return null;
+    return mainOutletId && userOutletId === mainOutletId ? null : userOutletId;
+  }, [accessTier, lockedOutletId, mainOutletId, rowFilterOutletId, userOutletId]);
+  const isOutletScopedDashboard = Boolean(effectiveOutletScopeId);
+  const canShowUnscopedLivestock = !isOutletScopedDashboard;
+  const showTopOutlets = !isOutletScopedDashboard;
+
+  const { data: salesResponse } = useQuery({
     queryKey: DASHBOARD_SALES_QUERY_KEY,
     queryFn: async () => {
       const result = await getDashboardSales();
@@ -118,9 +164,15 @@ export default function DashboardPage() {
       }
       return result.data.rows;
     },
+    enabled: canShowUnscopedLivestock,
   });
 
-  const { data: salesTransactions = [] } = useQuery({
+  const {
+    data: salesTransactions = [],
+    isLoading: salesTransactionsLoading,
+    isError: salesTransactionsError,
+    error: salesTransactionsErrorDetail,
+  } = useQuery({
     queryKey: SALES_QUERY_KEY,
     queryFn: async () => {
       const result = await getSales();
@@ -132,7 +184,19 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: products = [] } = useQuery({
+  const scopedSalesTransactions = useMemo(() => {
+    if (!effectiveOutletScopeId) return salesTransactions;
+    return (salesTransactions as SaleTransaction[]).filter(
+      (tx) => resolveSaleOutletId(tx) === effectiveOutletScopeId
+    );
+  }, [effectiveOutletScopeId, salesTransactions]);
+
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    isError: productsError,
+    error: productsErrorDetail,
+  } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
     queryFn: async () => {
       const result = await getProducts();
@@ -144,7 +208,12 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: productTypes = [] } = useQuery({
+  const {
+    data: productTypes = [],
+    isLoading: productTypesLoading,
+    isError: productTypesError,
+    error: productTypesErrorDetail,
+  } = useQuery({
     queryKey: PRODUCT_TYPES_QUERY_KEY,
     queryFn: async () => {
       const result = await getProductTypes();
@@ -153,15 +222,15 @@ export default function DashboardPage() {
     },
   });
 
-  const salesData: DashboardSalesData | undefined = salesResponse?.data;
+  const salesLoading = salesTransactionsLoading || productsLoading || productTypesLoading;
+  const salesError = salesTransactionsError || productsError || productTypesError;
+  const salesErrorDetail =
+    salesTransactionsErrorDetail ?? productsErrorDetail ?? productTypesErrorDetail;
 
-  const apiTotalRevenue = salesData?.totalRevenue ?? 0;
-  const apiTotalTransactions = salesData?.totalTransactions ?? 0;
-  const apiTotalWeight = salesData?.totalWeight ?? 0;
-  const apiTotalQuantity = salesData?.totalQuantity ?? 0;
-  const salesByOutlet = (salesData?.salesByOutlet ?? []).slice(0, 5);
-  const salesByProduct = (salesData?.salesByProduct ?? []).slice(0, 5);
-  const salesByCustomer = (salesData?.salesByCustomer ?? []).slice(0, 5);
+  const salesData: DashboardSalesData | undefined = salesResponse?.data;
+  const dashboardSalesByOutlet = salesData?.salesByOutlet ?? [];
+  const dashboardSalesByProduct = salesData?.salesByProduct ?? [];
+  const dashboardSalesByCustomer = salesData?.salesByCustomer ?? [];
 
   const processedTypeIds = useMemo(() => {
     const ids = new Set<string>();
@@ -187,7 +256,7 @@ export default function DashboardPage() {
     return names;
   }, [products, processedTypeIds]);
 
-  const processedLineItems = useMemo(() => {
+  const processedLineItems = useMemo<ProcessedLineItem[]>(() => {
     const toNumber = (value: unknown): number => {
       if (typeof value === "number" && Number.isFinite(value)) return value;
       if (typeof value === "string" && value.trim()) {
@@ -197,19 +266,9 @@ export default function DashboardPage() {
       return 0;
     };
 
-    const rows: Array<{
-      transactionId: string;
-      customerName: string;
-      contact: string;
-      type: string;
-      productName: string;
-      amount: number;
-      weight: number;
-      quantity: number;
-      date: string;
-    }> = [];
+    const rows: ProcessedLineItem[] = [];
 
-    for (const tx of salesTransactions as SaleTransaction[]) {
+    for (const tx of scopedSalesTransactions as SaleTransaction[]) {
       const items = Array.isArray(tx.items) ? tx.items : [];
       const txCustomer =
         (typeof tx.name === "string" && tx.name) ||
@@ -247,7 +306,13 @@ export default function DashboardPage() {
           customerName: txCustomer,
           contact: txContact,
           type: typeName,
+          productId,
           productName: resolvedName,
+          outletId: resolveSaleOutletId(tx),
+          outletName:
+            tx.outlet && typeof tx.outlet.name === "string" && tx.outlet.name.trim()
+              ? tx.outlet.name.trim()
+              : resolveSaleOutletId(tx),
           amount: itemAmount,
           weight: itemWeight,
           quantity: itemQuantity,
@@ -257,7 +322,7 @@ export default function DashboardPage() {
     }
 
     return rows;
-  }, [salesTransactions, processedProductIdSet, processedProductNameSet, t]);
+  }, [scopedSalesTransactions, processedProductIdSet, processedProductNameSet, t]);
 
   const getLivestockDisplay = (sale: LivestockSale): string => {
     const id = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
@@ -282,11 +347,16 @@ export default function DashboardPage() {
     return id || "-";
   };
 
-  const livestockRevenue = livestockSales.reduce(
+  const dashboardLivestockSales = useMemo(
+    () => (canShowUnscopedLivestock ? livestockSales : []),
+    [canShowUnscopedLivestock, livestockSales]
+  );
+
+  const livestockRevenue = dashboardLivestockSales.reduce(
     (sum, row) => sum + (typeof row.amount === "number" ? row.amount : 0),
     0
   );
-  const livestockWeight = livestockSales.reduce(
+  const livestockWeight = dashboardLivestockSales.reduce(
     (sum, row) =>
       sum +
       (typeof row.weight === "number"
@@ -298,7 +368,7 @@ export default function DashboardPage() {
             : 0),
     0
   );
-  const livestockQuantity = livestockSales.reduce(
+  const livestockQuantity = dashboardLivestockSales.reduce(
     (sum, row) =>
       sum +
       (typeof row.quantity === "number"
@@ -308,7 +378,7 @@ export default function DashboardPage() {
           : 1),
     0
   );
-  const livestockTransactions = livestockSales.length;
+  const livestockTransactions = dashboardLivestockSales.length;
 
   const processedTransactions = useMemo(
     () => new Set(processedLineItems.map((row) => row.transactionId)).size,
@@ -354,6 +424,85 @@ export default function DashboardPage() {
     [processedLineItems]
   );
 
+  const derivedSalesByOutlet = useMemo<SalesByOutletItem[]>(() => {
+    if (isOutletScopedDashboard) return [];
+    const outletNames = new Map(outlets.map((outlet) => [outlet.id, outlet.name]));
+    const byOutlet = new Map<string, SalesByOutletItem>();
+    for (const row of processedLineItems) {
+      if (!row.outletId) continue;
+      const prev = byOutlet.get(row.outletId);
+      if (!prev) {
+        byOutlet.set(row.outletId, {
+          outletId: row.outletId,
+          outletName: outletNames.get(row.outletId) ?? (row.outletName || row.outletId),
+          totalAmount: row.amount,
+        });
+      } else {
+        prev.totalAmount += row.amount;
+      }
+    }
+    return Array.from(byOutlet.values()).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 5);
+  }, [isOutletScopedDashboard, outlets, processedLineItems]);
+
+  const derivedSalesByProduct = useMemo<SalesByProductItem[]>(() => {
+    const byProduct = new Map<string, SalesByProductItem>();
+    for (const row of processedLineItems) {
+      const key = row.productId || row.productName.toLowerCase();
+      const prev = byProduct.get(key);
+      if (!prev) {
+        byProduct.set(key, {
+          productId: row.productId || key,
+          productName: row.productName,
+          totalAmount: row.amount,
+          totalQuantity: row.quantity,
+          totalWeight: row.weight,
+        });
+      } else {
+        prev.totalAmount += row.amount;
+        prev.totalQuantity += row.quantity;
+        prev.totalWeight += row.weight;
+      }
+    }
+    return Array.from(byProduct.values()).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 5);
+  }, [processedLineItems]);
+
+  const derivedSalesByCustomer = useMemo<SalesByCustomerItem[]>(() => {
+    const byCustomer = new Map<string, SalesByCustomerItem>();
+    for (const row of processedLineItems) {
+      const key = row.customerName.trim().toLowerCase() || "unknown";
+      const prev = byCustomer.get(key);
+      if (!prev) {
+        byCustomer.set(key, {
+          customerName: row.customerName,
+          totalAmount: row.amount,
+          totalQuantity: row.quantity,
+          totalWeight: row.weight,
+        });
+      } else {
+        prev.totalAmount += row.amount;
+        prev.totalQuantity += row.quantity;
+        prev.totalWeight += row.weight;
+      }
+    }
+    return Array.from(byCustomer.values()).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 5);
+  }, [processedLineItems]);
+
+  const salesByOutlet = derivedSalesByOutlet.length > 0
+    ? derivedSalesByOutlet
+    : showTopOutlets
+      ? dashboardSalesByOutlet.slice(0, 5)
+      : [];
+  const salesByProduct = derivedSalesByProduct.length > 0
+    ? derivedSalesByProduct
+    : isOutletScopedDashboard
+      ? []
+      : dashboardSalesByProduct.slice(0, 5);
+  const salesByCustomer = derivedSalesByCustomer.length > 0
+    ? derivedSalesByCustomer
+    : isOutletScopedDashboard
+      ? []
+      : dashboardSalesByCustomer.slice(0, 5);
+
   const dailySalesRows = useMemo(() => {
     const pad = (n: number) => String(n).padStart(2, "0");
     const toDateKey = (value: string): string => {
@@ -384,7 +533,7 @@ export default function DashboardPage() {
       daily.set(key, current);
     }
 
-    for (const row of livestockSales) {
+    for (const row of dashboardLivestockSales) {
       const dateValue =
         (typeof row.createdAt === "string" && row.createdAt) ||
         (typeof row.date === "string" && row.date) ||
@@ -430,7 +579,7 @@ export default function DashboardPage() {
       }))
       .sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1))
       .slice(0, 10);
-  }, [processedLineItems, livestockSales]);
+  }, [processedLineItems, dashboardLivestockSales]);
 
   const cashflowLast7Days = useMemo((): CashflowDay[] => {
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -449,7 +598,7 @@ export default function DashboardPage() {
       if (!k) continue;
       map.set(k, (map.get(k) ?? 0) + (row.amount || 0));
     }
-    for (const row of livestockSales) {
+    for (const row of dashboardLivestockSales) {
       const raw =
         (typeof row.createdAt === "string" && row.createdAt) ||
         (typeof row.date === "string" && row.date) ||
@@ -474,14 +623,14 @@ export default function DashboardPage() {
       });
     }
     return days;
-  }, [processedLineItems, livestockSales]);
+  }, [processedLineItems, dashboardLivestockSales]);
 
   const totalRevenue = processedRevenue + livestockRevenue;
   const totalTransactions = processedTransactions + livestockTransactions;
   const totalWeight = processedWeight + livestockWeight;
   const totalQuantity = processedQuantity + livestockQuantity;
 
-  const livestockSalesRows = [...livestockSales]
+  const livestockSalesRows = [...dashboardLivestockSales]
     .sort((a, b) => {
       const aTime = new Date(a.createdAt ?? a.date ?? 0).getTime();
       const bTime = new Date(b.createdAt ?? b.date ?? 0).getTime();
@@ -544,7 +693,7 @@ export default function DashboardPage() {
         totalWeight={totalWeight}
         cashflowDays={cashflowLast7Days}
         canCreate={canCreate}
-        outletScopedMobile={hideLivestockAndOutletBreakdown}
+        outletScopedMobile={isOutletScopedDashboard}
       />
       <div className="dashboardHero dashboardHero--hideOnMobile">
         <h1 className="dashboardTitle">{t("Dashboard")}</h1>
@@ -624,7 +773,7 @@ export default function DashboardPage() {
 
             {(salesByOutlet.length > 0 || salesByProduct.length > 0 || salesByCustomer.length > 0) && (
               <div className="dashboardCharts">
-                {salesByOutlet.length > 0 && !hideLivestockAndOutletBreakdown && (
+                {salesByOutlet.length > 0 && showTopOutlets && (
                   <div className="dashboardChartBlock">
                     <h3 className="dashboardChartTitle">{t("Top outlets")}</h3>
                     <div className="dashboardMobileMiniList">
@@ -804,7 +953,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {!hideLivestockAndOutletBreakdown && (
+            {canShowUnscopedLivestock && (
             <div className="dashboardChartBlock dashboardLiveStockBlock">
               <h3 className="dashboardChartTitle">{t("Live Stock Sale Details")}</h3>
               <div className="dashboardCards dashboardCardsLivestock">

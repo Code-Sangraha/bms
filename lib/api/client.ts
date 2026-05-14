@@ -75,11 +75,16 @@ export async function apiRequest<T>(
     const { res, data } = await doRequest<T>(url, headers, options);
 
     if (!res.ok) {
-      if (res.status === 401 && !isRetry && route !== AUTH_ROUTES.REFRESH) {
-        const newToken = await tryRefresh();
-        if (newToken) return apiRequest<T>(route, options, true);
-        clearAuthToken();
-        clearStoredUser();
+      if (res.status === 401 && route !== AUTH_ROUTES.REFRESH) {
+        if (!isRetry) {
+          const newToken = await tryRefresh();
+          if (newToken) return apiRequest<T>(route, options, true);
+          clearAuthToken();
+          clearStoredUser();
+        }
+        // 401 after a successful refresh+retry: keep the session. The token is valid but this
+        // route rejected the caller (e.g. Staff on an admin-only URL, or a stale in-flight
+        // request from a previous user finishing after login).
       } else if (res.status === 401) {
         clearAuthToken();
         clearStoredUser();

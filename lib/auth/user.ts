@@ -56,6 +56,13 @@ export function getStoredOutletId(): string | null {
   return typeof id === "string" && id.trim() !== "" ? id : null;
 }
 
+/** Employee business/login ID from the last employee-shaped login response. */
+export function getStoredEmployeeId(): string | null {
+  const user = getStoredUser();
+  const id = user?.employeeId;
+  return typeof id === "string" && id.trim() !== "" ? id.trim() : null;
+}
+
 /** Outlet display name from last login, if returned by API. */
 export function getStoredOutletName(): string | null {
   const user = getStoredUser();

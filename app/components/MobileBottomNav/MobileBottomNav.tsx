@@ -7,7 +7,6 @@ import {
   IoHomeOutline,
   IoPeopleOutline,
   IoReceiptOutline,
-  IoTimeOutline,
 } from "react-icons/io5";
 import { LuPackage } from "react-icons/lu";
 import type { AccessTier } from "@/lib/auth/accessTier";
@@ -38,19 +37,19 @@ export default function MobileBottomNav({
   const to = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
 
   if (accessTier === "outlet_staff") {
-    const href = to("/dashboard/accounts/clock-in-out");
-    const isClock = pathname.startsWith("/dashboard/accounts/clock-in-out");
+    const href = to("/dashboard/accounts/directory");
+    const isDirectory = pathname.startsWith("/dashboard/accounts/directory");
     return (
       <nav className="mobileBottomNav" aria-label={t("Primary")}>
         <Link
           to={href}
-          className={tabClass(isClock || active === "clock")}
-          aria-current={isClock ? "page" : undefined}
+          className={tabClass(isDirectory || active === "parties")}
+          aria-current={isDirectory ? "page" : undefined}
         >
           <span className="mobileBottomNav__icon" aria-hidden>
-            <IoTimeOutline size={22} />
+            <IoPeopleOutline size={22} />
           </span>
-          <span className="mobileBottomNav__label">{t("Clock In/Out")}</span>
+          <span className="mobileBottomNav__label">{t("Directory")}</span>
         </Link>
       </nav>
     );

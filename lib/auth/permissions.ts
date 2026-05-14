@@ -1,6 +1,6 @@
 /**
  * Role-based permissions: Create, Read, Update, Delete.
- * Admin: all; Manager: no Delete; Staff: Create+Read only; Viewer: Read only.
+ * Admin: all; Manager: no Delete; Staff/Viewer: Read only.
  */
 
 export type Permission = "create" | "read" | "update" | "delete";
@@ -17,7 +17,7 @@ export type Permissions = {
 const ROLE_MATRIX: Record<RoleName, Permissions> = {
   Admin: { create: true, read: true, update: true, delete: true },
   Manager: { create: true, read: true, update: true, delete: false },
-  Staff: { create: true, read: true, update: false, delete: false },
+  Staff: { create: false, read: true, update: false, delete: false },
   Viewer: { create: false, read: true, update: false, delete: false },
 };
 

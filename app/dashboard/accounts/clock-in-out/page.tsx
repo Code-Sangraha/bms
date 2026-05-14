@@ -5,13 +5,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useMemo, useEffect, useState } from "react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getRowScopeIdFromUrlOrHighlandSearch } from "@/lib/outletScope";
-import { getUserIdFromToken } from "@/lib/auth/role";
+import { getCandidateUserIdsFromToken } from "@/lib/auth/role";
 import { getStoredUser } from "@/lib/auth/user";
 import { getEmployees } from "@/handlers/employee";
-import { findEmployeeMatchingAuthSubject } from "@/handlers/employeeMatch";
+import {
+  findEmployeeDirectoryHint,
+  findEmployeeForAttendanceClockAmongCandidates,
+} from "@/handlers/employeeMatch";
 import {
   clockIn as clockInApi,
   clockOut as clockOutApi,
@@ -69,6 +71,8 @@ function findOpenAttendanceToday(
 ): AttendanceRecord | undefined {
   return rows.find(
     (r) =>
+      typeof r.employeeId === "string" &&
+      r.employeeId.trim() !== "" &&
       r.employeeId === employeeRowId &&
       r.clockIn &&
       isClockInToday(r.clockIn) &&
@@ -96,9 +100,7 @@ export default function ClockInOutPage() {
   const queryClient = useQueryClient();
   const { search } = useLocation();
   const { t } = useI18n();
-  const { userOutletId } = useAuth();
-  const { accessTier } = useOutletAccess();
-  const staffLocksOutlet = accessTier === "outlet_staff";
+  const { userOutletId, authUserId, jwtPermissionNames } = useAuth();
   const { rowFilterOutletId } = useRowFilterOutletId();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [clockError, setClockError] = useState<string | null>(null);
@@ -127,13 +129,27 @@ export default function ClockInOutPage() {
     return employees.filter((e) => e.outletId === attendanceOutletId);
   }, [employees, attendanceOutletId]);
 
-  const selfEmployee = useMemo(() => {
-    const jwtId = getUserIdFromToken();
+  /** Backend clocks by JWT user id vs Employee.id only — not filtered by outlet scope. */
+  const { clockEmployee, directoryHint } = useMemo(() => {
     const stored = getStoredUser();
-    return findEmployeeMatchingAuthSubject(employeesInScope, jwtId, stored);
-  }, [employeesInScope]);
+    const jwtSubjectIds = getCandidateUserIdsFromToken();
+    return {
+      clockEmployee: findEmployeeForAttendanceClockAmongCandidates(employees, jwtSubjectIds),
+      directoryHint: findEmployeeDirectoryHint(employees, jwtSubjectIds, stored),
+    };
+  }, [employees, authUserId, jwtPermissionNames]);
 
-  const selfEmployeeDisplay = selfEmployee ? `${selfEmployee.name} (${selfEmployee.employeeId})` : null;
+  const clockEmployeeOutsideSelectedOutlet =
+    !!clockEmployee &&
+    !!attendanceOutletId &&
+    clockEmployee.outletId !== attendanceOutletId;
+
+  const clockEmployeeDisplay = clockEmployee
+    ? `${clockEmployee.name} (${clockEmployee.employeeId})`
+    : null;
+  const directoryHintDisplay = directoryHint
+    ? `${directoryHint.name} (${directoryHint.employeeId})`
+    : null;
 
   const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
     queryKey: attendancesKey,
@@ -148,7 +164,7 @@ export default function ClockInOutPage() {
     },
   });
 
-  const employeeRowId = selfEmployee?.id ?? "";
+  const employeeRowId = clockEmployee?.id ?? "";
 
   const openRecord = useMemo(() => {
     if (!employeeRowId) return undefined;
@@ -172,24 +188,51 @@ export default function ClockInOutPage() {
   }, [openRecord?.clockIn]);
 
   const stats = useMemo(() => {
-    const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
-    const presentIds = new Set(todayRows.map((r) => r.employeeId));
     const roster = attendanceOutletId ? employeesInScope : employees;
+    const rosterIds = new Set(roster.map((e) => e.id));
+    const outletScoped = attendanceOutletId != null;
+
+    const todayRowsAll = attendanceRows.filter(
+      (r) =>
+        r.clockIn &&
+        isClockInToday(r.clockIn) &&
+        typeof r.employeeId === "string" &&
+        r.employeeId.trim() !== ""
+    );
+
+    const todayRowsForStats = !outletScoped
+      ? todayRowsAll
+      : rosterIds.size > 0
+        ? todayRowsAll.filter((r) => rosterIds.has(r.employeeId as string))
+        : [];
+
+    const presentIds = new Set(todayRowsForStats.map((r) => r.employeeId as string));
     const totalStaff = roster.length;
-    const presentToday = presentIds.size;
+    const presentToday = (() => {
+      if (!outletScoped) return presentIds.size;
+      if (rosterIds.size === 0) return 0;
+      return [...rosterIds].filter((id) => presentIds.has(id)).length;
+    })();
     const absentToday = totalStaff > 0 ? Math.max(0, totalStaff - presentToday) : 0;
     const pct = totalStaff > 0 ? Math.round((presentToday / totalStaff) * 100) : 0;
+
     const weeklyHours = attendanceRows.reduce((sum, r) => {
       if (
-        r.clockIn &&
-        isInCurrentWeek(r.clockIn) &&
-        r.hoursWorked != null &&
-        typeof r.hoursWorked === "number"
+        !r.clockIn ||
+        !isInCurrentWeek(r.clockIn) ||
+        r.hoursWorked == null ||
+        typeof r.hoursWorked !== "number"
       ) {
-        return sum + r.hoursWorked;
+        return sum;
       }
-      return sum;
+      const eid = r.employeeId;
+      if (outletScoped) {
+        if (rosterIds.size === 0) return sum;
+        if (typeof eid !== "string" || eid.trim() === "" || !rosterIds.has(eid)) return sum;
+      }
+      return sum + r.hoursWorked;
     }, 0);
+
     return {
       totalStaff,
       presentToday,
@@ -229,9 +272,23 @@ export default function ClockInOutPage() {
 
   const handleClockIn = () => {
     if (!employeeRowId) {
-      setClockError(
-        t("We could not match your login to an employee in this outlet. Ask an admin to verify your employee record.")
-      );
+      if (directoryHint) {
+        setClockError(
+          t(
+            "A directory row matches your login, but clock-in/out only works when your user id matches the employee record id. Ask an admin to link your account (employee primary key = your user id)."
+          )
+        );
+      } else {
+        setClockError(
+          !authUserId
+            ? t(
+                "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
+              )
+            : t(
+                "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run."
+              )
+        );
+      }
       return;
     }
     setClockError(null);
@@ -285,18 +342,38 @@ export default function ClockInOutPage() {
               : t("Start tracking your time by clocking in.")}
           </p>
 
-          {selfEmployeeDisplay ? (
-            <p className="clockInOutHint" role="status">
-              <strong>{t("Clocking in as")}:</strong> {selfEmployeeDisplay}
-            </p>
+          {clockEmployeeDisplay ? (
+            <>
+              <p className="clockInOutHint" role="status">
+                <strong>{t("Clocking in as")}:</strong> {clockEmployeeDisplay}
+              </p>
+              {clockEmployeeOutsideSelectedOutlet ? (
+                <p className="clockInOutHint" role="status">
+                  {t(
+                    "Your employee record belongs to another outlet than the one selected here. You can still clock in/out; present/absent counts below use the selected outlet roster."
+                  )}
+                </p>
+              ) : null}
+            </>
+          ) : directoryHintDisplay ? (
+            <>
+              <p className="clockInOutHint" role="status">
+                <strong>{t("Possible directory match")}:</strong> {directoryHintDisplay}
+              </p>
+              <p className="clockInOutHint" role="status">
+                {t(
+                  "A directory row matches your login, but clock-in/out only works when your user id matches the employee record id. Ask an admin to link your account (employee primary key = your user id)."
+                )}
+              </p>
+            </>
           ) : employees.length > 0 ? (
             <p className="clockInOutHint" role="status">
-              {staffLocksOutlet && attendanceOutletId
+              {!authUserId
                 ? t(
-                    "We could not match your login to an employee in this outlet. Ask an admin to verify your employee record."
+                    "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
                   )
                 : t(
-                    "We could not match your login to an employee record. Adjust outlet scope (?outletId=), or ask an admin to link your account."
+                    "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run. You can still change the outlet filter for stats without affecting this check."
                   )}
             </p>
           ) : null}

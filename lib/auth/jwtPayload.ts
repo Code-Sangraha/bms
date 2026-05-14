@@ -8,9 +8,10 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
     if (parts.length !== 3) return null;
     const payload = parts[1];
     if (!payload) return null;
-    return JSON.parse(
-      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
-    ) as Record<string, unknown>;
+    const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = (4 - (b64.length % 4)) % 4;
+    const padded = b64 + "=".repeat(pad);
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
   } catch {
     return null;
   }

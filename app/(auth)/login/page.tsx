@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
@@ -11,15 +11,22 @@ import {
   getUserFromAuthResponse,
   login as loginApi,
 } from "@/handlers/auth";
-import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
+import {
+  getOutletIdFromToken,
+  getRoleFromToken,
+  syncStoredOutletFromAccessToken,
+} from "@/lib/auth/role";
+import { defaultPathForTier, deriveAccessTier } from "@/lib/auth/accessTier";
+import { normalizeRoleName } from "@/lib/auth/permissions";
 import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
-import { setStoredUser } from "@/lib/auth/user";
+import { getStoredEmployeeId, getStoredOutletId, setStoredUser } from "@/lib/auth/user";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { loginSchema, type LoginFormValues } from "@/schema/auth";
 import "../auth.scss";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
   const {
@@ -94,7 +101,12 @@ export default function LoginPage() {
             setStoredUser({ email: values.email.trim() });
           }
           syncStoredOutletFromAccessToken(token);
-          navigate("/dashboard");
+          const roleName = normalizeRoleName(getRoleFromToken()) ?? (getStoredEmployeeId() ? "Staff" : null);
+          const outletId = getOutletIdFromToken() ?? getStoredOutletId();
+          const accessTier = deriveAccessTier({ roleName, userOutletId: outletId });
+          queryClient.cancelQueries();
+          queryClient.clear();
+          navigate(defaultPathForTier(accessTier, outletId), { replace: true });
         } else {
           setError("root", { message: t("No token received. Please try again.") });
         }
@@ -123,12 +135,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="authForm">
+        <form onSubmit={handleSubmit(onSubmit)} className="authForm" noValidate>
           {errors.root?.message && <p className="authError">{errors.root.message}</p>}
-          <label htmlFor="login-email" className="authField">
+          <label htmlFor="login-identifier" className="authField">
             <span className="authLabel">{t("Email or Employee ID")}</span>
             <input
-              id="login-email"
+              id="login-identifier"
               type="text"
               placeholder={t("e.g. you@example.com or staff ID")}
               className="authInput"

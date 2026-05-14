@@ -28,6 +28,8 @@ import {
   type CreateEmployeeFormValues,
 } from "@/schema/employee";
 import { buildPathWithOutletScope, readOutletScopeFromSearch } from "@/lib/outletScope";
+import { getOutletIdFromToken } from "@/lib/auth/role";
+import { getStoredOutletId } from "@/lib/auth/user";
 import "./directory.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
@@ -67,6 +69,8 @@ export default function DirectoryPage() {
   const { showToast } = useToast();
   const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
   const moreHref = buildPathWithOutletScope("/dashboard/more", scopedOutletId, search);
+  const canManageEmployees = canCreate || canUpdate;
+  const sessionOutletId = getOutletIdFromToken() ?? getStoredOutletId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -98,8 +102,8 @@ export default function DirectoryPage() {
   /** UI-only: outlet managers/staff see employees for their outlet (URL scope wins when set). */
   const directoryOutletFilterId = useMemo(() => {
     if (accessTier === "global") return null;
-    return scopedOutletId ?? userOutletId ?? null;
-  }, [accessTier, scopedOutletId, userOutletId]);
+    return scopedOutletId ?? userOutletId ?? sessionOutletId ?? null;
+  }, [accessTier, scopedOutletId, userOutletId, sessionOutletId]);
 
   const employeesForDirectory = useMemo(() => {
     if (!directoryOutletFilterId) return employees;
@@ -116,6 +120,7 @@ export default function DirectoryPage() {
       }
       return result.data;
     },
+    enabled: canManageEmployees,
   });
 
   const { data: outlets = [] } = useQuery({
@@ -128,6 +133,7 @@ export default function DirectoryPage() {
       }
       return result.data;
     },
+    enabled: canManageEmployees,
   });
 
   const { data: roles = [] } = useQuery({
@@ -140,6 +146,7 @@ export default function DirectoryPage() {
       }
       return result.data;
     },
+    enabled: canManageEmployees,
   });
 
   const {
@@ -299,9 +306,11 @@ export default function DirectoryPage() {
           <p className="pageSubtitle">{t("Employee Directory")}</p>
         </div>
         <div className="directoryHeaderActions">
-          <Link to={moreHref} className="directoryHeaderSettings" aria-label={t("Settings")}>
-            <IoSettingsOutline size={22} aria-hidden />
-          </Link>
+          {accessTier !== "outlet_staff" ? (
+            <Link to={moreHref} className="directoryHeaderSettings" aria-label={t("Settings")}>
+              <IoSettingsOutline size={22} aria-hidden />
+            </Link>
+          ) : null}
           {canCreate ? (
             <button
               type="button"
@@ -452,7 +461,7 @@ export default function DirectoryPage() {
             <p className="directoryFormError">{errors.root.message}</p>
           )}
           <label className="modalField">
-            <span className="label">{t("Employee ID")}</span>
+            <span className="label">{t("Employee Email")}</span>
             <input
               className="input"
               placeholder={t("e.g. TXN-001")}

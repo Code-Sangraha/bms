@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { IoBusinessOutline, IoChevronDown, IoTimeOutline } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
@@ -14,6 +14,7 @@ import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
 import { getOutlets, getMainOutletId, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
+import { getAccessTierFromSessionClaims } from "@/lib/auth/accessTier";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 import {
@@ -158,7 +159,7 @@ const outletScopedManagerMenuSections = highlandPlantMenuSections;
 const outletStaffDrawerSections: MenuSectionBlock[] = [
   {
     titleKey: "attendance",
-    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" }],
+    items: [{ labelKey: "directory", href: "/dashboard/accounts/directory" }],
   },
 ];
 
@@ -455,10 +456,12 @@ function getActivePrimaryId(
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { canCreate } = usePermissions();
   const { userOutletId } = useAuth();
   const { accessTier, lockedOutletId } = useOutletAccess();
+  const sessionAccessTier = getAccessTierFromSessionClaims();
   const { t, locale } = useI18n();
   const { showToast } = useToast();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -503,6 +506,7 @@ export default function Sidebar() {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
+    enabled: sessionAccessTier !== "outlet_staff",
   });
 
   const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
@@ -629,24 +633,24 @@ export default function Sidebar() {
   );
   const handleMenuToggle = useCallback(
     (id: string) => {
-      setActiveMenuId((current) => {
-        const next = current === id ? null : id;
-        if (id === "highland" && next === "highland" && !lockedOutletId) {
-          const nextCtx: HighlandStoredContext = { mode: "main" };
-          setHighlandContext(nextCtx);
-          writeHighlandContextToStorage(nextCtx);
-          navigate(buildPathWithOutletScope(pathname, null, locationSearch), {
-            replace: true,
-          });
-        }
-        return next;
-      });
+      const next = activeMenuId === id ? null : id;
+      setActiveMenuId(next);
+      if (id === "highland" && next === "highland" && !lockedOutletId) {
+        const nextCtx: HighlandStoredContext = { mode: "main" };
+        setHighlandContext(nextCtx);
+        writeHighlandContextToStorage(nextCtx);
+        navigate(buildPathWithOutletScope(pathname, null, locationSearch), {
+          replace: true,
+        });
+      }
     },
-    [navigate, pathname, locationSearch, lockedOutletId]
+    [activeMenuId, navigate, pathname, locationSearch, lockedOutletId]
   );
 
   const handleLogout = async () => {
     await logoutApi();
+    void queryClient.cancelQueries();
+    queryClient.clear();
     clearAuthToken();
     clearStoredUser();
     setActiveMenuId(null);
@@ -842,10 +846,12 @@ export default function Sidebar() {
   }, [subOutletPickerOpen]);
 
   const mobileScopeOutletId =
-    lockedOutletId ??
-    (highlandContext.mode === "plant" && highlandContext.outletId
-      ? highlandContext.outletId
-      : null);
+    accessTier === "outlet_staff"
+      ? null
+      : lockedOutletId ??
+        (highlandContext.mode === "plant" && highlandContext.outletId
+          ? highlandContext.outletId
+          : null);
 
   return (
     <div className="sidebarWrapper">

@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-/** Sign-in accepts app user emails or backend employee identifiers (`employeeId` in the API field named `email`). */
+/**
+ * Sign-in identifier is sent in the JSON field `email` for API compatibility.
+ * Accept any non-empty string — real emails, employee codes (e.g. TXN-001), etc.
+ * Do not use z.email() here.
+ */
 export const loginSchema = z.object({
   email: z.string().trim().min(1, "Email or Employee ID is required"),
   password: z.string().min(1, "Password is required"),

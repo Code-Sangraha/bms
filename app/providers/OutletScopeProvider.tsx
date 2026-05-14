@@ -14,8 +14,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getOutlets } from "@/handlers/outlet";
 import { getProcessingPlants, mergeProcessingPlantOutletFromUsers } from "@/handlers/processingPlant";
 import { getUsers } from "@/handlers/user";
+import { getAccessTierFromSessionClaims } from "@/lib/auth/accessTier";
+import { getAuthToken } from "@/lib/auth/token";
 import { useToast } from "@/app/providers/ToastProvider";
-import { useOptionalOutletAccess } from "@/app/providers/OutletAccessProvider";
+import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { readOutletScopeFromSearch, buildPathWithOutletScope } from "@/lib/outletScope";
 import { useI18n } from "@/app/providers/I18nProvider";
 
@@ -33,12 +35,22 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { t } = useI18n();
-  const lockedOutletId = useOptionalOutletAccess()?.lockedOutletId ?? null;
+  const { lockedOutletId } = useOutletAccess();
 
   const scopedOutletId = useMemo(
     () => readOutletScopeFromSearch(location.search),
     [location.search]
   );
+
+  /** AuthProvider tier can lag one frame; use JWT + stored outlet so Staff never enables admin-only scope fetches. */
+  const authTokenSnapshot = typeof window !== "undefined" ? getAuthToken() ?? "" : "";
+  const scopeAccessTier = useMemo(
+    () => getAccessTierFromSessionClaims(),
+    [location.pathname, location.search, authTokenSnapshot]
+  );
+
+  /** Staff JWT cannot call outlet/plant/user list APIs. */
+  const scopeHeavyFetchesEnabled = Boolean(scopedOutletId) && scopeAccessTier !== "outlet_staff";
 
   const { data: outlets, isFetched, isSuccess, isError } = useQuery({
     queryKey: ["outlets"],
@@ -47,7 +59,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: Boolean(scopedOutletId),
+    enabled: Boolean(scopedOutletId) && scopeAccessTier !== "outlet_staff",
     staleTime: 60_000,
   });
 
@@ -58,7 +70,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: Boolean(scopedOutletId),
+    enabled: scopeHeavyFetchesEnabled,
     staleTime: 60_000,
   });
 
@@ -69,7 +81,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: Boolean(scopedOutletId),
+    enabled: scopeHeavyFetchesEnabled,
     staleTime: 60_000,
   });
 
@@ -94,6 +106,14 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
     if (!isSuccess || !outlets) return;
     if (outlets.some((o) => o.id === scopedOutletId)) {
       invalidHandledRef.current = null;
+      return;
+    }
+    if (scopeAccessTier === "outlet_staff") {
+      if (invalidHandledRef.current === scopedOutletId) return;
+      invalidHandledRef.current = scopedOutletId;
+      const next = buildPathWithOutletScope(location.pathname, null, location.search);
+      navigate(next, { replace: true });
+      showToast(t("Invalid outlet filter was removed."));
       return;
     }
     if (!plantsFetched || !usersFetched) return;
@@ -124,6 +144,7 @@ export function OutletScopeProvider({ children }: { children: ReactNode }) {
     showToast,
     t,
     lockedOutletId,
+    scopeAccessTier,
   ]);
 
   const clearOutletScopeFromUrl = useCallback(() => {
