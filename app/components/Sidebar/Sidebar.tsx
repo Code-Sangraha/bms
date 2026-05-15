@@ -159,7 +159,7 @@ const outletScopedManagerMenuSections = highlandPlantMenuSections;
 const outletStaffDrawerSections: MenuSectionBlock[] = [
   {
     titleKey: "attendance",
-    items: [{ labelKey: "directory", href: "/dashboard/accounts/directory" }],
+    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" }],
   },
 ];
 

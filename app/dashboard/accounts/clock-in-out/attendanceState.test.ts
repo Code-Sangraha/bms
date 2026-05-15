@@ -66,6 +66,55 @@ describe("attendance state", () => {
     expect(getAttendanceStatus(row)).toBe("clocked_out");
   });
 
+  it("prefers the latest open row when duplicate same-day user rows exist", () => {
+    const oldestOpen = record({
+      id: "open-1",
+      userId: "user-1",
+      clockIn: "2026-05-15T11:15:10.598Z",
+    });
+    const completedLaterThanOldest = record({
+      id: "closed-1",
+      userId: "user-1",
+      clockIn: "2026-05-15T11:22:25.869Z",
+      clockOut: "2026-05-15T11:48:02.590Z",
+      updatedAt: "2026-05-15T11:48:02.594Z",
+    });
+    const latestOpen = record({
+      id: "open-2",
+      userId: "user-1",
+      clockIn: "2026-05-15T11:47:52.263Z",
+    });
+
+    expect(
+      findTodayAttendanceForIdentity(
+        [oldestOpen, completedLaterThanOldest, latestOpen],
+        { userId: "user-1" },
+        new Date("2026-05-15T12:04:52.646Z")
+      )?.id
+    ).toBe("open-2");
+  });
+
+  it("uses the latest completed row when no open row remains", () => {
+    const firstClosed = record({
+      id: "closed-1",
+      userId: "user-1",
+      clockIn: "2026-05-15T11:15:10.598Z",
+      clockOut: "2026-05-15T11:47:57.031Z",
+      updatedAt: "2026-05-15T11:47:57.034Z",
+    });
+    const latestClosed = record({
+      id: "closed-2",
+      userId: "user-1",
+      clockIn: "2026-05-15T11:47:52.263Z",
+      clockOut: "2026-05-15T11:50:16.158Z",
+      updatedAt: "2026-05-15T11:50:16.161Z",
+    });
+
+    expect(
+      findTodayAttendanceForIdentity([firstClosed, latestClosed], { userId: "user-1" }, now)?.id
+    ).toBe("closed-2");
+  });
+
   it("restores local fallback only for the same user and date", () => {
     const storage = memoryStorage();
     const row = record({ id: "local-row", userId: "user-1" });
@@ -78,4 +127,3 @@ describe("attendance state", () => {
     expect(storage.data.has(localAttendanceStorageKey("user-1", now))).toBe(true);
   });
 });
-

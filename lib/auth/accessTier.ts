@@ -24,11 +24,11 @@ export const OUTLET_MANAGER_PATH_PREFIXES: string[] = [
   "/dashboard/more",
 ];
 
-export const OUTLET_STAFF_ALLOWED_EXACT: string[] = ["/dashboard/accounts/directory"];
+export const OUTLET_STAFF_ALLOWED_EXACT: string[] = ["/dashboard/accounts/clock-in-out"];
 
 /** Default landing path segments (no query) after guard redirect. */
 export const OUTLET_MANAGER_HOME_PATH = "/dashboard";
-export const OUTLET_STAFF_HOME_PATH = "/dashboard/accounts/directory";
+export const OUTLET_STAFF_HOME_PATH = "/dashboard/accounts/clock-in-out";
 
 export function deriveAccessTier({ roleName, userOutletId }: AccessTierInput): AccessTier {
   if (roleName === "Admin") return "global";

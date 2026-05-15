@@ -101,6 +101,8 @@ function clockInResponseToSnapshot(
     clockOut: data.clockOut ?? null,
     hoursWorked: data.hoursWorked ?? null,
     status: data.status,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
   };
 }
 
@@ -119,6 +121,8 @@ function clockOutResponseToSnapshot(
     clockOut: data.clockOut,
     hoursWorked: data.hoursWorked,
     status: data.status ?? currentRecord?.status ?? true,
+    createdAt: currentRecord?.createdAt,
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -334,6 +338,8 @@ export default function ClockInOutPage() {
               clockOut: todayAttendanceRecord.clockOut ?? new Date().toISOString(),
               hoursWorked: todayAttendanceRecord.hoursWorked ?? null,
               status: todayAttendanceRecord.status,
+              createdAt: todayAttendanceRecord.createdAt,
+              updatedAt: new Date().toISOString(),
             };
             if (typeof window !== "undefined") {
               saveLocalAttendanceSnapshot(window.localStorage, attendanceUserId, snapshot);
@@ -374,7 +380,8 @@ export default function ClockInOutPage() {
 
   const { h, m, s } = formatElapsed(elapsedSeconds);
   const loading = clockInMutation.isPending || clockOutMutation.isPending;
-  const buttonStatus: AttendanceStatus = loading ? "loading" : persistedStatus;
+  const resolvingAttendance = attendancesLoading && !localAttendanceRecord;
+  const buttonStatus: AttendanceStatus = loading || resolvingAttendance ? "loading" : persistedStatus;
 
   const statPresentSub = stats.totalStaff > 0 ? `${stats.pctPresent}% ${t("Present")}` : "";
 

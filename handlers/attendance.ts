@@ -30,6 +30,8 @@ export type AttendanceRecord = {
   clockOut?: string | null;
   hoursWorked?: number | null;
   status: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ClockInResponse = {

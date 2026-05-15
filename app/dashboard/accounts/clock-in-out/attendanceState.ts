@@ -4,7 +4,15 @@ export type AttendanceStatus = "not_clocked_in" | "clocked_in" | "clocked_out" |
 
 export type LocalAttendanceSnapshot = Pick<
   AttendanceRecord,
-  "id" | "employeeId" | "userId" | "clockIn" | "clockOut" | "hoursWorked" | "status"
+  | "id"
+  | "employeeId"
+  | "userId"
+  | "clockIn"
+  | "clockOut"
+  | "hoursWorked"
+  | "status"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 const LOCAL_ATTENDANCE_PREFIX = "bms_attendance_today";
@@ -49,17 +57,41 @@ function rowBelongsToCurrentIdentity(
   return (!!uid && rowUserId === uid) || (!!eid && rowEmployeeId === eid);
 }
 
+function isOpenAttendance(row: AttendanceRecord | LocalAttendanceSnapshot): boolean {
+  return row.clockOut == null || row.clockOut === "";
+}
+
+function timestampValue(value: string | null | undefined): number {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function rowSortTime(row: AttendanceRecord | LocalAttendanceSnapshot): number {
+  return Math.max(
+    timestampValue(row.updatedAt),
+    timestampValue(row.clockOut),
+    timestampValue(row.clockIn),
+    timestampValue(row.createdAt)
+  );
+}
+
 export function findTodayAttendanceForIdentity(
   rows: readonly AttendanceRecord[],
   identity: { userId?: string | null; employeeId?: string | null },
   now = new Date()
 ): AttendanceRecord | undefined {
-  return rows.find(
+  const matches = rows.filter(
     (r) =>
       r.clockIn &&
       isClockInToday(r.clockIn, now) &&
       rowBelongsToCurrentIdentity(r, identity.userId, identity.employeeId)
   );
+  if (matches.length === 0) return undefined;
+
+  const openRows = matches.filter(isOpenAttendance);
+  const candidates = openRows.length > 0 ? openRows : matches;
+  return candidates.reduce((latest, row) => (rowSortTime(row) > rowSortTime(latest) ? row : latest));
 }
 
 export function getAttendanceStatus(
@@ -89,6 +121,8 @@ export function saveLocalAttendanceSnapshot(
     clockOut: record.clockOut ?? null,
     hoursWorked: record.hoursWorked ?? null,
     status: record.status,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   };
   storage.setItem(localAttendanceStorageKey(uid, now), JSON.stringify(snapshot));
 }
@@ -119,9 +153,10 @@ export function readLocalAttendanceSnapshot(
       clockOut: parsed.clockOut ?? null,
       hoursWorked: typeof parsed.hoursWorked === "number" ? parsed.hoursWorked : null,
       status: typeof parsed.status === "boolean" ? parsed.status : true,
+      createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : undefined,
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
     };
   } catch {
     return null;
   }
 }
-
