@@ -10,36 +10,30 @@ import { getRowScopeIdFromUrlOrHighlandSearch } from "@/lib/outletScope";
 import { getCandidateUserIdsFromToken } from "@/lib/auth/role";
 import { getStoredUser } from "@/lib/auth/user";
 import { getEmployees } from "@/handlers/employee";
-import {
-  findEmployeeDirectoryHint,
-  findEmployeeForAttendanceClockAmongCandidates,
-} from "@/handlers/employeeMatch";
+import { findEmployeeForAttendanceClockAmongCandidates } from "@/handlers/employeeMatch";
 import {
   clockIn as clockInApi,
   clockOut as clockOutApi,
   getAttendances,
   type AttendanceRecord,
+  type ClockInResponse,
+  type ClockOutResponse,
 } from "@/handlers/attendance";
+import {
+  findTodayAttendanceForIdentity,
+  getAttendanceStatus,
+  isClockInToday,
+  readLocalAttendanceSnapshot,
+  saveLocalAttendanceSnapshot,
+  type AttendanceStatus,
+  type LocalAttendanceSnapshot,
+} from "./attendanceState";
 import "./clock-in-out.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
 
 function attendanceQueryKey(base: string | null) {
   return ["attendances", base ?? "all"] as const;
-}
-
-function startOfLocalDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function isSameLocalCalendarDay(a: Date, b: Date): boolean {
-  return startOfLocalDay(a).getTime() === startOfLocalDay(b).getTime();
-}
-
-function isClockInToday(clockInIso: string): boolean {
-  return isSameLocalCalendarDay(new Date(clockInIso), new Date());
 }
 
 function startOfWeekMonday(ref: Date): Date {
@@ -65,21 +59,6 @@ function isInCurrentWeek(clockInIso: string): boolean {
   return t >= startOfWeekMonday(now).getTime() && t <= endOfWeekMonday(now).getTime();
 }
 
-function findOpenAttendanceToday(
-  rows: AttendanceRecord[],
-  employeeRowId: string
-): AttendanceRecord | undefined {
-  return rows.find(
-    (r) =>
-      typeof r.employeeId === "string" &&
-      r.employeeId.trim() !== "" &&
-      r.employeeId === employeeRowId &&
-      r.clockIn &&
-      isClockInToday(r.clockIn) &&
-      (r.clockOut == null || r.clockOut === "")
-  );
-}
-
 function formatElapsed(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -95,15 +74,64 @@ function formatWeeklyHours(totalDecimal: number): string {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
+function firstNonEmpty(...values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") return value.trim();
+  }
+  return null;
+}
+
+function isAlreadyClockedMessage(message: string, target: "in" | "out"): boolean {
+  const m = message.toLowerCase();
+  if (target === "in") return m.includes("already") && (m.includes("clocked-in") || m.includes("clocked in"));
+  return m.includes("already") && (m.includes("clocked-out") || m.includes("clocked out"));
+}
+
+function clockInResponseToSnapshot(
+  data: ClockInResponse["data"],
+  fallbackUserId: string | null,
+  fallbackEmployeeId: string | null
+): LocalAttendanceSnapshot | null {
+  if (!data?.id || !data.clockIn) return null;
+  return {
+    id: data.id,
+    employeeId: data.employeeId ?? fallbackEmployeeId ?? null,
+    userId: data.userId ?? fallbackUserId ?? null,
+    clockIn: data.clockIn,
+    clockOut: data.clockOut ?? null,
+    hoursWorked: data.hoursWorked ?? null,
+    status: data.status,
+  };
+}
+
+function clockOutResponseToSnapshot(
+  data: ClockOutResponse["data"],
+  currentRecord: AttendanceRecord | LocalAttendanceSnapshot | null | undefined,
+  fallbackUserId: string | null,
+  fallbackEmployeeId: string | null
+): LocalAttendanceSnapshot | null {
+  if (!data?.id || !data.clockOut) return null;
+  return {
+    id: data.id,
+    employeeId: data.employeeId ?? currentRecord?.employeeId ?? fallbackEmployeeId ?? null,
+    userId: data.userId ?? currentRecord?.userId ?? fallbackUserId ?? null,
+    clockIn: data.clockIn ?? currentRecord?.clockIn ?? new Date().toISOString(),
+    clockOut: data.clockOut,
+    hoursWorked: data.hoursWorked,
+    status: data.status ?? currentRecord?.status ?? true,
+  };
+}
+
 export default function ClockInOutPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { search } = useLocation();
   const { t } = useI18n();
-  const { userOutletId, authUserId, jwtPermissionNames } = useAuth();
+  const { userOutletId, authUserId, jwtPermissionNames, roleName } = useAuth();
   const { rowFilterOutletId } = useRowFilterOutletId();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [clockError, setClockError] = useState<string | null>(null);
+  const [localAttendanceRecord, setLocalAttendanceRecord] = useState<LocalAttendanceSnapshot | null>(null);
 
   const attendanceOutletId = useMemo(() => {
     const fromHighlandUrl = getRowScopeIdFromUrlOrHighlandSearch(search);
@@ -129,27 +157,30 @@ export default function ClockInOutPage() {
     return employees.filter((e) => e.outletId === attendanceOutletId);
   }, [employees, attendanceOutletId]);
 
-  /** Backend clocks by JWT user id vs Employee.id only — not filtered by outlet scope. */
-  const { clockEmployee, directoryHint } = useMemo(() => {
-    const stored = getStoredUser();
-    const jwtSubjectIds = getCandidateUserIdsFromToken();
-    return {
-      clockEmployee: findEmployeeForAttendanceClockAmongCandidates(employees, jwtSubjectIds),
-      directoryHint: findEmployeeDirectoryHint(employees, jwtSubjectIds, stored),
-    };
-  }, [employees, authUserId, jwtPermissionNames]);
+  /** Clock by authenticated User first; keep Employee.id matching only as a legacy fallback. */
+  const storedUser = useMemo(() => getStoredUser(), [authUserId, jwtPermissionNames]);
+  const jwtSubjectIds = useMemo(() => getCandidateUserIdsFromToken(), [authUserId, jwtPermissionNames]);
+
+  const clockEmployee = useMemo(
+    () => findEmployeeForAttendanceClockAmongCandidates(employees, jwtSubjectIds),
+    [employees, jwtSubjectIds]
+  );
+
+  const employeeRowId = clockEmployee?.id ?? null;
+  const attendanceUserId = firstNonEmpty(storedUser?.id, authUserId, ...jwtSubjectIds);
 
   const clockEmployeeOutsideSelectedOutlet =
     !!clockEmployee &&
     !!attendanceOutletId &&
     clockEmployee.outletId !== attendanceOutletId;
 
-  const clockEmployeeDisplay = clockEmployee
-    ? `${clockEmployee.name} (${clockEmployee.employeeId})`
-    : null;
-  const directoryHintDisplay = directoryHint
-    ? `${directoryHint.name} (${directoryHint.employeeId})`
-    : null;
+  const clockIdentityDisplay = firstNonEmpty(
+    storedUser?.fullName,
+    storedUser?.email,
+    clockEmployee ? `${clockEmployee.name} (${clockEmployee.employeeId})` : null,
+    storedUser?.roleName,
+    roleName
+  );
 
   const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
     queryKey: attendancesKey,
@@ -164,28 +195,36 @@ export default function ClockInOutPage() {
     },
   });
 
-  const employeeRowId = clockEmployee?.id ?? "";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setLocalAttendanceRecord(readLocalAttendanceSnapshot(window.localStorage, attendanceUserId));
+  }, [attendanceUserId]);
 
-  const openRecord = useMemo(() => {
-    if (!employeeRowId) return undefined;
-    return findOpenAttendanceToday(attendanceRows, employeeRowId);
-  }, [attendanceRows, employeeRowId]);
+  const todayAttendanceRecord = useMemo(
+    () =>
+      findTodayAttendanceForIdentity(attendanceRows, {
+        userId: attendanceUserId,
+        employeeId: employeeRowId,
+      }) ?? localAttendanceRecord,
+    [attendanceRows, attendanceUserId, employeeRowId, localAttendanceRecord]
+  );
 
-  const isClockedIn = !!openRecord;
+  const persistedStatus = getAttendanceStatus(todayAttendanceRecord);
+  const isClockedIn = persistedStatus === "clocked_in";
 
   useEffect(() => {
-    if (!openRecord?.clockIn) {
+    if (!todayAttendanceRecord?.clockIn || persistedStatus !== "clocked_in") {
       setElapsedSeconds(0);
       return;
     }
     const tick = () => {
-      const start = new Date(openRecord.clockIn).getTime();
+      const start = new Date(todayAttendanceRecord.clockIn).getTime();
       setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
     };
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [openRecord?.clockIn]);
+  }, [persistedStatus, todayAttendanceRecord?.clockIn]);
 
   const stats = useMemo(() => {
     const roster = attendanceOutletId ? employeesInScope : employees;
@@ -246,11 +285,21 @@ export default function ClockInOutPage() {
     mutationFn: () => clockInApi(),
     onSuccess: async (result) => {
       if (result.ok) {
+        const snapshot = clockInResponseToSnapshot(result.data.data, attendanceUserId, employeeRowId);
+        if (snapshot && typeof window !== "undefined") {
+          saveLocalAttendanceSnapshot(window.localStorage, attendanceUserId, snapshot);
+          setLocalAttendanceRecord(snapshot);
+        }
         setClockError(null);
         await queryClient.invalidateQueries({ queryKey: ["attendances"] });
       } else {
         if (result.status === 401) navigate("/login");
-        else setClockError(result.error);
+        else {
+          if (isAlreadyClockedMessage(result.error, "in") && todayAttendanceRecord) {
+            setLocalAttendanceRecord(todayAttendanceRecord);
+          }
+          setClockError(result.error);
+        }
       }
     },
     onError: () => setClockError(t("Something went wrong. Please try again.")),
@@ -260,35 +309,57 @@ export default function ClockInOutPage() {
     mutationFn: () => clockOutApi(),
     onSuccess: async (result) => {
       if (result.ok) {
+        const snapshot = clockOutResponseToSnapshot(
+          result.data.data,
+          todayAttendanceRecord,
+          attendanceUserId,
+          employeeRowId
+        );
+        if (snapshot && typeof window !== "undefined") {
+          saveLocalAttendanceSnapshot(window.localStorage, attendanceUserId, snapshot);
+          setLocalAttendanceRecord(snapshot);
+        }
         setClockError(null);
         await queryClient.invalidateQueries({ queryKey: ["attendances"] });
       } else {
         if (result.status === 401) navigate("/login");
-        else setClockError(result.error);
+        else {
+          const alreadyClockedOut = isAlreadyClockedMessage(result.error, "out");
+          if (alreadyClockedOut && todayAttendanceRecord) {
+            const snapshot: LocalAttendanceSnapshot = {
+              id: todayAttendanceRecord.id,
+              employeeId: todayAttendanceRecord.employeeId ?? employeeRowId ?? null,
+              userId: todayAttendanceRecord.userId ?? attendanceUserId ?? null,
+              clockIn: todayAttendanceRecord.clockIn,
+              clockOut: todayAttendanceRecord.clockOut ?? new Date().toISOString(),
+              hoursWorked: todayAttendanceRecord.hoursWorked ?? null,
+              status: todayAttendanceRecord.status,
+            };
+            if (typeof window !== "undefined") {
+              saveLocalAttendanceSnapshot(window.localStorage, attendanceUserId, snapshot);
+            }
+            setLocalAttendanceRecord(snapshot);
+          }
+          setClockError(
+            alreadyClockedOut
+              ? result.error
+              : `${result.error} ${t(
+                  "Clock-out could not be completed by the server. Please ask an admin to verify today's attendance if this keeps happening."
+                )}`
+          );
+        }
       }
     },
     onError: () => setClockError(t("Something went wrong. Please try again.")),
   });
 
   const handleClockIn = () => {
-    if (!employeeRowId) {
-      if (directoryHint) {
-        setClockError(
-          t(
-            "A directory row matches your login, but clock-in/out only works when your user id matches the employee record id. Ask an admin to link your account (employee primary key = your user id)."
-          )
-        );
-      } else {
-        setClockError(
-          !authUserId
-            ? t(
-                "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
-              )
-            : t(
-                "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run."
-              )
-        );
-      }
+    if (!attendanceUserId && !employeeRowId) {
+      setClockError(
+        t(
+          "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
+        )
+      );
       return;
     }
     setClockError(null);
@@ -296,13 +367,14 @@ export default function ClockInOutPage() {
   };
 
   const handleClockOut = () => {
-    if (!employeeRowId) return;
+    if (!attendanceUserId && !employeeRowId) return;
     setClockError(null);
     clockOutMutation.mutate();
   };
 
   const { h, m, s } = formatElapsed(elapsedSeconds);
   const loading = clockInMutation.isPending || clockOutMutation.isPending;
+  const buttonStatus: AttendanceStatus = loading ? "loading" : persistedStatus;
 
   const statPresentSub = stats.totalStaff > 0 ? `${stats.pctPresent}% ${t("Present")}` : "";
 
@@ -337,15 +409,17 @@ export default function ClockInOutPage() {
             </div>
           </div>
           <p className="clockInOutHint">
-            {isClockedIn
-              ? t("You are clocked in. Click Clock-OUT when you finish.")
-              : t("Start tracking your time by clocking in.")}
+            {buttonStatus === "clocked_out"
+              ? t("You are clocked out for today.")
+              : isClockedIn
+                ? t("You are clocked in. Click Clock-OUT when you finish.")
+                : t("Start tracking your time by clocking in.")}
           </p>
 
-          {clockEmployeeDisplay ? (
+          {clockIdentityDisplay ? (
             <>
               <p className="clockInOutHint" role="status">
-                <strong>{t("Clocking in as")}:</strong> {clockEmployeeDisplay}
+                <strong>{t("Clocking in as")}:</strong> {clockIdentityDisplay}
               </p>
               {clockEmployeeOutsideSelectedOutlet ? (
                 <p className="clockInOutHint" role="status">
@@ -355,26 +429,11 @@ export default function ClockInOutPage() {
                 </p>
               ) : null}
             </>
-          ) : directoryHintDisplay ? (
-            <>
-              <p className="clockInOutHint" role="status">
-                <strong>{t("Possible directory match")}:</strong> {directoryHintDisplay}
-              </p>
-              <p className="clockInOutHint" role="status">
-                {t(
-                  "A directory row matches your login, but clock-in/out only works when your user id matches the employee record id. Ask an admin to link your account (employee primary key = your user id)."
-                )}
-              </p>
-            </>
-          ) : employees.length > 0 ? (
+          ) : !attendanceUserId && !employeeRowId ? (
             <p className="clockInOutHint" role="status">
-              {!authUserId
-                ? t(
-                    "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
-                  )
-                : t(
-                    "No employee directory row uses your account id as its primary key. Ask an admin to set Employee.id to your user id so clock-in/out can run. You can still change the outlet filter for stats without affecting this check."
-                  )}
+              {t(
+                "Could not read your user id from the access token. Sign in again, or ask an admin to include userId or sub in the token payload."
+              )}
             </p>
           ) : null}
 
@@ -383,23 +442,27 @@ export default function ClockInOutPage() {
               {clockError}
             </p>
           )}
-          {isClockedIn ? (
+          {buttonStatus === "clocked_in" ? (
             <button
               type="button"
               className="clockInOutBtn clockInOutBtnPrimary"
               onClick={handleClockOut}
-              disabled={loading || !employeeRowId}
+              disabled={loading || (!attendanceUserId && !employeeRowId)}
             >
-              {loading ? t("Processing…") : t("Clock-OUT")}
+              {buttonStatus === "loading" ? t("Processing…") : t("Clock Out")}
+            </button>
+          ) : buttonStatus === "clocked_out" ? (
+            <button type="button" className="clockInOutBtn clockInOutBtnPrimary" disabled>
+              {t("Clocked Out")}
             </button>
           ) : (
             <button
               type="button"
               className="clockInOutBtn clockInOutBtnPrimary"
               onClick={handleClockIn}
-              disabled={loading || !employeeRowId}
+              disabled={loading || (!attendanceUserId && !employeeRowId)}
             >
-              {loading ? t("Processing…") : t("Clock-IN")}
+              {buttonStatus === "loading" ? t("Processing…") : t("Clock In")}
             </button>
           )}
         </div>

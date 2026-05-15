@@ -18,9 +18,13 @@ export type RegisterPayload = {
 /** `user` is app `User` or `Employee`-shaped payload from `/auth/login` (same field name per API). */
 export type AuthLoggedInProfile = {
   id?: string;
+  roleId?: string;
+  role?: { id?: string; name?: string };
   outletId?: string | null;
   outlet?: { id?: string; name?: string };
   email?: string;
+  fullName?: string;
+  userName?: string;
   /** Employee record: backend login key matches `employeeId`; may omit `email`. */
   employeeId?: string;
   name?: string;
@@ -34,6 +38,7 @@ export type AuthResponseData = {
   refreshToken?: string;
   token?: string;
   user?: AuthLoggedInProfile;
+  permissions?: string[];
   [key: string]: unknown;
 };
 

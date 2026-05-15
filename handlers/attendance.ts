@@ -24,7 +24,7 @@ export type AttendanceRecord = {
   /** May be null when the backend clocks in by user id only. */
   employeeId?: string | null;
   employee?: AttendanceEmployee;
-  userId: string;
+  userId?: string | null;
   user?: AttendanceUser;
   clockIn: string;
   clockOut?: string | null;
@@ -38,9 +38,13 @@ export type ClockInResponse = {
   data?: {
     id: string;
     employeeId?: string | null;
-    userId: string;
+    userId?: string | null;
     clockIn: string;
+    clockOut?: string | null;
+    hoursWorked?: number | null;
     status: boolean;
+    createdAt?: string;
+    updatedAt?: string;
   };
 };
 
@@ -49,9 +53,12 @@ export type ClockOutResponse = {
   message?: string;
   data?: {
     id: string;
-    employeeId: string;
+    employeeId?: string | null;
+    userId?: string | null;
+    clockIn?: string;
     clockOut: string;
     hoursWorked: number;
+    status?: boolean;
   };
 };
 

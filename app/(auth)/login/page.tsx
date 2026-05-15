@@ -52,6 +52,7 @@ export default function LoginPage() {
           const user = getUserFromAuthResponse(result.data);
           if (user != null && typeof user === "object") {
             const outlet = "outlet" in user ? user.outlet : null;
+            const role = "role" in user ? user.role : null;
             const nestedId =
               outlet != null &&
               typeof outlet === "object" &&
@@ -74,6 +75,18 @@ export default function LoginPage() {
               user.outletId.trim() !== ""
                 ? user.outletId.trim()
                 : null;
+            const roleId =
+              "roleId" in user && typeof user.roleId === "string" && user.roleId.trim() !== ""
+                ? user.roleId.trim()
+                : null;
+            const roleName =
+              role != null &&
+              typeof role === "object" &&
+              "name" in role &&
+              typeof (role as { name?: unknown }).name === "string" &&
+              (role as { name: string }).name.trim() !== ""
+                ? (role as { name: string }).name.trim()
+                : null;
             const apiEmployeeId =
               "employeeId" in user &&
               typeof (user as { employeeId?: unknown }).employeeId === "string" &&
@@ -84,18 +97,29 @@ export default function LoginPage() {
               "name" in user && typeof (user as { name?: unknown }).name === "string"
                 ? (user as { name: string }).name.trim()
                 : undefined;
+            const apiUserFullName =
+              "fullName" in user && typeof user.fullName === "string" && user.fullName.trim() !== ""
+                ? user.fullName.trim()
+                : undefined;
             const fromApiEmail =
               "email" in user && typeof user.email === "string" && user.email.trim() !== ""
                 ? user.email.trim()
                 : undefined;
+            const responseData = result.data.data ?? result.data;
+            const permissions = Array.isArray(responseData.permissions)
+              ? responseData.permissions.filter((p): p is string => typeof p === "string")
+              : [];
             const loggedInIdentity = values.email.trim();
             setStoredUser({
               outletId: topOutletId ?? nestedId ?? null,
               outletName: nestedName ?? null,
               id: "id" in user && typeof user.id === "string" ? user.id.trim() || null : undefined,
+              roleId,
+              roleName,
+              permissions,
               email: fromApiEmail ?? apiEmployeeId ?? loggedInIdentity,
               employeeId: apiEmployeeId ?? null,
-              fullName: apiEmployeeName ?? undefined,
+              fullName: apiUserFullName ?? apiEmployeeName ?? undefined,
             });
           } else {
             setStoredUser({ email: values.email.trim() });

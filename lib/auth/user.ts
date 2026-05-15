@@ -8,6 +8,9 @@ const STORED_USER_KEY = "bms_stored_user";
 export type StoredUser = {
   /** Auth user id from login response when present. */
   id?: string | null;
+  roleId?: string | null;
+  roleName?: string | null;
+  permissions?: string[];
   email?: string | null;
   /** Employee business id when logged in as staff with employee profile. */
   employeeId?: string | null;
