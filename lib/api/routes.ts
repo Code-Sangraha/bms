@@ -55,6 +55,7 @@ export const PRODUCT_ROUTES = {
   /** @deprecated Unused: livestock waste UI calls LIVESTOCK_INVENTORY_HISTORY with JSON body instead. */
   LIVESTOCK_WASTE_HISTORY: "/products/livestock/waste-history",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
+  LIVESTOCK_EDIT_SEND_TO_PROCESSING: "/products/livestock/edit-send-to-processing",
   LIVESTOCK_COMPLETE_PROCESSING: "/products/livestock/complete-processing",
   LIVESTOCK_GET_PENDING_PROCESSING: "/products/livestock/get-pending-processing",
   /** GET ?from=YYYY-MM-DD&to=YYYY-MM-DD — placeholder until backend matches doc shape */
@@ -65,6 +66,7 @@ export const PRODUCT_ROUTES = {
   PROCESSED_WASTE_HISTORY: "/products/processed/waste-history",
   /** GET ?fromDate=&toDate=&productId=&type= — restock/deduct movement (query only; no GET body) */
   PROCESSED_INVENTORY_HISTORY: "/products/processed/history",
+  PROCESSED_TRANSFER: "/products/processed/transfer",
 } as const;
 
 export const ROLE_ROUTES = {

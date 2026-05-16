@@ -81,6 +81,10 @@ function firstNonEmpty(...values: Array<unknown>): string | null {
   return null;
 }
 
+function idsMatch(a: string | null | undefined, b: string | null | undefined): boolean {
+  return typeof a === "string" && typeof b === "string" && a.trim() !== "" && a.trim() === b.trim();
+}
+
 function isAlreadyClockedMessage(message: string, target: "in" | "out"): boolean {
   const m = message.toLowerCase();
   if (target === "in") return m.includes("already") && (m.includes("clocked-in") || m.includes("clocked in"));
@@ -205,11 +209,22 @@ export default function ClockInOutPage() {
   }, [attendanceUserId]);
 
   const todayAttendanceRecord = useMemo(
-    () =>
-      findTodayAttendanceForIdentity(attendanceRows, {
+    () => {
+      const localStatus = getAttendanceStatus(localAttendanceRecord);
+      if (
+        localStatus === "clocked_out" &&
+        (idsMatch(localAttendanceRecord?.userId, attendanceUserId) ||
+          idsMatch(localAttendanceRecord?.employeeId, employeeRowId))
+      ) {
+        return localAttendanceRecord;
+      }
+      return (
+        findTodayAttendanceForIdentity(attendanceRows, {
         userId: attendanceUserId,
         employeeId: employeeRowId,
-      }) ?? localAttendanceRecord,
+        }) ?? localAttendanceRecord
+      );
+    },
     [attendanceRows, attendanceUserId, employeeRowId, localAttendanceRecord]
   );
 
@@ -313,13 +328,16 @@ export default function ClockInOutPage() {
     mutationFn: () => clockOutApi(),
     onSuccess: async (result) => {
       if (result.ok) {
+        const clockOutUserMatches =
+          idsMatch(result.data.data?.userId, attendanceUserId) ||
+          idsMatch(result.data.data?.employeeId, employeeRowId);
         const snapshot = clockOutResponseToSnapshot(
           result.data.data,
           todayAttendanceRecord,
           attendanceUserId,
           employeeRowId
         );
-        if (snapshot && typeof window !== "undefined") {
+        if (snapshot && clockOutUserMatches && typeof window !== "undefined") {
           saveLocalAttendanceSnapshot(window.localStorage, attendanceUserId, snapshot);
           setLocalAttendanceRecord(snapshot);
         }

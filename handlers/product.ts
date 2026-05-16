@@ -87,6 +87,21 @@ function normalizeProductDeleteApiResult<T extends DeleteProductResponse>(
   return result;
 }
 
+function normalizeProductMutationApiResult<T extends { success?: boolean; message?: string }>(
+  result: { ok: true; data: T } | { ok: false; error: string; status: number },
+  fallbackMessage: string
+): { ok: true; data: T } | { ok: false; error: string; status: number } {
+  if (!result.ok) return result;
+  if (result.data.success === false) {
+    const msg =
+      typeof result.data.message === "string" && result.data.message.trim()
+        ? result.data.message.trim()
+        : fallbackMessage;
+    return { ok: false, error: msg, status: 200 };
+  }
+  return result;
+}
+
 export async function getProducts(): Promise<
   | { ok: true; data: Product[] }
   | { ok: false; error: string; status: number }
@@ -401,6 +416,7 @@ export async function getLivestockWasteHistory(
 
 export type {
   LivestockInventoryHistoryType,
+  LivestockInventoryHistoryFilterType,
   LivestockInventoryHistoryFilters,
   LivestockInventoryHistoryEntry,
   LivestockInventoryHistoryItemSnapshot,
@@ -885,6 +901,19 @@ export type SendLivestockToProcessingResponse = {
   [key: string]: unknown;
 };
 
+export type EditSendLivestockToProcessingPayload = {
+  batchId: string;
+  livestockItemId: string;
+  quantity: number;
+  weight: number;
+};
+
+export type EditSendLivestockToProcessingResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
 export type CompleteProcessingOutputLine = {
   productId: string;
   weight: number;
@@ -904,10 +933,9 @@ export type CompleteProcessingResponse = {
 };
 
 export type TransferProcessedStockPayload = {
-  sourceProductId: string;
-  destinationProductId: string;
-  sourceOutletId: string;
-  destinationOutletId: string;
+  productId: string;
+  fromOutletId: string;
+  toOutletId: string;
   weight: number;
 };
 
@@ -917,33 +945,18 @@ export async function transferProcessedStock(payload: TransferProcessedStockPayl
     return { ok: false as const, status: 400, error: "Transfer weight must be greater than 0." };
   }
 
-  const deductResult = await deductProduct({
-    id: payload.sourceProductId,
-    weight: amount,
-  });
-  if (!deductResult.ok) return deductResult;
-
-  const restockResult = await restockProduct({
-    id: payload.destinationProductId,
-    outletId: payload.destinationOutletId,
-    weight: amount,
-  });
-  if (restockResult.ok) return restockResult;
-
-  // Best-effort rollback so source stock is not left deducted when destination restock fails.
-  await restockProduct({
-    id: payload.sourceProductId,
-    outletId: payload.sourceOutletId,
-    weight: amount,
-  });
-
-  return {
-    ok: false as const,
-    status: restockResult.status,
-    error:
-      restockResult.error ??
-      "Transfer failed while restocking destination outlet. Source stock deduction was rolled back.",
-  };
+  return normalizeProductMutationApiResult(
+    await apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.PROCESSED_TRANSFER, {
+      method: "POST",
+      body: JSON.stringify({
+        productId: payload.productId,
+        fromOutletId: payload.fromOutletId,
+        toOutletId: payload.toOutletId,
+        weight: amount,
+      }),
+    }),
+    "Failed to transfer processed stock."
+  );
 }
 
 export type PendingLivestockProcessingItem = {
@@ -991,6 +1004,24 @@ export async function sendLivestockToProcessing(payload: SendLivestockToProcessi
       weight: payload.weight,
     }),
   });
+}
+
+export async function editSendLivestockToProcessing(payload: EditSendLivestockToProcessingPayload) {
+  return normalizeProductMutationApiResult(
+    await apiRequest<EditSendLivestockToProcessingResponse>(
+      PRODUCT_ROUTES.LIVESTOCK_EDIT_SEND_TO_PROCESSING,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          batchId: payload.batchId,
+          livestockItemId: payload.livestockItemId,
+          quantity: payload.quantity,
+          weight: payload.weight,
+        }),
+      }
+    ),
+    "Failed to edit pending batch."
+  );
 }
 
 export async function completeLivestockProcessing(payload: CompleteProcessingPayload) {

@@ -30,6 +30,10 @@ import {
   isDateInRange,
   toIsoDateLocal,
 } from "@/app/dashboard/product/lib/inventoryDetailDateRange";
+import {
+  livestockMovementLabel,
+  processedMovementLabel,
+} from "@/app/dashboard/product/lib/inventoryMovementAdapter";
 
 export type InventoryDetailHistoryVariant = "livestock" | "processed";
 
@@ -205,13 +209,13 @@ export default function InventoryDetailHistoryPanel({
     isPending: deductHistoryPending,
     isError: deductHistoryError,
   } = useQuery({
-    queryKey: ["livestockInventoryHistory", "DEDUCT", wasteHistoryId, appliedFrom, appliedTo],
+    queryKey: ["livestockInventoryHistory", "CONSUMED", wasteHistoryId, appliedFrom, appliedTo],
     enabled: isLivestock,
     staleTime: 30_000,
     queryFn: async () => {
       const result = await getLivestockInventoryHistory({
         livestockItemId: wasteHistoryId ?? undefined,
-        type: "DEDUCT",
+        type: "CONSUMED",
         fromDate: appliedFrom,
         toDate: appliedTo,
       });
@@ -404,18 +408,19 @@ export default function InventoryDetailHistoryPanel({
   const renderLivestockMovementRows = (rows: LivestockInventoryHistoryEntry[]) =>
     rows.map((row) => {
       const amt = formatLivestockHistoryAmount(row);
+      const isInbound = row.type === "RESTOCK";
       return (
         <tr key={row.id}>
           <td>{formatHistoryDateTime(row.createdAt)}</td>
           <td>
             <span
               className={
-                row.type === "RESTOCK"
+                isInbound
                   ? "inventoryDetailTypeBadge inventoryDetailTypeBadgeRestock"
                   : "inventoryDetailTypeBadge inventoryDetailTypeBadgeDeduct"
               }
             >
-              {row.type === "RESTOCK" ? t("Restock") : t("Deduct")}
+              {t(livestockMovementLabel(row.type))}
             </span>
           </td>
           <td>{row.livestockItem.name}</td>
@@ -645,7 +650,7 @@ export default function InventoryDetailHistoryPanel({
                             <td>{formatHistoryDateTime(row.createdAt)}</td>
                             <td>
                               <span className="inventoryDetailTypeBadge inventoryDetailTypeBadgeRestock">
-                                {t("Processing (stock in)")}
+                                {t(processedMovementLabel(row.type))}
                               </span>
                             </td>
                             <td>{amt.display}</td>
@@ -765,6 +770,7 @@ export default function InventoryDetailHistoryPanel({
                         <thead>
                           <tr>
                             <th>{t("Column date")}</th>
+                            <th>{t("Column type")}</th>
                             <th>{t("Weight (kg)")}</th>
                             <th>{t("Batch ID")}</th>
                           </tr>
@@ -775,6 +781,11 @@ export default function InventoryDetailHistoryPanel({
                             return (
                               <tr key={row.id}>
                                 <td>{formatHistoryDateTime(row.createdAt)}</td>
+                                <td>
+                                  <span className="inventoryDetailTypeBadge inventoryDetailTypeBadgeDeduct">
+                                    {t(processedMovementLabel(row.type))}
+                                  </span>
+                                </td>
                                 <td>{amt.display}</td>
                                 <td>{row.batchId?.trim() ? row.batchId : "\u2014"}</td>
                               </tr>

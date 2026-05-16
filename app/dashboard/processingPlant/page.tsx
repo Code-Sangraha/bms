@@ -9,6 +9,7 @@ import { useI18n } from "@/app/providers/I18nProvider";
 import { paginate, usePagination } from "@/app/hooks/usePagination";
 import {
   completeLivestockProcessing,
+  editSendLivestockToProcessing,
   getPendingLivestockProcessing,
   getLivestockItemsByProduct,
   getProducts,
@@ -111,6 +112,10 @@ export default function ProcessingPlantPage() {
   const [transferDestinationOutletId, setTransferDestinationOutletId] = useState("");
   const [transferProductId, setTransferProductId] = useState("");
   const [transferWeight, setTransferWeight] = useState("");
+  const [editingPendingBatch, setEditingPendingBatch] =
+    useState<PendingLivestockProcessingItem | null>(null);
+  const [editPendingQuantity, setEditPendingQuantity] = useState("");
+  const [editPendingWeight, setEditPendingWeight] = useState("");
   const [sendHistory, setSendHistory] = useState<ProcessingSendHistoryItem[]>([]);
 
   useEffect(() => {
@@ -308,6 +313,16 @@ export default function ProcessingPlantPage() {
     [processedProducts, transferDestinationOutletId]
   );
 
+  const selectedTransferProduct = useMemo(
+    () => sourceProcessedProducts.find((product) => product.id === transferProductId) ?? null,
+    [sourceProcessedProducts, transferProductId]
+  );
+
+  const selectedTransferProductWeight =
+    selectedTransferProduct && typeof selectedTransferProduct.weight === "number"
+      ? selectedTransferProduct.weight
+      : selectedTransferProduct?.quantity ?? null;
+
   const processedProductsForOutlet = useCallback(
     (outletId: string) =>
       outletId ? processedProducts.filter((product) => product.outletId === outletId) : [],
@@ -493,6 +508,64 @@ export default function ProcessingPlantPage() {
     [pendingProcessing]
   );
 
+  const openEditPendingBatchModal = useCallback((entry: PendingLivestockProcessingItem) => {
+    setEditingPendingBatch(entry);
+    setEditPendingQuantity(typeof entry.quantity === "number" ? String(entry.quantity) : "");
+    setEditPendingWeight(typeof entry.weight === "number" ? String(entry.weight) : "");
+  }, []);
+
+  const closeEditPendingBatchModal = useCallback(() => {
+    setEditingPendingBatch(null);
+    setEditPendingQuantity("");
+    setEditPendingWeight("");
+  }, []);
+
+  const editPendingProcessingMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingPendingBatch?.batchId) {
+        return { ok: false as const, error: t("Batch is required."), status: 400 };
+      }
+      const livestockItemId = editingPendingBatch.livestockItemId;
+      if (!livestockItemId) {
+        return { ok: false as const, error: t("Livestock item is required."), status: 400 };
+      }
+      const quantity = Number(editPendingQuantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return { ok: false as const, error: t("Quantity must be greater than 0."), status: 400 };
+      }
+      const weight = Number(editPendingWeight);
+      if (!Number.isFinite(weight) || weight <= 0) {
+        return { ok: false as const, error: t("Weight must be greater than 0."), status: 400 };
+      }
+
+      return editSendLivestockToProcessing({
+        batchId: editingPendingBatch.batchId,
+        livestockItemId,
+        quantity,
+        weight,
+      });
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        if (result.status === 401) {
+          navigate("/login");
+          return;
+        }
+        showToast(result.error ?? t("Failed to edit pending batch."));
+        return;
+      }
+      closeEditPendingBatchModal();
+      queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
+      showToast(t("Pending batch updated successfully."), "success");
+    },
+    onError: () => {
+      showToast(t("Something went wrong. Please try again."));
+    },
+  });
+
   const completeProcessingMutation = useMutation({
     mutationFn: async () => {
       const wasteWeight = Number(completeWasteWeight);
@@ -584,12 +657,16 @@ export default function ProcessingPlantPage() {
           error: t("Destination outlet does not have this processed product. Create it first."),
         };
       }
+      const sourceWeight =
+        typeof sourceProduct.weight === "number" ? sourceProduct.weight : sourceProduct.quantity;
+      if (sourceWeight < parsedWeight) {
+        return { ok: false as const, error: t("Insufficient stock in source outlet.") };
+      }
 
       return transferProcessedStock({
-        sourceProductId: sourceProduct.id,
-        destinationProductId: destinationProduct.id,
-        sourceOutletId: transferSourceOutletId,
-        destinationOutletId: transferDestinationOutletId,
+        productId: sourceProduct.id,
+        fromOutletId: transferSourceOutletId,
+        toOutletId: transferDestinationOutletId,
         weight: parsedWeight,
       });
     },
@@ -603,6 +680,8 @@ export default function ProcessingPlantPage() {
       setTransferProductId("");
       setTransferWeight("");
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["processedInventoryHistory"] });
+      showToast(t("Processed stock transferred successfully."), "success");
     },
     onError: () => {
       showToast(t("Something went wrong. Please try again."));
@@ -731,6 +810,76 @@ export default function ProcessingPlantPage() {
               <option value="inactive">{t("Inactive")}</option>
             </select>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={editingPendingBatch !== null}
+        title={t("Edit Pending Batch")}
+        subtitle={t("Update quantity and weight while the batch is still pending.")}
+        onClose={closeEditPendingBatchModal}
+        footer={
+          <>
+            <button
+              type="button"
+              className="ppBtnSecondary"
+              onClick={closeEditPendingBatchModal}
+              disabled={editPendingProcessingMutation.isPending}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              className="ppBtnPrimary"
+              onClick={() => editPendingProcessingMutation.mutate()}
+              disabled={
+                editPendingProcessingMutation.isPending ||
+                !editingPendingBatch?.batchId ||
+                !editingPendingBatch?.livestockItemId ||
+                Number(editPendingQuantity) <= 0 ||
+                Number(editPendingWeight) <= 0
+              }
+            >
+              {editPendingProcessingMutation.isPending ? t("Saving...") : t("Save changes")}
+            </button>
+          </>
+        }
+      >
+        <div className="ppModalFields">
+          <div className="ppReadOnlyGrid">
+            <div className="ppReadOnlyField">
+              <span className="ppLabel">{t("Batch ID")}</span>
+              <span className="ppReadOnlyValue ppTableMono">{editingPendingBatch?.batchId ?? "-"}</span>
+            </div>
+            <div className="ppReadOnlyField">
+              <span className="ppLabel">{t("Livestock Item")}</span>
+              <span className="ppReadOnlyValue">
+                {editingPendingBatch?.livestockItemName ?? editingPendingBatch?.itemId ?? "-"}
+              </span>
+            </div>
+          </div>
+          <label className="ppField">
+            <span className="ppLabel">{t("Quantity")}</span>
+            <input
+              className="ppInput"
+              type="number"
+              min={1}
+              step="any"
+              value={editPendingQuantity}
+              onChange={(e) => setEditPendingQuantity(e.target.value)}
+            />
+          </label>
+          <label className="ppField">
+            <span className="ppLabel">{t("Weight")}</span>
+            <input
+              className="ppInput"
+              type="number"
+              min={1}
+              step="any"
+              value={editPendingWeight}
+              onChange={(e) => setEditPendingWeight(e.target.value)}
+            />
+          </label>
         </div>
       </Modal>
 
@@ -1003,8 +1152,8 @@ export default function ProcessingPlantPage() {
       </div>
 
       {/*
-      Transfer Processed Stock Between Outlets — UI disabled; restore by replacing the block below with this card.
-      <div className="ppCard ppCardWorkflow"> ... </div>
+      Transfer Processed Stock Between Outlets is temporarily hidden while transfer bugs are investigated.
+      Keep the implementation here so it can be restored without rebuilding the workflow.
       */}
       {false && (
       <div className="ppCard ppCardWorkflow">
@@ -1033,6 +1182,7 @@ export default function ProcessingPlantPage() {
               onChange={(e) => {
                 setTransferSourceOutletId(e.target.value);
                 setTransferProductId("");
+                setTransferWeight("");
               }}
             >
               <option value="">{t("Select source outlet")}</option>
@@ -1051,11 +1201,15 @@ export default function ProcessingPlantPage() {
               onChange={(e) => setTransferProductId(e.target.value)}
             >
               <option value="">{t("Select processed product")}</option>
-              {sourceProcessedProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
+              {sourceProcessedProducts.map((product) => {
+                const productWeight =
+                  typeof product.weight === "number" ? product.weight : product.quantity;
+                return (
+                  <option key={product.id} value={product.id}>
+                    {`${product.name} (${productWeight} kg)`}
+                  </option>
+                );
+              })}
             </select>
           </label>
           <label className="ppField">
@@ -1094,7 +1248,8 @@ export default function ProcessingPlantPage() {
               !transferSourceOutletId ||
               !transferDestinationOutletId ||
               !transferProductId ||
-              Number(transferWeight) <= 0
+              Number(transferWeight) <= 0 ||
+              (selectedTransferProductWeight !== null && selectedTransferProductWeight < Number(transferWeight))
             }
           >
             {transferProcessedMutation.isPending ? t("Transferring...") : t("Transfer")}
@@ -1122,12 +1277,13 @@ export default function ProcessingPlantPage() {
                 <th scope="col">{t("Livestock Item")}</th>
                 <th scope="col">{t("Quantity")}</th>
                 <th scope="col">{t("Weight")}</th>
+                <th scope="col">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
               {pendingProcessing.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="ppTableEmpty">
+                  <td colSpan={6} className="ppTableEmpty">
                     {t("No pending processing batches.")}
                   </td>
                 </tr>
@@ -1153,6 +1309,16 @@ export default function ProcessingPlantPage() {
                       </td>
                       <td>{typeof quantityValue === "number" ? quantityValue : "-"}</td>
                       <td>{typeof weightValue === "number" ? weightValue : "-"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="ppBtnSecondary ppBtnTableAction"
+                          onClick={() => openEditPendingBatchModal(entry)}
+                          disabled={!entry.livestockItemId}
+                        >
+                          {t("Edit")}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })

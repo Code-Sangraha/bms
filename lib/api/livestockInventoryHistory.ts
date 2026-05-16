@@ -4,11 +4,19 @@ import { PRODUCT_ROUTES } from "@/lib/api/routes";
 import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
-export type LivestockInventoryHistoryType = "RESTOCK" | "DEDUCT";
+export type LivestockInventoryHistoryType =
+  | "RESTOCK"
+  | "DEDUCT"
+  | "SALE"
+  | "SENT_TO_PROCESSING";
+
+export type LivestockInventoryHistoryFilterType =
+  | LivestockInventoryHistoryType
+  | "CONSUMED";
 
 export type LivestockInventoryHistoryFilters = {
   livestockItemId?: string;
-  type?: LivestockInventoryHistoryType;
+  type?: LivestockInventoryHistoryFilterType;
   fromDate?: string;
   toDate?: string;
 };
@@ -71,10 +79,10 @@ function parseItemSnapshot(raw: unknown): LivestockInventoryHistoryItemSnapshot 
 }
 
 function parseHistoryType(raw: unknown): LivestockInventoryHistoryType | null {
-  if (raw === "RESTOCK" || raw === "DEDUCT") return raw;
+  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "SALE" || raw === "SENT_TO_PROCESSING") return raw;
   if (typeof raw === "string") {
     const u = raw.toUpperCase();
-    if (u === "RESTOCK" || u === "DEDUCT") return u;
+    if (u === "RESTOCK" || u === "DEDUCT" || u === "SALE" || u === "SENT_TO_PROCESSING") return u;
   }
   return null;
 }
@@ -155,7 +163,15 @@ function parseEntry(raw: unknown, index: number): LivestockInventoryHistoryEntry
 function buildRequestBody(filters: LivestockInventoryHistoryFilters): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (filters.livestockItemId?.trim()) body.livestockItemId = filters.livestockItemId.trim();
-  if (filters.type === "RESTOCK" || filters.type === "DEDUCT") body.type = filters.type;
+  if (
+    filters.type === "RESTOCK" ||
+    filters.type === "DEDUCT" ||
+    filters.type === "SALE" ||
+    filters.type === "SENT_TO_PROCESSING" ||
+    filters.type === "CONSUMED"
+  ) {
+    body.type = filters.type;
+  }
   if (filters.fromDate?.trim()) body.fromDate = filters.fromDate.trim();
   if (filters.toDate?.trim()) body.toDate = filters.toDate.trim();
   return body;
