@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { MdMoreHoriz } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
@@ -100,6 +101,7 @@ export default function ProcessedProductPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { capabilities } = usePermissions();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOutletId, setSelectedOutletId] = useState("all");
@@ -806,6 +808,7 @@ export default function ProcessedProductPage() {
             }
             role="menu"
           >
+            {capabilities.canEditProducts && (
             <button
               type="button"
               className="rowMenuItem"
@@ -820,6 +823,7 @@ export default function ProcessedProductPage() {
             >
               {t("Edit")}
             </button>
+            )}
             <button
               type="button"
               className="rowMenuItem"
@@ -844,6 +848,7 @@ export default function ProcessedProductPage() {
             >
               {t("View")}
             </button>
+            {capabilities.canDeductProcessedInventory && (
             <button
               type="button"
               className="rowMenuItem"
@@ -860,6 +865,8 @@ export default function ProcessedProductPage() {
             >
               {t("Deduct")}
             </button>
+            )}
+            {capabilities.canDeleteProducts && (
             <button
               type="button"
               className="rowMenuItem rowMenuItemDelete"
@@ -874,6 +881,7 @@ export default function ProcessedProductPage() {
             >
               {t("Delete")}
             </button>
+            )}
           </div>,
           document.body
         )}
@@ -982,7 +990,7 @@ export default function ProcessedProductPage() {
         </div>
       )}
 
-      {productToEdit && (
+      {productToEdit && capabilities.canEditProducts && (
         <ProductEditModal
           isOpen
           product={productToEdit}
@@ -995,7 +1003,7 @@ export default function ProcessedProductPage() {
       )}
 
       <Modal
-        isOpen={!!deductTarget}
+        isOpen={!!deductTarget && capabilities.canDeductProcessedInventory}
         title={t("Deduct processed stock")}
         subtitle={deductTarget?.name ?? ""}
         onClose={() => {
@@ -1061,7 +1069,7 @@ export default function ProcessedProductPage() {
       </Modal>
 
       <ConfirmModal
-        isOpen={!!productToDelete}
+        isOpen={!!productToDelete && capabilities.canDeleteProducts}
         title={t("Delete processed product")}
         message={
           productToDelete

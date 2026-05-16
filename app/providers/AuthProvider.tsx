@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 import { AUTH_CONTEXT_UPDATED_EVENT } from "@/lib/auth/authEvents";
+import type { RoleCapabilities } from "@/lib/auth/capabilities";
+import { getRoleCapabilities } from "@/lib/auth/capabilities";
 import type { Permissions, RoleName } from "@/lib/auth/permissions";
 import { getPermissions, normalizeRoleName } from "@/lib/auth/permissions";
 import {
@@ -38,6 +40,7 @@ type AuthContextValue = {
   /** Fine-grained check against JWT permission names. */
   hasJwtPermission: (name: string) => boolean;
   permissions: Permissions;
+  capabilities: RoleCapabilities;
   refreshRole: () => void;
 };
 
@@ -83,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => getPermissions(roleName ?? getRoleFromToken()),
     [roleName]
   );
+  const capabilities = useMemo(() => getRoleCapabilities(roleName), [roleName]);
 
   const hasJwtPermission = useCallback(
     (name: string) => {
@@ -102,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       jwtPermissionNames,
       hasJwtPermission,
       permissions,
+      capabilities,
       refreshRole,
     }),
     [
@@ -112,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       jwtPermissionNames,
       hasJwtPermission,
       permissions,
+      capabilities,
       refreshRole,
     ]
   );
@@ -132,6 +138,7 @@ export function useAuth(): AuthContextValue {
       jwtPermissionNames: [],
       hasJwtPermission: () => false,
       permissions: getPermissions(null),
+      capabilities: getRoleCapabilities(null),
       refreshRole: () => {},
     };
   }
@@ -148,8 +155,9 @@ export function usePermissions(): Permissions & {
   userOutletName: string | null;
   jwtPermissionNames: string[];
   hasJwtPermission: (name: string) => boolean;
+  capabilities: RoleCapabilities;
 } {
-  const { permissions, roleName, userOutletName, jwtPermissionNames, hasJwtPermission } = useAuth();
+  const { permissions, roleName, userOutletName, jwtPermissionNames, hasJwtPermission, capabilities } = useAuth();
   return {
     ...permissions,
     canCreate: permissions.create,
@@ -160,5 +168,6 @@ export function usePermissions(): Permissions & {
     userOutletName,
     jwtPermissionNames,
     hasJwtPermission,
+    capabilities,
   };
 }

@@ -28,6 +28,7 @@ import {
 } from "@/handlers/processingPlant";
 import { getStoredOutletId } from "@/lib/auth/user";
 import { useToast } from "@/app/providers/ToastProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import "./processingPlant.scss";
 
 const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
@@ -93,6 +94,7 @@ export default function ProcessingPlantPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { capabilities } = usePermissions();
   const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [name, setName] = useState("");
@@ -330,7 +332,7 @@ export default function ProcessingPlantPage() {
   );
 
   const completeFormCanSubmit = useMemo(() => {
-    if (!selectedBatchId || !canManageMainFlow) return false;
+    if (!selectedBatchId || !canManageMainFlow || !capabilities.canCompleteProcessing) return false;
     const waste = Number(completeWasteWeight);
     if (!Number.isFinite(waste) || waste < 0) return false;
     let hasValidLine = false;
@@ -343,7 +345,7 @@ export default function ProcessingPlantPage() {
       hasValidLine = true;
     }
     return hasValidLine;
-  }, [selectedBatchId, canManageMainFlow, completeWasteWeight, completeOutputLines]);
+  }, [selectedBatchId, canManageMainFlow, capabilities.canCompleteProcessing, completeWasteWeight, completeOutputLines]);
 
   const selectedLivestockItem = useMemo(
     () =>
@@ -901,9 +903,9 @@ export default function ProcessingPlantPage() {
             <p className="ppCardDesc">{t("Queue livestock from inventory to a processing plant.")}</p>
           </div>
         </div>
-        {!canManageMainFlow && (
+        {(!canManageMainFlow || !capabilities.canSendToProcessing) && (
           <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only Main Outlet can send livestock to processing and complete processing.")}
+            {t("Only authorized Main Outlet users can send livestock to processing.")}
           </p>
         )}
         <div className="ppFormGrid" role="group" aria-labelledby="pp-card-send-title">
@@ -971,6 +973,7 @@ export default function ProcessingPlantPage() {
             onClick={() => sendToProcessingMutation.mutate()}
             disabled={
               sendToProcessingMutation.isPending ||
+              !capabilities.canSendToProcessing ||
               !canManageMainFlow ||
               !selectedPlantId ||
               !selectedLivestockItemId ||
@@ -997,9 +1000,9 @@ export default function ProcessingPlantPage() {
             </p>
           </div>
         </div>
-        {!canManageMainFlow && (
+        {(!canManageMainFlow || !capabilities.canCompleteProcessing) && (
           <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only Main Outlet can send livestock to processing and complete processing.")}
+            {t("Only authorized Main Outlet users can complete processing.")}
           </p>
         )}
         <div className="ppCompleteForm" role="group" aria-labelledby="pp-card-complete-title">
@@ -1310,6 +1313,7 @@ export default function ProcessingPlantPage() {
                       <td>{typeof quantityValue === "number" ? quantityValue : "-"}</td>
                       <td>{typeof weightValue === "number" ? weightValue : "-"}</td>
                       <td>
+                        {capabilities.canEditProcessingBatches && (
                         <button
                           type="button"
                           className="ppBtnSecondary ppBtnTableAction"
@@ -1318,6 +1322,7 @@ export default function ProcessingPlantPage() {
                         >
                           {t("Edit")}
                         </button>
+                        )}
                       </td>
                     </tr>
                   );

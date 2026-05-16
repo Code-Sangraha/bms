@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import Modal from "@/app/components/Modal/Modal";
@@ -193,6 +194,7 @@ export default function LiveProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { capabilities } = usePermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("all");
   const [isLivestockModalOpen, setIsLivestockModalOpen] = useState(false);
@@ -936,6 +938,7 @@ export default function LiveProductPage() {
           <p className="pageSubtitle">{t("Products of type Live")}</p>
         </div>
         <div className="liveProductHeaderActions">
+          {capabilities.canCreateProducts && (
           <button
             type="button"
             className="addLivestockBtn"
@@ -947,6 +950,7 @@ export default function LiveProductPage() {
           >
             {t("Add Live Stock")}
           </button>
+          )}
           <select
             className="liveProductCategoryFilter"
             value={selectedCategoryId}
@@ -1196,6 +1200,7 @@ export default function LiveProductPage() {
             }
             role="menu"
           >
+            {capabilities.canEditProducts && (
             <button
               type="button"
               className="rowMenuItem"
@@ -1210,6 +1215,7 @@ export default function LiveProductPage() {
             >
               {t("Edit")}
             </button>
+            )}
             <button
               type="button"
               className="rowMenuItem"
@@ -1231,6 +1237,7 @@ export default function LiveProductPage() {
             >
               {t("View")}
             </button>
+            {capabilities.canRestockLivestockInventory && (
             <button
               type="button"
               className="rowMenuItem"
@@ -1245,6 +1252,8 @@ export default function LiveProductPage() {
             >
               {t("Restock")}
             </button>
+            )}
+            {capabilities.canDeductLivestockInventory && (
             <button
               type="button"
               className="rowMenuItem"
@@ -1259,6 +1268,8 @@ export default function LiveProductPage() {
             >
               {t("Deduct")}
             </button>
+            )}
+            {capabilities.canDeleteProducts && (
             <button
               type="button"
               className="rowMenuItem rowMenuItemDelete"
@@ -1273,6 +1284,7 @@ export default function LiveProductPage() {
             >
               {t("Delete")}
             </button>
+            )}
           </div>,
           document.body
         )}
@@ -1387,7 +1399,7 @@ export default function LiveProductPage() {
       )}
 
       <Modal
-        isOpen={isLivestockModalOpen}
+        isOpen={isLivestockModalOpen && capabilities.canCreateProducts}
         title={t("Add Live Stock")}
         subtitle={t("Create a live stock item and map it to product category")}
         onClose={() => {
@@ -1511,7 +1523,7 @@ export default function LiveProductPage() {
       </Modal>
 
       <Modal
-        isOpen={isEditLivestockModalOpen}
+        isOpen={isEditLivestockModalOpen && capabilities.canEditProducts}
         title={t("Update Live Stock Item")}
         subtitle={t("Update selected live stock item details")}
         onClose={() => {
@@ -1646,7 +1658,12 @@ export default function LiveProductPage() {
       </Modal>
 
       <Modal
-        isOpen={stockAdjustModal != null}
+        isOpen={
+          stockAdjustModal != null &&
+          (stockAdjustModal.mode === "restock"
+            ? capabilities.canRestockLivestockInventory
+            : capabilities.canDeductLivestockInventory)
+        }
         title={
           stockAdjustModal?.mode === "deduct"
             ? t("Deduct livestock stock")
@@ -1709,7 +1726,7 @@ export default function LiveProductPage() {
       </Modal>
 
       <ConfirmModal
-        isOpen={itemPendingDelete != null}
+        isOpen={itemPendingDelete != null && capabilities.canDeleteProducts}
         title={t("Delete live stock item")}
         message={
           itemPendingDelete

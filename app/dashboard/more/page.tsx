@@ -134,12 +134,33 @@ export default function MorePage() {
       return [
         { href: to("/dashboard/accounts/analytics"), label: t("Attendance"), icon: IoStatsChartOutline },
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
-        { href: to("/dashboard/accounts/directory"), label: t("Directory"), icon: IoPeopleOutline },
+        { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
+        { href: to("/dashboard/dualPricing"), label: t("Pricelist"), icon: IoPricetagOutline },
         {
           href: to("/dashboard/invoices"),
           label: t("Sales & Billing"),
           icon: IoStatsChartOutline,
         },
+      ] as const;
+    }
+    if (accessTier === "outlet_staff") {
+      return [
+        { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
+        {
+          href: to("/dashboard/invoices"),
+          label: t("Sales & Billing"),
+          icon: IoStatsChartOutline,
+        },
+        {
+          href: to("/dashboard/product"),
+          label: t("Inventory"),
+          icon: IoBusinessOutline,
+        },
+      ] as const;
+    }
+    if (accessTier === "driver") {
+      return [
+        { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
       ] as const;
     }
     return [] as const;

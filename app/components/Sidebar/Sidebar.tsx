@@ -13,6 +13,7 @@ import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { logout as logoutApi } from "@/handlers/auth";
+import type { RoleCapabilities } from "@/lib/auth/capabilities";
 import { getOutlets, getMainOutletId, getSubOutletsForScope, type Outlet } from "@/handlers/outlet";
 import { getAccessTierFromSessionClaims } from "@/lib/auth/accessTier";
 import { clearAuthToken } from "@/lib/auth/token";
@@ -61,6 +62,7 @@ type MenuItem = {
   labelKey: TranslationKey;
   href: string;
   permission?: "create";
+  capability?: keyof RoleCapabilities;
 };
 
 type MenuSectionBlock = {
@@ -82,6 +84,16 @@ function getFlatMenuItems(menu: RailMenu): MenuItem[] {
     return menu.sections.flatMap((section) => section.items);
   }
   return menu.items;
+}
+
+function menuItemIsVisible(
+  entry: MenuItem,
+  canCreate: boolean,
+  capabilities: RoleCapabilities
+): boolean {
+  if (entry.capability && !capabilities[entry.capability]) return false;
+  if (entry.permission === "create" && !canCreate) return false;
+  return true;
 }
 
 type BeforeInstallPromptEvent = Event & {
@@ -132,15 +144,19 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
     titleKey: "salesBilling",
     items: [
       { labelKey: "analytics", href: "/dashboard/invoices" },
-      { labelKey: "pointOfSale", href: "/dashboard/invoices/new", permission: "create" },
+      { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
+      { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", capability: "canCreateLivestockSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
     ],
   },
   {
     titleKey: "product",
     items: [
+      { labelKey: "live", href: "/dashboard/product/liveProduct" },
       { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
       { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+      { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" },
+      { labelKey: "processingPlant", href: "/dashboard/processingPlant", capability: "canSendToProcessing" },
     ],
   },
   {
@@ -158,8 +174,31 @@ const outletScopedManagerMenuSections = highlandPlantMenuSections;
 
 const outletStaffDrawerSections: MenuSectionBlock[] = [
   {
+    titleKey: "salesBilling",
+    items: [
+      { labelKey: "analytics", href: "/dashboard/invoices", capability: "canViewProcessedSales" },
+      { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
+      { labelKey: "transactions", href: "/dashboard/invoices/transaction", capability: "canViewTransactions" },
+    ],
+  },
+  {
+    titleKey: "product",
+    items: [
+      { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" },
+      { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewInventory" },
+      { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewInventory" },
+    ],
+  },
+  {
     titleKey: "attendance",
-    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" }],
+    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out", capability: "canClockInOut" }],
+  },
+];
+
+const driverDrawerSections: MenuSectionBlock[] = [
+  {
+    titleKey: "attendance",
+    items: [{ labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out", capability: "canClockInOut" }],
   },
 ];
 
@@ -378,13 +417,14 @@ function drawerLinkIsActive(to: string, pathname: string, locationSearch: string
 function longestActiveDrawerHref(
   sections: MenuSectionBlock[],
   canCreate: boolean,
+  capabilities: RoleCapabilities,
   pathname: string,
   locationSearch: string,
   linkForItem: (href: string) => string
 ): string | null {
   const flat = sections.flatMap((section) =>
     section.items
-      .filter((entry) => (entry.permission === "create" ? canCreate : true))
+      .filter((entry) => menuItemIsVisible(entry, canCreate, capabilities))
       .map((entry) => ({ href: entry.href, to: linkForItem(entry.href) }))
   );
   const matches = flat.filter((e) => drawerLinkIsActive(e.to, pathname, locationSearch));
@@ -403,6 +443,7 @@ function getActivePrimaryId(
   search: string,
   railItems: SidebarRailItem[],
   canCreate: boolean,
+  capabilities: RoleCapabilities,
   openMenuId: string | null
 ): string | null {
   type Candidate = { id: string; hrefLen: number };
@@ -411,7 +452,7 @@ function getActivePrimaryId(
   for (const item of railItems) {
     const flat = getFlatMenuItems(item.menu as RailMenu);
     const visible = flat.filter(
-      (entry) => entry.permission !== "create" || canCreate
+      (entry) => menuItemIsVisible(entry, canCreate, capabilities)
     );
     const longest = longestMatchingHrefInMenu(visible, pathname);
     if (longest) {
@@ -458,7 +499,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
-  const { canCreate } = usePermissions();
+  const { canCreate, capabilities } = usePermissions();
   const { userOutletId } = useAuth();
   const { accessTier, lockedOutletId } = useOutletAccess();
   const sessionAccessTier = getAccessTierFromSessionClaims();
@@ -483,13 +524,27 @@ export default function Sidebar() {
     []
   );
 
+  const driverRailItem = useMemo(
+    (): (typeof sidebarConfig.sections)[number]["items"][number] => ({
+      id: STAFF_HUB_ID,
+      href: "#",
+      icon: <IoTimeOutline size={20} />,
+      menu: {
+        titleKey: "attendance" as const,
+        sections: driverDrawerSections,
+      },
+    }),
+    []
+  );
+
   const sectionRailItems = useMemo(() => {
+    if (accessTier === "driver") return [driverRailItem];
     if (accessTier === "outlet_staff") return [staffRailItem];
     if (accessTier === "outlet_manager") {
       return sidebarConfig.sections[0].items.filter((i) => i.id === "highland");
     }
     return sidebarConfig.sections[0].items;
-  }, [accessTier, staffRailItem]);
+  }, [accessTier, driverRailItem, staffRailItem]);
 
   const allItems = useMemo(
     () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],
@@ -564,23 +619,25 @@ export default function Sidebar() {
         locationSearch,
         primaryRailItems,
         canCreate,
+        capabilities,
         activeMenuId
       ),
-    [pathname, locationSearch, primaryRailItems, canCreate, activeMenuId]
+    [pathname, locationSearch, primaryRailItems, canCreate, capabilities, activeMenuId]
   );
 
   const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
   const activeHrefInOpenMenu = useMemo(() => {
     if (!activeMenu) return null;
     const visible = getFlatMenuItems(activeMenu as RailMenu).filter(
-      (entry) => entry.permission !== "create" || canCreate
+      (entry) => menuItemIsVisible(entry, canCreate, capabilities)
     );
     if (activeMenuId === STAFF_HUB_ID && isGroupedRailMenu(activeMenu as RailMenu)) {
       const linkFor = (href: string) =>
         lockedOutletId ? buildPathWithOutletScope(href, lockedOutletId, "") : href;
       return longestActiveDrawerHref(
-        outletStaffDrawerSections,
+        accessTier === "driver" ? driverDrawerSections : outletStaffDrawerSections,
         canCreate,
+        capabilities,
         pathname,
         locationSearch,
         linkFor
@@ -601,6 +658,7 @@ export default function Sidebar() {
       return longestActiveDrawerHref(
         sections,
         canCreate,
+        capabilities,
         pathname,
         locationSearch,
         linkFor
@@ -612,6 +670,7 @@ export default function Sidebar() {
     pathname,
     locationSearch,
     canCreate,
+    capabilities,
     activeMenuId,
     highlandContext,
     highlandMainSections,
@@ -672,7 +731,9 @@ export default function Sidebar() {
 
     const sections =
       activeMenuId === STAFF_HUB_ID
-        ? outletStaffDrawerSections
+        ? accessTier === "driver"
+          ? driverDrawerSections
+          : outletStaffDrawerSections
         : activeMenuId === "highland" &&
             ((highlandContext.mode === "plant" && highlandContext.outletId) ||
               (accessTier === "outlet_manager" && lockedOutletId))
@@ -682,7 +743,7 @@ export default function Sidebar() {
       .map((section) => ({
         section,
         items: section.items.filter((entry) =>
-          entry.permission === "create" ? canCreate : true
+          menuItemIsVisible(entry, canCreate, capabilities)
         ),
       }))
       .filter((b) => b.items.length > 0);
@@ -705,6 +766,7 @@ export default function Sidebar() {
     pathname,
     locationSearch,
     canCreate,
+    capabilities,
     activeHrefInOpenMenu,
     allItems,
     highlandContext,
@@ -1095,7 +1157,9 @@ export default function Sidebar() {
             (isGroupedRailMenu(activeMenu as RailMenu)
               ? (
                   (() => {
-                    if (activeMenuId === STAFF_HUB_ID) return outletStaffDrawerSections;
+                    if (activeMenuId === STAFF_HUB_ID) {
+                      return accessTier === "driver" ? driverDrawerSections : outletStaffDrawerSections;
+                    }
                     const useScopedPlantMenu =
                       activeMenuId === "highland" &&
                       ((highlandContext.mode === "plant" && highlandContext.outletId) ||
@@ -1105,7 +1169,7 @@ export default function Sidebar() {
                   })()
                 ).map((section) => {
                         const visibleItems = section.items.filter((entry) =>
-                          entry.permission === "create" ? canCreate : true
+                          menuItemIsVisible(entry, canCreate, capabilities)
                         );
                         if (visibleItems.length === 0) return null;
 

@@ -42,7 +42,7 @@ export default function ProductPage() {
   const { search } = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const { canCreate } = usePermissions();
+  const { canCreate, capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
   const { scopedOutletId, isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
@@ -499,6 +499,7 @@ export default function ProductPage() {
                       )}
                   </div>
                 </div>
+                {(capabilities.canEditProducts || capabilities.canDeleteProducts) && (
                 <div className="cardTopActions">
                   <div
                     className="cardMenuWrap"
@@ -519,6 +520,7 @@ export default function ProductPage() {
                     </button>
                     {openMenuId === product.id && (
                       <div className="cardMenuDropdown">
+                        {capabilities.canEditProducts && (
                         <button
                           type="button"
                           className="cardMenuItem cardMenuItemEditMobile"
@@ -531,6 +533,8 @@ export default function ProductPage() {
                         >
                           {t("Edit")}
                         </button>
+                        )}
+                        {capabilities.canDeleteProducts && (
                         <button
                           type="button"
                           className="cardMenuItem cardMenuItemDanger"
@@ -543,10 +547,12 @@ export default function ProductPage() {
                         >
                           {t("Delete")}
                         </button>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="productCardBody">
@@ -560,6 +566,7 @@ export default function ProductPage() {
                     <dd>{getOutletName(product)}</dd>
                   </div>
                 </dl>
+                {capabilities.canEditProducts && (
                 <div className="cardEditSlot">
                   <button
                     type="button"
@@ -569,6 +576,7 @@ export default function ProductPage() {
                     {t("Edit")}
                   </button>
                 </div>
+                )}
               </div>
             </article>
           ))}
@@ -586,7 +594,7 @@ export default function ProductPage() {
         />
       )}
 
-      {selectedProduct && (
+      {selectedProduct && capabilities.canEditProducts && (
         <ProductEditModal
           isOpen={Boolean(selectedProductId)}
           product={selectedProduct}
@@ -599,7 +607,7 @@ export default function ProductPage() {
       )}
 
       <ConfirmModal
-        isOpen={!!productToDelete}
+        isOpen={!!productToDelete && capabilities.canDeleteProducts}
         title={t("Delete product")}
         message={
           productToDelete

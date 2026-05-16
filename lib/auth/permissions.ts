@@ -5,7 +5,7 @@
 
 export type Permission = "create" | "read" | "update" | "delete";
 
-export type RoleName = "Admin" | "Manager" | "Staff" | "Viewer";
+export type RoleName = "Admin" | "Manager" | "Staff" | "Driver" | "Viewer";
 
 export type Permissions = {
   create: boolean;
@@ -16,8 +16,9 @@ export type Permissions = {
 
 const ROLE_MATRIX: Record<RoleName, Permissions> = {
   Admin: { create: true, read: true, update: true, delete: true },
-  Manager: { create: true, read: true, update: true, delete: false },
+  Manager: { create: true, read: true, update: false, delete: false },
   Staff: { create: false, read: true, update: false, delete: false },
+  Driver: { create: false, read: true, update: false, delete: false },
   Viewer: { create: false, read: true, update: false, delete: false },
 };
 
@@ -62,6 +63,9 @@ const ROLE_NAME_ALIASES: Record<string, RoleName> = {
   "outlet staff": "Staff",
   operator: "Staff",
   specialist: "Staff",
+  driver: "Driver",
+  delivery: "Driver",
+  "delivery driver": "Driver",
   viewer: "Viewer",
   readonly: "Viewer",
   "read only": "Viewer",

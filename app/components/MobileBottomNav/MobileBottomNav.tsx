@@ -37,7 +37,7 @@ export default function MobileBottomNav({
 
   const to = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
 
-  if (accessTier === "outlet_staff") {
+  if (accessTier === "driver") {
     const href = to("/dashboard/accounts/clock-in-out");
     const isClockInOut = pathname.startsWith("/dashboard/accounts/clock-in-out");
     return (

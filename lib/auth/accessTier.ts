@@ -3,7 +3,7 @@ import { normalizeRoleName } from "@/lib/auth/permissions";
 import { getOutletIdFromToken, getRoleFromToken } from "@/lib/auth/role";
 import { getStoredEmployeeId, getStoredOutletId } from "@/lib/auth/user";
 
-export type AccessTier = "global" | "outlet_manager" | "outlet_staff";
+export type AccessTier = "global" | "outlet_manager" | "outlet_staff" | "driver";
 
 export type AccessTierInput = {
   roleName: RoleName | null;
@@ -16,15 +16,24 @@ export type AccessTierInput = {
  * — use isPathAllowedForTier for correct handling.
  */
 export const OUTLET_MANAGER_PATH_PREFIXES: string[] = [
+  "/dashboard/outlet",
+  "/dashboard/dualPricing",
   "/dashboard/invoices",
   "/dashboard/product",
+  "/dashboard/processingPlant",
   "/dashboard/accounts/analytics",
   "/dashboard/accounts/clock-in-out",
-  "/dashboard/accounts/directory",
   "/dashboard/more",
 ];
 
-export const OUTLET_STAFF_ALLOWED_EXACT: string[] = ["/dashboard/accounts/clock-in-out"];
+export const OUTLET_STAFF_PATH_PREFIXES: string[] = [
+  "/dashboard/invoices",
+  "/dashboard/product",
+  "/dashboard/accounts/clock-in-out",
+  "/dashboard/more",
+];
+
+export const DRIVER_ALLOWED_EXACT: string[] = ["/dashboard/accounts/clock-in-out"];
 
 /** Default landing path segments (no query) after guard redirect. */
 export const OUTLET_MANAGER_HOME_PATH = "/dashboard";
@@ -32,6 +41,7 @@ export const OUTLET_STAFF_HOME_PATH = "/dashboard/accounts/clock-in-out";
 
 export function deriveAccessTier({ roleName, userOutletId }: AccessTierInput): AccessTier {
   if (roleName === "Admin") return "global";
+  if (roleName === "Driver") return "driver";
   if (roleName === "Staff") return "outlet_staff";
   if (userOutletId) return "outlet_manager";
   /** Non-admin without outlet: treat as global-style navigation (rare); avoid locking URL. */
@@ -56,8 +66,12 @@ export function isPathAllowedForTier(pathname: string, tier: AccessTier): boolea
 
   if (tier === "global") return true;
 
+  if (tier === "driver") {
+    return DRIVER_ALLOWED_EXACT.some((allowed) => p === allowed || p.startsWith(`${allowed}/`));
+  }
+
   if (tier === "outlet_staff") {
-    return OUTLET_STAFF_ALLOWED_EXACT.some((allowed) => p === allowed || p.startsWith(`${allowed}/`));
+    return OUTLET_STAFF_PATH_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
   }
 
   if (isOutletManagerDashboardHome(p)) return true;
@@ -66,7 +80,7 @@ export function isPathAllowedForTier(pathname: string, tier: AccessTier): boolea
 }
 
 export function defaultPathForTier(tier: AccessTier, withOutletId: string | null): string {
-  if (tier === "outlet_staff") {
+  if (tier === "outlet_staff" || tier === "driver") {
     return OUTLET_STAFF_HOME_PATH;
   }
   if (tier === "outlet_manager") {

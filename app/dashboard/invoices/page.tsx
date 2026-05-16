@@ -100,7 +100,7 @@ export default function InvoicesAnalyticsPage() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const { t } = useI18n();
-  const { canCreate } = usePermissions();
+  const { capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [dateRange, setDateRange] = useState<DateRangeLabel>("12 months");
@@ -480,7 +480,7 @@ export default function InvoicesAnalyticsPage() {
           </span>
           <span className="invoicesMobileHub__label">{t("Transactions")}</span>
         </Link>
-        {canCreate ? (
+        {capabilities.canCreateProcessedSales ? (
           <Link to={hubTo("/dashboard/invoices/new")} className="invoicesMobileHub__card">
             <span className="invoicesMobileHub__icon" aria-hidden>
               <LuShoppingCart size={24} />
@@ -488,7 +488,7 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Processed Sale")}</span>
           </Link>
         ) : null}
-        {canCreate && canUseGlobalSalesLinks ? (
+        {capabilities.canCreateLivestockSales && canUseGlobalSalesLinks ? (
           <Link to={hubTo("/dashboard/invoices/livestock-sales")} className="invoicesMobileHub__card">
             <span className="invoicesMobileHub__icon" aria-hidden>
               <LuBeef size={24} />

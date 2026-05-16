@@ -62,7 +62,7 @@ function resolveName(
 export default function DualPricingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { canCreate } = usePermissions();
+  const { capabilities } = usePermissions();
   const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<DualPricing | null>(null);
@@ -284,7 +284,7 @@ export default function DualPricingPage() {
             {t("Manage retail and wholesale pricing")}
           </p>
         </div>
-        {canCreate && (
+        {capabilities.canEditDualPricing && (
           <button
             type="button"
             className="button buttonPrimary dualPricingUpgradeBtn"
@@ -341,6 +341,7 @@ export default function DualPricingPage() {
                     getOutletName(item)
                   )}
                 </h3>
+                {capabilities.canEditDualPricing && (
                 <div className="dualPricingCardActions">
                   <button
                     type="button"
@@ -367,6 +368,7 @@ export default function DualPricingPage() {
                     </svg>
                   </button>
                 </div>
+                )}
               </div>
               <div className="dualPricingCardBody">
                 <p className="dualPricingCardRow">
@@ -392,7 +394,7 @@ export default function DualPricingPage() {
       </div>
 
       <ConfirmModal
-        isOpen={!!itemToDelete}
+        isOpen={!!itemToDelete && capabilities.canEditDualPricing}
         title={t("Delete dual pricing")}
         message={
           itemToDelete
@@ -408,7 +410,7 @@ export default function DualPricingPage() {
       />
 
       <Modal
-        isOpen={!!editingItem}
+        isOpen={!!editingItem && capabilities.canEditDualPricing}
         title={t("Edit dual pricing")}
         subtitle={editingItem?.id}
         onClose={() => setEditingItem(null)}

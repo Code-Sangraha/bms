@@ -4,11 +4,39 @@ import { useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { defaultPathForTier, isPathAllowedForTier } from "@/lib/auth/accessTier";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
+import type { RoleCapabilities } from "@/lib/auth/capabilities";
+
+function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabilities): boolean {
+  const p = pathname.replace(/\/$/, "") || "/";
+  if (p === "/dashboard") return true;
+  if (p.startsWith("/dashboard/outlet")) return capabilities.canViewOutlets;
+  if (p.startsWith("/dashboard/dualPricing")) return capabilities.canViewDualPricing;
+  if (p.startsWith("/dashboard/processingPlant")) {
+    return capabilities.canSendToProcessing || capabilities.canCompleteProcessing;
+  }
+  if (p.startsWith("/dashboard/invoices/livestock-sales")) return capabilities.canCreateLivestockSales;
+  if (p.startsWith("/dashboard/invoices/customer-types")) return false;
+  if (p.startsWith("/dashboard/invoices/new")) return capabilities.canCreateProcessedSales;
+  if (p.startsWith("/dashboard/invoices/transaction")) return capabilities.canViewTransactions;
+  if (p.startsWith("/dashboard/invoices")) {
+    return capabilities.canViewProcessedSales || capabilities.canViewLivestockSales;
+  }
+  if (p.startsWith("/dashboard/product/productType")) return capabilities.canCreateProducts;
+  if (p.startsWith("/dashboard/product/livestockCategory")) return capabilities.canCreateProducts;
+  if (p.startsWith("/dashboard/product")) return capabilities.canViewInventory;
+  if (p.startsWith("/dashboard/accounts/analytics")) return capabilities.canViewAttendance;
+  if (p.startsWith("/dashboard/accounts/clock-in-out")) return capabilities.canClockInOut;
+  if (p.startsWith("/dashboard/accounts/directory")) return false;
+  if (p.startsWith("/dashboard/more")) return true;
+  return true;
+}
 
 export default function ScopedRoutesGuard({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { accessTier, lockedOutletId } = useOutletAccess();
+  const { capabilities } = usePermissions();
 
   useEffect(() => {
     if (accessTier === "global") return;
@@ -16,6 +44,12 @@ export default function ScopedRoutesGuard({ children }: { children: ReactNode })
     if (isPathAllowedForTier(path, accessTier)) return;
     navigate(defaultPathForTier(accessTier, lockedOutletId), { replace: true });
   }, [accessTier, lockedOutletId, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (accessTier === "global") return;
+    if (isPathAllowedByCapabilities(location.pathname, capabilities)) return;
+    navigate(defaultPathForTier(accessTier, lockedOutletId), { replace: true });
+  }, [accessTier, capabilities, lockedOutletId, location.pathname, navigate]);
 
   return <>{children}</>;
 }

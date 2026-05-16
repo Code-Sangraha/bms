@@ -4,7 +4,7 @@ export type MobileTabId = "home" | "transactions" | "parties" | "inventory" | "m
 
 /** Which bottom tab should be active for the current dashboard path. */
 export function mobileTabFromPathname(pathname: string, accessTier: AccessTier = "global"): MobileTabId {
-  if (accessTier === "outlet_staff") {
+  if (accessTier === "driver") {
     return "clock";
   }
   if (pathname === "/dashboard" || pathname === "/dashboard/") return "home";
