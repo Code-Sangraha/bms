@@ -196,6 +196,44 @@ function sortByCreatedAtDesc(rows: LivestockInventoryHistoryEntry[]): LivestockI
   });
 }
 
+function localCalendarDayFromIso(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    const s = iso.trim();
+    return s.length >= 10 ? s.slice(0, 10) : "";
+  }
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function matchesTypeFilter(
+  rowType: LivestockInventoryHistoryType,
+  filterType: LivestockInventoryHistoryFilterType | undefined
+): boolean {
+  if (!filterType) return true;
+  if (filterType === "CONSUMED") return rowType !== "RESTOCK";
+  return rowType === filterType;
+}
+
+function matchesFilters(
+  row: LivestockInventoryHistoryEntry,
+  filters: LivestockInventoryHistoryFilters
+): boolean {
+  const livestockItemId = filters.livestockItemId?.trim();
+  if (livestockItemId && row.livestockItemId !== livestockItemId) return false;
+
+  if (!matchesTypeFilter(row.type, filters.type)) return false;
+
+  const day = localCalendarDayFromIso(row.createdAt);
+  if (filters.fromDate?.trim() && day && day < filters.fromDate.trim()) return false;
+  if (filters.toDate?.trim() && day && day > filters.toDate.trim()) return false;
+
+  return true;
+}
+
 function errorMessageFromPayload(data: unknown): string {
   if (data && typeof data === "object") {
     const o = data as Record<string, unknown>;
@@ -261,7 +299,10 @@ export async function getLivestockInventoryHistory(
 
     const list = extractList(payload);
     const data = sortByCreatedAtDesc(
-      list.map((row, i) => parseEntry(row, i)).filter((x): x is LivestockInventoryHistoryEntry => x !== null)
+      list
+        .map((row, i) => parseEntry(row, i))
+        .filter((x): x is LivestockInventoryHistoryEntry => x !== null)
+        .filter((row) => matchesFilters(row, filters))
     );
     return { ok: true, data };
   } catch {

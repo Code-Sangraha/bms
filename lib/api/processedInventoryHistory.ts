@@ -4,11 +4,8 @@ import { PRODUCT_ROUTES } from "@/lib/api/routes";
 import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
-/**
- * Backend `ProcessedInventoryHistory`: RESTOCK (incl. processing output), DEDUCT, SALE.
- * `IN` is accepted if ever sent by an older API build.
- */
-export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "SALE" | "IN";
+/** Backend `ProcessedInventoryHistory`: RESTOCK, DEDUCT, SALE. */
+export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "SALE";
 
 export type ProcessedInventoryHistoryFilters = {
   productId?: string;
@@ -20,6 +17,11 @@ export type ProcessedInventoryHistoryFilters = {
 export type ProcessedInventoryHistoryEntry = {
   id: string;
   productId: string;
+  product: {
+    name: string;
+    weight: number | null;
+    DualPricing: unknown[];
+  } | null;
   quantity: number | null;
   weight: number | null;
   type: ProcessedInventoryHistoryType;
@@ -47,10 +49,10 @@ function parseNum(value: unknown): number | null {
 }
 
 function parseHistoryType(raw: unknown): ProcessedInventoryHistoryType | null {
-  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "SALE" || raw === "IN") return raw;
+  if (raw === "RESTOCK" || raw === "DEDUCT" || raw === "SALE") return raw;
   if (typeof raw === "string") {
     const u = raw.toUpperCase();
-    if (u === "RESTOCK" || u === "DEDUCT" || u === "SALE" || u === "IN") return u;
+    if (u === "RESTOCK" || u === "DEDUCT" || u === "SALE") return u;
   }
   return null;
 }
@@ -90,6 +92,14 @@ function parseEntry(raw: unknown, index: number): ProcessedInventoryHistoryEntry
   if (!createdAt || !productId || !type) return null;
   const quantity = row.quantity === null ? null : parseNum(row.quantity);
   const weight = row.weight === null ? null : parseNum(row.weight);
+  const product =
+    nestedRecord && typeof nestedRecord.name === "string"
+      ? {
+          name: nestedRecord.name,
+          weight: parseNum(nestedRecord.weight),
+          DualPricing: Array.isArray(nestedRecord.DualPricing) ? nestedRecord.DualPricing : [],
+        }
+      : null;
   const buyingPrice =
     parseNum(row.buyingPrice) ?? parseNum((row as { buying_price?: unknown }).buying_price);
   const sellingPrice =
@@ -100,6 +110,7 @@ function parseEntry(raw: unknown, index: number): ProcessedInventoryHistoryEntry
   return {
     id,
     productId,
+    product,
     quantity,
     weight,
     type,
@@ -116,8 +127,7 @@ function buildRequestBody(filters: ProcessedInventoryHistoryFilters): Record<str
   if (
     filters.type === "RESTOCK" ||
     filters.type === "DEDUCT" ||
-    filters.type === "SALE" ||
-    filters.type === "IN"
+    filters.type === "SALE"
   ) {
     body.type = filters.type;
   }
@@ -143,6 +153,35 @@ function sortByCreatedAtDesc(rows: ProcessedInventoryHistoryEntry[]): ProcessedI
     if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return tb - ta;
     return b.createdAt.localeCompare(a.createdAt);
   });
+}
+
+function localCalendarDayFromIso(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    const s = iso.trim();
+    return s.length >= 10 ? s.slice(0, 10) : "";
+  }
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function matchesFilters(
+  row: ProcessedInventoryHistoryEntry,
+  filters: ProcessedInventoryHistoryFilters
+): boolean {
+  const productId = filters.productId?.trim();
+  if (productId && row.productId !== productId) return false;
+
+  if (filters.type && row.type !== filters.type) return false;
+
+  const day = localCalendarDayFromIso(row.createdAt);
+  if (filters.fromDate?.trim() && day && day < filters.fromDate.trim()) return false;
+  if (filters.toDate?.trim() && day && day > filters.toDate.trim()) return false;
+
+  return true;
 }
 
 function errorMessageFromPayload(data: unknown): string {
@@ -267,7 +306,10 @@ export async function getProcessedInventoryHistory(
 
     const list = extractList(payload);
     const data = sortByCreatedAtDesc(
-      list.map((row, i) => parseEntry(row, i)).filter((x): x is ProcessedInventoryHistoryEntry => x !== null)
+      list
+        .map((row, i) => parseEntry(row, i))
+        .filter((x): x is ProcessedInventoryHistoryEntry => x !== null)
+        .filter((row) => matchesFilters(row, filters))
     );
     return { ok: true, data };
   } catch {

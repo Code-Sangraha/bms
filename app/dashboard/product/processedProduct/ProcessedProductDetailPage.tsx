@@ -195,11 +195,6 @@ export default function ProcessedProductDetailPage() {
           <InventoryDetailHistoryPanel
             variant="processed"
             wasteHistoryId={product.id?.trim() ? product.id : null}
-            processedCumulativeWasteKg={
-              product.wasteWeight != null && Number.isFinite(Number(product.wasteWeight))
-                ? Number(product.wasteWeight)
-                : null
-            }
             currentStockWeightKg={
               product.weight != null && Number.isFinite(Number(product.weight))
                 ? Number(product.weight)

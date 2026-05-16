@@ -121,7 +121,7 @@ export function buildProcessedOpeningStockData(params: BuildProcessedOpeningStoc
     if (compareIsoDates(day, from) < 0 || compareIsoDates(day, to) > 0) continue;
 
     const cell = ensureBucket(canonical, day);
-    if (entry.type === "RESTOCK" || entry.type === "IN") {
+    if (entry.type === "RESTOCK") {
       cell.added += processedHistoryEntryAmount(entry);
     } else {
       cell.consumed += processedHistoryConsumedAmountForLedger(entry, saleMirrorKeys);
@@ -137,8 +137,7 @@ export function buildProcessedOpeningStockData(params: BuildProcessedOpeningStoc
       if (canonical !== canonicalKey) continue;
       const day = localCalendarDateFromTimestamp(entry.createdAt);
       if (compareIsoDates(day, to) <= 0) continue;
-      const addedAmt =
-        entry.type === "RESTOCK" || entry.type === "IN" ? processedHistoryEntryAmount(entry) : 0;
+      const addedAmt = entry.type === "RESTOCK" ? processedHistoryEntryAmount(entry) : 0;
       const consumedAmt = processedHistoryConsumedAmountForLedger(entry, saleMirrorKeys);
       restock += addedAmt;
       deduct += consumedAmt;

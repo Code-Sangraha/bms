@@ -6,6 +6,11 @@ import {
   getLivestockInventoryHistory as requestLivestockInventoryHistory,
   type LivestockInventoryHistoryEntry,
 } from "@/lib/api/livestockInventoryHistory";
+import {
+  formatProcessedHistoryAmount,
+  getProcessedInventoryHistory as requestProcessedInventoryHistory,
+  type ProcessedInventoryHistoryEntry,
+} from "@/lib/api/processedInventoryHistory";
 
 export type Product = {
   id: string;
@@ -412,6 +417,40 @@ export async function getLivestockWasteHistory(
   });
   if (!result.ok) return result;
   return { ok: true, data: result.data.map(mapInventoryHistoryToWasteEntry) };
+}
+
+function mapProcessedInventoryHistoryToWasteEntry(
+  row: ProcessedInventoryHistoryEntry
+): LivestockWasteHistoryEntry {
+  const amt = formatProcessedHistoryAmount(row);
+  const parsed = amt.display === "\u2014" ? NaN : Number(amt.display);
+  const quantity = Number.isFinite(parsed) ? parsed : 0;
+  const date =
+    typeof row.createdAt === "string" && row.createdAt.length >= 10
+      ? row.createdAt.slice(0, 10)
+      : row.createdAt;
+  return {
+    id: row.id,
+    date: date || "\u2014",
+    quantity,
+    remarks: row.type,
+  };
+}
+
+/** Same GET `/products/processed/history` + JSON body as stock history; maps rows to waste table shape. */
+export async function getProcessedWasteHistory(
+  productId: string,
+  range?: WasteHistoryDateRange
+): Promise<
+  { ok: true; data: LivestockWasteHistoryEntry[] } | { ok: false; error: string; status: number }
+> {
+  const result = await requestProcessedInventoryHistory({
+    productId,
+    fromDate: range?.from,
+    toDate: range?.to,
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.map(mapProcessedInventoryHistoryToWasteEntry) };
 }
 
 export type {
