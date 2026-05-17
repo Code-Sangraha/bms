@@ -1147,11 +1147,6 @@ export default function ProcessingPlantPage() {
         </div>
       </div>
 
-      {/*
-      Transfer Processed Stock Between Outlets is temporarily hidden while transfer bugs are investigated.
-      Keep the implementation here so it can be restored without rebuilding the workflow.
-      */}
-      {false && (
       <div className="ppCard ppCardWorkflow">
         <div className="ppCardHead">
           <span className="ppStepBadge" aria-hidden>
@@ -1252,7 +1247,6 @@ export default function ProcessingPlantPage() {
           </button>
         </div>
       </div>
-      )}
         </div>
       </section>
 

@@ -98,7 +98,7 @@
 
 .dashboardCards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 20px;
   padding: 24px;
 }
@@ -109,6 +109,7 @@
 
 .dashboardCardsLivestock {
   padding: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   background: #f8fafc;
 }
@@ -124,6 +125,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dashboardCardTop {
@@ -131,6 +134,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .dashboardCardIcon {
@@ -148,13 +152,30 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #6b7280;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .dashboardCardValue {
-  font-size: 26px;
+  display: block;
+  max-width: 100%;
+  font-size: clamp(1.45rem, 2.1vw, 1.75rem);
   font-weight: 700;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.dashboardCardValueCompact {
+  font-size: clamp(1.28rem, 1.75vw, 1.55rem);
+}
+
+.dashboardCardValueLong {
+  font-size: clamp(1.08rem, 1.45vw, 1.35rem);
+  line-height: 1.18;
 }
 
 .dashboardCardValueSm {
@@ -559,9 +580,9 @@
   }
 
   .dashboardCards {
-    padding: 14px;
+    padding: 12px;
     gap: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .dashboardBlock {
@@ -574,18 +595,18 @@
   }
 
   .dashboardCardsAttendance {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .dashboardCardsLivestock {
     padding: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .dashboardCard {
-    padding: 16px 14px;
-    border-radius: 16px;
-    min-height: 138px;
+    padding: 16px;
+    border-radius: 14px;
+    min-height: 118px;
     box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
   }
 
@@ -608,12 +629,21 @@
   .dashboardCardLabel {
     font-size: 10px;
     letter-spacing: 0.08em;
-    max-width: 10ch;
+    max-width: none;
   }
 
   .dashboardCardValue {
-    font-size: clamp(1.6rem, 5vw, 2.25rem);
-    line-height: 1.05;
+    font-size: clamp(1.35rem, 5vw, 1.8rem);
+    line-height: 1.08;
+  }
+
+  .dashboardCardValueCompact {
+    font-size: clamp(1.12rem, 4.1vw, 1.45rem);
+  }
+
+  .dashboardCardValueLong {
+    font-size: clamp(0.98rem, 3.45vw, 1.24rem);
+    line-height: 1.16;
   }
 
   .dashboardCardValueSm {
@@ -743,12 +773,6 @@
 }
 
 @media (max-width: 420px) {
-  .dashboardCards,
-  .dashboardCardsAttendance,
-  .dashboardCardsLivestock {
-    grid-template-columns: 1fr;
-  }
-
   .dashboardCard {
     min-height: 0;
   }

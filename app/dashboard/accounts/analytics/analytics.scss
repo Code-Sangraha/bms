@@ -73,7 +73,7 @@
 
 .analyticsCards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 20px;
 }
 
@@ -81,6 +81,8 @@
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(0, 0, 0, 0.06);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .analyticsCardTotal {
@@ -100,13 +102,17 @@
   letter-spacing: 0.04em;
   color: #6b7280;
   margin-bottom: 8px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .analyticsCardValue {
-  font-size: 28px;
+  font-size: clamp(1.45rem, 2.1vw, 1.75rem);
   font-weight: 700;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .analyticsCardSub {
@@ -204,6 +210,60 @@
 $analytics-mobile-breakpoint: 768px;
 
 @media (max-width: $analytics-mobile-breakpoint) {
+  .breadcrumb {
+    display: none;
+  }
+
+  .analyticsPage {
+    gap: 14px;
+  }
+
+  .analyticsHeader {
+    align-items: flex-start;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+    max-width: 32ch;
+  }
+
+  .analyticsToolbar {
+    width: 100%;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .analyticsOutletSelect {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .analyticsCards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .analyticsCard {
+    padding: 16px;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.05);
+  }
+
+  .analyticsCardLabel {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .analyticsCardValue {
+    font-size: clamp(1.35rem, 5vw, 1.8rem);
+    line-height: 1.08;
+  }
+
   .analyticsTableWrap {
     overflow-x: auto;
     overflow-y: visible;

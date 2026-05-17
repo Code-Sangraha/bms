@@ -78,6 +78,8 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: #fef3e2;
   border-color: rgba(251, 146, 60, 0.2);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dashboardAnalyticsCardTop {
@@ -110,6 +112,8 @@
   font-weight: 700;
   color: #111827;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .dashboardAnalyticsData {
@@ -191,17 +195,19 @@
 
   .dashboardAnalyticsMobileCards {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .dashboardAnalyticsMobileCard {
-    padding: 16px 14px;
-    border-radius: 16px;
+    padding: 16px;
+    border-radius: 14px;
     border: 1px solid rgba(0, 0, 0, 0.06);
     background: #fef3e2;
     border-color: rgba(251, 146, 60, 0.2);
     box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+    min-width: 0;
+    overflow: hidden;
   }
 
   .dashboardAnalyticsMobileCardRevenue {
@@ -214,7 +220,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    min-width: 0;
   }
 
   .dashboardAnalyticsMobileIcon,
@@ -231,10 +238,12 @@
   }
 
   .dashboardAnalyticsMobileValue {
-    font-size: clamp(1.5rem, 5vw, 2.25rem);
+    font-size: clamp(1.35rem, 5vw, 1.8rem);
     font-weight: 700;
-    line-height: 1.05;
+    line-height: 1.08;
     color: #111827;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
   }
 
   .dashboardAnalyticsMobileSection {
@@ -344,7 +353,6 @@
 }
 
 @media (max-width: 420px) {
-  .dashboardAnalyticsMobileCards,
   .dashboardAnalyticsMobilePills {
     grid-template-columns: 1fr;
   }

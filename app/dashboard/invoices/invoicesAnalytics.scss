@@ -118,12 +118,13 @@
 
 .summaryCards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 20px;
 }
 
 .livestockSummaryCards {
   padding: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   background: #f0f9ff;
   border-top: 1px solid rgba(14, 116, 144, 0.15);
 }
@@ -138,6 +139,8 @@
   border: 1px solid rgba(251, 191, 36, 0.25);
   border-radius: 12px;
   padding: 20px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .summaryCardLabel {
@@ -147,13 +150,19 @@
   letter-spacing: 0.04em;
   color: #6b7280;
   margin-bottom: 8px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .summaryCardValue {
-  font-size: 24px;
+  display: block;
+  max-width: 100%;
+  font-size: clamp(1.45rem, 2.1vw, 1.75rem);
   font-weight: 700;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .summaryCardTrend {
@@ -290,6 +299,95 @@
 }
 
 @media (max-width: 768px) {
+  .invoicesAnalyticsPage {
+    gap: 14px;
+  }
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .invoicesAnalyticsHeader {
+    gap: 14px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .pageSubtitle {
+    font-size: 12px;
+    max-width: 32ch;
+  }
+
+  .invoicesAnalyticsToolbar {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .dateRangePills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dateRangePill {
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .toolbarRight {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .outletSelect {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .summaryCards,
+  .livestockSummaryCards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .summaryCards {
+    margin-top: 2px;
+  }
+
+  .livestockSummaryCards {
+    padding: 12px;
+  }
+
+  .summaryCard {
+    padding: 16px;
+    border-radius: 14px;
+    min-height: 112px;
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.05);
+  }
+
+  .summaryCardLabel {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .summaryCardValue {
+    font-size: clamp(1.35rem, 5vw, 1.8rem);
+    line-height: 1.08;
+  }
+
+  .summaryCardTrend {
+    margin-top: 10px;
+  }
+
+  .chartSection {
+    border-radius: 14px;
+  }
+
   .outletBarRow {
     grid-template-columns: 1fr;
     gap: 6px;
@@ -297,6 +395,16 @@
 
   .outletBarValue {
     text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  .dateRangePills {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    min-height: 0;
   }
 }
 

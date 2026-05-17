@@ -86,6 +86,13 @@ function DashboardMetricCard({
   toneClassName,
   icon: Icon,
 }: DashboardMetricCardProps) {
+  const compactValueClass =
+    value.length > 18
+      ? " dashboardCardValueLong"
+      : value.length > 13
+        ? " dashboardCardValueCompact"
+        : "";
+
   return (
     <div className={`dashboardCard ${toneClassName ?? ""}`.trim()}>
       <div className="dashboardCardTop">
@@ -94,7 +101,7 @@ function DashboardMetricCard({
           <Icon className="dashboardCardIconSvg" />
         </span>
       </div>
-      <span className="dashboardCardValue">{value}</span>
+      <span className={`dashboardCardValue${compactValueClass}`}>{value}</span>
       {sub ? <span className="dashboardCardSub">{sub}</span> : null}
     </div>
   );
