@@ -379,13 +379,13 @@ export default function ProductPage() {
       </div>
 
       <div className="inventoryMobileHub" aria-label={t("Quick links")}>
-        {capabilities.canViewInventory ? (
+        {capabilities.canViewLivestockInventory ? (
           <Link to={invTo("/dashboard/product/liveProduct")} className="inventoryMobileHub__chip">
             <LuBeef size={18} aria-hidden />
             <span>{t("Live Stock Inventory")}</span>
           </Link>
         ) : null}
-        {capabilities.canViewInventory ? (
+        {capabilities.canViewProcessedInventory ? (
           <Link to={invTo("/dashboard/product/processedProduct")} className="inventoryMobileHub__chip">
             <LuBoxes size={18} aria-hidden />
             <span>{t("Processed Inventory")}</span>

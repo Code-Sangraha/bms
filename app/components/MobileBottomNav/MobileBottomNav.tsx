@@ -10,6 +10,7 @@ import {
 } from "react-icons/io5";
 import { LuPackage } from "react-icons/lu";
 import type { AccessTier } from "@/lib/auth/accessTier";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import { mobileTabFromPathname, type MobileTabId } from "@/lib/mobileNav";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -32,6 +33,7 @@ export default function MobileBottomNav({
 }: MobileBottomNavProps) {
   const { pathname, search } = useLocation();
   const { t } = useI18n();
+  const { capabilities } = usePermissions();
   const active = mobileTabFromPathname(pathname, accessTier);
 
   const to = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
@@ -64,7 +66,7 @@ export default function MobileBottomNav({
     { id: "home", href: to("/dashboard"), label: t("Home"), icon: <IoHomeOutline size={22} /> },
     {
       id: "transactions",
-      href: to("/dashboard/invoices"),
+      href: to(capabilities.canViewSalesAnalytics ? "/dashboard/invoices" : "/dashboard/invoices/transaction"),
       label: t("Transactions"),
       icon: <IoReceiptOutline size={22} />,
     },

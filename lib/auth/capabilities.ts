@@ -5,6 +5,8 @@ export type RoleCapabilities = {
   canViewAttendance: boolean;
   canClockInOut: boolean;
   canViewInventory: boolean;
+  canViewProcessedInventory: boolean;
+  canViewLivestockInventory: boolean;
   canViewInventoryDetails: boolean;
   canEditProducts: boolean;
   canDeleteProducts: boolean;
@@ -20,6 +22,7 @@ export type RoleCapabilities = {
   canViewDualPricing: boolean;
   canEditDualPricing: boolean;
   canViewProcessedSales: boolean;
+  canViewSalesAnalytics: boolean;
   canCreateProcessedSales: boolean;
   canViewLivestockSales: boolean;
   canCreateLivestockSales: boolean;
@@ -32,6 +35,8 @@ const ALL_CAPABILITIES: RoleCapabilities = {
   canViewAttendance: true,
   canClockInOut: true,
   canViewInventory: true,
+  canViewProcessedInventory: true,
+  canViewLivestockInventory: true,
   canViewInventoryDetails: true,
   canEditProducts: true,
   canDeleteProducts: true,
@@ -47,6 +52,7 @@ const ALL_CAPABILITIES: RoleCapabilities = {
   canViewDualPricing: true,
   canEditDualPricing: true,
   canViewProcessedSales: true,
+  canViewSalesAnalytics: true,
   canCreateProcessedSales: true,
   canViewLivestockSales: true,
   canCreateLivestockSales: true,
@@ -59,6 +65,8 @@ const NO_CAPABILITIES: RoleCapabilities = {
   canViewAttendance: false,
   canClockInOut: false,
   canViewInventory: false,
+  canViewProcessedInventory: false,
+  canViewLivestockInventory: false,
   canViewInventoryDetails: false,
   canEditProducts: false,
   canDeleteProducts: false,
@@ -74,6 +82,7 @@ const NO_CAPABILITIES: RoleCapabilities = {
   canViewDualPricing: false,
   canEditDualPricing: false,
   canViewProcessedSales: false,
+  canViewSalesAnalytics: false,
   canCreateProcessedSales: false,
   canViewLivestockSales: false,
   canCreateLivestockSales: false,
@@ -89,6 +98,8 @@ const ROLE_CAPABILITIES: Record<RoleName, RoleCapabilities> = {
     canViewAttendance: true,
     canClockInOut: true,
     canViewInventory: true,
+    canViewProcessedInventory: true,
+    canViewLivestockInventory: true,
     canViewInventoryDetails: true,
     canRestockProcessedInventory: true,
     canDeductProcessedInventory: true,
@@ -98,6 +109,7 @@ const ROLE_CAPABILITIES: Record<RoleName, RoleCapabilities> = {
     canCompleteProcessing: true,
     canViewDualPricing: true,
     canViewProcessedSales: true,
+    canViewSalesAnalytics: true,
     canCreateProcessedSales: true,
     canViewLivestockSales: true,
     canCreateLivestockSales: true,
@@ -108,9 +120,12 @@ const ROLE_CAPABILITIES: Record<RoleName, RoleCapabilities> = {
     ...NO_CAPABILITIES,
     canClockInOut: true,
     canViewInventory: true,
+    canViewProcessedInventory: true,
+    canViewLivestockInventory: false,
     canViewInventoryDetails: true,
     canDeductProcessedInventory: true,
     canViewProcessedSales: true,
+    canViewSalesAnalytics: false,
     canCreateProcessedSales: true,
     canViewTransactions: true,
     canInputWasteProducts: true,

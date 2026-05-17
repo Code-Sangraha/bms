@@ -4,10 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { IoSettingsOutline } from "react-icons/io5";
+import { LuShoppingCart } from "react-icons/lu";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { usePermissions } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { getOutlets } from "@/handlers/outlet";
 import {
@@ -194,6 +196,7 @@ export default function TransactionPage() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const { t, locale } = useI18n();
+  const { roleName, capabilities } = usePermissions();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState("");
@@ -209,6 +212,13 @@ export default function TransactionPage() {
     isScoped && rowFilterOutletId ? rowFilterOutletId : null,
     search
   );
+  const createProcessedSaleHref = buildPathWithOutletScope(
+    "/dashboard/invoices/new",
+    isScoped && rowFilterOutletId ? rowFilterOutletId : null,
+    search
+  );
+  const canShowStaffMobileProcessedSale =
+    roleName === "Staff" && capabilities.canCreateProcessedSales;
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   const {
@@ -319,9 +329,17 @@ export default function TransactionPage() {
             {t("View and manage recent sales transactions")}
           </p>
         </div>
-        <Link to={moreHref} className="transactionHeaderSettings" aria-label={t("Settings")}>
-          <IoSettingsOutline size={22} aria-hidden />
-        </Link>
+        <div className="transactionHeaderActions">
+          {canShowStaffMobileProcessedSale ? (
+            <Link to={createProcessedSaleHref} className="transactionCreateSaleMobile">
+              <LuShoppingCart size={18} aria-hidden />
+              <span>{t("Processed Sale")}</span>
+            </Link>
+          ) : null}
+          <Link to={moreHref} className="transactionHeaderSettings" aria-label={t("Settings")}>
+            <IoSettingsOutline size={22} aria-hidden />
+          </Link>
+        </div>
       </div>
 
       <div className="transactionToolbar">

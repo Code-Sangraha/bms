@@ -152,9 +152,9 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
   {
     titleKey: "product",
     items: [
-      { labelKey: "live", href: "/dashboard/product/liveProduct" },
+      { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" },
       { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
-      { labelKey: "processed", href: "/dashboard/product/processedProduct" },
+      { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" },
       { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" },
       { labelKey: "processingPlant", href: "/dashboard/processingPlant", capability: "canSendToProcessing" },
     ],
@@ -177,7 +177,6 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
   {
     titleKey: "salesBilling",
     items: [
-      { labelKey: "analytics", href: "/dashboard/invoices", capability: "canViewProcessedSales" },
       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction", capability: "canViewTransactions" },
     ],
@@ -186,8 +185,8 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
     titleKey: "product",
     items: [
       { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" },
-      { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewInventory" },
-      { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewInventory" },
+      { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" },
+      { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" },
     ],
   },
   {
@@ -315,9 +314,9 @@ const sidebarConfig = {
                 items: [
                   { labelKey: "productType", href: "/dashboard/product/productType", capability: "canCreateProducts" as const },
                   { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory", capability: "canCreateProducts" as const },
-                  { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewInventory" as const },
+                  { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" as const },
                   { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" as const },
-                  { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewInventory" as const },
+                  { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" as const },
                   { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" as const },
                 ],
               },

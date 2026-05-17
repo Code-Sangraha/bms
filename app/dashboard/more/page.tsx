@@ -14,7 +14,7 @@ import {
   IoStatsChartOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { LuDownload } from "react-icons/lu";
+import { LuDownload, LuShoppingCart } from "react-icons/lu";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -50,7 +50,7 @@ export default function MorePage() {
   const queryClient = useQueryClient();
   const { search } = useLocation();
   const { t } = useI18n();
-  const { roleName } = usePermissions();
+  const { roleName, capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
   const scopedOutletId = useMemo(() => readOutletScopeFromSearch(search), [search]);
 
@@ -145,19 +145,29 @@ export default function MorePage() {
       ] as const;
     }
     if (accessTier === "outlet_staff") {
-      return [
+      const links = [
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
-        {
-          href: to("/dashboard/invoices"),
-          label: t("Sales & Billing"),
-          icon: IoStatsChartOutline,
-        },
+        ...(capabilities.canCreateProcessedSales
+          ? [
+              {
+                href: to("/dashboard/invoices/new"),
+                label: t("Processed Sale"),
+                icon: LuShoppingCart,
+              },
+            ]
+          : []),
         {
           href: to("/dashboard/product"),
           label: t("Inventory"),
           icon: IoBusinessOutline,
         },
-      ] as const;
+        {
+          href: to("/dashboard/invoices/transaction"),
+          label: t("Transactions"),
+          icon: IoStatsChartOutline,
+        },
+      ];
+      return links;
     }
     if (accessTier === "driver") {
       return [
@@ -165,7 +175,7 @@ export default function MorePage() {
       ] as const;
     }
     return [] as const;
-  }, [accessTier, t, to]);
+  }, [accessTier, capabilities, t, to]);
 
   return (
     <section className="morePage">
