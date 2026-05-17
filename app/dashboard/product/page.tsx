@@ -8,7 +8,6 @@ import { IoGridOutline, IoLayersOutline, IoSettingsOutline } from "react-icons/i
 import { LuBeef, LuBoxes, LuTag } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
-import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
@@ -43,7 +42,6 @@ export default function ProductPage() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { capabilities } = usePermissions();
-  const { accessTier } = useOutletAccess();
   const { scopedOutletId, isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
   const { showToast } = useToast();
@@ -374,8 +372,6 @@ export default function ProductPage() {
   };
 
   const loading = createMutation.isPending;
-  const canUseGlobalInventoryLinks = accessTier === "global";
-
   return (
     <section className="productPage">
       <div className="breadcrumb">
@@ -383,17 +379,19 @@ export default function ProductPage() {
       </div>
 
       <div className="inventoryMobileHub" aria-label={t("Quick links")}>
-        {canUseGlobalInventoryLinks ? (
+        {capabilities.canViewInventory ? (
           <Link to={invTo("/dashboard/product/liveProduct")} className="inventoryMobileHub__chip">
             <LuBeef size={18} aria-hidden />
             <span>{t("Live Stock Inventory")}</span>
           </Link>
         ) : null}
-        <Link to={invTo("/dashboard/product/processedProduct")} className="inventoryMobileHub__chip">
-          <LuBoxes size={18} aria-hidden />
-          <span>{t("Processed Inventory")}</span>
-        </Link>
-        {canUseGlobalInventoryLinks ? (
+        {capabilities.canViewInventory ? (
+          <Link to={invTo("/dashboard/product/processedProduct")} className="inventoryMobileHub__chip">
+            <LuBoxes size={18} aria-hidden />
+            <span>{t("Processed Inventory")}</span>
+          </Link>
+        ) : null}
+        {capabilities.canCreateProducts || capabilities.canViewDualPricing ? (
           <>
             {capabilities.canCreateProducts && (
               <>
@@ -407,10 +405,12 @@ export default function ProductPage() {
                 </Link>
               </>
             )}
-            <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
-              <LuTag size={18} aria-hidden />
-              <span>{t("Pricelist")}</span>
-            </Link>
+            {capabilities.canViewDualPricing && (
+              <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
+                <LuTag size={18} aria-hidden />
+                <span>{t("Pricelist")}</span>
+              </Link>
+            )}
           </>
         ) : null}
       </div>

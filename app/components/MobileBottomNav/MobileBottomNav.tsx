@@ -5,7 +5,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   IoGridOutline,
   IoHomeOutline,
-  IoPeopleOutline,
   IoReceiptOutline,
   IoTimeOutline,
 } from "react-icons/io5";
@@ -68,12 +67,6 @@ export default function MobileBottomNav({
       href: to("/dashboard/invoices"),
       label: t("Transactions"),
       icon: <IoReceiptOutline size={22} />,
-    },
-    {
-      id: "parties",
-      href: to("/dashboard/accounts/directory"),
-      label: t("Parties"),
-      icon: <IoPeopleOutline size={22} />,
     },
     {
       id: "inventory",

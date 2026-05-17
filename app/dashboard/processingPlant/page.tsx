@@ -697,6 +697,7 @@ export default function ProcessingPlantPage() {
           <h1 className="pageTitle">{t("Processing Plant")}</h1>
           <p className="pageSubtitle">{t("Create and manage processing plants")}</p>
         </div>
+        {capabilities.canCreateProcessingPlants && (
         <button
           type="button"
           className="ppBtnPrimary ppHeaderAction"
@@ -706,10 +707,11 @@ export default function ProcessingPlantPage() {
         >
           {t("Add Processing Plant")}
         </button>
+        )}
       </header>
 
       <Modal
-        isOpen={isCreateModalOpen}
+        isOpen={isCreateModalOpen && capabilities.canCreateProcessingPlants}
         title={t("Add Processing Plant")}
         subtitle={t("Create a new processing plant")}
         onClose={() => {

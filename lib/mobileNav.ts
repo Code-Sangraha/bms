@@ -1,6 +1,6 @@
 import type { AccessTier } from "@/lib/auth/accessTier";
 
-export type MobileTabId = "home" | "transactions" | "parties" | "inventory" | "more" | "clock";
+export type MobileTabId = "home" | "transactions" | "inventory" | "more" | "clock";
 
 /** Which bottom tab should be active for the current dashboard path. */
 export function mobileTabFromPathname(pathname: string, accessTier: AccessTier = "global"): MobileTabId {
@@ -9,7 +9,6 @@ export function mobileTabFromPathname(pathname: string, accessTier: AccessTier =
   }
   if (pathname === "/dashboard" || pathname === "/dashboard/") return "home";
   if (pathname.startsWith("/dashboard/invoices")) return "transactions";
-  if (pathname === "/dashboard/accounts/directory") return "parties";
   if (pathname.startsWith("/dashboard/product")) return "inventory";
   if (
     pathname === "/dashboard/more" ||

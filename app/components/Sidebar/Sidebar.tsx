@@ -288,6 +288,7 @@ const sidebarConfig = {
                   {
                     labelKey: "processingPlant",
                     href: "/dashboard/processingPlant",
+                    capability: "canSendToProcessing" as const,
                   },
                 ],
               },
@@ -298,12 +299,12 @@ const sidebarConfig = {
                   {
                     labelKey: "pointOfSale",
                     href: "/dashboard/invoices/new",
-                    permission: "create" as const,
+                    capability: "canCreateProcessedSales" as const,
                   },
                   {
                     labelKey: "livestockSales",
                     href: "/dashboard/invoices/livestock-sales",
-                    permission: "create" as const,
+                    capability: "canCreateLivestockSales" as const,
                   },
                   { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
                   { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
@@ -312,12 +313,12 @@ const sidebarConfig = {
               {
                 titleKey: "product",
                 items: [
-                  { labelKey: "productType", href: "/dashboard/product/productType" },
-                  { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory" },
-                  { labelKey: "live", href: "/dashboard/product/liveProduct" },
-                  { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
-                  { labelKey: "processed", href: "/dashboard/product/processedProduct" },
-                  { labelKey: "pricelist", href: "/dashboard/dualPricing" },
+                  { labelKey: "productType", href: "/dashboard/product/productType", capability: "canCreateProducts" as const },
+                  { labelKey: "livestockCategory", href: "/dashboard/product/livestockCategory", capability: "canCreateProducts" as const },
+                  { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewInventory" as const },
+                  { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" as const },
+                  { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewInventory" as const },
+                  { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" as const },
                 ],
               },
               {

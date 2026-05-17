@@ -15,6 +15,7 @@ export type RoleCapabilities = {
   canDeductLivestockInventory: boolean;
   canSendToProcessing: boolean;
   canCompleteProcessing: boolean;
+  canCreateProcessingPlants: boolean;
   canEditProcessingBatches: boolean;
   canViewDualPricing: boolean;
   canEditDualPricing: boolean;
@@ -41,6 +42,7 @@ const ALL_CAPABILITIES: RoleCapabilities = {
   canDeductLivestockInventory: true,
   canSendToProcessing: true,
   canCompleteProcessing: true,
+  canCreateProcessingPlants: true,
   canEditProcessingBatches: true,
   canViewDualPricing: true,
   canEditDualPricing: true,
@@ -67,6 +69,7 @@ const NO_CAPABILITIES: RoleCapabilities = {
   canDeductLivestockInventory: false,
   canSendToProcessing: false,
   canCompleteProcessing: false,
+  canCreateProcessingPlants: false,
   canEditProcessingBatches: false,
   canViewDualPricing: false,
   canEditDualPricing: false,
