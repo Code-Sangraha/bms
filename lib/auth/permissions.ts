@@ -16,7 +16,7 @@ export type Permissions = {
 
 const ROLE_MATRIX: Record<RoleName, Permissions> = {
   Admin: { create: true, read: true, update: true, delete: true },
-  Manager: { create: true, read: true, update: false, delete: false },
+  Manager: { create: false, read: true, update: false, delete: false },
   Staff: { create: false, read: true, update: false, delete: false },
   Driver: { create: false, read: true, update: false, delete: false },
   Viewer: { create: false, read: true, update: false, delete: false },

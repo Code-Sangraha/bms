@@ -115,7 +115,7 @@ export default function InvoicesAnalyticsPage() {
 
   const hubScope = isScoped && rowFilterOutletId ? rowFilterOutletId : null;
   const hubTo = (path: string) => buildPathWithOutletScope(path, hubScope, search);
-  const canUseGlobalSalesLinks = accessTier === "global";
+  const canManageCustomerTypes = accessTier === "global";
 
   const { data: outlets = [], isLoading: outletsLoading, isError: outletsError, error: outletsErrorDetail } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -488,7 +488,7 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Processed Sale")}</span>
           </Link>
         ) : null}
-        {capabilities.canCreateLivestockSales && canUseGlobalSalesLinks ? (
+        {capabilities.canCreateLivestockSales ? (
           <Link to={hubTo("/dashboard/invoices/livestock-sales")} className="invoicesMobileHub__card">
             <span className="invoicesMobileHub__icon" aria-hidden>
               <LuBeef size={24} />
@@ -496,7 +496,7 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Livestock Sales")}</span>
           </Link>
         ) : null}
-        {canUseGlobalSalesLinks ? (
+        {canManageCustomerTypes ? (
           <Link to={hubTo("/dashboard/invoices/customer-types")} className="invoicesMobileHub__card">
             <span className="invoicesMobileHub__icon" aria-hidden>
               <IoPricetagOutline size={24} />

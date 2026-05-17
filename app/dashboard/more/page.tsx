@@ -136,6 +136,7 @@ export default function MorePage() {
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
         { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
         { href: to("/dashboard/dualPricing"), label: t("Pricelist"), icon: IoPricetagOutline },
+        { href: to("/dashboard/processingPlant"), label: t("Processing Plant"), icon: IoBusinessOutline },
         {
           href: to("/dashboard/invoices"),
           label: t("Sales & Billing"),

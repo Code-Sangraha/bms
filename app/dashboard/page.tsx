@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const { rowFilterOutletId } = useRowFilterOutletId();
   const { accessTier, lockedOutletId } = useOutletAccess();
   const { userOutletId } = useAuth();
-  const { canCreate } = usePermissions();
+  const { capabilities } = usePermissions();
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -692,8 +692,8 @@ export default function DashboardPage() {
         totalTransactions={totalTransactions}
         totalWeight={totalWeight}
         cashflowDays={cashflowLast7Days}
-        canCreate={canCreate}
-        outletScopedMobile={isOutletScopedDashboard}
+        canCreate={capabilities.canCreateProcessedSales}
+        outletScopedMobile={isOutletScopedDashboard && !capabilities.canCreateLivestockSales}
       />
       <div className="dashboardHero dashboardHero--hideOnMobile">
         <h1 className="dashboardTitle">{t("Dashboard")}</h1>

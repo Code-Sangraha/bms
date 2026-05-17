@@ -42,7 +42,7 @@ export default function ProductPage() {
   const { search } = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const { canCreate, capabilities } = usePermissions();
+  const { capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
   const { scopedOutletId, isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const invTo = (path: string) => buildPathWithOutletScope(path, scopedOutletId, search);
@@ -339,10 +339,10 @@ export default function ProductPage() {
               outlets.find((o) => o.id === p.outletId)?.name ||
               p.outletId,
           }));
-        if (targets.length > 0 && canCreate) {
+        if (targets.length > 0 && capabilities.canEditDualPricing) {
           setPricelistTargets(targets);
           setPricelistModalOpen(true);
-        } else if (targets.length > 0 && !canCreate) {
+        } else if (targets.length > 0 && !capabilities.canEditDualPricing) {
           showToast(
             t(
               "Product created. Ask an admin to add Pricelist entries for this product before selling."
@@ -395,14 +395,18 @@ export default function ProductPage() {
         </Link>
         {canUseGlobalInventoryLinks ? (
           <>
-            <Link to={invTo("/dashboard/product/livestockCategory")} className="inventoryMobileHub__chip">
-              <IoLayersOutline size={18} aria-hidden />
-              <span>{t("Livestock Category")}</span>
-            </Link>
-            <Link to={invTo("/dashboard/product/productType")} className="inventoryMobileHub__chip">
-              <IoGridOutline size={18} aria-hidden />
-              <span>{t("Product Type")}</span>
-            </Link>
+            {capabilities.canCreateProducts && (
+              <>
+                <Link to={invTo("/dashboard/product/livestockCategory")} className="inventoryMobileHub__chip">
+                  <IoLayersOutline size={18} aria-hidden />
+                  <span>{t("Livestock Category")}</span>
+                </Link>
+                <Link to={invTo("/dashboard/product/productType")} className="inventoryMobileHub__chip">
+                  <IoGridOutline size={18} aria-hidden />
+                  <span>{t("Product Type")}</span>
+                </Link>
+              </>
+            )}
             <Link to={invTo("/dashboard/dualPricing")} className="inventoryMobileHub__chip">
               <LuTag size={18} aria-hidden />
               <span>{t("Pricelist")}</span>
@@ -438,6 +442,7 @@ export default function ProductPage() {
               aria-label={t("Search products")}
             />
           </div>
+          {capabilities.canCreateProducts && (
           <button
             type="button"
             className="button buttonPrimary productHeaderAddBtn"
@@ -445,6 +450,7 @@ export default function ProductPage() {
           >
             {t("Add Product")}
           </button>
+          )}
         </div>
       </div>
 
@@ -639,7 +645,7 @@ export default function ProductPage() {
       />
 
       <Modal
-        isOpen={isAddModalOpen}
+        isOpen={isAddModalOpen && capabilities.canCreateProducts}
         title={t("Add Product")}
         subtitle={t("Create a processed product. Stock is managed from processing flow.")}
         onClose={() => {

@@ -1281,7 +1281,7 @@ export default function Sidebar() {
                       })
               : (activeMenu as { items: MenuItem[] }).items
                   .filter((entry) =>
-                    entry.permission === "create" ? canCreate : true
+                    menuItemIsVisible(entry, canCreate, capabilities)
                   )
                   .map((entry) => (
                     <Link
