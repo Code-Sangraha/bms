@@ -26,7 +26,6 @@ import {
   getProcessingPlants,
   type ProcessingPlant,
 } from "@/handlers/processingPlant";
-import { getStoredOutletId } from "@/lib/auth/user";
 import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import "./processingPlant.scss";
@@ -236,13 +235,6 @@ export default function ProcessingPlantPage() {
     [products, processedTypeIds]
   );
 
-  const storedOutletId = getStoredOutletId();
-  const mainOutlet = useMemo(
-    () => outlets.find((o) => o.name.trim().toLowerCase() === "main outlet") ?? null,
-    [outlets]
-  );
-  const canManageMainFlow = !storedOutletId || !mainOutlet || storedOutletId === mainOutlet.id;
-
   const liveStockProductIds = useMemo(
     () => liveStockProducts.map((product) => product.id).sort(),
     [liveStockProducts]
@@ -332,7 +324,7 @@ export default function ProcessingPlantPage() {
   );
 
   const completeFormCanSubmit = useMemo(() => {
-    if (!selectedBatchId || !canManageMainFlow || !capabilities.canCompleteProcessing) return false;
+    if (!selectedBatchId || !capabilities.canCompleteProcessing) return false;
     const waste = Number(completeWasteWeight);
     if (!Number.isFinite(waste) || waste < 0) return false;
     let hasValidLine = false;
@@ -345,7 +337,7 @@ export default function ProcessingPlantPage() {
       hasValidLine = true;
     }
     return hasValidLine;
-  }, [selectedBatchId, canManageMainFlow, capabilities.canCompleteProcessing, completeWasteWeight, completeOutputLines]);
+  }, [selectedBatchId, capabilities.canCompleteProcessing, completeWasteWeight, completeOutputLines]);
 
   const selectedLivestockItem = useMemo(
     () =>
@@ -903,9 +895,9 @@ export default function ProcessingPlantPage() {
             <p className="ppCardDesc">{t("Queue livestock from inventory to a processing plant.")}</p>
           </div>
         </div>
-        {(!canManageMainFlow || !capabilities.canSendToProcessing) && (
+        {!capabilities.canSendToProcessing && (
           <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only authorized Main Outlet users can send livestock to processing.")}
+            {t("Only authorized users can send livestock to processing.")}
           </p>
         )}
         <div className="ppFormGrid" role="group" aria-labelledby="pp-card-send-title">
@@ -974,7 +966,6 @@ export default function ProcessingPlantPage() {
             disabled={
               sendToProcessingMutation.isPending ||
               !capabilities.canSendToProcessing ||
-              !canManageMainFlow ||
               !selectedPlantId ||
               !selectedLivestockItemId ||
               Number(sendQuantity) <= 0 ||
@@ -1000,9 +991,9 @@ export default function ProcessingPlantPage() {
             </p>
           </div>
         </div>
-        {(!canManageMainFlow || !capabilities.canCompleteProcessing) && (
+        {!capabilities.canCompleteProcessing && (
           <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only authorized Main Outlet users can complete processing.")}
+            {t("Only authorized users can complete processing.")}
           </p>
         )}
         <div className="ppCompleteForm" role="group" aria-labelledby="pp-card-complete-title">
@@ -1171,9 +1162,9 @@ export default function ProcessingPlantPage() {
             <p className="ppCardDesc">{t("Move processed inventory from one outlet to another.")}</p>
           </div>
         </div>
-        {!canManageMainFlow && (
+        {!capabilities.canCompleteProcessing && (
           <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only Main Outlet can transfer processed stock between outlets.")}
+            {t("Only authorized users can transfer processed stock between outlets.")}
           </p>
         )}
         <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
@@ -1247,7 +1238,7 @@ export default function ProcessingPlantPage() {
             onClick={() => transferProcessedMutation.mutate()}
             disabled={
               transferProcessedMutation.isPending ||
-              !canManageMainFlow ||
+              !capabilities.canCompleteProcessing ||
               !transferSourceOutletId ||
               !transferDestinationOutletId ||
               !transferProductId ||
@@ -1280,13 +1271,18 @@ export default function ProcessingPlantPage() {
                 <th scope="col">{t("Livestock Item")}</th>
                 <th scope="col">{t("Quantity")}</th>
                 <th scope="col">{t("Weight")}</th>
-                <th scope="col">{t("Actions")}</th>
+                {capabilities.canEditProcessingBatches && (
+                  <th scope="col">{t("Actions")}</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {pendingProcessing.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="ppTableEmpty">
+                  <td
+                    colSpan={capabilities.canEditProcessingBatches ? 6 : 5}
+                    className="ppTableEmpty"
+                  >
                     {t("No pending processing batches.")}
                   </td>
                 </tr>
@@ -1312,8 +1308,8 @@ export default function ProcessingPlantPage() {
                       </td>
                       <td>{typeof quantityValue === "number" ? quantityValue : "-"}</td>
                       <td>{typeof weightValue === "number" ? weightValue : "-"}</td>
+                      {capabilities.canEditProcessingBatches && (
                       <td>
-                        {capabilities.canEditProcessingBatches && (
                         <button
                           type="button"
                           className="ppBtnSecondary ppBtnTableAction"
@@ -1322,8 +1318,8 @@ export default function ProcessingPlantPage() {
                         >
                           {t("Edit")}
                         </button>
-                        )}
                       </td>
+                      )}
                     </tr>
                   );
                 })

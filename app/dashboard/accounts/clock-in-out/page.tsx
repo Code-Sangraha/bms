@@ -22,7 +22,6 @@ import {
 import {
   findTodayAttendanceForIdentity,
   getAttendanceStatus,
-  isClockInToday,
   readLocalAttendanceSnapshot,
   saveLocalAttendanceSnapshot,
   type AttendanceStatus,
@@ -36,42 +35,11 @@ function attendanceQueryKey(base: string | null) {
   return ["attendances", base ?? "all"] as const;
 }
 
-function startOfWeekMonday(ref: Date): Date {
-  const x = new Date(ref);
-  const day = x.getDay();
-  const diff = x.getDate() - day + (day === 0 ? -6 : 1);
-  x.setDate(diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfWeekMonday(ref: Date): Date {
-  const start = startOfWeekMonday(ref);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 7);
-  end.setMilliseconds(-1);
-  return end;
-}
-
-function isInCurrentWeek(clockInIso: string): boolean {
-  const t = new Date(clockInIso).getTime();
-  const now = new Date();
-  return t >= startOfWeekMonday(now).getTime() && t <= endOfWeekMonday(now).getTime();
-}
-
 function formatElapsed(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return { h, m, s };
-}
-
-function formatWeeklyHours(totalDecimal: number): string {
-  if (!Number.isFinite(totalDecimal) || totalDecimal <= 0) return "0h 0m";
-  const totalMinutes = Math.round(totalDecimal * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
 function firstNonEmpty(...values: Array<unknown>): string | null {
@@ -160,11 +128,6 @@ export default function ClockInOutPage() {
     },
   });
 
-  const employeesInScope = useMemo(() => {
-    if (!attendanceOutletId) return employees;
-    return employees.filter((e) => e.outletId === attendanceOutletId);
-  }, [employees, attendanceOutletId]);
-
   /** Clock by authenticated User first; keep Employee.id matching only as a legacy fallback. */
   const storedUser = useMemo(() => getStoredUser(), [authUserId, jwtPermissionNames]);
   const jwtSubjectIds = useMemo(() => getCandidateUserIdsFromToken(), [authUserId, jwtPermissionNames]);
@@ -244,61 +207,6 @@ export default function ClockInOutPage() {
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [persistedStatus, todayAttendanceRecord?.clockIn]);
-
-  const stats = useMemo(() => {
-    const roster = attendanceOutletId ? employeesInScope : employees;
-    const rosterIds = new Set(roster.map((e) => e.id));
-    const outletScoped = attendanceOutletId != null;
-
-    const todayRowsAll = attendanceRows.filter(
-      (r) =>
-        r.clockIn &&
-        isClockInToday(r.clockIn) &&
-        typeof r.employeeId === "string" &&
-        r.employeeId.trim() !== ""
-    );
-
-    const todayRowsForStats = !outletScoped
-      ? todayRowsAll
-      : rosterIds.size > 0
-        ? todayRowsAll.filter((r) => rosterIds.has(r.employeeId as string))
-        : [];
-
-    const presentIds = new Set(todayRowsForStats.map((r) => r.employeeId as string));
-    const totalStaff = roster.length;
-    const presentToday = (() => {
-      if (!outletScoped) return presentIds.size;
-      if (rosterIds.size === 0) return 0;
-      return [...rosterIds].filter((id) => presentIds.has(id)).length;
-    })();
-    const absentToday = totalStaff > 0 ? Math.max(0, totalStaff - presentToday) : 0;
-    const pct = totalStaff > 0 ? Math.round((presentToday / totalStaff) * 100) : 0;
-
-    const weeklyHours = attendanceRows.reduce((sum, r) => {
-      if (
-        !r.clockIn ||
-        !isInCurrentWeek(r.clockIn) ||
-        r.hoursWorked == null ||
-        typeof r.hoursWorked !== "number"
-      ) {
-        return sum;
-      }
-      const eid = r.employeeId;
-      if (outletScoped) {
-        if (rosterIds.size === 0) return sum;
-        if (typeof eid !== "string" || eid.trim() === "" || !rosterIds.has(eid)) return sum;
-      }
-      return sum + r.hoursWorked;
-    }, 0);
-
-    return {
-      totalStaff,
-      presentToday,
-      absentToday,
-      pctPresent: pct,
-      weeklyWorkLabel: formatWeeklyHours(weeklyHours),
-    };
-  }, [attendanceRows, attendanceOutletId, employees, employeesInScope]);
 
   const clockInMutation = useMutation({
     mutationFn: () => clockInApi(),
@@ -401,8 +309,6 @@ export default function ClockInOutPage() {
   const resolvingAttendance = attendancesLoading && !localAttendanceRecord;
   const buttonStatus: AttendanceStatus = loading || resolvingAttendance ? "loading" : persistedStatus;
 
-  const statPresentSub = stats.totalStaff > 0 ? `${stats.pctPresent}% ${t("Present")}` : "";
-
   return (
     <section className="clockInOutPage">
       <div className="breadcrumb">
@@ -492,7 +398,7 @@ export default function ClockInOutPage() {
           )}
         </div>
 
-        <div className="clockInOutStats">
+        {/* <div className="clockInOutStats">
           <div className="clockInOutStatCard">
             <span className="clockInOutStatTitle">{t("Weekly Work")}</span>
             <span className="clockInOutStatValue">
@@ -521,7 +427,7 @@ export default function ClockInOutPage() {
             <span className="clockInOutStatValue">{String(stats.totalStaff)}</span>
             <span className="clockInOutStatSub">{t("Total Staff")}</span>
           </div>
-        </div>
+        </div> */}
       </div>
     </section>
   );

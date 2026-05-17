@@ -3,7 +3,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { IoBusinessOutline, IoChevronDown, IoTimeOutline } from "react-icons/io5";
+import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
@@ -164,7 +164,8 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
     items: [
       { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
       { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
-      { labelKey: "directory", href: "/dashboard/accounts/directory" },
+      // Directory hidden until attendance directory data is ready.
+      // { labelKey: "directory", href: "/dashboard/accounts/directory" },
     ],
   },
 ];
@@ -203,6 +204,7 @@ const driverDrawerSections: MenuSectionBlock[] = [
 ];
 
 const STAFF_HUB_ID = "staff_hub";
+const OUTLET_LOGO_HUB_ID = "outlet_logo_hub";
 
 const sidebarConfig = {
   header: { title: "HMP" },
@@ -323,7 +325,8 @@ const sidebarConfig = {
                 items: [
                   { labelKey: "analytics", href: "/dashboard/accounts/analytics" },
                   { labelKey: "clockInOut", href: "/dashboard/accounts/clock-in-out" },
-                  { labelKey: "directory", href: "/dashboard/accounts/directory" },
+                  // Directory hidden until attendance directory data is ready.
+                  // { labelKey: "directory", href: "/dashboard/accounts/directory" },
                 ],
               },
             ],
@@ -500,7 +503,7 @@ export default function Sidebar() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const { canCreate, capabilities } = usePermissions();
-  const { userOutletId } = useAuth();
+  const { userOutletId, userOutletName } = useAuth();
   const { accessTier, lockedOutletId } = useOutletAccess();
   const sessionAccessTier = getAccessTierFromSessionClaims();
   const { t, locale } = useI18n();
@@ -511,40 +514,13 @@ export default function Sidebar() {
     return stored ?? { mode: "main" };
   });
 
-  const staffRailItem = useMemo(
-    (): (typeof sidebarConfig.sections)[number]["items"][number] => ({
-      id: STAFF_HUB_ID,
-      href: "#",
-      icon: <IoTimeOutline size={20} />,
-      menu: {
-        titleKey: "attendance" as const,
-        sections: outletStaffDrawerSections,
-      },
-    }),
-    []
-  );
-
-  const driverRailItem = useMemo(
-    (): (typeof sidebarConfig.sections)[number]["items"][number] => ({
-      id: STAFF_HUB_ID,
-      href: "#",
-      icon: <IoTimeOutline size={20} />,
-      menu: {
-        titleKey: "attendance" as const,
-        sections: driverDrawerSections,
-      },
-    }),
-    []
-  );
-
   const sectionRailItems = useMemo(() => {
-    if (accessTier === "driver") return [driverRailItem];
-    if (accessTier === "outlet_staff") return [staffRailItem];
+    if (accessTier === "driver" || accessTier === "outlet_staff") return [];
     if (accessTier === "outlet_manager") {
       return sidebarConfig.sections[0].items.filter((i) => i.id === "highland");
     }
     return sidebarConfig.sections[0].items;
-  }, [accessTier, driverRailItem, staffRailItem]);
+  }, [accessTier]);
 
   const allItems = useMemo(
     () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],
@@ -567,13 +543,27 @@ export default function Sidebar() {
   const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
 
   const visibleSubOutlets = useMemo(() => {
+    if ((accessTier === "driver" || accessTier === "outlet_staff") && userOutletId) {
+      const outlet = outlets.find((o) => o.id === userOutletId);
+      if (outlet) return [outlet];
+      return [
+        {
+          id: userOutletId,
+          name: userOutletName?.trim() || "Outlet",
+          managerId: "",
+          contact: "",
+          status: true,
+        },
+      ];
+    }
+    if (accessTier === "outlet_manager") return getSubOutletsForScope(outlets);
     if (!userOutletId) return getSubOutletsForScope(outlets);
-    /** Main-outlet org users see every plant under scope; plant-bound managers see only their outlet. */
+    /** Main-outlet org users see every plant under scope; other outlet-scoped users see only their outlet. */
     if (mainOutletId != null && userOutletId === mainOutletId) {
       return getSubOutletsForScope(outlets);
     }
     return outlets.filter((o) => o.id === userOutletId);
-  }, [outlets, userOutletId, mainOutletId]);
+  }, [accessTier, outlets, userOutletId, userOutletName, mainOutletId]);
 
   const showSubOutletSwitcher = visibleSubOutlets.length > 0;
 
@@ -625,13 +615,30 @@ export default function Sidebar() {
     [pathname, locationSearch, primaryRailItems, canCreate, capabilities, activeMenuId]
   );
 
-  const activeMenu = allItems.find((item) => item.id === activeMenuId)?.menu;
+  const outletLogoOnlyRail = accessTier === "outlet_staff" || accessTier === "driver";
+  const outletLogoRailMenu = useMemo(
+    (): RailMenu | null =>
+      outletLogoOnlyRail
+        ? {
+            titleKey: "attendance" as const,
+            sections: accessTier === "driver" ? driverDrawerSections : outletStaffDrawerSections,
+          }
+        : null,
+    [accessTier, outletLogoOnlyRail]
+  );
+
+  const activeMenu =
+    allItems.find((item) => item.id === activeMenuId)?.menu ??
+    (activeMenuId === OUTLET_LOGO_HUB_ID ? outletLogoRailMenu : null);
   const activeHrefInOpenMenu = useMemo(() => {
     if (!activeMenu) return null;
     const visible = getFlatMenuItems(activeMenu as RailMenu).filter(
       (entry) => menuItemIsVisible(entry, canCreate, capabilities)
     );
-    if (activeMenuId === STAFF_HUB_ID && isGroupedRailMenu(activeMenu as RailMenu)) {
+    if (
+      (activeMenuId === STAFF_HUB_ID || activeMenuId === OUTLET_LOGO_HUB_ID) &&
+      isGroupedRailMenu(activeMenu as RailMenu)
+    ) {
       const linkFor = (href: string) =>
         lockedOutletId ? buildPathWithOutletScope(href, lockedOutletId, "") : href;
       return longestActiveDrawerHref(
@@ -672,6 +679,7 @@ export default function Sidebar() {
     canCreate,
     capabilities,
     activeMenuId,
+    outletLogoRailMenu,
     highlandContext,
     highlandMainSections,
     accessTier,
@@ -730,7 +738,7 @@ export default function Sidebar() {
     if (!menu || !isGroupedRailMenu(menu as RailMenu)) return;
 
     const sections =
-      activeMenuId === STAFF_HUB_ID
+      activeMenuId === STAFF_HUB_ID || activeMenuId === OUTLET_LOGO_HUB_ID
         ? accessTier === "driver"
           ? driverDrawerSections
           : outletStaffDrawerSections
@@ -836,6 +844,31 @@ export default function Sidebar() {
       );
     },
     [locationSearch, navigate, pathname, showToast, t]
+  );
+
+  const handleDesktopSubOutletClick = useCallback(
+    (subOutlet: Outlet) => {
+      if (outletLogoOnlyRail) {
+        if (!subOutlet.status) {
+          showToast(t("This outlet is inactive."));
+          return;
+        }
+        const nextCtx: HighlandStoredContext = {
+          mode: "plant",
+          plantId: subOutlet.id,
+          outletId: subOutlet.id,
+          plantName: subOutlet.name,
+        };
+        setHighlandContext(nextCtx);
+        writeHighlandContextToStorage(nextCtx);
+        setActiveMenuId((id) =>
+          id === OUTLET_LOGO_HUB_ID ? null : OUTLET_LOGO_HUB_ID
+        );
+        return;
+      }
+      handleSelectSubOutlet(subOutlet);
+    },
+    [handleSelectSubOutlet, outletLogoOnlyRail, showToast, t]
   );
 
   const subOutletCount = visibleSubOutlets.length;
@@ -976,7 +1009,7 @@ export default function Sidebar() {
                     }
                     aria-label={subOutlet.name}
                     aria-pressed={isActiveSub}
-                    onClick={() => handleSelectSubOutlet(subOutlet)}
+                    onClick={() => handleDesktopSubOutletClick(subOutlet)}
                   >
                     <span className="mobileRailIcon plantRailBadge" aria-hidden>
                       {twoLetterLabelFromPlantName(subOutlet.name)}
@@ -989,6 +1022,7 @@ export default function Sidebar() {
           )}
         </nav>
 
+        {!outletLogoOnlyRail && (
         <div className="footer">
           <LanguageToggle className="link" />
           {showInstallButton && (
@@ -1026,6 +1060,7 @@ export default function Sidebar() {
               </button>
             ))}
         </div>
+        )}
       </aside>
       ) : (
         <div className="mobileBottomChrome">
@@ -1157,7 +1192,7 @@ export default function Sidebar() {
             (isGroupedRailMenu(activeMenu as RailMenu)
               ? (
                   (() => {
-                    if (activeMenuId === STAFF_HUB_ID) {
+                    if (activeMenuId === STAFF_HUB_ID || activeMenuId === OUTLET_LOGO_HUB_ID) {
                       return accessTier === "driver" ? driverDrawerSections : outletStaffDrawerSections;
                     }
                     const useScopedPlantMenu =

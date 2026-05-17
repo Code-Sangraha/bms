@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
   deriveAccessTier,
   getAccessTierFromSessionClaims,
@@ -14,11 +13,8 @@ import {
   writeHighlandContextToStorage,
 } from "@/lib/outletScope";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { getOutletIdFromToken } from "@/lib/auth/role";
 import { getStoredOutletId } from "@/lib/auth/user";
-
-const OUTLETS_QUERY_KEY = ["outlets"];
 
 export type OutletAccessContextValue = {
   accessTier: AccessTier;
@@ -34,19 +30,6 @@ export function OutletAccessProvider({ children }: { children: ReactNode }) {
   const { roleName, userOutletId, userOutletName } = useAuth();
   const sessionAccessTier = getAccessTierFromSessionClaims();
   const sessionOutletId = getOutletIdFromToken() ?? getStoredOutletId();
-  const shouldLoadOutlets = sessionAccessTier !== "outlet_staff";
-
-  const { data: outlets = [] } = useQuery({
-    queryKey: OUTLETS_QUERY_KEY,
-    queryFn: async () => {
-      const result = await getOutlets();
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    },
-    enabled: shouldLoadOutlets,
-  });
-
-  const mainOutletId = useMemo(() => getMainOutletId(outlets), [outlets]);
 
   const value = useMemo<OutletAccessContextValue>(() => {
     const effectiveOutletId = userOutletId ?? sessionOutletId;
@@ -58,15 +41,11 @@ export function OutletAccessProvider({ children }: { children: ReactNode }) {
     if (accessTier === "outlet_staff") {
       lockedOutletId = effectiveOutletId;
     } else if (accessTier === "outlet_manager" && effectiveOutletId) {
-      /** Main-outlet managers choose a plant via sidebar; do not force `?outletId=` to main. */
-      if (mainOutletId != null && effectiveOutletId === mainOutletId) {
-        lockedOutletId = null;
-      } else {
-        lockedOutletId = effectiveOutletId;
-      }
+      /** Managers can switch between outlets from the sidebar; do not force them to their assigned outlet. */
+      lockedOutletId = null;
     }
     return { accessTier, lockedOutletId };
-  }, [roleName, userOutletId, sessionOutletId, sessionAccessTier, mainOutletId]);
+  }, [roleName, userOutletId, sessionOutletId, sessionAccessTier]);
 
   const { accessTier, lockedOutletId } = value;
 

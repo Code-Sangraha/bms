@@ -1040,7 +1040,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Attendance */}
+      {/* Attendance section hidden until it can use live API-backed data. */}
+      {false && (
       <div className="dashboardSection dashboardSectionAttendance">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">{t("Attendance")}</h2>
@@ -1096,6 +1097,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 }
