@@ -1,6 +1,6 @@
 import type { AttendanceRecord } from "@/handlers/attendance";
 
-export type AttendanceStatus = "not_clocked_in" | "clocked_in" | "clocked_out" | "loading";
+export type AttendanceStatus = "not_clocked_in" | "clocked_in" | "clocked_out" | "final_clocked_out" | "loading";
 
 export type LocalAttendanceSnapshot = Pick<
   AttendanceRecord,
@@ -10,12 +10,17 @@ export type LocalAttendanceSnapshot = Pick<
   | "clockIn"
   | "clockOut"
   | "hoursWorked"
+  | "isClockedIn"
   | "status"
   | "createdAt"
   | "updatedAt"
->;
+> & {
+  isFinalClockedOut?: boolean;
+};
 
 const LOCAL_ATTENDANCE_PREFIX = "bms_attendance_today";
+const NEPAL_OFFSET_MS = (5 * 60 + 45) * 60 * 1000;
+const NEPAL_AUTO_CLOCK_OUT_HOUR = 23;
 
 export function startOfLocalDay(d: Date): Date {
   const x = new Date(d);
@@ -32,6 +37,18 @@ export function toLocalDateKey(d: Date): string {
 
 export function isSameLocalCalendarDay(a: Date, b: Date): boolean {
   return startOfLocalDay(a).getTime() === startOfLocalDay(b).getTime();
+}
+
+export function nepalAutoClockOutDeadline(now = new Date()): Date {
+  const nepalNow = new Date(now.getTime() + NEPAL_OFFSET_MS);
+  const y = nepalNow.getUTCFullYear();
+  const m = nepalNow.getUTCMonth();
+  const d = nepalNow.getUTCDate();
+  return new Date(Date.UTC(y, m, d, NEPAL_AUTO_CLOCK_OUT_HOUR, 0, 0, 0) - NEPAL_OFFSET_MS);
+}
+
+export function msUntilNepalAutoClockOut(now = new Date()): number {
+  return nepalAutoClockOutDeadline(now).getTime() - now.getTime();
 }
 
 export function isClockInToday(clockInIso: string, now = new Date()): boolean {
@@ -58,6 +75,7 @@ function rowBelongsToCurrentIdentity(
 }
 
 function isOpenAttendance(row: AttendanceRecord | LocalAttendanceSnapshot): boolean {
+  if (typeof row.isClockedIn === "boolean") return row.isClockedIn;
   return row.clockOut == null || row.clockOut === "";
 }
 
@@ -98,6 +116,8 @@ export function getAttendanceStatus(
   record: AttendanceRecord | LocalAttendanceSnapshot | null | undefined
 ): Exclude<AttendanceStatus, "loading"> {
   if (!record?.clockIn) return "not_clocked_in";
+  if ("isFinalClockedOut" in record && record.isFinalClockedOut) return "final_clocked_out";
+  if (typeof record.isClockedIn === "boolean") return record.isClockedIn ? "clocked_in" : "clocked_out";
   return record.clockOut == null || record.clockOut === "" ? "clocked_in" : "clocked_out";
 }
 
@@ -120,6 +140,8 @@ export function saveLocalAttendanceSnapshot(
     clockIn: record.clockIn,
     clockOut: record.clockOut ?? null,
     hoursWorked: record.hoursWorked ?? null,
+    isClockedIn: record.isClockedIn,
+    isFinalClockedOut: "isFinalClockedOut" in record ? record.isFinalClockedOut : undefined,
     status: record.status,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -152,6 +174,8 @@ export function readLocalAttendanceSnapshot(
       clockIn: parsed.clockIn,
       clockOut: parsed.clockOut ?? null,
       hoursWorked: typeof parsed.hoursWorked === "number" ? parsed.hoursWorked : null,
+      isClockedIn: typeof parsed.isClockedIn === "boolean" ? parsed.isClockedIn : undefined,
+      isFinalClockedOut: typeof parsed.isFinalClockedOut === "boolean" ? parsed.isFinalClockedOut : undefined,
       status: typeof parsed.status === "boolean" ? parsed.status : true,
       createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : undefined,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,

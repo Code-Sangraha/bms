@@ -98,6 +98,7 @@ export const EMPLOYEE_ROUTES = {
 
 export const ATTENDANCE_ROUTES = {
   GET: "/attendances/get",
+  TODAY_STATUS: "/attendances/today-status",
   CLOCK_IN: "/attendances/clock-in",
   CLOCK_OUT: "/attendances/clock-out",
 } as const;

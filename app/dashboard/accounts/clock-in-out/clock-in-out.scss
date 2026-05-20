@@ -142,6 +142,12 @@
   transition: opacity 0.15s;
 }
 
+.clockInOutActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .clockInOutBtn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
@@ -154,6 +160,22 @@
 
 .clockInOutBtnPrimary:hover:not(:disabled) {
   background: #027a4a;
+}
+
+.clockInOutBtnSecondary {
+  background: #eef2f7;
+  color: #111827;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.clockInOutBtnSecondary:hover:not(:disabled) {
+  background: #e5eaf1;
+}
+
+@media (max-width: 520px) {
+  .clockInOutActions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Stats grid */

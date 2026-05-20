@@ -29,6 +29,7 @@ export type AttendanceRecord = {
   clockIn: string;
   clockOut?: string | null;
   hoursWorked?: number | null;
+  isClockedIn?: boolean;
   status: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -44,6 +45,7 @@ export type ClockInResponse = {
     clockIn: string;
     clockOut?: string | null;
     hoursWorked?: number | null;
+    isClockedIn?: boolean;
     status: boolean;
     createdAt?: string;
     updatedAt?: string;
@@ -60,7 +62,10 @@ export type ClockOutResponse = {
     clockIn?: string;
     clockOut: string;
     hoursWorked: number;
+    isClockedIn?: boolean;
     status?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
   };
 };
 
@@ -68,6 +73,12 @@ export type GetAttendancesResponse = {
   success?: boolean;
   message?: string;
   data?: AttendanceRecord[];
+};
+
+export type TodayAttendanceStatusResponse = {
+  success?: boolean;
+  message?: string;
+  data?: AttendanceRecord | null;
 };
 
 type ApiResult<T extends { success?: boolean; message?: string }> =
@@ -164,6 +175,12 @@ export async function getAttendances(
   } catch {
     return { ok: false, error: "Something went wrong. Please try again.", status: 0 };
   }
+}
+
+export async function getTodayAttendanceStatus(): Promise<ApiResult<TodayAttendanceStatusResponse>> {
+  return attendanceRequest<TodayAttendanceStatusResponse>(ATTENDANCE_ROUTES.TODAY_STATUS, {
+    method: "GET",
+  });
 }
 
 /** JWT determines who is clocking in/out; sends empty JSON object. */
