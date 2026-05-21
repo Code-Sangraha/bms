@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MdAddCircleOutline, MdRemoveCircleOutline } from "react-icons/md";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { getProducts, type Product } from "@/handlers/product";
 import { getOutlets } from "@/handlers/outlet";
@@ -25,6 +26,7 @@ export default function ProcessedProductDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { capabilities } = useAuth();
   const [openRestockModal, setOpenRestockModal] = useState(false);
   const [openReduceModal, setOpenReduceModal] = useState(false);
 
@@ -105,6 +107,8 @@ export default function ProcessedProductDetailPage() {
     product != null &&
     Boolean(product.id?.trim()) &&
     Boolean(product.outletId?.trim());
+  const canRestockStorage = canMutate && capabilities.canRestockProcessedInventory;
+  const canReduceStorage = canMutate && capabilities.canDeductProcessedInventory;
 
   return (
     <section className="inventoryDetailPage processedProductPage">
@@ -169,26 +173,32 @@ export default function ProcessedProductDetailPage() {
                   outletName={getOutletName(product.outletId)}
                 />
               </div>
-              <div className="livestockDetailActions">
-                <button
-                  type="button"
-                  className="livestockDetailBtnGhost"
-                  disabled={!canMutate}
-                  onClick={() => setOpenRestockModal(true)}
-                >
-                  <MdAddCircleOutline aria-hidden />
-                  {t("Restock Storage")}
-                </button>
-                <button
-                  type="button"
-                  className="livestockDetailBtnGhost livestockDetailBtnReduce"
-                  disabled={!canMutate}
-                  onClick={() => setOpenReduceModal(true)}
-                >
-                  <MdRemoveCircleOutline aria-hidden />
-                  {t("Reduce Storage")}
-                </button>
-              </div>
+              {(capabilities.canRestockProcessedInventory || capabilities.canDeductProcessedInventory) && (
+                <div className="livestockDetailActions">
+                  {capabilities.canRestockProcessedInventory && (
+                    <button
+                      type="button"
+                      className="livestockDetailBtnGhost"
+                      disabled={!canRestockStorage}
+                      onClick={() => setOpenRestockModal(true)}
+                    >
+                      <MdAddCircleOutline aria-hidden />
+                      {t("Restock Storage")}
+                    </button>
+                  )}
+                  {capabilities.canDeductProcessedInventory && (
+                    <button
+                      type="button"
+                      className="livestockDetailBtnGhost livestockDetailBtnReduce"
+                      disabled={!canReduceStorage}
+                      onClick={() => setOpenReduceModal(true)}
+                    >
+                      <MdRemoveCircleOutline aria-hidden />
+                      {t("Reduce Storage")}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -202,7 +212,7 @@ export default function ProcessedProductDetailPage() {
             }
           />
 
-          {openRestockModal && canMutate && (
+          {openRestockModal && canRestockStorage && (
             <ProcessedProductRestockDetailModal
               isOpen
               product={product}
@@ -210,7 +220,7 @@ export default function ProcessedProductDetailPage() {
             />
           )}
 
-          {openReduceModal && canMutate && (
+          {openReduceModal && canReduceStorage && (
             <ProcessedProductReduceDetailModal
               isOpen
               product={product}

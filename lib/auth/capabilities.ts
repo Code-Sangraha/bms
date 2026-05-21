@@ -123,7 +123,6 @@ const ROLE_CAPABILITIES: Record<RoleName, RoleCapabilities> = {
     canViewProcessedInventory: true,
     canViewLivestockInventory: false,
     canViewInventoryDetails: true,
-    canDeductProcessedInventory: true,
     canViewProcessedSales: true,
     canViewSalesAnalytics: false,
     canCreateProcessedSales: true,
