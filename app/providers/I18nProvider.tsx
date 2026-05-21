@@ -526,6 +526,19 @@ const translations: Record<string, string> = {
   "No roles match": "कुनै भूमिका मिलेन",
   "Delete role": "भूमिका मेटाउनुहोस्",
   "Edit Role": "भूमिका सम्पादन गर्नुहोस्",
+  "Manage permissions": "अनुमतिहरू व्यवस्थापन गर्नुहोस्",
+  "Save permissions": "अनुमतिहरू सेभ गर्नुहोस्",
+  "Loading permissions...": "अनुमतिहरू लोड हुँदैछन्...",
+  "Failed to load permissions": "अनुमतिहरू लोड गर्न सकिएन",
+  "No permissions available.": "कुनै अनुमति उपलब्ध छैन।",
+  "Selected permissions": "छानिएका अनुमतिहरू",
+  "No role selected.": "कुनै भूमिका छानिएको छैन।",
+  "Updating permissions will require a fresh sign in.":
+    "अनुमतिहरू अपडेट गरेपछि फेरि साइन इन गर्नुपर्नेछ।",
+  "Permissions updated. Please sign in again to refresh access.":
+    "अनुमतिहरू अपडेट भयो। पहुँच ताजा गर्न फेरि साइन इन गर्नुहोस्।",
+  "This role is assigned to users or employees and cannot be deleted.":
+    "यो भूमिका प्रयोगकर्ता वा कर्मचारीलाई दिइएको छ, त्यसैले मेटाउन सकिँदैन।",
   "Role name": "भूमिका नाम",
   "e.g. Employee": "जस्तै: कर्मचारी",
   "Add a new role to assign to users (e.g. Employee, Manager).":

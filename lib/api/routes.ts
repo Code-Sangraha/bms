@@ -74,6 +74,8 @@ export const ROLE_ROUTES = {
   CREATE: "/roles/create",
   UPDATE: "/roles/update",
   DELETE: "/roles/delete",
+  PERMISSIONS: "/roles/permissions",
+  UPDATE_PERMISSIONS: "/roles/update-permissions",
 } as const;
 
 export const USER_ROUTES = {
