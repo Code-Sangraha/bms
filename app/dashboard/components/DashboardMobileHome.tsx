@@ -207,18 +207,6 @@ export default function DashboardMobileHome({
           </span>
         </Link>
         <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__summaryCell">
-          <span className="dashboardMobileHome__summaryValue">Rs. 0</span>
-          <span className="dashboardMobileHome__summaryLabel">
-            {t("Purchase")} ({periodName})
-          </span>
-        </Link>
-        <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__summaryCell">
-          <span className="dashboardMobileHome__summaryValue">Rs. 0</span>
-          <span className="dashboardMobileHome__summaryLabel">
-            {t("Expense")} ({periodName})
-          </span>
-        </Link>
-        <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__summaryCell">
           <span className="dashboardMobileHome__summaryValue">
             Rs.{totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
           </span>

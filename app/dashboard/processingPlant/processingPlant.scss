@@ -270,6 +270,10 @@
     align-items: center;
   }
 
+  .ppCompleteFormError {
+    flex-basis: 100%;
+  }
+
   .ppField {
     display: flex;
     flex-direction: column;

@@ -321,31 +321,60 @@
   }
 
   .invoicesAnalyticsToolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
   }
 
   .dateRangePills {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
+    margin: 0 -4px;
+    padding: 0 4px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dateRangePills::-webkit-scrollbar {
+    display: none;
   }
 
   .dateRangePill {
+    flex: 0 0 auto;
+    min-width: 76px;
     min-height: 42px;
-    padding: 8px 10px;
+    padding: 8px 12px;
     font-size: 12px;
+    white-space: nowrap;
   }
 
   .toolbarRight {
     width: 100%;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 10px;
   }
 
   .outletSelect {
     min-width: 0;
-    flex: 1;
+    width: 100%;
+    height: 38px;
+  }
+
+  .lastSync {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background: rgba(2, 149, 90, 0.08);
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .summaryCards,
@@ -399,10 +428,6 @@
 }
 
 @media (max-width: 420px) {
-  .dateRangePills {
-    grid-template-columns: 1fr;
-  }
-
   .summaryCard {
     min-height: 0;
   }

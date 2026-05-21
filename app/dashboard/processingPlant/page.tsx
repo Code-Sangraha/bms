@@ -40,6 +40,7 @@ const PENDING_PROCESSING_QUERY_KEY = ["pendingLivestockProcessing"];
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 const PROCESSED_PRODUCT_TYPE_NAMES = ["processed"];
 const SEND_HISTORY_STORAGE_KEY = "processingPlantSendHistory";
+const COMPLETE_PROCESSING_WEIGHT_TOLERANCE = 0.0001;
 
 type CompleteOutputLineDraft = {
   id: string;
@@ -324,6 +325,62 @@ export default function ProcessingPlantPage() {
     [processedProducts]
   );
 
+  const selectedPendingBatch = useMemo(
+    () => pendingProcessing.find((entry) => entry.batchId === selectedBatchId) ?? null,
+    [pendingProcessing, selectedBatchId]
+  );
+
+  const selectedPendingBatchWeight = useMemo(() => {
+    if (!selectedPendingBatch) return null;
+    if (typeof selectedPendingBatch.weight === "number" && Number.isFinite(selectedPendingBatch.weight)) {
+      return selectedPendingBatch.weight;
+    }
+    if (
+      typeof selectedPendingBatch.sentWeight === "number" &&
+      Number.isFinite(selectedPendingBatch.sentWeight)
+    ) {
+      return selectedPendingBatch.sentWeight;
+    }
+    const historyMatch = selectedPendingBatch.batchId
+      ? sendHistory.find((entry) => entry.batchId === selectedPendingBatch.batchId)
+      : null;
+    return typeof historyMatch?.weight === "number" && Number.isFinite(historyMatch.weight)
+      ? historyMatch.weight
+      : null;
+  }, [selectedPendingBatch, sendHistory]);
+
+  const completeWeightValidationMessage = useMemo(() => {
+    if (!selectedBatchId || selectedPendingBatchWeight == null) return "";
+    const waste = Number(completeWasteWeight);
+    if (!Number.isFinite(waste) || waste < 0) return "";
+
+    let outputTotal = 0;
+    let hasValidLine = false;
+    for (const line of completeOutputLines) {
+      const touched =
+        Boolean(line.outletId) || Boolean(line.productId) || line.weight.trim() !== "";
+      if (!touched) continue;
+      const weight = Number(line.weight);
+      if (!line.outletId || !line.productId || !Number.isFinite(weight) || weight < 0) {
+        return "";
+      }
+      outputTotal += weight;
+      hasValidLine = true;
+    }
+    if (!hasValidLine) return "";
+
+    const total = waste + outputTotal;
+    return Math.abs(total - selectedPendingBatchWeight) <= COMPLETE_PROCESSING_WEIGHT_TOLERANCE
+      ? ""
+      : t("Waste weight + output weight must equal the selected batch weight.");
+  }, [
+    selectedBatchId,
+    selectedPendingBatchWeight,
+    completeWasteWeight,
+    completeOutputLines,
+    t,
+  ]);
+
   const completeFormCanSubmit = useMemo(() => {
     if (!selectedBatchId || !capabilities.canCompleteProcessing) return false;
     const waste = Number(completeWasteWeight);
@@ -337,8 +394,14 @@ export default function ProcessingPlantPage() {
       if (!line.outletId || !line.productId || !Number.isFinite(w) || w < 0) return false;
       hasValidLine = true;
     }
-    return hasValidLine;
-  }, [selectedBatchId, capabilities.canCompleteProcessing, completeWasteWeight, completeOutputLines]);
+    return hasValidLine && !completeWeightValidationMessage;
+  }, [
+    selectedBatchId,
+    capabilities.canCompleteProcessing,
+    completeWasteWeight,
+    completeOutputLines,
+    completeWeightValidationMessage,
+  ]);
 
   const selectedLivestockItem = useMemo(
     () =>
@@ -594,6 +657,20 @@ export default function ProcessingPlantPage() {
       }
       if (outputs.length === 0) {
         return { ok: false as const, error: t("Add at least one valid output line.") };
+      }
+      if (selectedPendingBatchWeight == null) {
+        return { ok: false as const, error: t("Selected batch weight is unavailable.") };
+      }
+      const totalCompletedWeight =
+        wasteWeight + outputs.reduce((sum, output) => sum + output.weight, 0);
+      if (
+        Math.abs(totalCompletedWeight - selectedPendingBatchWeight) >
+        COMPLETE_PROCESSING_WEIGHT_TOLERANCE
+      ) {
+        return {
+          ok: false as const,
+          error: t("Waste weight + output weight must equal the selected batch weight."),
+        };
       }
 
       return completeLivestockProcessing({
@@ -1150,6 +1227,11 @@ export default function ProcessingPlantPage() {
             >
               {completeProcessingMutation.isPending ? t("Saving...") : t("Complete")}
             </button>
+            {completeWeightValidationMessage && (
+              <p className="ppNotice ppCompleteFormError" role="alert">
+                {completeWeightValidationMessage}
+              </p>
+            )}
           </div>
         </div>
       </div>
