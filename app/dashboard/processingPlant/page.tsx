@@ -93,7 +93,8 @@ export default function ProcessingPlantPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const { capabilities } = usePermissions();
+  const { capabilities, roleName } = usePermissions();
+  const canTransferProcessedStock = roleName === "Admin" || roleName === "Manager";
   const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [name, setName] = useState("");
@@ -621,6 +622,12 @@ export default function ProcessingPlantPage() {
 
   const transferProcessedMutation = useMutation({
     mutationFn: async () => {
+      if (!canTransferProcessedStock) {
+        return {
+          ok: false as const,
+          error: t("Only authorized users can transfer processed stock between outlets."),
+        };
+      }
       const parsedWeight = Number(transferWeight);
       if (!transferSourceOutletId) {
         return { ok: false as const, error: t("Please select source outlet.") };
@@ -1147,106 +1154,103 @@ export default function ProcessingPlantPage() {
         </div>
       </div>
 
-      <div className="ppCard ppCardWorkflow">
-        <div className="ppCardHead">
-          <span className="ppStepBadge" aria-hidden>
-            3
-          </span>
-          <div className="ppCardHeadText">
-            <h3 className="ppCardTitle" id="pp-card-transfer-title">
-              {t("Transfer Processed Stock Between Outlets")}
-            </h3>
-            <p className="ppCardDesc">{t("Move processed inventory from one outlet to another.")}</p>
+      {canTransferProcessedStock && (
+        <div className="ppCard ppCardWorkflow">
+          <div className="ppCardHead">
+            <span className="ppStepBadge" aria-hidden>
+              3
+            </span>
+            <div className="ppCardHeadText">
+              <h3 className="ppCardTitle" id="pp-card-transfer-title">
+                {t("Transfer Processed Stock Between Outlets")}
+              </h3>
+              <p className="ppCardDesc">{t("Move processed inventory from one outlet to another.")}</p>
+            </div>
+          </div>
+          <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
+            <label className="ppField">
+              <span className="ppLabel">{t("From Outlet")}</span>
+              <select
+                className="ppInput"
+                value={transferSourceOutletId}
+                onChange={(e) => {
+                  setTransferSourceOutletId(e.target.value);
+                  setTransferProductId("");
+                  setTransferWeight("");
+                }}
+              >
+                <option value="">{t("Select source outlet")}</option>
+                {outlets.map((outlet) => (
+                  <option key={outlet.id} value={outlet.id}>
+                    {outlet.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ppField">
+              <span className="ppLabel">{t("Processed Product")}</span>
+              <select
+                className="ppInput"
+                value={transferProductId}
+                onChange={(e) => setTransferProductId(e.target.value)}
+              >
+                <option value="">{t("Select processed product")}</option>
+                {sourceProcessedProducts.map((product) => {
+                  const productWeight =
+                    typeof product.weight === "number" ? product.weight : product.quantity;
+                  return (
+                    <option key={product.id} value={product.id}>
+                      {`${product.name} (${productWeight} kg)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <label className="ppField">
+              <span className="ppLabel">{t("To Outlet")}</span>
+              <select
+                className="ppInput"
+                value={transferDestinationOutletId}
+                onChange={(e) => setTransferDestinationOutletId(e.target.value)}
+              >
+                <option value="">{t("Select destination outlet")}</option>
+                {outlets.map((outlet) => (
+                  <option key={outlet.id} value={outlet.id}>
+                    {outlet.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ppField ppFieldNarrow">
+              <span className="ppLabel">{t("Weight")}</span>
+              <input
+                className="ppInput"
+                type="number"
+                min={1}
+                step="any"
+                value={transferWeight}
+                onChange={(e) => setTransferWeight(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="ppBtnPrimary"
+              onClick={() => transferProcessedMutation.mutate()}
+              disabled={
+                transferProcessedMutation.isPending ||
+                !canTransferProcessedStock ||
+                !transferSourceOutletId ||
+                !transferDestinationOutletId ||
+                !transferProductId ||
+                Number(transferWeight) <= 0 ||
+                (selectedTransferProductWeight !== null && selectedTransferProductWeight < Number(transferWeight))
+              }
+            >
+              {transferProcessedMutation.isPending ? t("Transferring...") : t("Transfer")}
+            </button>
           </div>
         </div>
-        {!capabilities.canCompleteProcessing && (
-          <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only authorized users can transfer processed stock between outlets.")}
-          </p>
-        )}
-        <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
-          <label className="ppField">
-            <span className="ppLabel">{t("From Outlet")}</span>
-            <select
-              className="ppInput"
-              value={transferSourceOutletId}
-              onChange={(e) => {
-                setTransferSourceOutletId(e.target.value);
-                setTransferProductId("");
-                setTransferWeight("");
-              }}
-            >
-              <option value="">{t("Select source outlet")}</option>
-              {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("Processed Product")}</span>
-            <select
-              className="ppInput"
-              value={transferProductId}
-              onChange={(e) => setTransferProductId(e.target.value)}
-            >
-              <option value="">{t("Select processed product")}</option>
-              {sourceProcessedProducts.map((product) => {
-                const productWeight =
-                  typeof product.weight === "number" ? product.weight : product.quantity;
-                return (
-                  <option key={product.id} value={product.id}>
-                    {`${product.name} (${productWeight} kg)`}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("To Outlet")}</span>
-            <select
-              className="ppInput"
-              value={transferDestinationOutletId}
-              onChange={(e) => setTransferDestinationOutletId(e.target.value)}
-            >
-              <option value="">{t("Select destination outlet")}</option>
-              {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ppField ppFieldNarrow">
-            <span className="ppLabel">{t("Weight")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={1}
-              step="any"
-              value={transferWeight}
-              onChange={(e) => setTransferWeight(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className="ppBtnPrimary"
-            onClick={() => transferProcessedMutation.mutate()}
-            disabled={
-              transferProcessedMutation.isPending ||
-              !capabilities.canCompleteProcessing ||
-              !transferSourceOutletId ||
-              !transferDestinationOutletId ||
-              !transferProductId ||
-              Number(transferWeight) <= 0 ||
-              (selectedTransferProductWeight !== null && selectedTransferProductWeight < Number(transferWeight))
-            }
-          >
-            {transferProcessedMutation.isPending ? t("Transferring...") : t("Transfer")}
-          </button>
-        </div>
-      </div>
+      )}
         </div>
       </section>
 
