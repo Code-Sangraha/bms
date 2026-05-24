@@ -179,3 +179,48 @@
   color: #6b7280;
   line-height: 1.45;
 }
+
+.livestockDetailModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 4px;
+  margin-top: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.livestockDetailModalSectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #374151;
+}
+
+.livestockDetailModalBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.livestockDetailModalBadgeAdvance {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.livestockDetailModalBadgePartial {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.livestockDetailModalBadgeFull {
+  background: #dcfce7;
+  color: #15803d;
+}

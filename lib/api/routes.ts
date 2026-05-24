@@ -58,6 +58,7 @@ export const PRODUCT_ROUTES = {
   LIVESTOCK_EDIT_SEND_TO_PROCESSING: "/products/livestock/edit-send-to-processing",
   LIVESTOCK_COMPLETE_PROCESSING: "/products/livestock/complete-processing",
   LIVESTOCK_GET_PENDING_PROCESSING: "/products/livestock/get-pending-processing",
+  LIVESTOCK_GET_COMPLETED_PROCESSING: "/products/livestock/get-completed-processing",
   /** GET ?from=YYYY-MM-DD&to=YYYY-MM-DD — placeholder until backend matches doc shape */
   LIVESTOCK_OPENING_STOCK: "/products/livestock/opening-stock",
   /** GET ?from=&to= — processed products opening/closing stock (same payload shape as livestock) */

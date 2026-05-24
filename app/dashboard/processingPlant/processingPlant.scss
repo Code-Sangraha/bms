@@ -486,6 +486,19 @@
     font-size: 13px;
   }
 
+  .ppCompletedBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #dcfce7;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
   .ppBadge {
     display: inline-flex;
     align-items: center;

@@ -23,7 +23,11 @@ import {
   restockLivestockItem,
   updateLivestockItem,
   type LivestockItem,
+  type LivestockRestockPayload,
+  type PaymentStatus,
 } from "@/handlers/product";
+import { computeDueAmount, derivePaymentStatus } from "@/lib/billing/paymentStatus";
+import { livestockRestockDetailSchema } from "@/schema/livestockDetailModals";
 import type { LivestockDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import OpeningStockTable from "./components/OpeningStockTable";
 import ClosingStockTable from "./components/ClosingStockTable";
@@ -190,6 +194,114 @@ function shouldLogLivestockOpeningStockDebug(): boolean {
   }
 }
 
+type RestockSupplierPaymentFieldsProps = {
+  t: (text: string) => string;
+  supplierName: string;
+  supplierContact: string;
+  totalAmount: string;
+  paidAmount: string;
+  remarks: string;
+  onSupplierNameChange: (value: string) => void;
+  onSupplierContactChange: (value: string) => void;
+  onTotalAmountChange: (value: string) => void;
+  onPaidAmountChange: (value: string) => void;
+  onRemarksChange: (value: string) => void;
+};
+
+const RESTOCK_PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
+  ADVANCE: "stockAdjustPaymentBadge stockAdjustPaymentBadgeAdvance",
+  PARTIAL: "stockAdjustPaymentBadge stockAdjustPaymentBadgePartial",
+  FULL: "stockAdjustPaymentBadge stockAdjustPaymentBadgeFull",
+};
+
+function RestockSupplierPaymentFields({
+  t,
+  supplierName,
+  supplierContact,
+  totalAmount,
+  paidAmount,
+  remarks,
+  onSupplierNameChange,
+  onSupplierContactChange,
+  onTotalAmountChange,
+  onPaidAmountChange,
+  onRemarksChange,
+}: RestockSupplierPaymentFieldsProps) {
+  const totalNum = Number(totalAmount) || 0;
+  const paidNum = Number(paidAmount) || 0;
+  const due = computeDueAmount(totalNum, paidNum);
+  const status = derivePaymentStatus(totalNum, paidNum);
+  const statusLabel: Record<PaymentStatus, string> = {
+    ADVANCE: t("Advance"),
+    PARTIAL: t("Partial"),
+    FULL: t("Full"),
+  };
+  return (
+    <div className="stockAdjustSupplierBlock">
+      <h4 className="stockAdjustSupplierTitle">{t("Supplier & Payment")}</h4>
+      <label className="productActionModalLabel">
+        {t("Supplier name")}
+        <input
+          type="text"
+          value={supplierName}
+          onChange={(e) => onSupplierNameChange(e.target.value)}
+          className="productActionModalInput"
+        />
+      </label>
+      <label className="productActionModalLabel">
+        {t("Supplier contact")}
+        <input
+          type="text"
+          value={supplierContact}
+          onChange={(e) => onSupplierContactChange(e.target.value)}
+          className="productActionModalInput"
+        />
+      </label>
+      <label className="productActionModalLabel">
+        {t("Total amount")}
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          value={totalAmount}
+          onChange={(e) => onTotalAmountChange(e.target.value)}
+          className="productActionModalInput"
+        />
+      </label>
+      <label className="productActionModalLabel">
+        {t("Paid amount")}
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          value={paidAmount}
+          onChange={(e) => onPaidAmountChange(e.target.value)}
+          className="productActionModalInput"
+        />
+      </label>
+      <label className="productActionModalLabel">
+        {t("Due amount")}
+        <input type="number" value={due} readOnly tabIndex={-1} className="productActionModalInput" />
+      </label>
+      <div className="productActionModalLabel">
+        {t("Payment status")}
+        <div>
+          <span className={RESTOCK_PAYMENT_BADGE_CLASS[status]}>{statusLabel[status]}</span>
+        </div>
+      </div>
+      <label className="productActionModalLabel">
+        {t("Remarks")}
+        <textarea
+          rows={2}
+          value={remarks}
+          onChange={(e) => onRemarksChange(e.target.value)}
+          className="productActionModalInput"
+        />
+      </label>
+    </div>
+  );
+}
+
 export default function LiveProductPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -208,6 +320,11 @@ export default function LiveProductPage() {
   const [stockAdjustModal, setStockAdjustModal] = useState<StockAdjustModalState>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
+  const [restockSupplierName, setRestockSupplierName] = useState("");
+  const [restockSupplierContact, setRestockSupplierContact] = useState("");
+  const [restockTotalAmount, setRestockTotalAmount] = useState("");
+  const [restockPaidAmount, setRestockPaidAmount] = useState("");
+  const [restockRemarks, setRestockRemarks] = useState("");
   const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
   const rowMenuButtonRef = useRef<HTMLDivElement>(null);
@@ -821,6 +938,11 @@ export default function LiveProductPage() {
     setStockAdjustError(null);
     setStockAdjustModal({ item, mode });
     setAdjustAmount("");
+    setRestockSupplierName("");
+    setRestockSupplierContact("");
+    setRestockTotalAmount("");
+    setRestockPaidAmount("");
+    setRestockRemarks("");
     closeRowMenu();
   };
 
@@ -828,6 +950,11 @@ export default function LiveProductPage() {
     setStockAdjustModal(null);
     setAdjustAmount("");
     setStockAdjustError(null);
+    setRestockSupplierName("");
+    setRestockSupplierContact("");
+    setRestockTotalAmount("");
+    setRestockPaidAmount("");
+    setRestockRemarks("");
   };
 
   const handleSubmitStockAdjust = () => {
@@ -844,7 +971,33 @@ export default function LiveProductPage() {
     }
     setStockAdjustError(null);
     if (stockAdjustModal.mode === "restock") {
-      restockLivestockMutation.mutate({ livestockItemId: id, quantity: amount });
+      const parsed = livestockRestockDetailSchema.safeParse({
+        quantity: amount,
+        supplierName: restockSupplierName,
+        supplierContact: restockSupplierContact || undefined,
+        totalAmount: restockTotalAmount,
+        paidAmount: restockPaidAmount,
+        remarks: restockRemarks || undefined,
+      });
+      if (!parsed.success) {
+        const first = parsed.error.errors[0]?.message ?? t("Please fill in all required fields.");
+        setStockAdjustError(first);
+        return;
+      }
+      const total = parsed.data.totalAmount;
+      const paid = parsed.data.paidAmount;
+      const payload: LivestockRestockPayload = {
+        livestockItemId: id,
+        quantity: amount,
+        supplierName: parsed.data.supplierName,
+        totalAmount: total,
+        paidAmount: paid,
+        dueAmount: computeDueAmount(total, paid),
+        paymentStatus: derivePaymentStatus(total, paid),
+      };
+      if (parsed.data.supplierContact) payload.supplierContact = parsed.data.supplierContact;
+      if (parsed.data.remarks) payload.remarks = parsed.data.remarks;
+      restockLivestockMutation.mutate(payload);
     } else {
       deductLivestockMutation.mutate({ livestockItemId: id, quantity: amount });
     }
@@ -1722,6 +1875,21 @@ export default function LiveProductPage() {
               placeholder={t("Enter quantity")}
             />
           </label>
+          {stockAdjustModal?.mode === "restock" && (
+            <RestockSupplierPaymentFields
+              t={t}
+              supplierName={restockSupplierName}
+              supplierContact={restockSupplierContact}
+              totalAmount={restockTotalAmount}
+              paidAmount={restockPaidAmount}
+              remarks={restockRemarks}
+              onSupplierNameChange={setRestockSupplierName}
+              onSupplierContactChange={setRestockSupplierContact}
+              onTotalAmountChange={setRestockTotalAmount}
+              onPaidAmountChange={setRestockPaidAmount}
+              onRemarksChange={setRestockRemarks}
+            />
+          )}
         </div>
       </Modal>
 

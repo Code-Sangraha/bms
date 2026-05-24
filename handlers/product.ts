@@ -857,11 +857,21 @@ export type LivestockDeductPayload = {
   quantity: number;
 };
 
+export const PAYMENT_STATUS_OPTIONS = ["ADVANCE", "PARTIAL", "FULL"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUS_OPTIONS)[number];
+
 export type LivestockRestockPayload = {
   livestockItemId: string;
   quantity: number;
   buyingPrice?: number;
   sellingPrice?: number;
+  supplierName: string;
+  supplierContact?: string;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount?: number;
+  paymentStatus: PaymentStatus;
+  remarks?: string;
 };
 
 export type LivestockRestockDeductResponse = {
@@ -883,12 +893,25 @@ export async function restockLivestockItem(payload: LivestockRestockPayload) {
   const body: Record<string, unknown> = {
     livestockItemId: payload.livestockItemId,
     quantity: payload.quantity,
+    supplierName: payload.supplierName,
+    totalAmount: payload.totalAmount,
+    paidAmount: payload.paidAmount,
+    paymentStatus: payload.paymentStatus,
   };
   if (payload.buyingPrice != null && Number.isFinite(payload.buyingPrice)) {
     body.buyingPrice = payload.buyingPrice;
   }
   if (payload.sellingPrice != null && Number.isFinite(payload.sellingPrice)) {
     body.sellingPrice = payload.sellingPrice;
+  }
+  if (payload.dueAmount != null && Number.isFinite(payload.dueAmount)) {
+    body.dueAmount = payload.dueAmount;
+  }
+  if (payload.supplierContact && payload.supplierContact.trim()) {
+    body.supplierContact = payload.supplierContact.trim();
+  }
+  if (payload.remarks && payload.remarks.trim()) {
+    body.remarks = payload.remarks.trim();
   }
   return apiRequest<LivestockRestockDeductResponse>(PRODUCT_ROUTES.LIVESTOCK_RESTOCK, {
     method: "POST",
@@ -1016,6 +1039,27 @@ export type GetPendingLivestockProcessingResponse = {
   message?: string;
   data?: PendingLivestockProcessingItem[];
   items?: PendingLivestockProcessingItem[];
+  [key: string]: unknown;
+};
+
+export type CompletedLivestockProcessingItem = {
+  id: string;
+  livestockItemId?: string;
+  livestockItemName?: string;
+  plantId?: string;
+  plantName?: string;
+  inputQuantity?: number;
+  inputWeight?: number;
+  wasteWeight?: number;
+  status?: string;
+  [key: string]: unknown;
+};
+
+export type GetCompletedLivestockProcessingResponse = {
+  success?: boolean;
+  message?: string;
+  data?: CompletedLivestockProcessingItem[];
+  items?: CompletedLivestockProcessingItem[];
   [key: string]: unknown;
 };
 
@@ -1172,6 +1216,75 @@ export async function getPendingLivestockProcessing(): Promise<
           } as PendingLivestockProcessingItem;
         })
         .filter((item): item is PendingLivestockProcessingItem => item !== null)
+    : [];
+  return { ok: true, data };
+}
+
+export async function getCompletedLivestockProcessing(): Promise<
+  | { ok: true; data: CompletedLivestockProcessingItem[] }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<GetCompletedLivestockProcessingResponse>(
+    PRODUCT_ROUTES.LIVESTOCK_GET_COMPLETED_PROCESSING,
+    { method: "GET" }
+  );
+  if (!result.ok) return result;
+  const list = result.data?.data ?? result.data?.items ?? [];
+  const parseNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return undefined;
+  };
+  const getString = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() ? value : undefined;
+
+  const data = Array.isArray(list)
+    ? list
+        .map((item) => {
+          const row = item as {
+            id?: unknown;
+            batchId?: unknown;
+            livestockItemId?: unknown;
+            livestockItemName?: unknown;
+            plantId?: unknown;
+            plantName?: unknown;
+            inputQuantity?: unknown;
+            quantity?: unknown;
+            inputWeight?: unknown;
+            weight?: unknown;
+            wasteWeight?: unknown;
+            status?: unknown;
+            livestockItem?: { id?: unknown; name?: unknown };
+            processingPlant?: { id?: unknown; name?: unknown };
+            plant?: { id?: unknown; name?: unknown };
+          };
+          const id = getString(row.id) ?? getString(row.batchId) ?? "";
+          if (!id) return null;
+          return {
+            ...item,
+            id,
+            livestockItemId:
+              getString(row.livestockItemId) ?? getString(row.livestockItem?.id),
+            livestockItemName:
+              getString(row.livestockItemName) ?? getString(row.livestockItem?.name),
+            plantId:
+              getString(row.plantId) ??
+              getString(row.processingPlant?.id) ??
+              getString(row.plant?.id),
+            plantName:
+              getString(row.plantName) ??
+              getString(row.processingPlant?.name) ??
+              getString(row.plant?.name),
+            inputQuantity: parseNumber(row.inputQuantity) ?? parseNumber(row.quantity),
+            inputWeight: parseNumber(row.inputWeight) ?? parseNumber(row.weight),
+            wasteWeight: parseNumber(row.wasteWeight),
+            status: getString(row.status) ?? "COMPLETED",
+          } as CompletedLivestockProcessingItem;
+        })
+        .filter((item): item is CompletedLivestockProcessingItem => item !== null)
     : [];
   return { ok: true, data };
 }

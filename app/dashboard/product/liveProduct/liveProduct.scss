@@ -438,6 +438,50 @@
   color: #4b5563;
 }
 
+.stockAdjustSupplierBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.stockAdjustSupplierTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #374151;
+}
+
+.stockAdjustPaymentBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stockAdjustPaymentBadgeAdvance {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.stockAdjustPaymentBadgePartial {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.stockAdjustPaymentBadgeFull {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .stockAdjustFieldset {
   margin: 0;
   padding: 0;

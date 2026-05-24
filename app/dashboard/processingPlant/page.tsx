@@ -10,10 +10,12 @@ import { paginate, usePagination } from "@/app/hooks/usePagination";
 import {
   completeLivestockProcessing,
   editSendLivestockToProcessing,
+  getCompletedLivestockProcessing,
   getPendingLivestockProcessing,
   getLivestockItemsByProduct,
   getProducts,
   transferProcessedStock,
+  type CompletedLivestockProcessingItem,
   type PendingLivestockProcessingItem,
   sendLivestockToProcessing,
   type LivestockItem,
@@ -37,6 +39,7 @@ const PRODUCTS_QUERY_KEY = ["products"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
 const PENDING_PROCESSING_QUERY_KEY = ["pendingLivestockProcessing"];
+const COMPLETED_PROCESSING_QUERY_KEY = ["completedLivestockProcessing"];
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 const PROCESSED_PRODUCT_TYPE_NAMES = ["processed"];
 const SEND_HISTORY_STORAGE_KEY = "processingPlantSendHistory";
@@ -271,6 +274,22 @@ export default function ProcessingPlantPage() {
     queryKey: PENDING_PROCESSING_QUERY_KEY,
     queryFn: async () => {
       const result = await getPendingLivestockProcessing();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const {
+    data: completedProcessing = [],
+    isLoading: isCompletedProcessingLoading,
+    isError: isCompletedProcessingError,
+  } = useQuery<CompletedLivestockProcessingItem[]>({
+    queryKey: COMPLETED_PROCESSING_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCompletedLivestockProcessing();
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -691,6 +710,7 @@ export default function ProcessingPlantPage() {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: COMPLETED_PROCESSING_QUERY_KEY });
     },
     onError: () => {
       showToast(t("Something went wrong. Please try again."));
@@ -1405,6 +1425,64 @@ export default function ProcessingPlantPage() {
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="ppCard">
+        <h3 className="ppCardTitle ppCardTitle--plain">{t("Completed processing batches")}</h3>
+        <div className="ppTableWrap">
+          <table className="ppTable">
+            <thead>
+              <tr>
+                <th scope="col">{t("Batch ID")}</th>
+                <th scope="col">{t("Processing Plant")}</th>
+                <th scope="col">{t("Livestock Item")}</th>
+                <th scope="col">{t("Input quantity")}</th>
+                <th scope="col">{t("Input weight")}</th>
+                <th scope="col">{t("Waste weight")}</th>
+                <th scope="col">{t("Status")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isCompletedProcessingLoading ? (
+                <tr>
+                  <td colSpan={7} className="ppTableEmpty">
+                    {t("Loading…")}
+                  </td>
+                </tr>
+              ) : isCompletedProcessingError ? (
+                <tr>
+                  <td colSpan={7} className="ppTableEmpty">
+                    {t("Failed to load completed processing batches.")}
+                  </td>
+                </tr>
+              ) : completedProcessing.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="ppTableEmpty">
+                    {t("No completed processing batches yet.")}
+                  </td>
+                </tr>
+              ) : (
+                completedProcessing.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="ppTableMono">{entry.id}</td>
+                    <td>{entry.plantName ?? "-"}</td>
+                    <td>{entry.livestockItemName ?? "-"}</td>
+                    <td>
+                      {typeof entry.inputQuantity === "number" ? entry.inputQuantity : "-"}
+                    </td>
+                    <td>{typeof entry.inputWeight === "number" ? entry.inputWeight : "-"}</td>
+                    <td>{typeof entry.wasteWeight === "number" ? entry.wasteWeight : "-"}</td>
+                    <td>
+                      <span className="ppCompletedBadge">
+                        {t(entry.status ?? "COMPLETED")}
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

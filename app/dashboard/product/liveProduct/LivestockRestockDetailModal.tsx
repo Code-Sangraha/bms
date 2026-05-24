@@ -2,16 +2,22 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
-import { restockLivestockItem, type LivestockItem, type LivestockRestockPayload } from "@/handlers/product";
+import {
+  restockLivestockItem,
+  type LivestockItem,
+  type LivestockRestockPayload,
+  type PaymentStatus,
+} from "@/handlers/product";
 import {
   livestockRestockDetailSchema,
   type LivestockRestockDetailFormValues,
 } from "@/schema/livestockDetailModals";
+import { computeDueAmount, derivePaymentStatus } from "@/lib/billing/paymentStatus";
 import "./livestockDetailShell.scss";
 
 type LivestockRestockDetailModalProps = {
@@ -22,6 +28,23 @@ type LivestockRestockDetailModalProps = {
   onSuccess?: () => void;
 };
 
+const PAYMENT_STATUS_BADGE_CLASS: Record<PaymentStatus, string> = {
+  ADVANCE: "livestockDetailModalBadge livestockDetailModalBadgeAdvance",
+  PARTIAL: "livestockDetailModalBadge livestockDetailModalBadgePartial",
+  FULL: "livestockDetailModalBadge livestockDetailModalBadgeFull",
+};
+
+const DEFAULT_VALUES: LivestockRestockDetailFormValues = {
+  quantity: 1,
+  buyingPrice: undefined,
+  sellingPrice: undefined,
+  supplierName: "",
+  supplierContact: undefined,
+  totalAmount: 0,
+  paidAmount: 0,
+  remarks: undefined,
+};
+
 export default function LivestockRestockDetailModal({
   isOpen,
   onClose,
@@ -29,6 +52,7 @@ export default function LivestockRestockDetailModal({
   livestockItemId,
   onSuccess,
 }: LivestockRestockDetailModalProps) {
+  void item;
   const { t } = useI18n();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -38,22 +62,39 @@ export default function LivestockRestockDetailModal({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<LivestockRestockDetailFormValues>({
     resolver: zodResolver(livestockRestockDetailSchema),
-    defaultValues: {
-      quantity: 1,
-      buyingPrice: undefined,
-      sellingPrice: undefined,
-    },
+    defaultValues: DEFAULT_VALUES,
   });
+
+  const totalAmountWatch = useWatch({ control, name: "totalAmount" });
+  const paidAmountWatch = useWatch({ control, name: "paidAmount" });
+  const totalNum = Number(totalAmountWatch) || 0;
+  const paidNum = Number(paidAmountWatch) || 0;
+  const dueAmount = computeDueAmount(totalNum, paidNum);
+  const paymentStatus = derivePaymentStatus(totalNum, paidNum);
+
+  const paymentStatusLabel: Record<PaymentStatus, string> = {
+    ADVANCE: t("Advance"),
+    PARTIAL: t("Partial"),
+    FULL: t("Full"),
+  };
 
   const mutation = useMutation({
     mutationFn: (values: LivestockRestockDetailFormValues) => {
       const qty = Math.floor(values.quantity);
+      const total = Number(values.totalAmount) || 0;
+      const paid = Number(values.paidAmount) || 0;
       const body: LivestockRestockPayload = {
         livestockItemId,
         quantity: qty,
+        supplierName: values.supplierName.trim(),
+        totalAmount: total,
+        paidAmount: paid,
+        dueAmount: computeDueAmount(total, paid),
+        paymentStatus: derivePaymentStatus(total, paid),
       };
       if (values.buyingPrice != null && Number.isFinite(values.buyingPrice)) {
         body.buyingPrice = values.buyingPrice;
@@ -61,6 +102,8 @@ export default function LivestockRestockDetailModal({
       if (values.sellingPrice != null && Number.isFinite(values.sellingPrice)) {
         body.sellingPrice = values.sellingPrice;
       }
+      if (values.supplierContact) body.supplierContact = values.supplierContact;
+      if (values.remarks) body.remarks = values.remarks;
       return restockLivestockItem(body);
     },
     onSuccess: (result) => {
@@ -70,7 +113,7 @@ export default function LivestockRestockDetailModal({
         return;
       }
       showToast(t("Restock completed successfully."), "success");
-      reset({ quantity: 1, buyingPrice: undefined, sellingPrice: undefined });
+      reset(DEFAULT_VALUES);
       onClose();
       void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
       void queryClient.invalidateQueries({ queryKey: ["livestockItemsByProduct"] });
@@ -156,9 +199,113 @@ export default function LivestockRestockDetailModal({
           )}
         </div>
 
-        {/* <p className="livestockDetailModalHint" role="note">
-          {t("Only the quantity is submitted to the server; buying and selling prices are optional local notes.")}
-        </p> */}
+        <div className="livestockDetailModalSection">
+          <h4 className="livestockDetailModalSectionTitle">{t("Supplier & Payment")}</h4>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel" htmlFor="livestock-restock-supplier">
+              {t("Supplier name")}
+            </label>
+            <input
+              id="livestock-restock-supplier"
+              type="text"
+              className="livestockDetailModalInput"
+              disabled={isPending}
+              {...register("supplierName")}
+            />
+            {errors.supplierName?.message && (
+              <p className="livestockDetailModalError" role="alert">
+                {errors.supplierName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel" htmlFor="livestock-restock-contact">
+              {t("Supplier contact")}
+            </label>
+            <input
+              id="livestock-restock-contact"
+              type="text"
+              className="livestockDetailModalInput"
+              disabled={isPending}
+              {...register("supplierContact")}
+            />
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel" htmlFor="livestock-restock-total">
+              {t("Total amount")}
+            </label>
+            <input
+              id="livestock-restock-total"
+              type="number"
+              min={0}
+              step="0.01"
+              className="livestockDetailModalInput"
+              disabled={isPending}
+              {...register("totalAmount")}
+            />
+            {errors.totalAmount?.message && (
+              <p className="livestockDetailModalError" role="alert">
+                {errors.totalAmount.message}
+              </p>
+            )}
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel" htmlFor="livestock-restock-paid">
+              {t("Paid amount")}
+            </label>
+            <input
+              id="livestock-restock-paid"
+              type="number"
+              min={0}
+              step="0.01"
+              className="livestockDetailModalInput"
+              disabled={isPending}
+              {...register("paidAmount")}
+            />
+            {errors.paidAmount?.message && (
+              <p className="livestockDetailModalError" role="alert">
+                {errors.paidAmount.message}
+              </p>
+            )}
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel">{t("Due amount")}</label>
+            <input
+              type="number"
+              className="livestockDetailModalInput"
+              value={dueAmount}
+              readOnly
+              tabIndex={-1}
+            />
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel">{t("Payment status")}</label>
+            <div>
+              <span className={PAYMENT_STATUS_BADGE_CLASS[paymentStatus]}>
+                {paymentStatusLabel[paymentStatus]}
+              </span>
+            </div>
+          </div>
+
+          <div className="livestockDetailModalField">
+            <label className="livestockDetailModalLabel" htmlFor="livestock-restock-remarks">
+              {t("Remarks")}
+            </label>
+            <textarea
+              id="livestock-restock-remarks"
+              rows={2}
+              className="livestockDetailModalInput"
+              disabled={isPending}
+              {...register("remarks")}
+            />
+          </div>
+        </div>
 
         <div className="livestockDetailModalFooter">
           <button
