@@ -55,6 +55,9 @@
 }
 
 .authInput {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
   height: 36px;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -72,9 +75,15 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .authInputPassword {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
   padding-right: 72px;
 }
 
@@ -152,5 +161,30 @@
 
   &:hover {
     text-decoration: underline;
+  }
+}
+
+@media (max-width: 768px) {
+  .authLayout {
+    padding: 16px;
+  }
+
+  .authCard {
+    padding: 24px 18px;
+  }
+
+  .authPasswordWrap {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .authInputPassword {
+    padding-right: 58px;
+    font-size: 14px;
+  }
+
+  .authPasswordToggle {
+    right: 6px;
+    font-size: 11px;
   }
 }

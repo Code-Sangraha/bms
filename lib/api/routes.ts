@@ -52,6 +52,8 @@ export const PRODUCT_ROUTES = {
    * Prefer backend reading query params so this can move to `apiRequest` without axios.
    */
   LIVESTOCK_INVENTORY_HISTORY: "/products/livestock/history",
+  /** GET restock expense history. Server reads JSON body; SPA uses axios GET + `data`. */
+  LIVESTOCK_EXPENSE_HISTORY: "/products/livestock/expense-history",
   /** @deprecated Unused: livestock waste UI calls LIVESTOCK_INVENTORY_HISTORY with JSON body instead. */
   LIVESTOCK_WASTE_HISTORY: "/products/livestock/waste-history",
   LIVESTOCK_SEND_TO_PROCESSING: "/products/livestock/send-to-processing",
@@ -120,6 +122,14 @@ export const CUSTOMER_TYPE_ROUTES = {
   CREATE: "/customer-types/create",
   UPDATE: "/customer-types/update",
   DELETE: "/customer-types/delete",
+} as const;
+
+export const CUSTOMER_ROUTES = {
+  GET: "/customers/get",
+  GET_BY_ID: "/customers/get-by-id",
+  CREATE: "/customers/create",
+  UPDATE: "/customers/update",
+  DELETE: "/customers/delete",
 } as const;
 
 export const PROCESSING_PLANT_ROUTES = {

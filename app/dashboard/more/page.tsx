@@ -123,6 +123,7 @@ export default function MorePage() {
         { href: to("/dashboard/accounts/analytics"), label: t("Attendance"), icon: IoStatsChartOutline },
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
         { href: to("/dashboard/invoices/customer-types"), label: t("Customer Types"), icon: IoPricetagOutline },
+        { href: to("/dashboard/invoices/customers"), label: t("Customers"), icon: IoPeopleOutline },
         {
           href: to("/dashboard/invoices"),
           label: t("Sales & Billing"),

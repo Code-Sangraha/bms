@@ -116,6 +116,7 @@ export default function LivestockRestockDetailModal({
       reset(DEFAULT_VALUES);
       onClose();
       void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
+      void queryClient.invalidateQueries({ queryKey: ["livestockExpenseHistory"] });
       void queryClient.invalidateQueries({ queryKey: ["livestockItemsByProduct"] });
       onSuccess?.();
     },

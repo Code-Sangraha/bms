@@ -212,6 +212,7 @@ export default function LivestockItemDetailPage() {
           <InventoryDetailHistoryPanel
             variant="livestock"
             wasteHistoryId={livestockRowId}
+            livestockItemId={livestockRowId}
             dateFilterAffectsStorage={false}
             productShellStyle
             storagePriceFallback={

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   MdInventory2,
+  MdPayments,
   MdRemoveCircleOutline,
   MdSearch,
   MdTrendingDown,
@@ -13,13 +14,16 @@ import { useI18n } from "@/app/providers/I18nProvider";
 import {
   formatLivestockHistoryAmount,
   formatProcessedHistoryAmount,
+  getLivestockExpenseHistory,
   getLivestockInventoryHistory,
   getLivestockWasteHistory,
   getProcessedInventoryHistory,
   getProcessedWasteHistory,
+  type LivestockExpenseHistoryEntry,
   type LivestockInventoryHistoryEntry,
   type LivestockWasteHistoryEntry,
   type ProcessedInventoryHistoryEntry,
+  type PaymentStatus,
 } from "@/handlers/product";
 import { DUMMY_WASTE_TABLE_ROWS, SHOW_DUMMY_WASTE_WHEN_EMPTY } from "@/app/dashboard/product/lib/inventoryDetailMocks";
 import {
@@ -49,11 +53,19 @@ type InventoryDetailHistoryPanelProps = {
   storagePriceFallback?: number;
   /** Current `Product.weight` (kg) for this outlet SKU, shown on processed storage tab per inventory doc. */
   currentStockWeightKg?: number | null;
+  /** Livestock item id for expense history tab; defaults to `wasteHistoryId`. */
+  livestockItemId?: string | null;
 };
 
-type HistoryTabId = "storage" | "consumed" | "waste";
+type HistoryTabId = "storage" | "consumed" | "waste" | "expense";
 
 type TabDef = { id: HistoryTabId; label: string; Icon?: typeof MdInventory2 };
+
+const PAYMENT_STATUS_BADGE_CLASS: Record<PaymentStatus, string> = {
+  ADVANCE: "livestockDetailModalBadge livestockDetailModalBadgeAdvance",
+  PARTIAL: "livestockDetailModalBadge livestockDetailModalBadgePartial",
+  FULL: "livestockDetailModalBadge livestockDetailModalBadgeFull",
+};
 
 function formatHistoryDateTime(iso: string): string {
   const ms = Date.parse(iso);
@@ -94,10 +106,12 @@ export default function InventoryDetailHistoryPanel({
   productShellStyle = false,
   storagePriceFallback,
   currentStockWeightKg = null,
+  livestockItemId: livestockItemIdProp = null,
 }: InventoryDetailHistoryPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const isLivestock = variant === "livestock";
+  const expenseItemId = livestockItemIdProp ?? wasteHistoryId;
 
   const defaultTo = useMemo(() => toIsoDateLocal(new Date()), []);
   const defaultFrom = useMemo(() => {
@@ -152,6 +166,33 @@ export default function InventoryDetailHistoryPanel({
       const result = await getLivestockInventoryHistory({
         livestockItemId: wasteHistoryId ?? undefined,
         type: "CONSUMED",
+        fromDate: appliedFrom,
+        toDate: appliedTo,
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const {
+    data: expenseHistory = [],
+    isPending: expenseHistoryPending,
+    isError: expenseHistoryError,
+  } = useQuery({
+    queryKey: [
+      "livestockExpenseHistory",
+      expenseItemId,
+      appliedFrom,
+      appliedTo,
+    ],
+    enabled: isLivestock && Boolean(expenseItemId),
+    staleTime: 30_000,
+    queryFn: async () => {
+      const result = await getLivestockExpenseHistory({
+        livestockItemId: expenseItemId ?? undefined,
         fromDate: appliedFrom,
         toDate: appliedTo,
       });
@@ -317,10 +358,41 @@ export default function InventoryDetailHistoryPanel({
         label: t("Waste History"),
         Icon: productShellStyle ? MdRemoveCircleOutline : undefined,
       });
+      if (isLivestock) {
+        base.push({
+          id: "expense",
+          label: t("Expense"),
+          Icon: productShellStyle ? MdPayments : undefined,
+        });
+      }
       return base;
     },
-    [t, productShellStyle]
+    [t, productShellStyle, isLivestock]
   );
+
+  const paymentStatusLabel: Record<PaymentStatus, string> = {
+    ADVANCE: t("Advance"),
+    PARTIAL: t("Partial"),
+    FULL: t("Full"),
+  };
+
+  const renderExpenseRows = (rows: LivestockExpenseHistoryEntry[]) =>
+    rows.map((row) => (
+      <tr key={row.id} className="inventoryDetailTableRowFixed">
+        <td>{formatHistoryDateTime(row.createdAt)}</td>
+        <td>{row.supplierName}</td>
+        <td>{row.supplierContact ?? "\u2014"}</td>
+        <td>{formatPriceCell(row.totalAmount)}</td>
+        <td>{formatPriceCell(row.paidAmount)}</td>
+        <td>{formatPriceCell(row.dueAmount)}</td>
+        <td>
+          <span className={PAYMENT_STATUS_BADGE_CLASS[row.paymentStatus]}>
+            {paymentStatusLabel[row.paymentStatus]}
+          </span>
+        </td>
+        <td>{row.remarks ?? "\u2014"}</td>
+      </tr>
+    ));
 
   const renderLivestockMovementRows = (rows: LivestockInventoryHistoryEntry[]) =>
     rows.map((row) => {
@@ -382,7 +454,7 @@ export default function InventoryDetailHistoryPanel({
     <div className={panelClass}>
       {productShellStyle && isLivestock && !dateFilterAffectsStorage && (
         <p className="inventoryDetailDateScopeHint" role="note">
-          {t("Date range applies to Consumed and Waste history only.")}
+          {t("Date range applies to Consumed, Waste, and Expense history only.")}
         </p>
       )}
       {!isLivestock && (
@@ -726,6 +798,54 @@ export default function InventoryDetailHistoryPanel({
                 </table>
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "expense" && isLivestock && (
+        <div
+          id="inv-panel-expense"
+          role="tabpanel"
+          aria-labelledby="inv-tab-expense"
+          className="inventoryDetailTabPanel"
+        >
+          {!expenseItemId ? (
+            <p className="inventoryDetailEmptyTab">
+              {t("Unable to load expense history: missing item record ID from API.")}
+            </p>
+          ) : expenseHistoryPending ? (
+            <p className="productsMessage">{t("Loading expense history…")}</p>
+          ) : expenseHistoryError ? (
+            <p className="inventoryDetailRangeError" role="alert">
+              {t("Failed to load expense history")}
+            </p>
+          ) : expenseHistory.length === 0 ? (
+            productShellStyle ? (
+              <div className="inventoryDetailEmptyWithIcon" role="status">
+                <MdPayments className="inventoryDetailEmptyIcon" aria-hidden />
+                <p className="inventoryDetailEmptyTab">{t("No expense history in this range.")}</p>
+              </div>
+            ) : (
+              <p className="inventoryDetailEmptyTab">{t("No expense history in this range.")}</p>
+            )
+          ) : (
+            <div className={`inventoryDetailSampleTableWrap ${tableScrollClass}`.trim()}>
+              <table className="inventoryDetailSampleTable">
+                <thead>
+                  <tr>
+                    <th>{t("Column date")}</th>
+                    <th>{t("Supplier")}</th>
+                    <th>{t("Contact")}</th>
+                    <th>{t("Total")}</th>
+                    <th>{t("Paid")}</th>
+                    <th>{t("Due")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Remarks")}</th>
+                  </tr>
+                </thead>
+                <tbody>{renderExpenseRows(expenseHistory)}</tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

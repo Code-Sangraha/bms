@@ -764,6 +764,7 @@ export default function LiveProductPage() {
       setAdjustAmount("");
       refreshLivestockItems();
       void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
+      void queryClient.invalidateQueries({ queryKey: ["livestockExpenseHistory"] });
     },
     onError: () => {
       setStockAdjustError(t("Something went wrong. Please try again."));

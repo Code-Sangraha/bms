@@ -148,6 +148,13 @@ type I18nContextValue = {
   "Waste History": "फोहोर इतिहास",
   "Date range applies to Consumed and Waste history only.":
     "मिति दायरा खपत र फोहोर इतिहासमा मात्र लागू हुन्छ।",
+  "Date range applies to Consumed, Waste, and Expense history only.":
+    "मिति दायरा खपत, फोहोर र खर्च इतिहासमा मात्र लागू हुन्छ।",
+  "Loading expense history…": "खर्च इतिहास लोड हुँदैछ…",
+  "Failed to load expense history": "खर्च इतिहास लोड गर्न सकिएन",
+  "No expense history in this range.": "यो दायरामा कुनै खर्च इतिहास छैन।",
+  "Unable to load expense history: missing item record ID from API.":
+    "खर्च इतिहास लोड गर्न सकिएन: API बाट वस्तु रेकर्ड ID छुट्यो।",
   "No storage history records.": "कुनै भण्डारण इतिहास रेकर्ड छैन।",
   "Restock Storage": "भण्डारण पुनः भर्नुहोस्",
   "Reduce Storage": "भण्डारण घटाउनुहोस्",
@@ -293,6 +300,22 @@ const translations: Record<string, string> = {
   "Live Stock Inventory": "लाइभ स्टक इन्वेन्टरी",
   "Processed Inventory": "प्रशोधित इन्वेन्टरी",
   "Customer Types": "ग्राहक प्रकारहरू",
+  Customers: "ग्राहकहरू",
+  "Add Customer": "ग्राहक थप्नुहोस्",
+  "Edit Customer": "ग्राहक सम्पादन गर्नुहोस्",
+  "Delete customer": "ग्राहक मेटाउनुहोस्",
+  "Search customers": "ग्राहकहरू खोज्नुहोस्",
+  "No customers yet. Add one to get started.": "अहिलेसम्म कुनै ग्राहक छैन। सुरु गर्न एउटा थप्नुहोस्।",
+  "Manage customer records linked to outlets and customer types":
+    "आउटलेट र ग्राहक प्रकारसँग जोडिएका ग्राहक रेकर्डहरू व्यवस्थापन गर्नुहोस्",
+  "Create a new customer record": "नयाँ ग्राहक रेकर्ड सिर्जना गर्नुहोस्",
+  "Customer name": "ग्राहकको नाम",
+  "Phone or email": "फोन वा इमेल",
+  "Select outlet": "आउटलेट छान्नुहोस्",
+  "Select customer type": "ग्राहक प्रकार छान्नुहोस्",
+  "All outlets": "सबै आउटलेटहरू",
+  "Filter by outlet": "आउटलेट अनुसार फिल्टर",
+  "Customer Type": "ग्राहक प्रकार",
   Product: "उत्पादन",
   Products: "उत्पादनहरू",
   "Product Type": "उत्पादन प्रकार",
@@ -841,6 +864,13 @@ const translations: Record<string, string> = {
   "Waste History": "फोहोर इतिहास",
   "Date range applies to Consumed and Waste history only.":
     "मिति दायरा खपत र फोहोर इतिहासमा मात्र लागू हुन्छ।",
+  "Date range applies to Consumed, Waste, and Expense history only.":
+    "मिति दायरा खपत, फोहोर र खर्च इतिहासमा मात्र लागू हुन्छ।",
+  "Loading expense history…": "खर्च इतिहास लोड हुँदैछ…",
+  "Failed to load expense history": "खर्च इतिहास लोड गर्न सकिएन",
+  "No expense history in this range.": "यो दायरामा कुनै खर्च इतिहास छैन।",
+  "Unable to load expense history: missing item record ID from API.":
+    "खर्च इतिहास लोड गर्न सकिएन: API बाट वस्तु रेकर्ड ID छुट्यो।",
   "No storage history records.": "कुनै भण्डारण इतिहास रेकर्ड छैन।",
   "Restock Storage": "भण्डारण पुनः भर्नुहोस्",
   "Reduce Storage": "भण्डारण घटाउनुहोस्",

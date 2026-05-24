@@ -463,6 +463,12 @@ export type {
 export { getLivestockInventoryHistory, formatLivestockHistoryAmount } from "@/lib/api/livestockInventoryHistory";
 
 export type {
+  LivestockExpenseHistoryFilters,
+  LivestockExpenseHistoryEntry,
+} from "@/lib/api/livestockExpenseHistory";
+export { getLivestockExpenseHistory } from "@/lib/api/livestockExpenseHistory";
+
+export type {
   ProcessedInventoryHistoryType,
   ProcessedInventoryHistoryFilters,
   ProcessedInventoryHistoryEntry,

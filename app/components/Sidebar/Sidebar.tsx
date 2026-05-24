@@ -41,6 +41,7 @@ type TranslationKey =
   | "pointOfSale"
   | "livestockSales"
   | "transactions"
+  | "customers"
   | "customerTypes"
   | "product"
   | "products"
@@ -114,6 +115,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   pointOfSale: "Processed Sale",
   livestockSales: "Livestock Sales",
   transactions: "Transactions",
+  customers: "Customers",
   customerTypes: "Customer Types",
   product: "Product",
   products: "Products",
@@ -147,6 +149,7 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
       { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", capability: "canCreateLivestockSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+      { labelKey: "customers", href: "/dashboard/invoices/customers" },
     ],
   },
   {
@@ -179,6 +182,7 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
     items: [
       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction", capability: "canViewTransactions" },
+      { labelKey: "customers", href: "/dashboard/invoices/customers", capability: "canViewTransactions" },
     ],
   },
   {
@@ -306,6 +310,7 @@ const sidebarConfig = {
                     capability: "canCreateLivestockSales" as const,
                   },
                   { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
+                  { labelKey: "customers", href: "/dashboard/invoices/customers" },
                   { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
                 ],
               },

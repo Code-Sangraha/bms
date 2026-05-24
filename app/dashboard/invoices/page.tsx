@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { IoListOutline, IoPricetagOutline } from "react-icons/io5";
+import { IoListOutline, IoPeopleOutline, IoPricetagOutline } from "react-icons/io5";
 import { LuBeef, LuShoppingCart } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -479,6 +479,12 @@ export default function InvoicesAnalyticsPage() {
             <IoListOutline size={24} />
           </span>
           <span className="invoicesMobileHub__label">{t("Transactions")}</span>
+        </Link>
+        <Link to={hubTo("/dashboard/invoices/customers")} className="invoicesMobileHub__card">
+          <span className="invoicesMobileHub__icon" aria-hidden>
+            <IoPeopleOutline size={24} />
+          </span>
+          <span className="invoicesMobileHub__label">{t("Customers")}</span>
         </Link>
         {capabilities.canCreateProcessedSales ? (
           <Link to={hubTo("/dashboard/invoices/new")} className="invoicesMobileHub__card">
