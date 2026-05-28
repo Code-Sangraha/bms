@@ -495,7 +495,7 @@ export default function ClockInOutPage() {
             <div className="clockInOutActions">
               <button
                 type="button"
-                className="clockInOutBtn clockInOutBtnSecondary"
+                className="clockInOutBtn clockInOutBtnYellow"
                 onClick={handlePause}
                 disabled={loading || (!attendanceUserId && !employeeRowId)}
               >
@@ -503,7 +503,7 @@ export default function ClockInOutPage() {
               </button>
               <button
                 type="button"
-                className="clockInOutBtn clockInOutBtnPrimary"
+                className="clockInOutBtn clockInOutBtnRed"
                 onClick={handleClockOut}
                 disabled={loading || (!attendanceUserId && !employeeRowId)}
               >
@@ -513,20 +513,20 @@ export default function ClockInOutPage() {
           ) : buttonStatus === "clocked_out" ? (
             <button
               type="button"
-              className="clockInOutBtn clockInOutBtnPrimary"
+              className="clockInOutBtn clockInOutBtnYellow"
               onClick={handleClockIn}
               disabled={loading || (!attendanceUserId && !employeeRowId)}
             >
               {loading ? t("Processing…") : t("Resume")}
             </button>
           ) : isFinalClockedOut ? (
-            <button type="button" className="clockInOutBtn clockInOutBtnPrimary" disabled>
+            <button type="button" className="clockInOutBtn clockInOutBtnRed" disabled>
               {t("Clocked Out")}
             </button>
           ) : (
             <button
               type="button"
-              className="clockInOutBtn clockInOutBtnPrimary"
+              className={`clockInOutBtn ${hasTodayAttendance ? "clockInOutBtnYellow" : "clockInOutBtnGreen"}`}
               onClick={handleClockIn}
               disabled={loading || (!attendanceUserId && !employeeRowId)}
             >

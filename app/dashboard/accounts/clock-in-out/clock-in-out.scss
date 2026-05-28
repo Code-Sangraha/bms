@@ -185,23 +185,31 @@
   cursor: not-allowed;
 }
 
-.clockInOutBtnPrimary {
+.clockInOutBtnGreen {
   background: #02955a;
   color: #ffffff;
 }
 
-.clockInOutBtnPrimary:hover:not(:disabled) {
+.clockInOutBtnGreen:hover:not(:disabled) {
   background: #027a4a;
 }
 
-.clockInOutBtnSecondary {
-  background: #eef2f7;
+.clockInOutBtnYellow {
+  background: #eab308;
   color: #111827;
-  border: 1px solid rgba(17, 24, 39, 0.1);
 }
 
-.clockInOutBtnSecondary:hover:not(:disabled) {
-  background: #e5eaf1;
+.clockInOutBtnYellow:hover:not(:disabled) {
+  background: #ca8a04;
+}
+
+.clockInOutBtnRed {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.clockInOutBtnRed:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
 @media (max-width: 520px) {
