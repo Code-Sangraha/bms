@@ -160,8 +160,13 @@ $radius-pill: 9999px;
 
 .posFormRow--customer {
   @media (min-width: 640px) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
   }
+}
+
+.posFormRow--customer .posField--full {
+  grid-column: 1 / -1;
 }
 
 .posFormRow--outletPayment {
@@ -214,6 +219,10 @@ $radius-pill: 9999px;
   }
 }
 
+.posField--customerName {
+  min-width: 0;
+}
+
 .posLabel {
   font-size: 12px;
   font-weight: 500;
@@ -222,6 +231,8 @@ $radius-pill: 9999px;
 
 .posInput,
 .posSelect {
+  width: 100%;
+  box-sizing: border-box;
   min-height: 44px;
   height: 44px;
   padding: 0 14px;
@@ -253,6 +264,61 @@ $radius-pill: 9999px;
   outline: none;
   border-color: $brand;
   box-shadow: 0 0 0 3px $brand-ring;
+}
+
+.posCustomerCombobox {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+
+  .posInput {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.posCustomerSuggestList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: $radius-control;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.posCustomerSuggestOption {
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.posCustomerSuggestOption:hover,
+.posCustomerSuggestOption--active {
+  background: $brand-muted;
+}
+
+.posCustomerSuggestLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: $text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.posCustomerSuggestEmpty {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 .posPaymentMethodGroup {

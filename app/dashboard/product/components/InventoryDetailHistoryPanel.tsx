@@ -558,7 +558,7 @@ export default function InventoryDetailHistoryPanel({
         >
           {isLivestock ? (
             restockHistoryPending ? (
-              <p className="productsMessage">{t("Loading stock historyÃ¢â‚¬Â¦")}</p>
+              <p className="productsMessage">{t("Loading stock history")}</p>
             ) : restockHistoryError ? (
               <p className="inventoryDetailRangeError" role="alert">
                 {t("Failed to load stock history")}
@@ -613,7 +613,7 @@ export default function InventoryDetailHistoryPanel({
                 </p>
               ) : null}
               {processedStoragePending ? (
-                <p className="productsMessage">{t("Loading stock historyÃ¢â‚¬Â¦")}</p>
+                <p className="productsMessage">{t("Loading stock history")}</p>
               ) : processedStorageError ? (
                 <p className="inventoryDetailRangeError" role="alert">
                   {t("Failed to load processed storage history.")}
@@ -665,7 +665,7 @@ export default function InventoryDetailHistoryPanel({
         >
           {isLivestock ? (
             deductHistoryPending ? (
-              <p className="productsMessage">{t("Loading stock historyÃ¢â‚¬Â¦")}</p>
+              <p className="productsMessage">{t("Loading stock history")}</p>
             ) : deductHistoryError ? (
               <p className="inventoryDetailRangeError" role="alert">
                 {t("Failed to load stock history")}
@@ -700,7 +700,7 @@ export default function InventoryDetailHistoryPanel({
                 {t("Processed consumed history note")}
               </p>
               {processedConsumedPending ? (
-                <p className="productsMessage">{t("Loading stock historyÃ¢â‚¬Â¦")}</p>
+                <p className="productsMessage">{t("Loading stock history")}</p>
               ) : processedConsumedError ? (
                 <p className="inventoryDetailRangeError" role="alert">
                   {t("Failed to load consumed history.")}

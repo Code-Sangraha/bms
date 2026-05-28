@@ -400,6 +400,12 @@ const translations: Record<string, string> = {
   "Scan barcode or search products": "बारकोड स्क्यान गर्नुहोस् वा उत्पादन खोज्नुहोस्",
   "Current Sale": "हालको बिक्री",
   "Customer Details": "ग्राहक विवरण",
+  "Enter customer details": "ग्राहक विवरण प्रविष्ट गर्नुहोस्",
+  "Enter customer contact.": "ग्राहक सम्पर्क प्रविष्ट गर्नुहोस्।",
+  "Sale recorded, but the customer could not be saved: {{message}}":
+    "बिक्री दर्ता भयो, तर ग्राहक सुरक्षित गर्न सकिएन: {{message}}",
+  "Matching customers": "मिल्दो ग्राहकहरू",
+  "No matching customers": "कुनै मिल्दो ग्राहक छैन",
   "Customer name": "ग्राहक नाम",
   "Phone or email": "फोन वा इमेल",
   "Customer contact": "ग्राहक सम्पर्क",
@@ -972,6 +978,17 @@ const translations: Record<string, string> = {
   "Input quantity": "इनपुट मात्रा",
   "Input weight": "इनपुट तौल",
   "Waste weight": "फोहोर तौल",
+  "Today's total hours": "आजको जम्मा घण्टा",
+  "Timer above shows the current session only.":
+    "माथिको टाइमर हालको सत्र मात्र देखाउँछ।",
+  "Registered customer": "दर्ता भएको ग्राहक",
+  "Select outlet first": "पहिले आउटलेट छान्नुहोस्",
+  "No registered customers for this outlet": "यस आउटलेटका लागि कुनै दर्ता ग्राहक छैन",
+  "Select registered customer (optional)": "दर्ता भएको ग्राहक छान्नुहोस् (वैकल्पिक)",
+  "Recent restock expenses": "हालका पुनः भण्डारण खर्च",
+  "Livestock restock payments from expense history (most recent first).":
+    "खर्च इतिहासबाट लाइभस्टक पुनः भण्डारण भुक्तानी (नयाँ पहिले)।",
+  "No restock expense records yet.": "अहिलेसम्म कुनै पुनः भण्डारण खर्च रेकर्ड छैन।",
   COMPLETED: "सम्पन्न",
 };
 

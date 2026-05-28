@@ -44,6 +44,14 @@ function formatElapsed(seconds: number) {
   return { h, m, s };
 }
 
+function formatHoursWorked(h: number | null | undefined): string | null {
+  if (h == null || Number.isNaN(h)) return null;
+  const totalMinutes = Math.round(h * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return `${hh}h ${String(mm).padStart(2, "0")}m`;
+}
+
 function firstNonEmpty(...values: Array<unknown>): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim() !== "") return value.trim();
@@ -403,6 +411,8 @@ export default function ClockInOutPage() {
   const resolvingAttendance = (todayStatusLoading || attendancesLoading) && !localAttendanceRecord;
   const buttonStatus: AttendanceStatus = resolvingAttendance ? "loading" : persistedStatus;
   const hasTodayAttendance = !!todayAttendanceRecord?.clockIn;
+  const todayHoursWorkedLabel = formatHoursWorked(todayAttendanceRecord?.hoursWorked);
+  const showTodayHoursWorked = hasTodayAttendance && todayHoursWorkedLabel != null;
 
   return (
     <section className="clockInOutPage">
@@ -434,6 +444,17 @@ export default function ClockInOutPage() {
               <span className="clockInOutTimerUnit">{t("SECONDS")}</span>
             </div>
           </div>
+          {showTodayHoursWorked ? (
+            <div className="clockInOutDailyTotal" role="status">
+              <span className="clockInOutDailyTotalLabel">{t("Today's total hours")}</span>
+              <span className="clockInOutDailyTotalValue">{todayHoursWorkedLabel}</span>
+              {isClockedIn ? (
+                <span className="clockInOutDailyTotalSub">
+                  {t("Timer above shows the current session only.")}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <p className="clockInOutHint">
             {buttonStatus === "final_clocked_out"
               ? t("You are clocked out for today.")

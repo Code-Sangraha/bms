@@ -9,6 +9,7 @@ import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { getCustomerTypes } from "@/handlers/customerType";
+import { createCustomer, getCustomers, type Customer } from "@/handlers/customer";
 import { getDualPricings } from "@/handlers/dualPricing";
 import { getUnitPrice } from "@/lib/dualPricingLookup";
 import {
@@ -18,20 +19,33 @@ import {
 import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
-import { createSale } from "@/handlers/sale";
+import { createSale, type SaleItemPayload } from "@/handlers/sale";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
   SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
+import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
+import { findMatchingCustomer } from "./findMatchingCustomer";
 import "./pos.scss";
+
+type PosCheckoutPayload = {
+  saleItems: SaleItemPayload[];
+  customerCreate: {
+    name: string;
+    contact: string;
+    outletId: string;
+    customerTypeId: string;
+  } | null;
+};
 
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 const DUAL_PRICING_QUERY_KEY = ["dualPricing"];
 const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
+const CUSTOMERS_QUERY_KEY = ["customers"];
 const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 
@@ -113,6 +127,7 @@ export default function PointOfSalePage() {
   const { accessTier } = useOutletAccess();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [outletId, setOutletId] = useState("");
   const [productId, setProductId] = useState("");
   const [lineTypeId, setLineTypeId] = useState("");
@@ -209,6 +224,37 @@ export default function PointOfSalePage() {
       return result.data;
     },
   });
+
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: CUSTOMERS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCustomers();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const applyRegisteredCustomer = (customer: Customer) => {
+    setSelectedCustomerId(customer.id);
+    setCustomerName(customer.name);
+    setCustomerContact(customer.contact);
+    if (customer.customerTypeId) {
+      setLineTypeId(customer.customerTypeId);
+    }
+  };
+
+  const handleCustomerNameChange = (value: string) => {
+    setSelectedCustomerId("");
+    setCustomerName(value);
+  };
+
+  const handleCustomerContactChange = (value: string) => {
+    setSelectedCustomerId("");
+    setCustomerContact(value);
+  };
 
   const processedProducts = useMemo(() => {
     return products.filter((p: Product) => {
@@ -314,33 +360,63 @@ export default function PointOfSalePage() {
   );
 
   const createSaleMutation = useMutation({
-    mutationFn: (items: {
-      name: string;
-      contact: string;
-      customerTypeId: string;
-      productId: string;
-      outletId: string;
-      weight: number;
-      paymentMethod: string;
-    }[]) =>
-      createSale(items),
+    mutationFn: async (payload: PosCheckoutPayload) => {
+      const saleResult = await createSale(payload.saleItems);
+      if (!saleResult.ok) {
+        return {
+          saleOk: false as const,
+          error: saleResult.error,
+          status: saleResult.status,
+        };
+      }
+
+      if (!payload.customerCreate) {
+        return { saleOk: true as const, customerCreated: false as const };
+      }
+
+      const customerResult = await createCustomer(payload.customerCreate);
+      if (!customerResult.ok) {
+        return {
+          saleOk: true as const,
+          customerCreated: false as const,
+          customerCreateError: customerResult.error,
+        };
+      }
+
+      return { saleOk: true as const, customerCreated: true as const };
+    },
     onSuccess: (result) => {
-      if (result.ok) {
-        setLineItems([]);
-        setCustomerName("");
-        setCustomerContact("");
-        setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
-        setError(null);
-        void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
-        void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
-        navigate("/dashboard/invoices/transaction");
-      } else {
+      if (!result.saleOk) {
         if (result.status === 401) navigate("/login");
         else {
           setError(result.error);
           showToast(result.error, "error");
         }
+        return;
       }
+
+      if ("customerCreateError" in result && result.customerCreateError) {
+        showToast(
+          t("Sale recorded, but the customer could not be saved: {{message}}").replace(
+            "{{message}}",
+            result.customerCreateError
+          ),
+          "error"
+        );
+      }
+
+      setLineItems([]);
+      setCustomerName("");
+      setCustomerContact("");
+      setSelectedCustomerId("");
+      setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
+      if (result.customerCreated) {
+        void queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
+      }
+      navigate("/dashboard/invoices/transaction");
     },
     onError: () => {
       const message = t("Something went wrong. Please try again.");
@@ -364,16 +440,37 @@ export default function PointOfSalePage() {
       return;
     }
     setErrorShowPricelistLink(false);
-    const items = lineItems.map((item) => ({
-      name: customerName.trim(),
-      contact: customerContact.trim(),
+    const trimmedName = customerName.trim();
+    const trimmedContact = customerContact.trim();
+    const saleItems: SaleItemPayload[] = lineItems.map((item) => ({
+      name: trimmedName,
+      contact: trimmedContact,
       customerTypeId: item.customerTypeId,
       productId: item.productId,
       outletId,
       weight: item.weight,
       paymentMethod,
     }));
-    createSaleMutation.mutate(items);
+
+    const alreadyKnown =
+      Boolean(selectedCustomerId) ||
+      findMatchingCustomer(allCustomers, {
+        name: trimmedName,
+        contact: trimmedContact,
+        outletId,
+      }) != null;
+
+    const customerCreate =
+      alreadyKnown || lineItems.length === 0
+        ? null
+        : {
+            name: trimmedName,
+            contact: trimmedContact,
+            outletId,
+            customerTypeId: lineItems[0].customerTypeId,
+          };
+
+    createSaleMutation.mutate({ saleItems, customerCreate });
     setCheckoutConfirmOpen(false);
   };
 
@@ -385,6 +482,11 @@ export default function PointOfSalePage() {
     }
     if (!customerName.trim()) {
       setError(t("Enter customer details."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
+    if (!customerContact.trim()) {
+      setError(t("Enter customer contact."));
       setErrorShowPricelistLink(false);
       return;
     }
@@ -435,24 +537,24 @@ export default function PointOfSalePage() {
             {t("Customer & outlet")}
           </h3>
           <div className="posFormRow posFormRow--customer">
-            <label className="posField">
+            <label className="posField posField--customerName" htmlFor="pos-customer-name">
               <span className="posLabel">{t("Customer Details")}</span>
-              <input
-                className="posInput"
-                placeholder={t("Enter customer details")}
+              <PosCustomerNameCombobox
+                customers={allCustomers}
+                outletId={outletId}
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                aria-label={t("Customer name")}
-                autoComplete="name"
+                onChange={handleCustomerNameChange}
+                onSelectCustomer={applyRegisteredCustomer}
+                t={t}
               />
             </label>
-            <label className="posField">
+            <label className="posField posField--contact">
               <span className="posLabel">{t("Contact")}</span>
               <input
                 className="posInput"
                 placeholder={t("Phone or email")}
                 value={customerContact}
-                onChange={(e) => setCustomerContact(e.target.value)}
+                onChange={(e) => handleCustomerContactChange(e.target.value)}
                 aria-label={t("Customer contact")}
                 autoComplete="tel"
               />

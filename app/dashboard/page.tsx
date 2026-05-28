@@ -19,7 +19,8 @@ import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
-import { getProducts, type Product } from "@/handlers/product";
+import { getProducts, getLivestockExpenseHistory, type Product } from "@/handlers/product";
+import type { LivestockExpenseHistoryEntry } from "@/lib/api/livestockExpenseHistory";
 import { getProductTypes } from "@/handlers/productType";
 import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
@@ -45,6 +46,8 @@ const SALES_QUERY_KEY = ["sales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const OUTLETS_QUERY_KEY = ["outlets"];
+const LIVESTOCK_EXPENSE_DASHBOARD_QUERY_KEY = ["livestockExpenseHistory", "dashboard"];
+const DASHBOARD_EXPENSE_ROW_LIMIT = 20;
 const STATIC_ATTENDANCE_PREVIEW = [
   { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
   { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
@@ -77,6 +80,30 @@ type ProcessedLineItem = {
 function resolveSaleOutletId(tx: SaleTransaction): string {
   const nested = tx.outlet && typeof tx.outlet.id === "string" ? tx.outlet.id : "";
   return String(tx.outletId ?? nested).trim();
+}
+
+function formatDashboardExpenseDate(iso: string): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return iso;
+  return new Date(ms).toLocaleString();
+}
+
+function expensePaymentStatusLabel(
+  status: LivestockExpenseHistoryEntry["paymentStatus"],
+  t: (key: string) => string
+): string {
+  switch (status) {
+    case "ADVANCE":
+      return t("Advance");
+    case "PARTIAL":
+      return t("Partial");
+    case "FULL":
+      return t("Full");
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
+    }
+  }
 }
 
 function DashboardMetricCard({
@@ -190,6 +217,28 @@ export default function DashboardPage() {
       return result.data;
     },
   });
+
+  const {
+    data: livestockExpenseRows = [],
+    isLoading: livestockExpenseLoading,
+    isError: livestockExpenseError,
+    error: livestockExpenseErrorDetail,
+  } = useQuery({
+    queryKey: LIVESTOCK_EXPENSE_DASHBOARD_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getLivestockExpenseHistory({});
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const dashboardExpenseRows = useMemo(
+    () => livestockExpenseRows.slice(0, DASHBOARD_EXPENSE_ROW_LIMIT),
+    [livestockExpenseRows]
+  );
 
   const scopedSalesTransactions = useMemo(() => {
     if (!effectiveOutletScopeId) return salesTransactions;
@@ -1043,6 +1092,64 @@ export default function DashboardPage() {
               )}
             </div>
             )}
+
+            <div className="dashboardChartBlock dashboardLiveStockBlock">
+              <h3 className="dashboardChartTitle">{t("Recent restock expenses")}</h3>
+              <p className="dashboardChartSubtitle">
+                {t("Livestock restock payments from expense history (most recent first).")}
+              </p>
+              {livestockExpenseLoading && (
+                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
+                  {t("Loading expense history…")}
+                </div>
+              )}
+              {livestockExpenseError && (
+                <div className="dashboardBlock dashboardMessage dashboardError dashboardMessageInline">
+                  {livestockExpenseErrorDetail instanceof Error
+                    ? livestockExpenseErrorDetail.message
+                    : t("Failed to load expense history")}
+                </div>
+              )}
+              {!livestockExpenseLoading &&
+                !livestockExpenseError &&
+                dashboardExpenseRows.length === 0 && (
+                  <div className="dashboardBlock dashboardMessage dashboardMessageInline">
+                    {t("No restock expense records yet.")}
+                  </div>
+                )}
+              {!livestockExpenseLoading &&
+                !livestockExpenseError &&
+                dashboardExpenseRows.length > 0 && (
+                  <div className="dashboardSalesTableWrap">
+                    <table className="dashboardSalesTable">
+                      <thead>
+                        <tr>
+                          <th>{t("Date")}</th>
+                          <th>{t("Livestock Item")}</th>
+                          <th>{t("Supplier name")}</th>
+                          <th>{t("Total amount")}</th>
+                          <th>{t("Paid amount")}</th>
+                          <th>{t("Due amount")}</th>
+                          <th>{t("Payment status")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardExpenseRows.map((row) => (
+                          <tr key={row.id}>
+                            <td>{formatDashboardExpenseDate(row.createdAt)}</td>
+                            <td>{row.livestockItem.name}</td>
+                            <td>{row.supplierName}</td>
+                            <td>Rs.{row.totalAmount.toLocaleString("en-IN")}</td>
+                            <td>Rs.{row.paidAmount.toLocaleString("en-IN")}</td>
+                            <td>Rs.{row.dueAmount.toLocaleString("en-IN")}</td>
+                            <td>{expensePaymentStatusLabel(row.paymentStatus, t)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </div>
           </>
         )}
       </div>
