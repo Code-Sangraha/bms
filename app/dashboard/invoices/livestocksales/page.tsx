@@ -105,6 +105,7 @@ export default function LivestockSalesPage() {
     DEFAULT_SALE_PAYMENT_METHOD
   );
   const [lineIndexToDelete, setLineIndexToDelete] = useState<number | null>(null);
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [salesListPage, setSalesListPage] = useState(1);
   const [salesListPageSize, setSalesListPageSize] = useState(LIVESTOCK_SALES_LIST_DEFAULT_LIMIT);
 
@@ -262,7 +263,31 @@ export default function LivestockSalesPage() {
     0
   );
 
-  const handleAddLivestockLine = () => {
+  const clearLivestockLineForm = () => {
+    setSelectedLivestockItemId("");
+    setLivestockWeight("");
+    setLivestockAmount(0);
+    setEditingLineIndex(null);
+  };
+
+  const startEditLivestockLine = (index: number) => {
+    const line = livestockLineItems[index];
+    if (!line) return;
+    setEditingLineIndex(index);
+    setCustomerName(line.name);
+    setCustomerContact(line.contact);
+    setSelectedLivestockItemId(line.livestockItemId);
+    setLivestockWeight(String(line.weight));
+    setLivestockAmount(line.amount);
+    setLivestockError(null);
+  };
+
+  const cancelEditLivestockLine = () => {
+    clearLivestockLineForm();
+    setLivestockError(null);
+  };
+
+  const handleSaveLivestockLine = () => {
     if (!customerName.trim() || !customerContact.trim()) {
       setLivestockError(t("Enter customer details."));
       return;
@@ -281,26 +306,34 @@ export default function LivestockSalesPage() {
       return;
     }
 
-    setLivestockLineItems((prev) => [
-      ...prev,
-      {
-        name: customerName.trim(),
-        contact: customerContact.trim(),
-        livestockItemId: selectedLivestockItemId.trim(),
-        livestockItemLabel:
-          livestockOptionMap.get(selectedLivestockItemId.trim()) ?? selectedLivestockItemId.trim(),
-        weight: parsedWeight,
-        amount: livestockAmount,
-      },
-    ]);
-    setSelectedLivestockItemId("");
-    setLivestockWeight("");
-    setLivestockAmount(0);
+    const nextLine: LivestockLineItem = {
+      name: customerName.trim(),
+      contact: customerContact.trim(),
+      livestockItemId: selectedLivestockItemId.trim(),
+      livestockItemLabel:
+        livestockOptionMap.get(selectedLivestockItemId.trim()) ?? selectedLivestockItemId.trim(),
+      weight: parsedWeight,
+      amount: livestockAmount,
+    };
+
+    if (editingLineIndex !== null) {
+      setLivestockLineItems((prev) =>
+        prev.map((item, i) => (i === editingLineIndex ? nextLine : item))
+      );
+    } else {
+      setLivestockLineItems((prev) => [...prev, nextLine]);
+    }
+    clearLivestockLineForm();
     setLivestockError(null);
   };
 
   const removeLivestockLine = (index: number) => {
     setLivestockLineItems((prev) => prev.filter((_, i) => i !== index));
+    if (editingLineIndex === index) {
+      clearLivestockLineForm();
+    } else if (editingLineIndex !== null && index < editingLineIndex) {
+      setEditingLineIndex(editingLineIndex - 1);
+    }
   };
 
   const linePendingDelete = useMemo(() => {
@@ -322,9 +355,7 @@ export default function LivestockSalesPage() {
         setLivestockLineItems([]);
         setCustomerName("");
         setCustomerContact("");
-        setSelectedLivestockItemId("");
-        setLivestockWeight("");
-        setLivestockAmount(0);
+        clearLivestockLineForm();
         setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
         setLivestockError(null);
         queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
@@ -431,7 +462,7 @@ export default function LivestockSalesPage() {
 
         <section className="livestockSection" aria-labelledby="livestock-section-lines">
           <h3 id="livestock-section-lines" className="livestockSectionTitle">
-            {t("Add livestock line")}
+            {editingLineIndex !== null ? t("Edit livestock line") : t("Add livestock line")}
           </h3>
           <div className="formGridAdd">
             <label className="field fieldLivestockSelect">
@@ -478,9 +509,16 @@ export default function LivestockSalesPage() {
                 />
               </label>
             </div>
-            <button type="button" className="addBtn" onClick={handleAddLivestockLine}>
-              {t("+ Add Livestock")}
-            </button>
+            <div className="livestockLineFormActions">
+              <button type="button" className="addBtn" onClick={handleSaveLivestockLine}>
+                {editingLineIndex !== null ? t("Update line") : t("+ Add Livestock")}
+              </button>
+              {editingLineIndex !== null && (
+                <button type="button" className="cancelEditBtn" onClick={cancelEditLivestockLine}>
+                  {t("Cancel")}
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -532,20 +570,33 @@ export default function LivestockSalesPage() {
                   </tr>
                 ) : (
                   livestockLineItems.map((item, index) => (
-                    <tr key={`${item.livestockItemId}-${index}`}>
+                    <tr
+                      key={`${item.livestockItemId}-${index}`}
+                      className={editingLineIndex === index ? "tableRow--editing" : undefined}
+                    >
                       <td data-label={t("Name")}>{item.name}</td>
                       <td data-label={t("Contact")}>{item.contact}</td>
                       <td data-label={t("Livestock Item ID")}>{item.livestockItemLabel}</td>
                       <td data-label={t("Quantity")}>{item.weight}</td>
                       <td data-label={t("Amount")}>{item.amount}</td>
                       <td data-label={t("Actions")} className="tableCell--action">
-                        <button
-                          type="button"
-                          className="removeBtn"
-                          onClick={() => setLineIndexToDelete(index)}
-                        >
-                          {t("Delete")}
-                        </button>
+                        <div className="lineActions">
+                          <button
+                            type="button"
+                            className="editBtn"
+                            onClick={() => startEditLivestockLine(index)}
+                          >
+                            {t("Edit")}
+                          </button>
+                          <button
+                            type="button"
+                            className="removeBtn"
+                            onClick={() => setLineIndexToDelete(index)}
+                            disabled={editingLineIndex !== null && editingLineIndex !== index}
+                          >
+                            {t("Delete")}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

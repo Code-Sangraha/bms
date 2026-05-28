@@ -509,9 +509,16 @@ $radius-pill: 9999px;
     background: transparent;
   }
 
-  .table.table--stack .tableCell--action .removeBtn {
-    width: 100%;
+  .table.table--stack .tableCell--action .removeBtn,
+  .table.table--stack .tableCell--action .editBtn {
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
+  }
+
+  .table.table--stack .lineActions {
+    width: 100%;
+    flex-direction: row;
   }
 
   .table.table--stack tfoot {
@@ -633,9 +640,29 @@ $radius-pill: 9999px;
 
 .table th:last-child,
 .table td:last-child {
-  width: 88px;
+  width: auto;
+  min-width: 156px;
   text-align: center;
   white-space: nowrap;
+}
+
+.table tbody tr.tableRow--editing td {
+  background: rgba(2, 149, 90, 0.06);
+}
+
+.livestockLineFormActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineActions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .emptyCell {
@@ -680,13 +707,68 @@ $radius-pill: 9999px;
   cursor: pointer;
   transition: background 0.15s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(220, 38, 38, 0.1);
   }
 
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.editBtn {
+  min-width: 72px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(2, 149, 90, 0.25);
+  border-radius: $radius-control;
+  background: rgba(2, 149, 90, 0.06);
+  color: #047857;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(2, 149, 90, 0.12);
+    color: #059669;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.cancelEditBtn {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: $radius-control;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
   }
 }
 

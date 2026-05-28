@@ -432,6 +432,108 @@
   gap: 16px;
 }
 
+.productActionModalBody--compactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  align-items: start;
+}
+
+.productActionModalBody--compactGrid > .productActionModalError,
+.productActionModalBody--compactGrid > .stockAdjustModalItemSummary {
+  grid-column: 1 / -1;
+}
+
+.productActionModalBody--restock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.productActionModalBody--restock .stockAdjustPrimaryFields,
+.productActionModalBody--restock .stockAdjustSupplierBlock {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stockAdjustPrimaryFields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 12px;
+  grid-column: 1 / -1;
+}
+
+.stockAdjustPrimaryFields .productActionModalInput,
+.stockAdjustPrimaryFields .productActionModalLabel {
+  max-width: none;
+  width: 100%;
+}
+
+.modalCompact .productActionModalBody {
+  gap: 10px;
+}
+
+.modalCompact .productActionModalLabel {
+  gap: 4px;
+  font-size: 12px;
+}
+
+.modalCompact .productActionModalInput,
+.modalCompact .productActionModalSelect {
+  padding: 7px 10px;
+  font-size: 13px;
+  max-width: none;
+}
+
+.modalCompact .stockAdjustModalItemSummary {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.modalCompact .stockAdjustSupplierBlock {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  margin-top: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stockAdjustSupplierBlock .productActionModalInput,
+.stockAdjustSupplierBlock .productActionModalLabel {
+  max-width: none;
+  width: 100%;
+}
+
+.modalCompact .stockAdjustSupplierTitle {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+  font-size: 11px;
+}
+
+.modalCompact .stockAdjustFieldFull {
+  grid-column: 1 / -1;
+}
+
+.modalCompact .stockAdjustSupplierBlock textarea {
+  min-height: 56px;
+  resize: vertical;
+}
+
+@media (max-width: 640px) {
+  .stockAdjustPrimaryFields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .productActionModalBody--compactGrid,
+  .modalCompact .stockAdjustSupplierBlock {
+    grid-template-columns: 1fr;
+  }
+}
+
 .stockAdjustModalItemSummary {
   margin: 0;
   font-size: 13px;

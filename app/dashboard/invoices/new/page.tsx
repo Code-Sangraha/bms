@@ -133,6 +133,7 @@ export default function PointOfSalePage() {
   const [lineTypeId, setLineTypeId] = useState("");
   const [lineWeightInput, setLineWeightInput] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorShowPricelistLink, setErrorShowPricelistLink] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
@@ -288,7 +289,31 @@ export default function PointOfSalePage() {
     }
   }, [processedProductsForDropdown, productId]);
 
-  const handleAddProduct = () => {
+  const clearLineForm = () => {
+    setLineWeightInput("");
+    setProductId("");
+    setEditingLineIndex(null);
+  };
+
+  const startEditLine = (index: number) => {
+    const line = lineItems[index];
+    if (!line) return;
+    setEditingLineIndex(index);
+    setProductId(line.productId);
+    setLineTypeId(line.customerTypeId);
+    setLineWeightInput(String(line.weight));
+    setError(null);
+    setErrorShowPricelistLink(false);
+    productSelectRef.current?.focus();
+  };
+
+  const cancelEditLine = () => {
+    clearLineForm();
+    setError(null);
+    setErrorShowPricelistLink(false);
+  };
+
+  const handleSaveLine = () => {
     if (!productId || !outletId) {
       setErrorShowPricelistLink(false);
       setError(t("Select product and outlet."));
@@ -301,16 +326,22 @@ export default function PointOfSalePage() {
     }
     const product = products.find((p: Product) => p.id === productId);
     const stockAvailable = getProcessedProductAvailableKg(product);
+    const editingLine =
+      editingLineIndex !== null ? lineItems[editingLineIndex] : undefined;
+    const stockForLine =
+      editingLine?.productId === productId
+        ? stockAvailable + editingLine.weight
+        : stockAvailable;
     const selectedWeight = Number(lineWeightInput);
     if (!Number.isFinite(selectedWeight) || selectedWeight <= 0) {
       setErrorShowPricelistLink(false);
       setError(t("Weight must be greater than 0."));
       return;
     }
-    if (selectedWeight > stockAvailable) {
+    if (selectedWeight > stockForLine) {
       setErrorShowPricelistLink(false);
       setError(
-        t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockAvailable}).`)
+        t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockForLine}).`)
       );
       return;
     }
@@ -332,26 +363,34 @@ export default function PointOfSalePage() {
       return;
     }
     setErrorShowPricelistLink(false);
-    setLineItems((prev) => [
-      ...prev,
-      {
-        productId,
-        productName: product?.name ?? "-",
-        weight: selectedWeight,
-        unitPrice,
-        customerTypeId: lineTypeId,
-        typeName: selectedType?.name ?? "-",
-        stockAvailable,
-      },
-    ]);
-    setLineWeightInput("");
-    setProductId("");
+    const nextLine: LineItem = {
+      productId,
+      productName: product?.name ?? "-",
+      weight: selectedWeight,
+      unitPrice,
+      customerTypeId: lineTypeId,
+      typeName: selectedType?.name ?? "-",
+      stockAvailable,
+    };
+    if (editingLineIndex !== null) {
+      setLineItems((prev) =>
+        prev.map((item, i) => (i === editingLineIndex ? nextLine : item))
+      );
+    } else {
+      setLineItems((prev) => [...prev, nextLine]);
+    }
+    clearLineForm();
     setError(null);
     setErrorShowPricelistLink(false);
   };
 
   const removeLine = (index: number) => {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
+    if (editingLineIndex === index) {
+      clearLineForm();
+    } else if (editingLineIndex !== null && index < editingLineIndex) {
+      setEditingLineIndex(editingLineIndex - 1);
+    }
   };
 
   const total = lineItems.reduce(
@@ -608,7 +647,7 @@ export default function PointOfSalePage() {
 
         <section className="posSection" aria-labelledby="pos-section-add-line">
           <h3 id="pos-section-add-line" className="posSectionTitle">
-            {t("Add product line")}
+            {editingLineIndex !== null ? t("Edit product line") : t("Add product line")}
           </h3>
           <div className="posFormRow posFormRowAdd">
             <label className="posField">
@@ -661,9 +700,16 @@ export default function PointOfSalePage() {
                 aria-label={t("Weight (kg)")}
               />
             </label>
-            <button type="button" className="posAddBtn" onClick={handleAddProduct}>
-              {t("+ Add Product")}
-            </button>
+            <div className="posLineFormActions">
+              <button type="button" className="posAddBtn" onClick={handleSaveLine}>
+                {editingLineIndex !== null ? t("Update line") : t("+ Add Product")}
+              </button>
+              {editingLineIndex !== null && (
+                <button type="button" className="posCancelEditBtn" onClick={cancelEditLine}>
+                  {t("Cancel")}
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -723,7 +769,10 @@ export default function PointOfSalePage() {
                         ? `${item.unitPrice}x${item.weight}`
                         : String(item.unitPrice * item.weight);
                     return (
-                      <tr key={`${item.productId}-${index}`}>
+                      <tr
+                        key={`${item.productId}-${index}`}
+                        className={editingLineIndex === index ? "posTableRow--editing" : undefined}
+                      >
                         <td data-label={t("PRODUCT NAME")}>{item.productName}</td>
                         <td data-label={t("TYPE")}>
                           <span className="posLineTypeBadge">{item.typeName}</span>
@@ -731,14 +780,25 @@ export default function PointOfSalePage() {
                         <td data-label={t("Weight (kg)")}>{item.weight}</td>
                         <td data-label={t("SUB-TOTAL")}>{subTotal}</td>
                         <td data-label={t("Actions")} className="posTableCell--action">
-                          <button
-                            type="button"
-                            className="posRemoveBtn"
-                            onClick={() => removeLine(index)}
-                            aria-label={t("Remove line")}
-                          >
-                            {t("Delete")}
-                          </button>
+                          <div className="posLineActions">
+                            <button
+                              type="button"
+                              className="posEditBtn"
+                              onClick={() => startEditLine(index)}
+                              aria-label={t("Edit line")}
+                            >
+                              {t("Edit")}
+                            </button>
+                            <button
+                              type="button"
+                              className="posRemoveBtn"
+                              onClick={() => removeLine(index)}
+                              aria-label={t("Remove line")}
+                              disabled={editingLineIndex !== null && editingLineIndex !== index}
+                            >
+                              {t("Delete")}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

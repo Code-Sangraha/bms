@@ -21,6 +21,32 @@
   width: min(640px, 100%);
 }
 
+.modalCompact {
+  width: min(520px, 100%);
+  max-height: min(92vh, 640px);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px 16px;
+
+  .modalHeader {
+    flex-shrink: 0;
+    padding-bottom: 6px;
+  }
+
+  .modalBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 0 12px;
+    gap: 12px;
+  }
+
+  .modalActions {
+    flex-shrink: 0;
+    padding-top: 8px;
+  }
+}
+
 .modalHeader {
   display: flex;
   justify-content: space-between;

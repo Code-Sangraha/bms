@@ -472,7 +472,8 @@ $radius-pill: 9999px;
 
 .posTable th:last-child,
 .posTable td:last-child {
-  width: 88px;
+  width: auto;
+  min-width: 156px;
   text-align: center;
   white-space: nowrap;
 }
@@ -487,6 +488,25 @@ $radius-pill: 9999px;
 
 .posTable tbody tr:hover td {
   background: rgba(249, 250, 251, 0.85);
+}
+
+.posTable tbody tr.posTableRow--editing td {
+  background: rgba(2, 149, 90, 0.06);
+}
+
+.posLineFormActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.posLineActions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 @media (max-width: 639px) {
@@ -544,9 +564,16 @@ $radius-pill: 9999px;
     background: transparent;
   }
 
-  .posTable.posTable--stack .posTableCell--action .posRemoveBtn {
-    width: 100%;
+  .posTable.posTable--stack .posTableCell--action .posRemoveBtn,
+  .posTable.posTable--stack .posTableCell--action .posEditBtn {
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
+  }
+
+  .posTable.posTable--stack .posLineActions {
+    width: 100%;
+    flex-direction: row;
   }
 
   .posTable.posTable--stack tfoot .posTableFootRow {
@@ -629,7 +656,7 @@ $radius-pill: 9999px;
   cursor: pointer;
   transition: background 0.15s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(220, 38, 38, 0.1);
     color: #dc2626;
   }
@@ -637,6 +664,63 @@ $radius-pill: 9999px;
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.posEditBtn {
+  min-width: 72px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(2, 149, 90, 0.25);
+  border-radius: $radius-control;
+  background: rgba(2, 149, 90, 0.06);
+  color: #047857;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(2, 149, 90, 0.12);
+    color: #059669;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.posCancelEditBtn {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: $radius-control;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
   }
 }
 

@@ -289,10 +289,10 @@ function RestockSupplierPaymentFields({
           <span className={RESTOCK_PAYMENT_BADGE_CLASS[status]}>{statusLabel[status]}</span>
         </div>
       </div>
-      <label className="productActionModalLabel">
+      <label className="productActionModalLabel stockAdjustFieldFull">
         {t("Remarks")}
         <textarea
-          rows={2}
+          rows={1}
           value={remarks}
           onChange={(e) => onRemarksChange(e.target.value)}
           className="productActionModalInput"
@@ -322,6 +322,8 @@ export default function LiveProductPage() {
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
   const [restockSupplierName, setRestockSupplierName] = useState("");
   const [restockSupplierContact, setRestockSupplierContact] = useState("");
+  const [restockBuyingPrice, setRestockBuyingPrice] = useState("");
+  const [restockSellingPrice, setRestockSellingPrice] = useState("");
   const [restockTotalAmount, setRestockTotalAmount] = useState("");
   const [restockPaidAmount, setRestockPaidAmount] = useState("");
   const [restockRemarks, setRestockRemarks] = useState("");
@@ -941,6 +943,12 @@ export default function LiveProductPage() {
     setAdjustAmount("");
     setRestockSupplierName("");
     setRestockSupplierContact("");
+    setRestockBuyingPrice(
+      mode === "restock" ? priceFieldToString(item.buyingPrice) : ""
+    );
+    setRestockSellingPrice(
+      mode === "restock" ? priceFieldToString(item.sellingPrice) : ""
+    );
     setRestockTotalAmount("");
     setRestockPaidAmount("");
     setRestockRemarks("");
@@ -953,6 +961,8 @@ export default function LiveProductPage() {
     setStockAdjustError(null);
     setRestockSupplierName("");
     setRestockSupplierContact("");
+    setRestockBuyingPrice("");
+    setRestockSellingPrice("");
     setRestockTotalAmount("");
     setRestockPaidAmount("");
     setRestockRemarks("");
@@ -972,8 +982,28 @@ export default function LiveProductPage() {
     }
     setStockAdjustError(null);
     if (stockAdjustModal.mode === "restock") {
+      if (restockBuyingPrice.trim() === "") {
+        setStockAdjustError(t("Buying price is required."));
+        return;
+      }
+      if (restockSellingPrice.trim() === "") {
+        setStockAdjustError(t("Selling price is required."));
+        return;
+      }
+      if (hasInvalidOptionalPriceField(restockBuyingPrice)) {
+        setStockAdjustError(t("Buying price must be greater than 0."));
+        return;
+      }
+      if (hasInvalidOptionalPriceField(restockSellingPrice)) {
+        setStockAdjustError(t("Selling price must be greater than 0."));
+        return;
+      }
+      const buyingPrice = parsePriceFieldForSubmit(restockBuyingPrice);
+      const sellingPrice = parsePriceFieldForSubmit(restockSellingPrice);
       const parsed = livestockRestockDetailSchema.safeParse({
         quantity: amount,
+        buyingPrice: restockBuyingPrice,
+        sellingPrice: restockSellingPrice,
         supplierName: restockSupplierName,
         supplierContact: restockSupplierContact || undefined,
         totalAmount: restockTotalAmount,
@@ -996,6 +1026,8 @@ export default function LiveProductPage() {
         dueAmount: computeDueAmount(total, paid),
         paymentStatus: derivePaymentStatus(total, paid),
       };
+      if (buyingPrice != null) payload.buyingPrice = buyingPrice;
+      if (sellingPrice != null) payload.sellingPrice = sellingPrice;
       if (parsed.data.supplierContact) payload.supplierContact = parsed.data.supplierContact;
       if (parsed.data.remarks) payload.remarks = parsed.data.remarks;
       restockLivestockMutation.mutate(payload);
@@ -1554,6 +1586,7 @@ export default function LiveProductPage() {
 
       <Modal
         isOpen={isLivestockModalOpen && capabilities.canCreateProducts}
+        modalClassName="modalCompact"
         title={t("Add Live Stock")}
         subtitle={t("Create a live stock item and map it to product category")}
         onClose={() => {
@@ -1595,7 +1628,7 @@ export default function LiveProductPage() {
           </div>
         }
       >
-        <div className="productActionModalBody">
+        <div className="productActionModalBody productActionModalBody--compactGrid">
           {livestockError && <p className="productActionModalError">{livestockError}</p>}
           <label className="productActionModalLabel">
             {t("Live Stock Product Category")}
@@ -1678,6 +1711,7 @@ export default function LiveProductPage() {
 
       <Modal
         isOpen={isEditLivestockModalOpen && capabilities.canEditProducts}
+        modalClassName="modalCompact"
         title={t("Update Live Stock Item")}
         subtitle={t("Update selected live stock item details")}
         onClose={() => {
@@ -1719,7 +1753,7 @@ export default function LiveProductPage() {
           </div>
         }
       >
-        <div className="productActionModalBody">
+        <div className="productActionModalBody productActionModalBody--compactGrid">
           {editLivestockError && <p className="productActionModalError">{editLivestockError}</p>}
           <label className="productActionModalLabel">
             {t("Live Stock Product Category")}
@@ -1818,6 +1852,7 @@ export default function LiveProductPage() {
             ? capabilities.canRestockLivestockInventory
             : capabilities.canDeductLivestockInventory)
         }
+        modalClassName="modalCompact"
         title={
           stockAdjustModal?.mode === "deduct"
             ? t("Deduct livestock stock")
@@ -1855,7 +1890,13 @@ export default function LiveProductPage() {
           </div>
         }
       >
-        <div className="productActionModalBody">
+        <div
+          className={`productActionModalBody${
+            stockAdjustModal?.mode === "restock"
+              ? " productActionModalBody--restock"
+              : " productActionModalBody--compactGrid"
+          }`}
+        >
           {stockAdjustModal && (
             <p className="stockAdjustModalItemSummary">
               <strong>{stockAdjustModal.item.name}</strong>
@@ -1864,32 +1905,77 @@ export default function LiveProductPage() {
             </p>
           )}
           {stockAdjustError && <p className="productActionModalError">{stockAdjustError}</p>}
-          <label className="productActionModalLabel">
-            {t("Quantity")}
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={adjustAmount}
-              onChange={(e) => setAdjustAmount(e.target.value)}
-              className="productActionModalInput"
-              placeholder={t("Enter quantity")}
-            />
-          </label>
-          {stockAdjustModal?.mode === "restock" && (
-            <RestockSupplierPaymentFields
-              t={t}
-              supplierName={restockSupplierName}
-              supplierContact={restockSupplierContact}
-              totalAmount={restockTotalAmount}
-              paidAmount={restockPaidAmount}
-              remarks={restockRemarks}
-              onSupplierNameChange={setRestockSupplierName}
-              onSupplierContactChange={setRestockSupplierContact}
-              onTotalAmountChange={setRestockTotalAmount}
-              onPaidAmountChange={setRestockPaidAmount}
-              onRemarksChange={setRestockRemarks}
-            />
+          {stockAdjustModal?.mode === "restock" ? (
+            <>
+              <div className="stockAdjustPrimaryFields">
+                <label className="productActionModalLabel">
+                  {t("Quantity")}
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(e.target.value)}
+                    className="productActionModalInput"
+                    placeholder={t("Enter quantity")}
+                  />
+                </label>
+                <label className="productActionModalLabel">
+                  {t("Buying price")}
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={restockBuyingPrice}
+                    onChange={(e) => setRestockBuyingPrice(e.target.value)}
+                    className="productActionModalInput"
+                    placeholder={t("Enter buying price")}
+                    required
+                    aria-required
+                  />
+                </label>
+                <label className="productActionModalLabel">
+                  {t("Selling price")}
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={restockSellingPrice}
+                    onChange={(e) => setRestockSellingPrice(e.target.value)}
+                    className="productActionModalInput"
+                    placeholder={t("Enter selling price")}
+                    required
+                    aria-required
+                  />
+                </label>
+              </div>
+              <RestockSupplierPaymentFields
+                t={t}
+                supplierName={restockSupplierName}
+                supplierContact={restockSupplierContact}
+                totalAmount={restockTotalAmount}
+                paidAmount={restockPaidAmount}
+                remarks={restockRemarks}
+                onSupplierNameChange={setRestockSupplierName}
+                onSupplierContactChange={setRestockSupplierContact}
+                onTotalAmountChange={setRestockTotalAmount}
+                onPaidAmountChange={setRestockPaidAmount}
+                onRemarksChange={setRestockRemarks}
+              />
+            </>
+          ) : (
+            <label className="productActionModalLabel">
+              {t("Quantity")}
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
+                className="productActionModalInput"
+                placeholder={t("Enter quantity")}
+              />
+            </label>
           )}
         </div>
       </Modal>

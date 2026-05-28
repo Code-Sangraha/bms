@@ -61,6 +61,7 @@ export default function ProductEditModal({
   return (
     <Modal
       isOpen={isOpen}
+      modalClassName="modalCompact"
       title={t("Edit Product")}
       subtitle={product.id}
       onClose={onClose}
