@@ -171,8 +171,181 @@ $radius-pill: 9999px;
 
 .posFormRow--outletPayment {
   @media (min-width: 640px) {
-    grid-template-columns: 1fr minmax(220px, 1.1fr);
-    align-items: start;
+    grid-template-columns: minmax(180px, 240px) minmax(280px, 1fr);
+    align-items: end;
+    gap: 20px;
+  }
+}
+
+.posField--segment {
+  min-width: 0;
+}
+
+.posField--payment {
+  @media (min-width: 640px) {
+    max-width: 420px;
+    align-self: end;
+  }
+}
+
+.posSegment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 3px;
+  border-radius: $radius-control;
+  background: #f3f4f6;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.posSegment__btn {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover:not(.posSegment__btn--active) {
+    color: #111827;
+    background: rgba(255, 255, 255, 0.65);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px $brand;
+  }
+}
+
+.posSegment__btn--active {
+  background: #ffffff;
+  color: $brand;
+  border-color: rgba(2, 149, 90, 0.22);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.posLineForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.posLineForm__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+
+  @media (min-width: 640px) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+    align-items: end;
+  }
+}
+
+.posLineForm__pricing {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.posLineForm__pricingTop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+}
+
+.posLineForm__pricingIntro {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.posLineForm__pricingTitle {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.posLineForm__pricingDesc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: $muted;
+  max-width: 42rem;
+}
+
+.posLineForm__pricingTop .posField--segment {
+  flex: 0 0 auto;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: min(100%, 280px);
+  }
+
+  .posSegment {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.posLineForm__pricingGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+
+.posField--summary {
+  min-width: 0;
+}
+
+.posLineTotal {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: $radius-control;
+  border: 1px solid rgba(2, 149, 90, 0.18);
+  background: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #047857;
+}
+
+.posLineForm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+
+  .posAddBtn {
+    min-width: 160px;
   }
 }
 
@@ -180,24 +353,6 @@ $radius-pill: 9999px;
   grid-template-columns: 1fr;
   gap: 14px;
   align-items: stretch;
-
-  @media (min-width: 480px) and (max-width: 719px) {
-    grid-template-columns: 1fr 1fr;
-    align-items: end;
-
-    .posField:first-of-type {
-      grid-column: 1 / -1;
-    }
-
-    .posAddBtn {
-      grid-column: 1 / -1;
-    }
-  }
-
-  @media (min-width: 720px) {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 110px auto;
-    align-items: end;
-  }
 }
 
 .posField {
@@ -209,13 +364,7 @@ $radius-pill: 9999px;
 
 .posFieldQty {
   @media (min-width: 720px) {
-    max-width: 120px;
-  }
-}
-
-.posField--payment {
-  @media (min-width: 640px) {
-    align-self: stretch;
+    max-width: none;
   }
 }
 
@@ -321,50 +470,53 @@ $radius-pill: 9999px;
   color: #6b7280;
 }
 
-.posPaymentMethodGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 4px;
-  border-radius: $radius-control;
-  background: #f9fafb;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+.posInput--readonly {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: default;
 }
 
-.posPaymentMethodBtn {
-  flex: 1 1 auto;
-  min-height: 40px;
-  min-width: 0;
+.posInput--compact {
+  max-width: 120px;
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+.posResetAmountBtn {
+  min-height: 36px;
   padding: 0 12px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: $radius-control;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #374151;
-  background: transparent;
+  background: #fff;
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-
-  &:hover {
-    background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.08);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px $brand;
-  }
 }
 
-.posPaymentMethodBtn--active {
-  background: #ffffff;
-  color: $brand;
-  border-color: rgba(2, 149, 90, 0.35);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+.posLineFormActions--reset {
+  align-self: end;
+}
+
+.posOverrideBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.posTableFootRow--discount .posTotalLabel label {
+  font: inherit;
+  color: inherit;
+}
+
+.posTableFootRow--totalDue .posTotalValue--emphasis {
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .posAddBtn {
@@ -815,12 +967,8 @@ $radius-pill: 9999px;
 }
 
 @media (max-width: 719px) {
-  .posFormRowAdd .posAddBtn {
+  .posLineForm__actions .posAddBtn {
     width: 100%;
-  }
-
-  .posPaymentMethodBtn {
-    min-height: 44px;
   }
 
   .pageTitle {
@@ -829,12 +977,11 @@ $radius-pill: 9999px;
 }
 
 @media (max-width: 379px) {
-  .posPaymentMethodGroup {
-    flex-direction: column;
+  .posSegment {
+    grid-template-columns: 1fr;
   }
 
-  .posPaymentMethodBtn {
-    width: 100%;
-    min-width: 0;
+  .posSegment__btn {
+    min-height: 44px;
   }
 }

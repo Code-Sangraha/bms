@@ -19,6 +19,7 @@ import {
   type LivestockSale,
   type SaleTransaction,
 } from "@/handlers/sale";
+import { paymentMethodLabel } from "@/lib/salePaymentMethods";
 import type { Locale } from "@/app/providers/I18nProvider";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import "./transaction.scss";
@@ -42,6 +43,8 @@ type TransactionRecord = {
   type: string;
   itemsCount: number;
   amount: number | null;
+  discountAmount: number | null;
+  paymentMethodLabel: string | null;
   outletId?: string;
   detailItems: TransactionDetailItem[];
 };
@@ -137,6 +140,11 @@ function toTransactionFromSale(tx: SaleTransaction, locale: Locale): Transaction
       price: getNumber(item.amount),
     })) ?? [];
   const amount = getNumber(tx.amount ?? tx.total ?? tx.totalAmount);
+  const discountAmount = getNumber(tx.discountAmount);
+  const paymentMethodLabelValue =
+    typeof tx.paymentMethod === "string" && tx.paymentMethod.trim()
+      ? paymentMethodLabel(tx.paymentMethod)
+      : null;
   const itemsCount = tx.itemsCount ?? tx.itemCount ?? detailItems.length ?? 0;
 
   return {
@@ -148,6 +156,8 @@ function toTransactionFromSale(tx: SaleTransaction, locale: Locale): Transaction
     type: getTxType(tx),
     itemsCount,
     amount,
+    discountAmount,
+    paymentMethodLabel: paymentMethodLabelValue,
     outletId: typeof tx.outletId === "string" ? tx.outletId : tx.outlet?.id,
     detailItems,
   };
@@ -172,6 +182,8 @@ function toTransactionFromLivestock(sale: LivestockSale, index: number, locale: 
     type: "Livestock",
     itemsCount: 1,
     amount,
+    discountAmount: null,
+    paymentMethodLabel: null,
     outletId: maybeOutletId,
     detailItems: [
       {
@@ -379,6 +391,7 @@ export default function TransactionPage() {
           <span>{t("Customer")}</span>
           <span>{t("Type")}</span>
           <span>{t("Items")}</span>
+          <span>{t("Payment")}</span>
           <span className="transactionColAmount">{t("Amount")}</span>
         </div>
         {loading && (
@@ -436,6 +449,7 @@ export default function TransactionPage() {
                   <span className="badge transactionTypeBadge">{tx.type}</span>
                 </span>
                 <span>{formatItemsCount(tx.itemsCount, t)}</span>
+                <span>{tx.paymentMethodLabel ?? "-"}</span>
                 <span className="transactionColAmount">{formatAmount(tx.amount)}</span>
               </div>
               <div className="transactionCardMobile">
@@ -459,6 +473,9 @@ export default function TransactionPage() {
                   </div>
                   <div className="transactionCardMobileField" data-field-label={t("Items")}>
                     {formatItemsCount(tx.itemsCount, t)}
+                  </div>
+                  <div className="transactionCardMobileField" data-field-label={t("Payment")}>
+                    {tx.paymentMethodLabel ?? "-"}
                   </div>
                 </div>
                 <div className="transactionCardMobileFooter">
@@ -510,6 +527,19 @@ export default function TransactionPage() {
               <dd>{selectedTransaction.dateLabel}</dd>
               <dt>{t("Type")}</dt>
               <dd>{selectedTransaction.type}</dd>
+              {selectedTransaction.paymentMethodLabel ? (
+                <>
+                  <dt>{t("Payment method")}</dt>
+                  <dd>{selectedTransaction.paymentMethodLabel}</dd>
+                </>
+              ) : null}
+              {selectedTransaction.discountAmount != null &&
+              selectedTransaction.discountAmount > 0 ? (
+                <>
+                  <dt>{t("Discount")}</dt>
+                  <dd>{formatAmount(selectedTransaction.discountAmount)}</dd>
+                </>
+              ) : null}
             </dl>
             <div className="transactionDetailItems">
               <div className="transactionDetailItemsHeader">

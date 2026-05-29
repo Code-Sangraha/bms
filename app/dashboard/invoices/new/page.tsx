@@ -21,14 +21,24 @@ import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
 import { createSale, type SaleItemPayload } from "@/handlers/sale";
 import {
+  allocateCartDiscount,
+  cartSubtotal,
+  formatSaleAmount,
+  lineSubtotal,
+} from "@/lib/saleCalculations";
+import {
   DEFAULT_SALE_PAYMENT_METHOD,
+  paymentMethodLabel,
   SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
+import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
 import { findMatchingCustomer } from "./findMatchingCustomer";
 import "./pos.scss";
+
+type LinePricingMode = "weight" | "amount";
 
 type PosCheckoutPayload = {
   saleItems: SaleItemPayload[];
@@ -58,6 +68,8 @@ type LineItem = {
   customerTypeId: string;
   typeName: string;
   stockAvailable: number;
+  /** When set, overrides weight × unitPrice for this line */
+  amountOverride?: number | null;
 };
 
 /** Parsed numeric or null (not 0 — zero is valid stock). */
@@ -132,6 +144,9 @@ export default function PointOfSalePage() {
   const [productId, setProductId] = useState("");
   const [lineTypeId, setLineTypeId] = useState("");
   const [lineWeightInput, setLineWeightInput] = useState("");
+  const [lineAmountInput, setLineAmountInput] = useState("");
+  const [linePricingMode, setLinePricingMode] = useState<LinePricingMode>("weight");
+  const [cartDiscountInput, setCartDiscountInput] = useState("0");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -291,8 +306,33 @@ export default function PointOfSalePage() {
 
   const clearLineForm = () => {
     setLineWeightInput("");
+    setLineAmountInput("");
+    setLinePricingMode("weight");
     setProductId("");
     setEditingLineIndex(null);
+  };
+
+  const previewLineUnitPrice = useMemo(() => {
+    if (!productId || !outletId || !lineTypeId) return null;
+    const selectedType = customerTypes.find((ct) => ct.id === lineTypeId);
+    const isWholesale = selectedType?.name?.toLowerCase().includes("wholesale") ?? false;
+    const price = getUnitPrice(dualPricings, productId, outletId, isWholesale);
+    return Number.isFinite(price) && price > 0 ? price : null;
+  }, [productId, outletId, lineTypeId, customerTypes, dualPricings]);
+
+  const previewCalculatedLineAmount = useMemo(() => {
+    const weight = Number(lineWeightInput);
+    if (!previewLineUnitPrice || !Number.isFinite(weight) || weight <= 0) return null;
+    return previewLineUnitPrice * weight;
+  }, [previewLineUnitPrice, lineWeightInput]);
+
+  const handleLinePricingModeChange = (mode: LinePricingMode) => {
+    setLinePricingMode(mode);
+    if (mode === "weight") {
+      setLineAmountInput("");
+    } else {
+      setLineWeightInput("");
+    }
   };
 
   const startEditLine = (index: number) => {
@@ -301,7 +341,16 @@ export default function PointOfSalePage() {
     setEditingLineIndex(index);
     setProductId(line.productId);
     setLineTypeId(line.customerTypeId);
-    setLineWeightInput(String(line.weight));
+    const hasOverride = line.amountOverride != null && line.amountOverride > 0;
+    if (hasOverride) {
+      setLinePricingMode("amount");
+      setLineWeightInput("");
+      setLineAmountInput(formatSaleAmount(line.amountOverride as number));
+    } else {
+      setLinePricingMode("weight");
+      setLineWeightInput(String(line.weight));
+      setLineAmountInput("");
+    }
     setError(null);
     setErrorShowPricelistLink(false);
     productSelectRef.current?.focus();
@@ -332,19 +381,6 @@ export default function PointOfSalePage() {
       editingLine?.productId === productId
         ? stockAvailable + editingLine.weight
         : stockAvailable;
-    const selectedWeight = Number(lineWeightInput);
-    if (!Number.isFinite(selectedWeight) || selectedWeight <= 0) {
-      setErrorShowPricelistLink(false);
-      setError(t("Weight must be greater than 0."));
-      return;
-    }
-    if (selectedWeight > stockForLine) {
-      setErrorShowPricelistLink(false);
-      setError(
-        t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockForLine}).`)
-      );
-      return;
-    }
     const selectedType = customerTypes.find((ct) => ct.id === lineTypeId);
     const isWholesale = selectedType?.name?.toLowerCase().includes("wholesale") ?? false;
     const unitPrice = getUnitPrice(
@@ -363,6 +399,39 @@ export default function PointOfSalePage() {
       return;
     }
     setErrorShowPricelistLink(false);
+
+    let selectedWeight: number;
+    let amountOverride: number | null = null;
+
+    if (linePricingMode === "weight") {
+      selectedWeight = Number(lineWeightInput);
+      if (!Number.isFinite(selectedWeight) || selectedWeight <= 0) {
+        setErrorShowPricelistLink(false);
+        setError(t("Weight must be greater than 0."));
+        return;
+      }
+    } else {
+      const parsedLineAmount = Number(lineAmountInput);
+      if (!Number.isFinite(parsedLineAmount) || parsedLineAmount <= 0) {
+        setError(t("Line amount must be greater than 0."));
+        return;
+      }
+      selectedWeight = Math.round((parsedLineAmount / unitPrice) * 1000) / 1000;
+      if (!Number.isFinite(selectedWeight) || selectedWeight <= 0) {
+        setError(t("Line amount is too low for this product's unit price."));
+        return;
+      }
+      amountOverride = parsedLineAmount;
+    }
+
+    if (selectedWeight > stockForLine) {
+      setErrorShowPricelistLink(false);
+      setError(
+        t(`Insufficient stock for product ${product?.name ?? "-"} (available: ${stockForLine}).`)
+      );
+      return;
+    }
+
     const nextLine: LineItem = {
       productId,
       productName: product?.name ?? "-",
@@ -371,6 +440,7 @@ export default function PointOfSalePage() {
       customerTypeId: lineTypeId,
       typeName: selectedType?.name ?? "-",
       stockAvailable,
+      amountOverride,
     };
     if (editingLineIndex !== null) {
       setLineItems((prev) =>
@@ -393,10 +463,58 @@ export default function PointOfSalePage() {
     }
   };
 
-  const total = lineItems.reduce(
-    (sum, item) => sum + item.unitPrice * item.weight,
-    0
+  const subtotal = useMemo(() => cartSubtotal(lineItems), [lineItems]);
+
+  const parsedCartDiscount = useMemo(() => {
+    const value = Number(cartDiscountInput);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }, [cartDiscountInput]);
+
+  const totalDue = useMemo(
+    () => Math.max(0, Math.round((subtotal - parsedCartDiscount) * 100) / 100),
+    [subtotal, parsedCartDiscount]
   );
+
+  const buildSaleItems = (): SaleItemPayload[] | null => {
+    const trimmedName = customerName.trim();
+    const trimmedContact = customerContact.trim();
+    const discounts = allocateCartDiscount(lineItems, parsedCartDiscount);
+    const saleItems: SaleItemPayload[] = lineItems.map((item, index) => {
+      const sub = lineSubtotal(item);
+      const lineDiscount = discounts[index] ?? 0;
+      return {
+        name: trimmedName,
+        contact: trimmedContact,
+        customerTypeId: item.customerTypeId,
+        productId: item.productId,
+        outletId,
+        weight: item.weight,
+        amount: sub,
+        discountAmount: lineDiscount,
+        paymentMethod,
+      };
+    });
+    const validation = validateProcessedSaleCreate(saleItems);
+    if (!validation.ok) return null;
+    return saleItems;
+  };
+
+  const checkoutConfirmMessage = useMemo(() => {
+    const paymentLabel = paymentMethodLabel(paymentMethod);
+    const discountLine =
+      parsedCartDiscount > 0
+        ? t("Discount: Rs.{{amount}}").replace("{{amount}}", formatSaleAmount(parsedCartDiscount))
+        : "";
+    return [
+      t("Subtotal: Rs.{{amount}}").replace("{{amount}}", formatSaleAmount(subtotal)),
+      discountLine,
+      t("Total due: Rs.{{amount}}").replace("{{amount}}", formatSaleAmount(totalDue)),
+      t("Payment: {{method}}").replace("{{method}}", paymentLabel),
+      t("Complete this sale and add it to transactions?"),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }, [subtotal, parsedCartDiscount, totalDue, paymentMethod, t]);
 
   const createSaleMutation = useMutation({
     mutationFn: async (payload: PosCheckoutPayload) => {
@@ -449,6 +567,7 @@ export default function PointOfSalePage() {
       setCustomerContact("");
       setSelectedCustomerId("");
       setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
+      setCartDiscountInput("0");
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
@@ -478,18 +597,34 @@ export default function PointOfSalePage() {
       setErrorShowPricelistLink(true);
       return;
     }
+    if (parsedCartDiscount > subtotal) {
+      setCheckoutConfirmOpen(false);
+      setError(t("Discount cannot exceed the subtotal."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
+    const discounts = allocateCartDiscount(lineItems, parsedCartDiscount);
+    const hasZeroNetLine = lineItems.some((item, index) => {
+      const sub = lineSubtotal(item);
+      const lineDiscount = discounts[index] ?? 0;
+      return sub - lineDiscount <= 0;
+    });
+    if (hasZeroNetLine) {
+      setCheckoutConfirmOpen(false);
+      setError(t("Each line must have a positive amount after discount."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
+    const saleItems = buildSaleItems();
+    if (!saleItems) {
+      setCheckoutConfirmOpen(false);
+      setError(t("Invalid sale data. Check line amounts and try again."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
     setErrorShowPricelistLink(false);
     const trimmedName = customerName.trim();
     const trimmedContact = customerContact.trim();
-    const saleItems: SaleItemPayload[] = lineItems.map((item) => ({
-      name: trimmedName,
-      contact: trimmedContact,
-      customerTypeId: item.customerTypeId,
-      productId: item.productId,
-      outletId,
-      weight: item.weight,
-      paymentMethod,
-    }));
 
     const alreadyKnown =
       Boolean(selectedCustomerId) ||
@@ -539,6 +674,11 @@ export default function PointOfSalePage() {
         )
       );
       setErrorShowPricelistLink(true);
+      return;
+    }
+    if (parsedCartDiscount > subtotal) {
+      setError(t("Discount cannot exceed the subtotal."));
+      setErrorShowPricelistLink(false);
       return;
     }
     setError(null);
@@ -616,12 +756,12 @@ export default function PointOfSalePage() {
                 ))}
               </select>
             </label>
-            <div className="posField posField--payment">
+            <div className="posField posField--segment posField--payment">
               <span className="posLabel" id="pos-payment-method-label">
                 {t("Payment method")}
               </span>
               <div
-                className="posPaymentMethodGroup"
+                className="posSegment"
                 role="radiogroup"
                 aria-labelledby="pos-payment-method-label"
               >
@@ -633,7 +773,7 @@ export default function PointOfSalePage() {
                       type="button"
                       role="radio"
                       aria-checked={selected}
-                      className={`posPaymentMethodBtn${selected ? " posPaymentMethodBtn--active" : ""}`}
+                      className={`posSegment__btn${selected ? " posSegment__btn--active" : ""}`}
                       onClick={() => setPaymentMethod(opt.value)}
                     >
                       {t(opt.label)}
@@ -649,60 +789,158 @@ export default function PointOfSalePage() {
           <h3 id="pos-section-add-line" className="posSectionTitle">
             {editingLineIndex !== null ? t("Edit product line") : t("Add product line")}
           </h3>
-          <div className="posFormRow posFormRowAdd">
-            <label className="posField">
-              <span className="posLabel">{t("Product Name")}</span>
-              <select
-                ref={productSelectRef}
-                className="posSelect"
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                aria-label={t("Product")}
-              >
-                <option value="">{t("Select product")}</option>
-                {processedProductsForDropdown.map((p: Product) => (
-                  <option key={p.id} value={p.id}>
-                    {formatProcessedProductOptionLabel(
-                      p,
-                      outlets,
-                      getProcessedProductAvailableKg(p)
-                    )}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="posField">
-              <span className="posLabel">{t("Type")}</span>
-              <select
-                className="posSelect"
-                value={lineTypeId}
-                onChange={(e) => setLineTypeId(e.target.value)}
-                aria-label={t("Price type for this line (Retail/Wholesale)")}
-              >
-                <option value="">{t("Retail / Wholesale")}</option>
-                {customerTypes.map((ct) => (
-                  <option key={ct.id} value={ct.id}>
-                    {ct.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="posField posFieldQty">
-              <span className="posLabel">{t("Weight (kg)")}</span>
-              <input
-                className="posInput"
-                type="number"
-                min={0}
-                step="any"
-                value={lineWeightInput}
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => setLineWeightInput(e.target.value)}
-                aria-label={t("Weight (kg)")}
-              />
-            </label>
-            <div className="posLineFormActions">
+
+          <div className="posLineForm">
+            <div className="posLineForm__row posLineForm__row--product">
+              <label className="posField">
+                <span className="posLabel">{t("Product")}</span>
+                <select
+                  ref={productSelectRef}
+                  className="posSelect"
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                  aria-label={t("Product")}
+                >
+                  <option value="">{t("Select product")}</option>
+                  {processedProductsForDropdown.map((p: Product) => (
+                    <option key={p.id} value={p.id}>
+                      {formatProcessedProductOptionLabel(
+                        p,
+                        outlets,
+                        getProcessedProductAvailableKg(p)
+                      )}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="posField">
+                <span className="posLabel">{t("Customer type")}</span>
+                <select
+                  className="posSelect"
+                  value={lineTypeId}
+                  onChange={(e) => setLineTypeId(e.target.value)}
+                  aria-label={t("Price type for this line (Retail/Wholesale)")}
+                >
+                  <option value="">{t("Retail / Wholesale")}</option>
+                  {customerTypes.map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      {ct.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="posLineForm__pricing">
+              <div className="posLineForm__pricingTop">
+                <div className="posLineForm__pricingIntro">
+                  <span className="posLineForm__pricingTitle">{t("Pricing")}</span>
+                  <p className="posLineForm__pricingDesc">
+                    {linePricingMode === "weight"
+                      ? t("Enter weight to calculate the line total from the pricelist.")
+                      : t("Enter a fixed line amount. Stock weight is derived from unit price.")}
+                  </p>
+                </div>
+                <div className="posField posField--segment">
+                  <span className="posLabel" id="pos-line-pricing-mode-label">
+                    {t("Price by")}
+                  </span>
+                  <div
+                    className="posSegment"
+                    role="radiogroup"
+                    aria-labelledby="pos-line-pricing-mode-label"
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={linePricingMode === "weight"}
+                      className={`posSegment__btn${linePricingMode === "weight" ? " posSegment__btn--active" : ""}`}
+                      onClick={() => handleLinePricingModeChange("weight")}
+                    >
+                      {t("Weight")}
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={linePricingMode === "amount"}
+                      className={`posSegment__btn${linePricingMode === "amount" ? " posSegment__btn--active" : ""}`}
+                      onClick={() => handleLinePricingModeChange("amount")}
+                    >
+                      {t("Fixed amount")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="posLineForm__pricingGrid">
+                {linePricingMode === "weight" ? (
+                  <label className="posField">
+                    <span className="posLabel">{t("Weight (kg)")}</span>
+                    <input
+                      className="posInput"
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={lineWeightInput}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => setLineWeightInput(e.target.value)}
+                      aria-label={t("Weight (kg)")}
+                    />
+                  </label>
+                ) : (
+                  <label className="posField">
+                    <span className="posLabel">{t("Line amount (Rs.)")}</span>
+                    <input
+                      className="posInput"
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={lineAmountInput}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => setLineAmountInput(e.target.value)}
+                      aria-label={t("Line amount")}
+                    />
+                  </label>
+                )}
+
+                <label className="posField">
+                  <span className="posLabel">{t("Unit price (Rs.)")}</span>
+                  <input
+                    className="posInput posInput--readonly"
+                    readOnly
+                    value={
+                      previewLineUnitPrice != null
+                        ? formatSaleAmount(previewLineUnitPrice)
+                        : ""
+                    }
+                    placeholder="—"
+                    aria-label={t("Unit price")}
+                  />
+                </label>
+
+                <div className="posField posField--summary">
+                  <span className="posLabel">{t("Line total (Rs.)")}</span>
+                  <div className="posLineTotal" aria-live="polite">
+                    {linePricingMode === "weight"
+                      ? previewCalculatedLineAmount != null
+                        ? formatSaleAmount(previewCalculatedLineAmount)
+                        : "—"
+                      : (() => {
+                          const amount = Number(lineAmountInput);
+                          return lineAmountInput.trim() &&
+                            Number.isFinite(amount) &&
+                            amount > 0
+                            ? formatSaleAmount(amount)
+                            : "—";
+                        })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="posLineForm__actions">
               <button type="button" className="posAddBtn" onClick={handleSaveLine}>
-                {editingLineIndex !== null ? t("Update line") : t("+ Add Product")}
+                {editingLineIndex !== null ? t("Update line") : t("+ Add product")}
               </button>
               {editingLineIndex !== null && (
                 <button type="button" className="posCancelEditBtn" onClick={cancelEditLine}>
@@ -764,10 +1002,9 @@ export default function PointOfSalePage() {
                   </tr>
                 ) : (
                   lineItems.map((item, index) => {
-                    const subTotal =
-                      item.weight !== 1
-                        ? `${item.unitPrice}x${item.weight}`
-                        : String(item.unitPrice * item.weight);
+                    const sub = lineSubtotal(item);
+                    const hasOverride =
+                      item.amountOverride != null && item.amountOverride > 0;
                     return (
                       <tr
                         key={`${item.productId}-${index}`}
@@ -778,7 +1015,12 @@ export default function PointOfSalePage() {
                           <span className="posLineTypeBadge">{item.typeName}</span>
                         </td>
                         <td data-label={t("Weight (kg)")}>{item.weight}</td>
-                        <td data-label={t("SUB-TOTAL")}>{subTotal}</td>
+                        <td data-label={t("SUB-TOTAL")}>
+                          <span>{formatSaleAmount(sub)}</span>
+                          {hasOverride && (
+                            <span className="posOverrideBadge">{t("Custom")}</span>
+                          )}
+                        </td>
                         <td data-label={t("Actions")} className="posTableCell--action">
                           <div className="posLineActions">
                             <button
@@ -809,9 +1051,37 @@ export default function PointOfSalePage() {
                 <tfoot>
                   <tr className="posTableFootRow">
                     <td colSpan={3} className="posTotalLabel">
-                      {t("Total")}
+                      {t("Subtotal")}
                     </td>
-                    <td className="posTotalValue">{total}</td>
+                    <td className="posTotalValue">{formatSaleAmount(subtotal)}</td>
+                    <td className="posTableFootSpacer" aria-hidden />
+                  </tr>
+                  <tr className="posTableFootRow posTableFootRow--discount">
+                    <td colSpan={3} className="posTotalLabel">
+                      <label htmlFor="pos-cart-discount">{t("Discount (Rs.)")}</label>
+                    </td>
+                    <td className="posTotalValue">
+                      <input
+                        id="pos-cart-discount"
+                        className="posInput posInput--compact"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={cartDiscountInput}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => setCartDiscountInput(e.target.value)}
+                        aria-label={t("Discount (Rs.)")}
+                      />
+                    </td>
+                    <td className="posTableFootSpacer" aria-hidden />
+                  </tr>
+                  <tr className="posTableFootRow posTableFootRow--totalDue">
+                    <td colSpan={3} className="posTotalLabel">
+                      {t("Total due")}
+                    </td>
+                    <td className="posTotalValue posTotalValue--emphasis">
+                      {formatSaleAmount(totalDue)}
+                    </td>
                     <td className="posTableFootSpacer" aria-hidden />
                   </tr>
                 </tfoot>
@@ -833,9 +1103,7 @@ export default function PointOfSalePage() {
       <ConfirmModal
         isOpen={checkoutConfirmOpen}
         title={t("Confirm checkout")}
-        message={t(
-          "Are you sure you want to checkout? This will complete the sale and add it to transactions."
-        )}
+        message={checkoutConfirmMessage}
         confirmLabel={t("Checkout")}
         cancelLabel={t("Cancel")}
         loading={createSaleMutation.isPending}

@@ -155,6 +155,14 @@ export default function ClockInOutPage() {
   const employeeRowId = clockEmployee?.id ?? null;
   const attendanceUserId = firstNonEmpty(storedUser?.id, authUserId, ...jwtSubjectIds);
 
+  const clockPayload = useMemo(
+    () => ({
+      userId: attendanceUserId ?? undefined,
+      employeeId: employeeRowId ?? undefined,
+    }),
+    [attendanceUserId, employeeRowId]
+  );
+
   const clockEmployeeOutsideSelectedOutlet =
     !!clockEmployee &&
     !!attendanceOutletId &&
@@ -248,7 +256,7 @@ export default function ClockInOutPage() {
   }, [persistedStatus, todayAttendanceRecord?.clockIn]);
 
   const clockInMutation = useMutation({
-    mutationFn: () => clockInApi(),
+    mutationFn: () => clockInApi(clockPayload),
     onSuccess: async (result) => {
       if (result.ok) {
         const snapshot = clockInResponseToSnapshot(result.data.data, attendanceUserId, employeeRowId);
@@ -273,7 +281,8 @@ export default function ClockInOutPage() {
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: (intent: "pause" | "final") => clockOutApi().then((result) => ({ result, intent })),
+    mutationFn: (intent: "pause" | "final") =>
+      clockOutApi(clockPayload).then((result) => ({ result, intent })),
     onSuccess: async ({ result, intent }) => {
       if (result.ok) {
         const clockOutUserMatches =

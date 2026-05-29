@@ -1,6 +1,10 @@
 import { apiRequest } from "@/lib/api/client";
 import { fetchSalesByProductId } from "@/lib/api/salesByProduct";
 import { SALES_ROUTES } from "@/lib/api/routes";
+import {
+  toApiPaymentMethod,
+  type SalePaymentMethod,
+} from "@/lib/salePaymentMethods";
 
 export type SaleItemPayload = {
   name: string;
@@ -10,9 +14,11 @@ export type SaleItemPayload = {
   outletId: string;
   /** Sale line amount in kg; processed stock is deducted by weight */
   weight?: number;
-  /** Legacy/alternate backends only; POS sends `weight` for processed sales */
-  quantity?: number;
-  paymentMethod: string;
+  /** Line total before discount; explicit value overrides weight × price on backend */
+  amount?: number;
+  /** Discount applied to this line (proportional share of cart discount) */
+  discountAmount?: number;
+  paymentMethod: SalePaymentMethod;
 };
 
 /** Transaction/sale record for list view. API may return type/customerType/customer as { id, name }. */
@@ -35,6 +41,8 @@ export type SaleTransaction = {
   amount?: number;
   total?: number;
   totalAmount?: number;
+  discountAmount?: number;
+  paymentMethod?: string;
   outletId?: string;
   outlet?: { id?: string; name?: string };
   items?: Array<{
@@ -121,7 +129,7 @@ export type LivestockSalePayload = {
   livestockItemId: string;
   itemQuantityOrWeight: number;
   amount: number;
-  paymentMethod: string;
+  paymentMethod: SalePaymentMethod;
 };
 
 export type LivestockSale = {
@@ -359,10 +367,18 @@ export async function getSalesByProductId(
   return { ok: true, data };
 }
 
+function toProcessedSaleCreateBody(items: SaleItemPayload[]) {
+  return items.map(({ paymentMethod, discountAmount = 0, ...rest }) => ({
+    ...rest,
+    discountAmount,
+    paymentMethod: toApiPaymentMethod(paymentMethod),
+  }));
+}
+
 export async function createSale(items: SaleItemPayload[]) {
   return apiRequest<CreateSaleResponse>(SALES_ROUTES.CREATE, {
     method: "POST",
-    body: JSON.stringify(items),
+    body: JSON.stringify(toProcessedSaleCreateBody(items)),
   });
 }
 
@@ -375,7 +391,7 @@ function toLivestockSaleCreateBody(items: LivestockSalePayload[]) {
       contact: item.contact,
       livestockItemId: item.livestockItemId,
       amount: item.amount,
-      paymentMethod: item.paymentMethod,
+      paymentMethod: toApiPaymentMethod(item.paymentMethod),
       itemQuantityOrWeight: qty,
       quantity: qty,
       weight: qty,

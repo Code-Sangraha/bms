@@ -4,8 +4,11 @@ import { ATTENDANCE_ROUTES } from "@/lib/api/routes";
 import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
 
-/** Deprecated: clock-in/out use JWT-only identity; bodies are `{}`. Kept for shared types if needed. */
-export type ClockPayload = Record<string, never>;
+/** Clock-in/out identity; backend prefers userId when both are provided. */
+export type ClockPayload = {
+  userId?: string;
+  employeeId?: string;
+};
 
 export type AttendanceEmployee = {
   employeeId: string;
@@ -183,18 +186,18 @@ export async function getTodayAttendanceStatus(): Promise<ApiResult<TodayAttenda
   });
 }
 
-/** JWT determines who is clocking in/out; sends empty JSON object. */
-export async function clockIn(): Promise<ApiResult<ClockInResponse>> {
+/** Sends optional userId/employeeId; JWT still authenticates the request. */
+export async function clockIn(payload: ClockPayload = {}): Promise<ApiResult<ClockInResponse>> {
   return attendanceRequest<ClockInResponse>(ATTENDANCE_ROUTES.CLOCK_IN, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify(payload),
   });
 }
 
-/** JWT determines who is clocking in/out; sends empty JSON object. */
-export async function clockOut(): Promise<ApiResult<ClockOutResponse>> {
+/** Sends optional userId/employeeId; JWT still authenticates the request. */
+export async function clockOut(payload: ClockPayload = {}): Promise<ApiResult<ClockOutResponse>> {
   return attendanceRequest<ClockOutResponse>(ATTENDANCE_ROUTES.CLOCK_OUT, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify(payload),
   });
 }
