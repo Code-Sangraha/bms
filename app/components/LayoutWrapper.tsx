@@ -39,7 +39,7 @@ export default function LayoutWrapper() {
               <Sidebar />
               <main
                 ref={mainScrollRef}
-                className="mainScroll mainScroll--mobileShell flex min-h-0 min-w-0 flex-1 flex-col items-stretch overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 max-md:px-3 max-md:pt-3 md:px-8 md:pb-[7px] max-md:pb-0"
+                className="mainScroll mainScroll--mobileShell flex min-h-0 min-w-0 flex-1 flex-col items-stretch overflow-x-hidden overflow-y-auto bg-white px-4 pt-8 max-md:bg-[var(--mobile-page-bg)] max-md:px-3 max-md:pt-3 md:px-8 md:pb-[7px] max-md:pb-0"
               >
                 <div className="mainContentWrap flex w-full max-w-full flex-1 flex-col self-stretch">
                   <PageBackBar />

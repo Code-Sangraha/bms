@@ -10,5 +10,13 @@
     padding-bottom: calc(
       var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0px) + 12px
     );
+    overscroll-behavior-y: contain;
+  }
+
+  /* Avoid flex-grow filling the viewport with empty scrollable whitespace (covers checkout CTAs). */
+  .mainScroll.mainScroll--mobileShell .mainContentWrap {
+    flex: none;
+    flex-grow: 0;
+    min-height: auto;
   }
 }
