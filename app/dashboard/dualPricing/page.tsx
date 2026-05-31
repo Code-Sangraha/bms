@@ -10,7 +10,7 @@ import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
-import { usePagination, paginate } from "@/app/hooks/usePagination";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
   createDualPricing as createDualPricingApi,
   deleteDualPricing as deleteDualPricingApi,
@@ -64,10 +64,19 @@ export default function DualPricingPage() {
   const queryClient = useQueryClient();
   const { capabilities } = usePermissions();
   const { t } = useI18n();
+  const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<DualPricing | null>(null);
   const [editingItem, setEditingItem] = useState<DualPricing | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [outletFilter, setOutletFilter] = useState("all");
+
+  useEffect(() => {
+    if (isScoped && rowFilterOutletId) setOutletFilter(rowFilterOutletId);
+  }, [isScoped, rowFilterOutletId]);
+
+  const effectiveOutletFilter =
+    isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
 
   const {
     data: items = [],
@@ -250,19 +259,24 @@ export default function DualPricingPage() {
     return o?.name ?? item.outletId ?? "—";
   };
 
-  const filteredItems = items.filter((item) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    const labeled = formatNameWithOutlet(
-      getProductName(item),
-      getOutletName(item)
-    );
-    return (
-      labeled.toLowerCase().includes(q) ||
-      String(item.wholesalePrice).includes(q) ||
-      String(item.retailPrice).includes(q)
-    );
-  });
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (effectiveOutletFilter !== "all" && item.outletId !== effectiveOutletFilter) {
+        return false;
+      }
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      const labeled = formatNameWithOutlet(
+        getProductName(item),
+        getOutletName(item)
+      );
+      return (
+        labeled.toLowerCase().includes(q) ||
+        String(item.wholesalePrice).includes(q) ||
+        String(item.retailPrice).includes(q)
+      );
+    });
+  }, [items, effectiveOutletFilter, searchQuery, products, outlets]);
 
   const getMarginPercent = (retail: number, wholesale: number) => {
     if (retail <= 0) return 0;
@@ -295,15 +309,35 @@ export default function DualPricingPage() {
         )}
       </div>
 
-      <div className="dualPricingSearch">
-        <span className="searchIcon">🔍</span>
-        <input
-          className="searchInput"
-          placeholder={t("Search")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label={t("Search dual pricing")}
-        />
+      <div className="dualPricingFilters">
+        {!isScoped ? (
+          <label className="dualPricingOutletFilter">
+            <span className="dualPricingOutletLabel">{t("Outlet")}</span>
+            <select
+              className="dualPricingOutletSelect"
+              value={outletFilter}
+              onChange={(e) => setOutletFilter(e.target.value)}
+              aria-label={t("Filter by outlet")}
+            >
+              <option value="all">{t("All Outlets")}</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <div className="dualPricingSearch">
+          <span className="searchIcon">🔍</span>
+          <input
+            className="searchInput"
+            placeholder={t("Search")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label={t("Search dual pricing")}
+          />
+        </div>
       </div>
 
       <div className="dualPricingCardGrid">
@@ -327,7 +361,11 @@ export default function DualPricingPage() {
           items.length > 0 &&
           filteredItems.length === 0 && (
             <div className="dualPricingCardMessage">
-              {t("No items match")} &quot;{searchQuery.trim()}&quot;.
+              {searchQuery.trim()
+                ? `${t("No items match")} "${searchQuery.trim()}".`
+                : effectiveOutletFilter !== "all"
+                  ? t("No dual pricing for this outlet.")
+                  : t("No items match your filters.")}
             </div>
           )}
         {!itemsLoading &&
