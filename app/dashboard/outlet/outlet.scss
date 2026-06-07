@@ -30,6 +30,19 @@
   gap: 6px;
 }
 
+.outletHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  a.button {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 .outletPageMessage {
   font-size: 14px;
   color: #6b7280;

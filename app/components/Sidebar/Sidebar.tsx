@@ -39,7 +39,9 @@ type TranslationKey =
   | "salesBilling"
   | "analytics"
   | "pointOfSale"
+  | "wasteSales"
   | "livestockSales"
+  | "outletExpenses"
   | "transactions"
   | "customers"
   | "customerTypes"
@@ -113,7 +115,9 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
   pointOfSale: "Processed Sale",
+  wasteSales: "Waste Sales",
   livestockSales: "Livestock Sales",
+  outletExpenses: "Outlet expenses",
   transactions: "Transactions",
   customers: "Customers",
   customerTypes: "Customer Types",
@@ -147,6 +151,7 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
     items: [
       { labelKey: "analytics", href: "/dashboard/invoices" },
       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
+      { labelKey: "wasteSales", href: "/dashboard/invoices/waste-sales", capability: "canCreateProcessedSales" },
       { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", capability: "canCreateLivestockSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
       { labelKey: "customers", href: "/dashboard/invoices/customers" },
@@ -181,6 +186,7 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
     titleKey: "salesBilling",
     items: [
       { labelKey: "pointOfSale", href: "/dashboard/invoices/new", capability: "canCreateProcessedSales" },
+      { labelKey: "wasteSales", href: "/dashboard/invoices/waste-sales", capability: "canCreateProcessedSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction", capability: "canViewTransactions" },
       { labelKey: "customers", href: "/dashboard/invoices/customers", capability: "canViewTransactions" },
     ],
@@ -223,6 +229,7 @@ const sidebarConfig = {
             items: [
               { labelKey: "overview", href: "/dashboard" },
               { labelKey: "outlets", href: "/dashboard/outlet" },
+              { labelKey: "outletExpenses", href: "/dashboard/outlets/expenses", capability: "canViewOutlets" as const },
               { labelKey: "users", href: "/dashboard/users" },
               { labelKey: "departments", href: "/dashboard/departments" },
               // { labelKey: "processingPlant", href: "/dashboard/processingPlant" },
@@ -302,6 +309,11 @@ const sidebarConfig = {
                   {
                     labelKey: "pointOfSale",
                     href: "/dashboard/invoices/new",
+                    capability: "canCreateProcessedSales" as const,
+                  },
+                  {
+                    labelKey: "wasteSales",
+                    href: "/dashboard/invoices/waste-sales",
                     capability: "canCreateProcessedSales" as const,
                   },
                   {

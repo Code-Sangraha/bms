@@ -1,6 +1,19 @@
 import type { CreateOutletFormValues } from "@/schema/outlet";
 import { apiRequest } from "@/lib/api/client";
+import {
+  getOutletExpenses,
+  type OutletExpenseEntry,
+  type OutletExpenseFilters,
+  type OutletExpensePaymentStatus,
+} from "@/lib/api/outletExpenses";
 import { OUTLET_ROUTES } from "@/lib/api/routes";
+
+export type {
+  OutletExpenseEntry,
+  OutletExpenseFilters,
+  OutletExpensePaymentStatus,
+};
+export { getOutletExpenses };
 
 export type Outlet = {
   id: string;

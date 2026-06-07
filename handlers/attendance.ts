@@ -17,6 +17,7 @@ export type AttendanceEmployee = {
 };
 
 export type AttendanceUser = {
+  id?: string;
   fullName: string;
   email: string;
   outletId: string;

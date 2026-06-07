@@ -14,6 +14,8 @@ export const OUTLET_ROUTES = {
   CREATE: "/outlets/create",
   UPDATE: "/outlets/update",
   DELETE: "/outlets/delete",
+  /** GET with JSON body `{ outletId? }` — controller may return 201 on success */
+  GET_EXPENSES: "/outlets/get-expenses",
 } as const;
 
 export const DEPARTMENT_ROUTES = {

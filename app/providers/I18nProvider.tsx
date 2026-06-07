@@ -984,6 +984,26 @@ const translations: Record<string, string> = {
     "खर्च इतिहासबाट लाइभस्टक पुनः भण्डारण भुक्तानी (नयाँ पहिले)।",
   "No restock expense records yet.": "अहिलेसम्म कुनै पुनः भण्डारण खर्च रेकर्ड छैन।",
   COMPLETED: "सम्पन्न",
+  "Waste Sales": "फोहोर बिक्री",
+  "Waste sale": "फोहोर बिक्री",
+  "Record a sale of processed waste by weight and amount.":
+    "तौल र रकम अनुसार प्रशोधित फोहोरको बिक्री रेकर्ड गर्नुहोस्।",
+  "Waste stock is validated when you submit.":
+    "पेश गर्दा फोहोर स्टक प्रमाणित हुन्छ।",
+  "Complete this waste sale and add it to transactions?":
+    "यो फोहोर बिक्री पूरा गरी कारोबारमा थप्ने?",
+  "Sale details": "बिक्री विवरण",
+  "Outlet expenses": "आउटलेट खर्च",
+  "Livestock restock expenses by outlet and supplier.":
+    "आउटलेट र आपूर्तिकर्ता अनुसार लाइभस्टक पुनः भण्डारण खर्च।",
+  "All outlets": "सबै आउटलेट",
+  "Filter by outlet": "आउटलेट अनुसार फिल्टर",
+  "No expense records found.": "कुनै खर्च रेकर्ड फेला परेन।",
+  "Livestock item": "लाइभस्टक आइटम",
+  "Supplier": "आपूर्तिकर्ता",
+  "Supplier contact": "आपूर्तिकर्ता सम्पर्क",
+  "Payment status": "भुक्तानी स्थिति",
+  "View expenses": "खर्च हेर्नुहोस्",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

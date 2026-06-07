@@ -1,0 +1,28 @@
+@import "../../product/inventoryDetailPage.scss";
+@import "../../product/liveProduct/livestockDetailShell.scss";
+
+.outletExpensesPage {
+  .outletHeader {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .outletExpensesToolbar {
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .outletExpensesFilter {
+    max-width: 20rem;
+    margin: 0;
+  }
+
+  .outletExpensesTableWrap {
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+
+  .outletExpensesTable {
+    min-width: 56rem;
+  }
+}

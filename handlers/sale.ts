@@ -21,6 +21,17 @@ export type SaleItemPayload = {
   paymentMethod: SalePaymentMethod;
 };
 
+/** Single waste sale line — omit productId, customerTypeId, outletId. */
+export type WasteSaleItemPayload = {
+  name: string;
+  contact: string;
+  weight: number;
+  amount: number;
+  paymentMethod: SalePaymentMethod;
+  wasteSales: true;
+  discountAmount?: number;
+};
+
 /** Transaction/sale record for list view. API may return type/customerType/customer as { id, name }. */
 export type SaleTransaction = {
   id: string;
@@ -54,6 +65,29 @@ export type SaleTransaction = {
   [key: string]: unknown;
 };
 
+function getNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+type RawTransactionLineFromApi = {
+  customerType?: { name?: string };
+  product?: { name?: string };
+  amount?: number;
+  weight?: number;
+  discountAmount?: number;
+  paymentMethod?: string;
+  [key: string]: unknown;
+};
+
 /** Raw transaction from API when data is object keyed by transactionId */
 type RawTransactionFromApi = {
   transactionId?: string;
@@ -61,49 +95,93 @@ type RawTransactionFromApi = {
   contact?: string;
   outlet?: { id?: string; name?: string };
   createdAt?: string;
-  items?: Array<{
-    customerType?: { name?: string };
-    product?: { name?: string };
-    amount?: number;
-    weight?: number;
-  }>;
+  discountAmount?: number;
+  paymentMethod?: string;
+  items?: RawTransactionLineFromApi[];
   totalAmount?: number;
   [key: string]: unknown;
 };
+
+function pickTransactionPaymentMethod(
+  tx: RawTransactionFromApi,
+  items: RawTransactionLineFromApi[] | undefined
+): string | undefined {
+  const topLevel = getString(tx.paymentMethod);
+  if (topLevel) return topLevel;
+
+  const fromItems =
+    items
+      ?.map((item) => getString(item.paymentMethod))
+      .filter((value): value is string => !!value) ?? [];
+  if (fromItems.length === 0) return undefined;
+
+  const unique = [...new Set(fromItems)];
+  return unique.length === 1 ? unique[0] : fromItems[0];
+}
+
+function sumTransactionDiscountAmount(
+  tx: RawTransactionFromApi,
+  items: RawTransactionLineFromApi[] | undefined
+): number | undefined {
+  const topLevel = getNumber(tx.discountAmount);
+  if (topLevel != null) return topLevel;
+
+  if (!items?.length) return undefined;
+
+  let sum = 0;
+  let hasValue = false;
+  for (const item of items) {
+    const lineDiscount = getNumber(item.discountAmount);
+    if (lineDiscount == null) continue;
+    sum += lineDiscount;
+    hasValue = true;
+  }
+
+  return hasValue ? Math.round(sum * 100) / 100 : undefined;
+}
+
+function normalizeGroupedTransaction(tx: RawTransactionFromApi): SaleTransaction {
+  const items = tx.items;
+  const types = items?.map((i) => i.customerType?.name).filter(Boolean) ?? [];
+  const uniqueTypes = [...new Set(types)];
+  const typeDisplay = uniqueTypes.length === 0 ? "—" : uniqueTypes.join(", ");
+  const paymentMethod = pickTransactionPaymentMethod(tx, items);
+  const discountAmount = sumTransactionDiscountAmount(tx, items);
+
+  return {
+    id: tx.transactionId ?? "",
+    transactionId: tx.transactionId,
+    name: tx.name,
+    contact: tx.contact,
+    createdAt: tx.createdAt,
+    date: tx.createdAt,
+    outletId: tx.outlet?.id,
+    outlet: tx.outlet,
+    itemsCount: items?.length ?? 0,
+    itemCount: items?.length ?? 0,
+    amount: tx.totalAmount,
+    total: tx.totalAmount,
+    totalAmount: tx.totalAmount,
+    discountAmount,
+    paymentMethod,
+    type: typeDisplay,
+    items,
+  } as SaleTransaction;
+}
 
 function normalizeTransactionList(
   raw: GetSalesResponse["data"]
 ): SaleTransaction[] {
   if (raw == null) return [];
   if (Array.isArray(raw)) {
-    return raw as SaleTransaction[];
+    return raw.map((entry) =>
+      entry && typeof entry === "object"
+        ? normalizeGroupedTransaction(entry as RawTransactionFromApi)
+        : (entry as SaleTransaction)
+    );
   }
   const obj = raw as Record<string, RawTransactionFromApi>;
-  return Object.values(obj).map((tx) => {
-    const types = tx.items
-      ?.map((i) => i.customerType?.name)
-      .filter(Boolean) ?? [];
-    const uniqueTypes = [...new Set(types)];
-    const typeDisplay =
-      uniqueTypes.length === 0 ? "—" : uniqueTypes.join(", ");
-    return {
-      id: tx.transactionId ?? "",
-      transactionId: tx.transactionId,
-      name: tx.name,
-      contact: tx.contact,
-      createdAt: tx.createdAt,
-      date: tx.createdAt,
-      outletId: tx.outlet?.id,
-      outlet: tx.outlet,
-      itemsCount: tx.items?.length ?? 0,
-      itemCount: tx.items?.length ?? 0,
-      amount: tx.totalAmount,
-      total: tx.totalAmount,
-      totalAmount: tx.totalAmount,
-      type: typeDisplay,
-      items: tx.items,
-    } as SaleTransaction;
-  });
+  return Object.values(obj).map(normalizeGroupedTransaction);
 }
 
 export type GetSalesResponse = {
@@ -170,19 +248,6 @@ export type LivestockSalesPageResult = {
 
 export const LIVESTOCK_SALES_LIST_DEFAULT_LIMIT = 10;
 export const LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT = 500;
-
-function getNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return undefined;
-}
-
-function getString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
 
 function normalizeSaleEntry(entry: unknown): LivestockSale[] {
   if (!entry || typeof entry !== "object") return [];
@@ -379,6 +444,28 @@ export async function createSale(items: SaleItemPayload[]) {
   return apiRequest<CreateSaleResponse>(SALES_ROUTES.CREATE, {
     method: "POST",
     body: JSON.stringify(toProcessedSaleCreateBody(items)),
+  });
+}
+
+function toWasteSaleCreateBody(item: WasteSaleItemPayload) {
+  return [
+    {
+      name: item.name,
+      contact: item.contact,
+      weight: item.weight,
+      amount: item.amount,
+      paymentMethod: toApiPaymentMethod(item.paymentMethod),
+      wasteSales: true as const,
+      discountAmount: item.discountAmount ?? 0,
+    },
+  ];
+}
+
+/** POST /v1/sales/create with a single waste sale line (v1 — backend processes one item only). */
+export async function createWasteSale(item: WasteSaleItemPayload) {
+  return apiRequest<CreateSaleResponse>(SALES_ROUTES.CREATE, {
+    method: "POST",
+    body: JSON.stringify(toWasteSaleCreateBody(item)),
   });
 }
 

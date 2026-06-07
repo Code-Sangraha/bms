@@ -129,13 +129,26 @@ function getLivestockLabel(sale: LivestockSale): string {
   return saleItemId || "-";
 }
 
+function resolveSaleLineProductName(item: {
+  product?: string | { name?: string };
+}): string {
+  if (typeof item.product === "string" && item.product.trim()) return item.product.trim();
+  if (
+    item.product &&
+    typeof item.product === "object" &&
+    typeof item.product.name === "string" &&
+    item.product.name.trim()
+  ) {
+    return item.product.name.trim();
+  }
+  return "";
+}
+
 function toTransactionFromSale(tx: SaleTransaction, locale: Locale): TransactionRecord {
   const dateRaw = tx.date ?? tx.createdAt;
   const detailItems: TransactionDetailItem[] =
     tx.items?.map((item) => ({
-      product:
-        (typeof item.product === "string" && item.product) ||
-        (item.product && typeof item.product.name === "string" ? item.product.name : "-"),
+      product: resolveSaleLineProductName(item),
       qtyKg: getNumber(item.weight),
       price: getNumber(item.amount),
     })) ?? [];
@@ -563,7 +576,7 @@ export default function TransactionPage() {
                   ) : (
                     selectedTransaction.detailItems.map((item, idx) => (
                       <tr key={`${selectedTransaction.id}-${idx}`}>
-                        <td>{item.product}</td>
+                        <td>{item.product || t("Waste sale")}</td>
                         <td>{item.qtyKg ?? "-"}</td>
                         <td>{item.price != null ? `Rs.${item.price.toFixed(2)}` : "-"}</td>
                       </tr>

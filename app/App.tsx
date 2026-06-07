@@ -20,7 +20,9 @@ import ProcessedProductDetailPage from "./dashboard/product/processedProduct/Pro
 import LivestockCategoryPage from "./dashboard/product/livestockCategoryV2/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
+import WasteSalesPage from "./dashboard/invoices/waste-sales/page";
 import LivestockSalesPage from "./dashboard/invoices/livestocksales/page";
+import OutletExpensesPage from "./dashboard/outlets/expenses/page";
 import TransactionPage from "./dashboard/invoices/transaction/page";
 import CustomerTypesPage from "./dashboard/invoices/customer-types/page";
 import CustomersPage from "./dashboard/invoices/customers/page";
@@ -45,6 +47,7 @@ export default function App() {
               <Route path="register" element={<RegisterPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="dashboard/outlet" element={<OutletPage />} />
+              <Route path="dashboard/outlets/expenses" element={<OutletExpensesPage />} />
               <Route path="dashboard/users" element={<UsersPage />} />
               <Route path="dashboard/dualPricing" element={<DualPricingPage />} />
               <Route path="dashboard/departments" element={<DepartmentsPage />} />
@@ -64,6 +67,7 @@ export default function App() {
               <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
               <Route path="dashboard/invoices" element={<InvoicesPage />} />
               <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />
+              <Route path="dashboard/invoices/waste-sales" element={<WasteSalesPage />} />
               <Route path="dashboard/invoices/livestock-sales" element={<LivestockSalesPage />} />
               <Route path="dashboard/invoices/transaction" element={<TransactionPage />} />
               <Route path="dashboard/invoices/customer-types" element={<CustomerTypesPage />} />

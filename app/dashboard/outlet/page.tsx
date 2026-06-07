@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -198,15 +198,20 @@ export default function OutletPage() {
             {t("Manage processing plants, retail stores, and distribution centers")}
           </p>
         </div>
-        {canCreate && (
-          <button
-            type="button"
-            className="button buttonPrimary"
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            {t("Add Outlet")}
-          </button>
-        )}
+        <div className="outletHeaderActions">
+          <Link to="/dashboard/outlets/expenses" className="button">
+            {t("Outlet expenses")}
+          </Link>
+          {canCreate && (
+            <button
+              type="button"
+              className="button buttonPrimary"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              {t("Add Outlet")}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="cardList">

@@ -10,12 +10,14 @@ import type { RoleCapabilities } from "@/lib/auth/capabilities";
 function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabilities): boolean {
   const p = pathname.replace(/\/$/, "") || "/";
   if (p === "/dashboard") return true;
+  if (p.startsWith("/dashboard/outlets")) return capabilities.canViewOutlets;
   if (p.startsWith("/dashboard/outlet")) return capabilities.canViewOutlets;
   if (p.startsWith("/dashboard/dualPricing")) return capabilities.canViewDualPricing;
   if (p.startsWith("/dashboard/processingPlant")) {
     return capabilities.canSendToProcessing || capabilities.canCompleteProcessing;
   }
   if (p.startsWith("/dashboard/invoices/livestock-sales")) return capabilities.canCreateLivestockSales;
+  if (p.startsWith("/dashboard/invoices/waste-sales")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/customer-types")) return false;
   if (p.startsWith("/dashboard/invoices/new")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/transaction")) return capabilities.canViewTransactions;
