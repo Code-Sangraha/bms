@@ -996,13 +996,9 @@ const translations: Record<string, string> = {
   "Outlet expenses": "आउटलेट खर्च",
   "Livestock restock expenses by outlet and supplier.":
     "आउटलेट र आपूर्तिकर्ता अनुसार लाइभस्टक पुनः भण्डारण खर्च।",
-  "All outlets": "सबै आउटलेट",
-  "Filter by outlet": "आउटलेट अनुसार फिल्टर",
   "No expense records found.": "कुनै खर्च रेकर्ड फेला परेन।",
   "Livestock item": "लाइभस्टक आइटम",
   "Supplier": "आपूर्तिकर्ता",
-  "Supplier contact": "आपूर्तिकर्ता सम्पर्क",
-  "Payment status": "भुक्तानी स्थिति",
   "View expenses": "खर्च हेर्नुहोस्",
 };
 

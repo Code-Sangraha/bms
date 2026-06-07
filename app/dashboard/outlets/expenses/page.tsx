@@ -15,6 +15,8 @@ import {
   type OutletExpenseEntry,
   type OutletExpensePaymentStatus,
 } from "@/handlers/outlet";
+import "../../product/inventoryDetailPage.scss";
+import "../../product/liveProduct/livestockDetailShell.scss";
 import "../../outlet/outlet.scss";
 import "./expenses.scss";
 
