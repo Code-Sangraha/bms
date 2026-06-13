@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { MdAdd, MdDeleteOutline, MdInfoOutline } from "react-icons/md";
 import Modal from "@/app/components/Modal/Modal";
 import Pagination from "@/app/components/Pagination/Pagination";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
@@ -26,6 +27,7 @@ import {
   wasteProductNameExists,
 } from "./lib/wasteProductCreate";
 import { logWasteProductsDebug } from "@/lib/wasteProductsDebug";
+import "../liveProduct/livestockDetailShell.scss";
 import "../processedProduct/processedProduct.scss";
 import "./wasteProduct.scss";
 
@@ -251,28 +253,34 @@ export default function WasteProductPage() {
   const canSubmitCreate =
     trimmedWatchedName.length > 0 && !isDuplicateName && !isCreatePending;
 
+  const totalWasteWeight = useMemo(() => {
+    return filteredProducts.reduce((sum, product) => {
+      const w = getProcessedStockWeight(product);
+      return Number.isFinite(w) ? sum + w : sum;
+    }, 0);
+  }, [filteredProducts]);
+
   return (
     <section className="processedProductPage wasteProductPage">
-      <div className="processedProductBreadcrumb">
-        <span className="processedProductBreadcrumbMuted">{t("Dashboard")}</span>
-        <span className="processedProductBreadcrumbSep" aria-hidden> / </span>
-        <span className="processedProductBreadcrumbCurrent">{t("Waste Products")}</span>
+      <div className="breadcrumb">
+        <span>{t("Product")}</span> {"›"} {t("Waste Products")}
       </div>
 
       <header className="processedProductHeader">
-        <div>
-          <h1 className="processedProductTitle">{t("Waste Products")}</h1>
-          <p className="processedProductSubtitle">
+        <div className="processedProductHeaderText">
+          <h1 className="pageTitle">{t("Waste Products")}</h1>
+          <p className="pageSubtitle">
             {t("Waste stock increases when you deduct processed products or complete processing.")}
           </p>
         </div>
-        <div className="processedProductHeaderActions">
+        <div className="wasteProductHeaderActions">
           {canCreate && (
             <button
               type="button"
-              className="processedProductAddBtn"
+              className="wasteProductAddBtn"
               onClick={() => setIsCreateOpen(true)}
             >
+              <MdAdd aria-hidden />
               {t("Create waste product")}
             </button>
           )}
@@ -292,47 +300,101 @@ export default function WasteProductPage() {
         </div>
       </header>
 
-      <div className="productsTable">
-        <div className="productsRow productsRowHeader processedInventoryRowHeader wasteProductRowHeader">
-          <span>{t("Name")}</span>
-          <span>{t("Outlet")}</span>
-          <span>{t("Weight")}</span>
+      {!isLoading && !isError && filteredProducts.length > 0 && (
+        <div className="wasteProductSummary" aria-label={t("Waste inventory summary")}>
+          <span className="wasteProductSummaryChip">
+            {t("Products")}: <strong>{filteredProducts.length}</strong>
+          </span>
+          <span className="wasteProductSummaryChip">
+            {t("Total weight")}: <strong>{totalWasteWeight.toFixed(2)} kg</strong>
+          </span>
         </div>
-        {isLoading && (
-          <div className="productsRow processedRowMessage">
-            <span className="productsMessage">{t("Loading…")}</span>
+      )}
+
+      <div className="wasteProductTableCard">
+        <div className="productsTable wasteProductTable">
+          <div className="productsRow productsRowHeader processedInventoryRowHeader wasteProductRowHeader">
+            <span>{t("Name")}</span>
+            <span>{t("Outlet")}</span>
+            <span>{t("Weight")}</span>
           </div>
-        )}
-        {isError && (
-          <div className="productsRow processedRowMessage">
-            <span className="productsMessage productsError">
-              {errorDetail instanceof Error ? errorDetail.message : t("Failed to load waste products.")}
-            </span>
-          </div>
-        )}
-        {!isLoading && !isError && filteredProducts.length === 0 && (
-          <div className="productsRow processedRowMessage wasteProductEmpty">
-            <span className="productsMessage">
-              {searchQuery.trim()
-                ? `${t("No waste products match")} "${searchQuery.trim()}".`
-                : t("No waste products yet.")}
-            </span>
-            {canCreate && !searchQuery.trim() && (
-              <p className="wasteProductEmptyHint">
-                {t("Create a waste product to route deducted or processing waste into inventory.")}
-              </p>
-            )}
-          </div>
-        )}
-        {!isLoading &&
-          !isError &&
-          paginatedProducts.map((product) => (
-            <div key={product.id} className="productsRow wasteProductRow">
-              <span data-label={t("Name")}>{product.name}</span>
-              <span data-label={t("Outlet")}>{getOutletName(product.outletId)}</span>
-              <span data-label={t("Weight")}>{formatWasteWeight(product)}</span>
+          {isLoading && (
+            <div className="productsRow processedRowMessage">
+              <span className="productsMessage">{t("Loading…")}</span>
             </div>
-          ))}
+          )}
+          {isError && (
+            <div className="productsRow processedRowMessage">
+              <span className="productsMessage productsError">
+                {errorDetail instanceof Error ? errorDetail.message : t("Failed to load waste products.")}
+              </span>
+            </div>
+          )}
+          {!isLoading && !isError && filteredProducts.length === 0 && (
+            <div className="productsRow processedRowMessage wasteProductEmptyState">
+              <div className="wasteProductEmptyIcon" aria-hidden>
+                <MdDeleteOutline />
+              </div>
+              <h2 className="wasteProductEmptyTitle">
+                {searchQuery.trim()
+                  ? `${t("No waste products match")} "${searchQuery.trim()}"`
+                  : t("No waste products yet")}
+              </h2>
+              <p className="wasteProductEmptyHint">
+                {searchQuery.trim()
+                  ? t("Try a different search term or clear the search filter.")
+                  : t("Create a waste product to route deducted or processing waste into inventory.")}
+              </p>
+              {canCreate && !searchQuery.trim() && (
+                <button
+                  type="button"
+                  className="wasteProductAddBtn"
+                  onClick={() => setIsCreateOpen(true)}
+                >
+                  <MdAdd aria-hidden />
+                  {t("Create waste product")}
+                </button>
+              )}
+            </div>
+          )}
+          {!isLoading &&
+            !isError &&
+            paginatedProducts.map((product) => {
+              const weight = getProcessedStockWeight(product);
+              const hasWeight = Number.isFinite(weight);
+              return (
+                <div key={product.id} className="productsRow wasteProductRow">
+                  <span
+                    className="wasteProductNameCell"
+                    data-label={t("Name")}
+                  >
+                    <span className="wasteProductNameIcon" aria-hidden>
+                      <MdDeleteOutline />
+                    </span>
+                    <span className="wasteProductNameText">{product.name}</span>
+                  </span>
+                  <span
+                    className="wasteProductOutletCell"
+                    data-label={t("Outlet")}
+                  >
+                    {getOutletName(product.outletId)}
+                  </span>
+                  <span
+                    className="wasteProductWeightCell"
+                    data-label={t("Weight")}
+                  >
+                    <span
+                      className={`wasteProductWeightBadge${
+                        hasWeight ? "" : " wasteProductWeightBadgeMuted"
+                      }`}
+                    >
+                      {hasWeight ? `${formatWasteWeight(product)} kg` : "—"}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+        </div>
       </div>
 
       {filteredProducts.length > 0 && (
@@ -355,9 +417,12 @@ export default function WasteProductPage() {
         modalClassName="modalWide"
       >
         <form onSubmit={handleSubmit(onCreateSubmit)} className="livestockDetailModalForm space-y-3">
-          <p className="livestockDetailModalHint" role="note">
-            {t("The same name is created in every outlet. Names are compared without extra spaces.")}
-          </p>
+          <div className="wasteProductCallout" role="note">
+            <MdInfoOutline aria-hidden />
+            <span>
+              {t("The same name is created in every outlet. Include \"waste\" in the name (e.g. General waste).")}
+            </span>
+          </div>
           <div className="livestockDetailModalField">
             <label className="livestockDetailModalLabel" htmlFor="waste-product-name">
               {t("Name")}
@@ -366,6 +431,7 @@ export default function WasteProductPage() {
               id="waste-product-name"
               type="text"
               className="livestockDetailModalInput"
+              placeholder={t("e.g. General waste")}
               disabled={isSubmitting || isCreatePending}
               {...register("name")}
             />
