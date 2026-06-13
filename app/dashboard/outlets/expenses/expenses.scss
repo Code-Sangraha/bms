@@ -22,4 +22,14 @@
   .outletExpensesTable {
     min-width: 56rem;
   }
+
+  .outletExpensesActionBtn {
+    border: none;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0;
+    text-decoration: underline;
+  }
 }

@@ -6,9 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
-import { useAuth } from "@/app/providers/AuthProvider";
+import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
+import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
 import {
   getOutletExpenses,
   getOutlets,
@@ -38,6 +39,7 @@ export default function OutletExpensesPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const { userOutletId } = useAuth();
+  const { capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
   const { rowFilterOutletId, isScoped } = useRowFilterOutletId();
 
@@ -45,6 +47,9 @@ export default function OutletExpensesPage() {
     accessTier === "outlet_staff" || accessTier === "driver" || Boolean(userOutletId);
 
   const [filterOutletId, setFilterOutletId] = useState<string>("");
+  const [expenseToPay, setExpenseToPay] = useState<OutletExpenseEntry | null>(null);
+
+  const canRecordPayment = capabilities.canRestockLivestockInventory;
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -128,6 +133,19 @@ export default function OutletExpensesPage() {
           </span>
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
+        <td>
+          {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
+            <button
+              type="button"
+              className="outletExpensesActionBtn"
+              onClick={() => setExpenseToPay(row)}
+            >
+              {t("Record payment")}
+            </button>
+          ) : (
+            "\u2014"
+          )}
+        </td>
       </tr>
     ));
 
@@ -200,6 +218,7 @@ export default function OutletExpensesPage() {
                   <th>{t("Due")}</th>
                   <th>{t("Payment status")}</th>
                   <th>{t("Remarks")}</th>
+                  <th>{t("Actions")}</th>
                 </tr>
               </thead>
               <tbody>{renderRows(paginatedRows)}</tbody>
@@ -216,6 +235,13 @@ export default function OutletExpensesPage() {
           />
         </>
       )}
+
+      <LivestockCompletePartialPaymentModal
+        isOpen={Boolean(expenseToPay)}
+        expense={expenseToPay}
+        onClose={() => setExpenseToPay(null)}
+        onSuccess={() => setExpenseToPay(null)}
+      />
     </section>
   );
 }

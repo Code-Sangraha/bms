@@ -72,6 +72,9 @@ export const PRODUCT_ROUTES = {
   /** GET ?fromDate=&toDate=&productId=&type= — restock/deduct movement (query only; no GET body) */
   PROCESSED_INVENTORY_HISTORY: "/products/processed/history",
   PROCESSED_TRANSFER: "/products/processed/transfer",
+  WASTE_CREATE: "/products/waste/create",
+  WASTE_GET: "/products/waste/get",
+  LIVESTOCK_COMPLETE_PARTIAL_PAYMENT: "/products/livestock/complete-partial-payment",
 } as const;
 
 export const ROLE_ROUTES = {

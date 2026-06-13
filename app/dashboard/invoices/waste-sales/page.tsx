@@ -1,11 +1,16 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
+import WasteProductSelect from "@/app/dashboard/product/wasteProduct/WasteProductSelect";
+import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
+import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
 import { createWasteSale } from "@/handlers/sale";
 import { formatSaleAmount } from "@/lib/saleCalculations";
 import {
@@ -19,15 +24,19 @@ import "../new/pos.scss";
 
 const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
+const PRODUCTS_QUERY_KEY = ["products"];
 
 export default function WasteSalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
+  const { userOutletId } = useAuth();
+  const { rowFilterOutletId } = useRowFilterOutletId();
 
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
+  const [wasteProductId, setWasteProductId] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
@@ -35,6 +44,32 @@ export default function WasteSalesPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
+
+  const { data: wasteProducts = [] } = useQuery({
+    queryKey: WASTE_PRODUCTS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getWasteProducts();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const selectedWasteProduct = useMemo(
+    () => wasteProducts.find((product) => product.id === wasteProductId) ?? null,
+    [wasteProducts, wasteProductId]
+  );
+
+  const saleOutletId = useMemo(() => {
+    if (selectedWasteProduct?.outletId) return selectedWasteProduct.outletId;
+    return rowFilterOutletId ?? userOutletId ?? "";
+  }, [selectedWasteProduct, rowFilterOutletId, userOutletId]);
+
+  const selectedWasteStock = selectedWasteProduct
+    ? getProcessedStockWeight(selectedWasteProduct)
+    : null;
 
   const parsedAmount = useMemo(() => {
     const value = Number(amountInput);
@@ -63,6 +98,8 @@ export default function WasteSalesPage() {
       const payload = {
         name: trimmedName,
         contact: trimmedContact,
+        productId: wasteProductId.trim(),
+        outletId: saleOutletId.trim(),
         weight,
         amount,
         paymentMethod,
@@ -98,12 +135,15 @@ export default function WasteSalesPage() {
 
       setCustomerName("");
       setCustomerContact("");
+      setWasteProductId("");
       setWeightInput("");
       setAmountInput("");
       setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       navigate("/dashboard/invoices/transaction");
     },
     onError: () => {
@@ -127,6 +167,14 @@ export default function WasteSalesPage() {
       setError(t("Enter customer contact."));
       return;
     }
+    if (!wasteProductId.trim()) {
+      setError(t("Waste product is required when deducting weight."));
+      return;
+    }
+    if (!saleOutletId.trim()) {
+      setError(t("Outlet is required for waste sales."));
+      return;
+    }
     const weight = Number(weightInput);
     if (!Number.isFinite(weight) || weight <= 0) {
       setError(t("Weight must be greater than 0."));
@@ -138,9 +186,20 @@ export default function WasteSalesPage() {
       return;
     }
 
+    if (
+      selectedWasteStock != null &&
+      Number.isFinite(selectedWasteStock) &&
+      weight > selectedWasteStock
+    ) {
+      setError(t("Sale weight cannot exceed waste product stock."));
+      return;
+    }
+
     const validation = validateWasteSaleCreate({
       name: customerName.trim(),
       contact: customerContact.trim(),
+      productId: wasteProductId.trim(),
+      outletId: saleOutletId.trim(),
       weight,
       amount,
       paymentMethod,
@@ -175,7 +234,7 @@ export default function WasteSalesPage() {
         <header className="posCardHeader">
           <h2 className="posCardTitle">{t("Waste sale")}</h2>
           <p className="posCardDescription">
-            {t("Waste stock is validated when you submit.")}
+            {t("Select a waste product; stock is deducted from that product when the sale is recorded.")}
           </p>
         </header>
 
@@ -214,6 +273,24 @@ export default function WasteSalesPage() {
           <h3 id="waste-section-sale" className="posSectionTitle">
             {t("Sale details")}
           </h3>
+          <div className="posLineForm__pricingGrid posLineForm__pricingGrid--wasteProduct">
+            <WasteProductSelect
+              id="waste-sale-product"
+              value={wasteProductId}
+              onChange={(value) => {
+                setWasteProductId(value);
+                setError(null);
+              }}
+            />
+          </div>
+          {selectedWasteProduct && (
+            <p className="posFieldHint" role="status">
+              {t("Available waste stock")}:{" "}
+              {selectedWasteStock != null && Number.isFinite(selectedWasteStock)
+                ? `${selectedWasteStock} kg`
+                : "—"}
+            </p>
+          )}
           <div className="posLineForm__pricingGrid">
             <label className="posField">
               <span className="posLabel">{t("Weight (kg)")}</span>

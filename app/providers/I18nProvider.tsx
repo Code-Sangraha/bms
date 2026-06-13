@@ -1000,6 +1000,47 @@ const translations: Record<string, string> = {
   "Livestock item": "लाइभस्टक आइटम",
   "Supplier": "आपूर्तिकर्ता",
   "View expenses": "खर्च हेर्नुहोस्",
+  "Waste Products": "फोहोर उत्पादन",
+  "Create waste product": "फोहोर उत्पादन सिर्जना गर्नुहोस्",
+  "Creates this waste SKU for every outlet.": "यो फोहोर SKU सबै आउटलेटमा सिर्जना गर्छ।",
+  "Waste product created.": "फोहोर उत्पादन सिर्जना भयो।",
+  "Failed to create waste product.": "फोहोर उत्पादन सिर्जना गर्न सकिएन।",
+  "Failed to load waste products.": "फोहोर उत्पादन लोड गर्न सकिएन।",
+  "No waste products yet.": "अहिलेसम्म कुनै फोहोर उत्पादन छैन।",
+  "No waste products match": "कुनै फोहोर उत्पादन मिलेन",
+  "Search waste products": "फोहोर उत्पादन खोज्नुहोस्",
+  "Waste stock increases when you deduct processed products or complete processing.":
+    "प्रशोधित उत्पादन कटौती वा प्रशोधन पूरा गर्दा फोहोर स्टक बढ्छ।",
+  "Create a waste product to route deducted or processing waste into inventory.":
+    "कटौती वा प्रशोधन फोहोरलाई स्टकमा पठाउन फोहोर उत्पादन सिर्जना गर्नुहोस्।",
+  "Waste product": "फोहोर उत्पादन",
+  "Select waste product": "फोहोर उत्पादन छान्नुहोस्",
+  "No waste products available.": "कुनै फोहोर उत्पादन उपलब्ध छैन।",
+  "Create waste products first": "पहिले फोहोर उत्पादन सिर्जना गर्नुहोस्",
+  "Waste product is required when deducting weight.": "तौल कटौती गर्दा फोहोर उत्पादन आवश्यक छ।",
+  "Waste product is required when waste weight is greater than 0.": "फोहोर तौल ० भन्दा बढी हुँदा फोहोर उत्पादन आवश्यक छ।",
+  "Record payment": "भुक्तानी रेकर्ड गर्नुहोस्",
+  "Record partial payment": "आंशिक भुक्तानी रेकर्ड गर्नुहोस्",
+  "Payment amount": "भुक्तानी रकम",
+  "Payment recorded successfully.": "भुक्तानी सफलतापूर्वक रेकर्ड भयो।",
+  "Failed to record payment.": "भुक्तानी रेकर्ड गर्न सकिएन।",
+  "Payment amount cannot exceed due amount.": "भुक्तानी रकम बाँकी रकमभन्दा बढी हुन सक्दैन।",
+  "Source product": "स्रोत उत्पादन",
+  "Processed waste history shows DEDUCT movements on this product only until a dedicated waste API exists.":
+    "समर्पित फोहोर API उपलब्ध नभएसम्म यो उत्पादनमा DEDUCT मात्र देखाइन्छ।",
+  "Waste product is required.": "फोहोर उत्पादन आवश्यक छ।",
+  "Outlet is required for waste sales.": "फोहोर बिक्रीका लागि आउटलेट आवश्यक छ।",
+  "Sale weight cannot exceed waste product stock.": "बिक्री तौल फोहोर स्टकभन्दा बढी हुन सक्दैन।",
+  "Select a waste product; stock is deducted from that product when the sale is recorded.":
+    "फोहोर उत्पादन छान्नुहोस्; बिक्री रेकर्ड गर्दा त्यो उत्पादनबाट स्टक कटौती हुन्छ।",
+  "Available waste stock": "उपलब्ध फोहोर स्टक",
+  "A waste product with this name already exists for this outlet.":
+    "यस आउटलेटमा यो नामको फोहोर उत्पादन पहिले नै छ।",
+  "Creating across outlets…": "सबै आउटलेटमा सिर्जना हुँदैछ…",
+  "Waste product is being created across outlets. Refresh if it does not appear shortly.":
+    "फोहोर उत्पादन सबै आउटलेटमा सिर्जना हुँदैछ। छिट्टै देखिएन भने रिफ्रेस गर्नुहोस्।",
+  "The same name is created in every outlet. Names are compared without extra spaces.":
+    "एउटै नाम सबै आउटलेटमा सिर्जना हुन्छ। नाम तुलना गर्दा अतिरिक्त खाली ठाउँ हटाइन्छ।",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

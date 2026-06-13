@@ -17,6 +17,7 @@ import LiveProductPage from "./dashboard/product/liveProduct/page";
 import LivestockItemDetailPage from "./dashboard/product/liveProduct/LivestockItemDetailPage";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
 import ProcessedProductDetailPage from "./dashboard/product/processedProduct/ProcessedProductDetailPage";
+import WasteProductPage from "./dashboard/product/wasteProduct/page";
 import LivestockCategoryPage from "./dashboard/product/livestockCategoryV2/page";
 import InvoicesPage from "./dashboard/invoices/page";
 import InvoicesNewPage from "./dashboard/invoices/new/page";
@@ -65,6 +66,7 @@ export default function App() {
                 element={<ProcessedProductDetailPage />}
               />
               <Route path="dashboard/product/processedProduct" element={<ProcessedProductPage />} />
+              <Route path="dashboard/product/wasteProduct" element={<WasteProductPage />} />
               <Route path="dashboard/invoices" element={<InvoicesPage />} />
               <Route path="dashboard/invoices/new" element={<InvoicesNewPage />} />
               <Route path="dashboard/invoices/waste-sales" element={<WasteSalesPage />} />

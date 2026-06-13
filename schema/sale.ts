@@ -38,10 +38,12 @@ export function validateProcessedSaleCreate(items: unknown):
   return { ok: false, error: first?.message ?? "Invalid sale data." };
 }
 
-/** Single-line waste sale — no product, customer type, or outlet required. */
+/** Single-line waste sale — requires waste product and outlet for inventory deduction. */
 export const wasteSaleLineSchema = z.object({
   name: z.string().trim().min(1, "Customer name is required"),
   contact: z.string().trim().min(1, "Customer contact is required"),
+  productId: z.string().trim().min(1, "Waste product is required"),
+  outletId: z.string().trim().min(1, "Outlet is required"),
   weight: z.number().positive("Weight must be greater than 0"),
   amount: z.number().positive("Line amount must be greater than 0"),
   discountAmount: z.number().min(0, "Discount cannot be negative").default(0),

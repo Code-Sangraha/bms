@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { type ComponentType, useMemo } from "react";
+import { type ComponentType, useMemo, useState } from "react";
 import {
   LuArrowRight,
   LuBoxes,
@@ -38,6 +38,7 @@ import {
 } from "@/handlers/sale";
 import "./dashboard.scss";
 import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
+import LivestockCompletePartialPaymentModal from "./product/liveProduct/LivestockCompletePartialPaymentModal";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 /** Up to LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT rows for aggregates (pagination on list endpoints). */
@@ -143,6 +144,8 @@ export default function DashboardPage() {
   const { accessTier, lockedOutletId } = useOutletAccess();
   const { userOutletId } = useAuth();
   const { capabilities } = usePermissions();
+  const [expenseToPay, setExpenseToPay] = useState<LivestockExpenseHistoryEntry | null>(null);
+  const canRecordPayment = capabilities.canRestockLivestockInventory;
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -739,6 +742,7 @@ export default function DashboardPage() {
   ];
 
   return (
+    <>
     <section className="dashboardOverview">
       <DashboardMobileHome
         t={t}
@@ -1131,6 +1135,7 @@ export default function DashboardPage() {
                           <th>{t("Paid amount")}</th>
                           <th>{t("Due amount")}</th>
                           <th>{t("Payment status")}</th>
+                          {canRecordPayment && <th>{t("Actions")}</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1143,6 +1148,21 @@ export default function DashboardPage() {
                             <td>Rs.{row.paidAmount.toLocaleString("en-IN")}</td>
                             <td>Rs.{row.dueAmount.toLocaleString("en-IN")}</td>
                             <td>{expensePaymentStatusLabel(row.paymentStatus, t)}</td>
+                            {canRecordPayment && (
+                              <td>
+                                {row.paymentStatus === "PARTIAL" ? (
+                                  <button
+                                    type="button"
+                                    className="dashboardExpenseActionBtn"
+                                    onClick={() => setExpenseToPay(row)}
+                                  >
+                                    {t("Record payment")}
+                                  </button>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -1213,5 +1233,12 @@ export default function DashboardPage() {
       </div>
       )}
     </section>
+    <LivestockCompletePartialPaymentModal
+      isOpen={Boolean(expenseToPay)}
+      expense={expenseToPay}
+      onClose={() => setExpenseToPay(null)}
+      onSuccess={() => setExpenseToPay(null)}
+    />
+    </>
   );
 }

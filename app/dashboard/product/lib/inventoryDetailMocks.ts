@@ -30,4 +30,4 @@ export const DUMMY_WASTE_LINES_TEXT =
  * When true, empty successful waste responses show {@link DUMMY_WASTE_LINES_TEXT} after the "no records" line.
  * Set to false to only show real API data.
  */
-export const SHOW_DUMMY_WASTE_WHEN_EMPTY = true;
+export const SHOW_DUMMY_WASTE_WHEN_EMPTY = false;

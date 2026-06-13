@@ -380,6 +380,16 @@
   border-bottom: none;
 }
 
+.dashboardExpenseActionBtn {
+  border: none;
+  background: transparent;
+  color: var(--color-primary, #2563eb);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
 .dashboardAttendanceTable {
   width: 100%;
   border-collapse: collapse;

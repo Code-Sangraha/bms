@@ -53,6 +53,7 @@ type TranslationKey =
   | "livestockCategory"
   | "live"
   | "processed"
+  | "wasteProducts"
   | "attendance"
   | "clockInOut"
   | "directory"
@@ -129,6 +130,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   livestockCategory: "Livestock Category",
   live: "Live Stock Inventory",
   processed: "Processed Inventory",
+  wasteProducts: "Waste Products",
   attendance: "Attendance",
   clockInOut: "Clock In/Out",
   directory: "Directory",
@@ -163,6 +165,7 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
       { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" },
       { labelKey: "processedProductsOutlet", href: "/dashboard/product" },
       { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" },
+      { labelKey: "wasteProducts", href: "/dashboard/product/wasteProduct", capability: "canViewProcessedInventory" },
       { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" },
       { labelKey: "processingPlant", href: "/dashboard/processingPlant", capability: "canSendToProcessing" },
     ],
@@ -197,6 +200,7 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
       { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" },
       { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" },
       { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" },
+      { labelKey: "wasteProducts", href: "/dashboard/product/wasteProduct", capability: "canViewProcessedInventory" },
     ],
   },
   {
@@ -334,6 +338,7 @@ const sidebarConfig = {
                   { labelKey: "live", href: "/dashboard/product/liveProduct", capability: "canViewLivestockInventory" as const },
                   { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" as const },
                   { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" as const },
+                  { labelKey: "wasteProducts", href: "/dashboard/product/wasteProduct", capability: "canViewProcessedInventory" as const },
                   { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" as const },
                 ],
               },

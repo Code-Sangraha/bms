@@ -7,8 +7,13 @@ import { useNavigate } from "react-router-dom";
 import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
-import { deductProduct, type Product } from "@/handlers/product";
+import {
+  deductProduct,
+  WASTE_PRODUCTS_QUERY_KEY,
+  type Product,
+} from "@/handlers/product";
 import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
+import WasteProductSelect from "@/app/dashboard/product/wasteProduct/WasteProductSelect";
 import {
   processedReduceWeightSchema,
   type ProcessedReduceWeightFormValues,
@@ -40,17 +45,23 @@ export default function ProcessedProductReduceDetailModal({
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ProcessedReduceWeightFormValues>({
     resolver: zodResolver(processedReduceWeightSchema),
-    defaultValues: { weight: undefined },
+    defaultValues: { weight: undefined, wasteProductId: "" },
   });
+
+  const wasteProductId = watch("wasteProductId");
 
   const mutation = useMutation({
     mutationFn: (values: ProcessedReduceWeightFormValues) =>
       deductProduct({
         id: product.id,
+        outletId: product.outletId,
         weight: values.weight,
+        productId: values.wasteProductId,
       }),
     onSuccess: (result) => {
       if (!result.ok) {
@@ -59,9 +70,12 @@ export default function ProcessedProductReduceDetailModal({
         return;
       }
       showToast(t("Storage reduced successfully."), "success");
-      reset();
+      reset({ weight: undefined, wasteProductId: "" });
       onClose();
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["processedInventoryHistory"] });
+      void queryClient.invalidateQueries({ queryKey: ["inventoryDetailWasteHistory"] });
       onSuccess?.();
     },
     onError: () => {
@@ -113,6 +127,14 @@ export default function ProcessedProductReduceDetailModal({
             </p>
           )}
         </div>
+
+        <WasteProductSelect
+          id="processed-reduce-waste-product"
+          value={wasteProductId}
+          onChange={(value) => setValue("wasteProductId", value, { shouldValidate: true })}
+          disabled={isPending}
+          error={errors.wasteProductId?.message}
+        />
 
         <div className="livestockDetailModalFooter">
           <button

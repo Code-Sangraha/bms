@@ -19,6 +19,7 @@ import {
   getProcessedOpeningStock,
   getProducts,
   updateProduct as updateProductApi,
+  WASTE_PRODUCTS_QUERY_KEY,
   type Product,
 } from "@/handlers/product";
 import OpeningStockTable from "../liveProduct/components/OpeningStockTable";
@@ -33,7 +34,14 @@ import { getMainOutletId, getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { type CreateProductFormValues } from "@/schema/product";
 import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
+import {
+  filterProcessedNonWasteProducts,
+  getProcessedTypeIds,
+  getWasteTypeIds,
+  isWasteProduct,
+} from "@/app/dashboard/product/lib/productTypeFilters";
 import ProductEditModal from "../ProductEditModal";
+import WasteProductSelect from "../wasteProduct/WasteProductSelect";
 import "./processedProduct.scss";
 
 const PRODUCT_TYPE_NAME = "Processed";
@@ -115,6 +123,7 @@ export default function ProcessedProductPage() {
 
   const [deductTarget, setDeductTarget] = useState<Product | null>(null);
   const [deductWeight, setDeductWeight] = useState("");
+  const [deductWasteProductId, setDeductWasteProductId] = useState("");
   const [deductError, setDeductError] = useState<string | null>(null);
 
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -172,15 +181,21 @@ export default function ProcessedProductPage() {
     return selectedOutletId;
   }, [isScoped, rowFilterOutletId, mainOutletId, selectedOutletId]);
 
+  const processedTypeIds = useMemo(() => getProcessedTypeIds(productTypes), [productTypes]);
+  const wasteTypeIds = useMemo(() => getWasteTypeIds(productTypes), [productTypes]);
+
   const processedTypeId = useMemo(
     () => productTypes.find((pt) => pt.name.toLowerCase() === PRODUCT_TYPE_NAME.toLowerCase())?.id ?? null,
     [productTypes]
   );
 
   const filteredProducts = useMemo(() => {
-    let list: Product[] = processedTypeId
-      ? products.filter((p) => p.productTypeId === processedTypeId)
-      : [];
+    let list: Product[] = filterProcessedNonWasteProducts(
+      processedTypeId ? products.filter((p) => p.productTypeId === processedTypeId) : [],
+      processedTypeIds,
+      wasteTypeIds
+    );
+    list = list.filter((p) => !isWasteProduct(p, wasteTypeIds));
     if (effectiveSelectedOutletId !== "all") {
       list = list.filter((p) => p.outletId === effectiveSelectedOutletId);
     }
@@ -196,7 +211,7 @@ export default function ProcessedProductPage() {
       });
     }
     return list;
-  }, [products, processedTypeId, effectiveSelectedOutletId, searchQuery, outlets, productTypes]);
+  }, [products, processedTypeId, processedTypeIds, wasteTypeIds, effectiveSelectedOutletId, searchQuery, outlets, productTypes]);
 
   const getOutletName = (outletId: string) => outlets.find((o) => o.id === outletId)?.name ?? outletId;
   const getTypeName = (typeId: string) => productTypes.find((pt) => pt.id === typeId)?.name ?? typeId;
@@ -554,7 +569,10 @@ export default function ProcessedProductPage() {
       if (result.ok) {
         setDeductTarget(null);
         setDeductWeight("");
+        setDeductWasteProductId("");
         invalidateProducts();
+        void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
+        void queryClient.invalidateQueries({ queryKey: ["processedInventoryHistory"] });
       } else {
         if (result.status === 401) {
           navigate("/login");
@@ -592,13 +610,22 @@ export default function ProcessedProductPage() {
     if (!deductTarget) return;
     const w = Number(deductWeight);
     if (!Number.isFinite(w) || w <= 0) return;
+    if (!deductWasteProductId.trim()) {
+      setDeductError(t("Waste product is required when deducting weight."));
+      return;
+    }
     const cap = getProcessedStockWeight(deductTarget);
     if (w > cap) {
       setDeductError(t("Deduct amount cannot exceed current stock."));
       return;
     }
     setDeductError(null);
-    deductMutation.mutate({ id: deductTarget.id, weight: w });
+    deductMutation.mutate({
+      id: deductTarget.id,
+      outletId: deductTarget.outletId,
+      weight: w,
+      productId: deductWasteProductId.trim(),
+    });
   };
 
   const handleConfirmDelete = () => {
@@ -860,6 +887,7 @@ export default function ProcessedProductPage() {
                 closeRowMenu();
                 setDeductTarget(openRowMenu.product);
                 setDeductWeight("");
+                setDeductWasteProductId("");
                 setDeductError(null);
               }}
             >
@@ -1009,6 +1037,7 @@ export default function ProcessedProductPage() {
         onClose={() => {
           setDeductTarget(null);
           setDeductWeight("");
+          setDeductWasteProductId("");
           setDeductError(null);
         }}
         footer={
@@ -1020,6 +1049,7 @@ export default function ProcessedProductPage() {
                 onClick={() => {
                   setDeductTarget(null);
                   setDeductWeight("");
+                  setDeductWasteProductId("");
                   setDeductError(null);
                 }}
               >
@@ -1031,6 +1061,7 @@ export default function ProcessedProductPage() {
                 onClick={handleSubmitDeduct}
                 disabled={
                   !deductWeight ||
+                  !deductWasteProductId.trim() ||
                   !Number.isFinite(Number(deductWeight)) ||
                   Number(deductWeight) <= 0 ||
                   (deductTarget !== null && Number(deductWeight) > getProcessedStockWeight(deductTarget)) ||
@@ -1064,6 +1095,15 @@ export default function ProcessedProductPage() {
                 placeholder={t("Enter weight")}
               />
             </label>
+            <WasteProductSelect
+              id="processed-list-deduct-waste-product"
+              value={deductWasteProductId}
+              onChange={(value) => {
+                setDeductWasteProductId(value);
+                setDeductError(null);
+              }}
+              disabled={deductMutation.isPending}
+            />
           </div>
         )}
       </Modal>

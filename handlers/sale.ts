@@ -21,10 +21,12 @@ export type SaleItemPayload = {
   paymentMethod: SalePaymentMethod;
 };
 
-/** Single waste sale line — omit productId, customerTypeId, outletId. */
+/** Waste sale line — deducts from a specific waste product in the current outlet. */
 export type WasteSaleItemPayload = {
   name: string;
   contact: string;
+  productId: string;
+  outletId: string;
   weight: number;
   amount: number;
   paymentMethod: SalePaymentMethod;
@@ -452,6 +454,8 @@ function toWasteSaleCreateBody(item: WasteSaleItemPayload) {
     {
       name: item.name,
       contact: item.contact,
+      productId: item.productId,
+      outletId: item.outletId,
       weight: item.weight,
       amount: item.amount,
       paymentMethod: toApiPaymentMethod(item.paymentMethod),

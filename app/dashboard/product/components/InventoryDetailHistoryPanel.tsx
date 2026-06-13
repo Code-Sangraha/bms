@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/app/providers/AuthProvider";
+import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
 import {
   MdInventory2,
   MdPayments,
@@ -110,6 +112,9 @@ export default function InventoryDetailHistoryPanel({
 }: InventoryDetailHistoryPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { capabilities } = usePermissions();
+  const canRecordPayment = capabilities.canRestockLivestockInventory;
+  const [expenseToPay, setExpenseToPay] = useState<LivestockExpenseHistoryEntry | null>(null);
   const isLivestock = variant === "livestock";
   const expenseItemId = livestockItemIdProp ?? wasteHistoryId;
 
@@ -391,6 +396,19 @@ export default function InventoryDetailHistoryPanel({
           </span>
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
+        <td>
+          {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
+            <button
+              type="button"
+              className="inventoryDetailExpenseActionBtn"
+              onClick={() => setExpenseToPay(row)}
+            >
+              {t("Record payment")}
+            </button>
+          ) : (
+            "\u2014"
+          )}
+        </td>
       </tr>
     ));
 
@@ -451,6 +469,7 @@ export default function InventoryDetailHistoryPanel({
     .join(" ");
 
   return (
+    <>
     <div className={panelClass}>
       {productShellStyle && isLivestock && !dateFilterAffectsStorage && (
         <p className="inventoryDetailDateScopeHint" role="note">
@@ -770,6 +789,11 @@ export default function InventoryDetailHistoryPanel({
             )
           ) : (
             <>
+              {variant === "processed" && !wasteError && (
+                <p className="inventoryDetailSampleBanner" role="note">
+                  {t("Processed waste history shows DEDUCT movements on this product only until a dedicated waste API exists.")}
+                </p>
+              )}
               {(wasteError || (wasteEntriesFiltered.length === 0 && SHOW_DUMMY_WASTE_WHEN_EMPTY)) && (
                 <p className="inventoryDetailSampleBanner" role="status">
                   {wasteError
@@ -841,6 +865,7 @@ export default function InventoryDetailHistoryPanel({
                     <th>{t("Due")}</th>
                     <th>{t("Status")}</th>
                     <th>{t("Remarks")}</th>
+                    <th>{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>{renderExpenseRows(expenseHistory)}</tbody>
@@ -850,5 +875,12 @@ export default function InventoryDetailHistoryPanel({
         </div>
       )}
     </div>
+    <LivestockCompletePartialPaymentModal
+      isOpen={Boolean(expenseToPay)}
+      expense={expenseToPay}
+      onClose={() => setExpenseToPay(null)}
+      onSuccess={() => setExpenseToPay(null)}
+    />
+    </>
   );
 }

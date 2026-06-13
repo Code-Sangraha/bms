@@ -14,12 +14,19 @@ import {
   getPendingLivestockProcessing,
   getLivestockItemsByProduct,
   getProducts,
+  getWasteProducts,
   transferProcessedStock,
+  WASTE_PRODUCTS_QUERY_KEY,
   type CompletedLivestockProcessingItem,
   type PendingLivestockProcessingItem,
   sendLivestockToProcessing,
   type LivestockItem,
 } from "@/handlers/product";
+import {
+  filterProcessedNonWasteProducts,
+  getProcessedTypeIds,
+  getWasteTypeIds,
+} from "@/app/dashboard/product/lib/productTypeFilters";
 import { getOutlets } from "@/handlers/outlet";
 import { getProductTypes } from "@/handlers/productType";
 import { getUsers } from "@/handlers/user";
@@ -41,7 +48,6 @@ const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
 const PENDING_PROCESSING_QUERY_KEY = ["pendingLivestockProcessing"];
 const COMPLETED_PROCESSING_QUERY_KEY = ["completedLivestockProcessing"];
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
-const PROCESSED_PRODUCT_TYPE_NAMES = ["processed"];
 const SEND_HISTORY_STORAGE_KEY = "processingPlantSendHistory";
 const COMPLETE_PROCESSING_WEIGHT_TOLERANCE = 0.0001;
 
@@ -111,6 +117,7 @@ export default function ProcessingPlantPage() {
   const [sendWeight, setSendWeight] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [completeWasteWeight, setCompleteWasteWeight] = useState("");
+  const [completeWasteProductId, setCompleteWasteProductId] = useState("");
   const [completeOutputLines, setCompleteOutputLines] = useState<CompleteOutputLineDraft[]>(() => [
     createEmptyCompleteOutputLine(),
   ]);
@@ -220,25 +227,25 @@ export default function ProcessingPlantPage() {
     [products, liveTypeIds]
   );
 
-  const processedTypeIds = useMemo(() => {
-    const ids = new Set<string>();
-    productTypes.forEach((pt) => {
-      if (PROCESSED_PRODUCT_TYPE_NAMES.includes(pt.name.toLowerCase())) ids.add(pt.id);
-    });
-    return ids;
-  }, [productTypes]);
+  const processedTypeIds = useMemo(() => getProcessedTypeIds(productTypes), [productTypes]);
+  const wasteTypeIds = useMemo(() => getWasteTypeIds(productTypes), [productTypes]);
 
   const processedProducts = useMemo(
-    () =>
-      products.filter((p) => {
-        const productTypeName =
-          typeof p.productType === "object" && typeof p.productType?.name === "string"
-            ? p.productType.name.toLowerCase()
-            : "";
-        return processedTypeIds.has(p.productTypeId) || PROCESSED_PRODUCT_TYPE_NAMES.includes(productTypeName);
-      }),
-    [products, processedTypeIds]
+    () => filterProcessedNonWasteProducts(products, processedTypeIds, wasteTypeIds),
+    [products, processedTypeIds, wasteTypeIds]
   );
+
+  const { data: wasteProducts = [] } = useQuery({
+    queryKey: WASTE_PRODUCTS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getWasteProducts();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
 
   const liveStockProductIds = useMemo(
     () => liveStockProducts.map((product) => product.id).sort(),
@@ -402,6 +409,7 @@ export default function ProcessingPlantPage() {
 
   const completeFormCanSubmit = useMemo(() => {
     if (!selectedBatchId || !capabilities.canCompleteProcessing) return false;
+    if (!completeWasteProductId.trim()) return false;
     const waste = Number(completeWasteWeight);
     if (!Number.isFinite(waste) || waste < 0) return false;
     let hasValidLine = false;
@@ -418,6 +426,7 @@ export default function ProcessingPlantPage() {
     selectedBatchId,
     capabilities.canCompleteProcessing,
     completeWasteWeight,
+    completeWasteProductId,
     completeOutputLines,
     completeWeightValidationMessage,
   ]);
@@ -652,6 +661,12 @@ export default function ProcessingPlantPage() {
       if (!Number.isFinite(wasteWeight) || wasteWeight < 0) {
         return { ok: false as const, error: t("Waste weight must be 0 or greater.") };
       }
+      if (!completeWasteProductId.trim()) {
+        return {
+          ok: false as const,
+          error: t("Waste product is required."),
+        };
+      }
 
       const outputs: { productId: string; weight: number; outletId: string }[] = [];
       for (const line of completeOutputLines) {
@@ -695,6 +710,7 @@ export default function ProcessingPlantPage() {
       return completeLivestockProcessing({
         batchId: selectedBatchId,
         wasteWeight,
+        wasteProductId: completeWasteProductId.trim(),
         outputs,
       });
     },
@@ -706,8 +722,10 @@ export default function ProcessingPlantPage() {
       showToast(t("Processing completed successfully."), "success");
       setSelectedBatchId("");
       setCompleteWasteWeight("");
+      setCompleteWasteProductId("");
       setCompleteOutputLines([createEmptyCompleteOutputLine()]);
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: LIVESTOCK_ITEMS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PENDING_PROCESSING_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: COMPLETED_PROCESSING_QUERY_KEY });
@@ -1129,6 +1147,29 @@ export default function ProcessingPlantPage() {
                 value={completeWasteWeight}
                 onChange={(e) => setCompleteWasteWeight(e.target.value)}
               />
+            </label>
+            <label className="ppField">
+              <span className="ppLabel">{t("Waste product")}</span>
+              <select
+                className="ppInput"
+                value={completeWasteProductId}
+                onChange={(e) => setCompleteWasteProductId(e.target.value)}
+              >
+                <option value="">{t("Select waste product")}</option>
+                {wasteProducts.map((product) => {
+                  const stock =
+                    typeof product.weight === "number" && Number.isFinite(product.weight)
+                      ? product.weight
+                      : product.quantity;
+                  const stockLabel =
+                    typeof stock === "number" && Number.isFinite(stock) ? ` (${stock} kg)` : "";
+                  return (
+                    <option key={product.id} value={product.id}>
+                      {`${product.name}${stockLabel}`}
+                    </option>
+                  );
+                })}
+              </select>
             </label>
           </div>
 

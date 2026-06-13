@@ -1,5 +1,5 @@
 import type { CreateProductFormValues } from "@/schema/product";
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, getBaseUrl } from "@/lib/api/client";
 import { PRODUCT_ROUTES } from "@/lib/api/routes";
 import {
   formatLivestockHistoryAmount,
@@ -11,6 +11,7 @@ import {
   getProcessedInventoryHistory as requestProcessedInventoryHistory,
   type ProcessedInventoryHistoryEntry,
 } from "@/lib/api/processedInventoryHistory";
+import { logWasteProductsDebug, warnWasteProductsDebug } from "@/lib/wasteProductsDebug";
 
 export type Product = {
   id: string;
@@ -228,11 +229,17 @@ export type RestockProductPayload = {
 };
 
 export type DeductProductPayload = {
+  /** Source processed product id (weight decreases). */
   id: string;
-  /** Deduct by weight only. Omit when using `quantity`. */
-  weight?: number;
-  /** Deduct quantity only; does not adjust product weight. */
-  quantity?: number;
+  /** Current outlet scope — required for weight deduct. */
+  outletId: string;
+  /** Weight to deduct from source product. */
+  weight: number;
+  /**
+   * Destination waste product id (weight increases).
+   * Sent as `productId` in the API body — not `wasteProductId`.
+   */
+  productId: string;
 };
 
 export type RestockDeductResponse = {
@@ -264,22 +271,186 @@ export async function restockProduct(payload: RestockProductPayload) {
 }
 
 export async function deductProduct(payload: DeductProductPayload) {
-  const body: Record<string, unknown> = { id: payload.id };
-  if (payload.quantity != null) {
-    body.quantity = Number(payload.quantity);
-  } else if (payload.weight != null) {
-    body.weight = Number(payload.weight);
-  } else {
-    return {
-      ok: false as const,
-      error: "Deduct requires quantity or weight.",
-      status: 400,
-    };
+  const sourceId = payload.id.trim();
+  const outletId = payload.outletId.trim();
+  const wasteProductId = payload.productId.trim();
+  const weight = Number(payload.weight);
+
+  if (!sourceId) {
+    return { ok: false as const, error: "Source product is required.", status: 400 };
   }
+  if (!outletId) {
+    return { ok: false as const, error: "Outlet is required.", status: 400 };
+  }
+  if (!wasteProductId) {
+    return { ok: false as const, error: "Waste product is required.", status: 400 };
+  }
+  if (!Number.isFinite(weight) || weight <= 0) {
+    return { ok: false as const, error: "Weight must be greater than 0.", status: 400 };
+  }
+
+  // Backend deductProductSchema must allow outletId + productId; otherwise validation strips them.
+  const body = {
+    id: sourceId,
+    outletId,
+    weight,
+    productId: wasteProductId,
+  };
+
   return apiRequest<RestockDeductResponse>(PRODUCT_ROUTES.DEDUCT, {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export const WASTE_PRODUCTS_QUERY_KEY = ["wasteProducts"] as const;
+
+export type WasteProduct = Product;
+
+export type CreateWasteProductPayload = {
+  name: string;
+};
+
+export type CreateWasteProductResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export type GetWasteProductsResponse = {
+  success?: boolean;
+  message?: string;
+  data?: Product[];
+  products?: Product[];
+  [key: string]: unknown;
+};
+
+function parseProductListFromResponse(data: GetWasteProductsResponse | GetProductsResponse): Product[] {
+  const list = extractProductArrayFromApiPayload(data);
+  if (!Array.isArray(list)) return [];
+  return list as Product[];
+}
+
+/** Tries common BMS list shapes: data, products, items, nested data.products, etc. */
+function extractProductArrayFromApiPayload(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+
+  const root = raw as Record<string, unknown>;
+  const topLevelKeys = Object.keys(root);
+
+  const directCandidates = [root.data, root.products, root.items];
+  for (const candidate of directCandidates) {
+    if (Array.isArray(candidate)) {
+      logWasteProductsDebug("extractProductArray: matched top-level array", {
+        topLevelKeys,
+        matchedKey: candidate === root.data ? "data" : candidate === root.products ? "products" : "items",
+        length: candidate.length,
+      });
+      return candidate;
+    }
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+      const nested = candidate as Record<string, unknown>;
+      const nestedArrays = [nested.data, nested.products, nested.items].filter(Array.isArray);
+      if (nestedArrays.length > 0) {
+        const arr = nestedArrays[0] as unknown[];
+        logWasteProductsDebug("extractProductArray: matched nested array", {
+          topLevelKeys,
+          nestedKeys: Object.keys(nested),
+          length: arr.length,
+        });
+        return arr;
+      }
+    }
+  }
+
+  warnWasteProductsDebug("extractProductArray: no product array in payload", {
+    topLevelKeys,
+    sample: summarizeForDebugLog(raw),
+  });
+  return [];
+}
+
+function summarizeForDebugLog(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const o = raw as Record<string, unknown>;
+  const summary: Record<string, unknown> = {};
+  for (const key of Object.keys(o)) {
+    const value = o[key];
+    if (Array.isArray(value)) {
+      summary[key] = `array(${value.length})`;
+    } else if (value && typeof value === "object") {
+      summary[key] = `object{${Object.keys(value as object).join(",")}}`;
+    } else {
+      summary[key] = value;
+    }
+  }
+  return summary;
+}
+
+export async function createWasteProduct(payload: CreateWasteProductPayload) {
+  const name = payload.name.trim();
+  if (!name) {
+    return { ok: false as const, error: "Waste product name is required.", status: 400 };
+  }
+  logWasteProductsDebug("createWasteProduct: request", {
+    route: PRODUCT_ROUTES.WASTE_CREATE,
+    baseUrl: getBaseUrl(),
+    fullUrl: `${getBaseUrl()}${PRODUCT_ROUTES.WASTE_CREATE}`,
+    body: { name },
+  });
+  const apiResult = await apiRequest<CreateWasteProductResponse>(PRODUCT_ROUTES.WASTE_CREATE, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  logWasteProductsDebug("createWasteProduct: raw apiResult", {
+    ok: apiResult.ok,
+    error: apiResult.ok ? undefined : apiResult.error,
+    status: apiResult.ok ? undefined : apiResult.status,
+    data: apiResult.ok ? summarizeForDebugLog(apiResult.data) : undefined,
+    rawData: apiResult.ok ? apiResult.data : undefined,
+  });
+  const normalized = normalizeProductMutationApiResult(
+    apiResult,
+    "Failed to create waste product."
+  );
+  logWasteProductsDebug("createWasteProduct: normalized result", {
+    ok: normalized.ok,
+    error: normalized.ok ? undefined : normalized.error,
+    status: normalized.ok ? undefined : normalized.status,
+  });
+  return normalized;
+}
+
+export async function getWasteProducts(): Promise<
+  | { ok: true; data: WasteProduct[] }
+  | { ok: false; error: string; status: number }
+> {
+  logWasteProductsDebug("getWasteProducts: request", {
+    route: PRODUCT_ROUTES.WASTE_GET,
+    baseUrl: getBaseUrl(),
+    fullUrl: `${getBaseUrl()}${PRODUCT_ROUTES.WASTE_GET}`,
+  });
+  const result = await apiRequest<GetWasteProductsResponse>(PRODUCT_ROUTES.WASTE_GET, {
+    method: "GET",
+  });
+  if (!result.ok) {
+    warnWasteProductsDebug("getWasteProducts: request failed", {
+      status: result.status,
+      error: result.error,
+    });
+    return result;
+  }
+  const parsed = parseProductListFromResponse(result.data);
+  logWasteProductsDebug("getWasteProducts: parsed list", {
+    count: parsed.length,
+    names: parsed.map((p) => p.name),
+    ids: parsed.map((p) => p.id),
+    outletIds: parsed.map((p) => p.outletId),
+    rawPayloadSummary: summarizeForDebugLog(result.data),
+    rawData: result.data,
+  });
+  return { ok: true, data: parsed };
 }
 
 export type CreateLivestockItemPayload = {
@@ -325,6 +496,9 @@ export type LivestockWasteHistoryEntry = {
   date: string;
   quantity: number;
   remarks: string;
+  fromProductId?: string | null;
+  livestockItemId?: string | null;
+  sourceProductName?: string | null;
 };
 
 type LivestockWasteHistoryApiResponse = {
@@ -375,8 +549,28 @@ function parseWasteHistoryEntry(raw: unknown, index: number): LivestockWasteHist
         : typeof row.reason === "string"
           ? row.reason
           : "";
+  const fromProductId =
+    typeof row.fromProductId === "string" ? row.fromProductId : null;
+  const livestockItemId =
+    typeof row.livestockItemId === "string" ? row.livestockItemId : null;
+  const sourceProductName =
+    typeof row.sourceProductName === "string" && row.sourceProductName.trim()
+      ? row.sourceProductName.trim()
+      : typeof row.fromProduct === "object" &&
+          row.fromProduct !== null &&
+          typeof (row.fromProduct as { name?: unknown }).name === "string"
+        ? ((row.fromProduct as { name: string }).name as string)
+        : null;
   if (!date && quantity === 0 && !remarks.trim()) return null;
-  return { id, date: date || "—", quantity, remarks: remarks.trim() ? remarks : "—" };
+  return {
+    id,
+    date: date || "—",
+    quantity,
+    remarks: remarks.trim() ? remarks : "—",
+    fromProductId,
+    livestockItemId,
+    sourceProductName,
+  };
 }
 
 export type WasteHistoryDateRange = { from?: string; to?: string };
@@ -932,6 +1126,38 @@ export async function deductLivestockItem(payload: LivestockDeductPayload) {
   });
 }
 
+export type CompletePartialPaymentPayload = {
+  expenseId: string;
+  paidAmount: number;
+};
+
+export type CompletePartialPaymentResponse = {
+  success?: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export async function completeLivestockPartialPayment(payload: CompletePartialPaymentPayload) {
+  const expenseId = payload.expenseId.trim();
+  const paidAmount = Number(payload.paidAmount);
+  if (!expenseId) {
+    return { ok: false as const, error: "Expense is required.", status: 400 };
+  }
+  if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+    return { ok: false as const, error: "Payment amount must be greater than 0.", status: 400 };
+  }
+  return normalizeProductMutationApiResult(
+    await apiRequest<CompletePartialPaymentResponse>(
+      PRODUCT_ROUTES.LIVESTOCK_COMPLETE_PARTIAL_PAYMENT,
+      {
+        method: "POST",
+        body: JSON.stringify({ expenseId, paidAmount }),
+      }
+    ),
+    "Failed to record payment."
+  );
+}
+
 /**
  * POST `/products/livestock/delete-item` — matches `router.post('.../delete-item', ...)`.
  * JSON body is `{ productId: string }` but the server passes that string to Prisma as **`itemId`**
@@ -991,6 +1217,7 @@ export type CompleteProcessingOutputLine = {
 export type CompleteProcessingPayload = {
   batchId: string;
   wasteWeight: number;
+  wasteProductId: string;
   outputs: CompleteProcessingOutputLine[];
 };
 
@@ -1114,9 +1341,14 @@ export async function editSendLivestockToProcessing(payload: EditSendLivestockTo
 }
 
 export async function completeLivestockProcessing(payload: CompleteProcessingPayload) {
+  const wasteProductId = payload.wasteProductId.trim();
+  if (!wasteProductId) {
+    return { ok: false as const, error: "Waste product is required.", status: 400 };
+  }
   const body = {
     batchId: payload.batchId,
     wasteWeight: payload.wasteWeight,
+    wasteProductId,
     outputs: payload.outputs,
   };
   return apiRequest<CompleteProcessingResponse>(PRODUCT_ROUTES.LIVESTOCK_COMPLETE_PROCESSING, {

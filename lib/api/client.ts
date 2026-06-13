@@ -65,9 +65,13 @@ export async function apiRequest<T>(
 
   const url = `${baseUrl}${route}`;
   const token = getAuthToken();
+  const method = (options.method ?? "GET").toUpperCase();
+  const hasBody = options.body != null && options.body !== "";
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(hasBody || method === "POST" || method === "PUT" || method === "PATCH"
+      ? { "Content-Type": "application/json" }
+      : {}),
     ...options.headers,
   };
 
@@ -94,7 +98,16 @@ export async function apiRequest<T>(
     }
 
     return { data: data as T, ok: true };
-  } catch {
-    return { ok: false, error: "Something went wrong. Please try again.", status: 0 };
+  } catch (err) {
+    const isNetwork =
+      err instanceof TypeError ||
+      (err instanceof Error && /fetch|network|cors/i.test(err.message));
+    return {
+      ok: false,
+      error: isNetwork
+        ? "Network error — check API URL, CORS, or VPN. If testing locally, use the Vite proxy or deploy the frontend on an allowed origin."
+        : "Something went wrong. Please try again.",
+      status: 0,
+    };
   }
 }

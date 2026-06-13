@@ -26,6 +26,7 @@ function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabil
   if (p.startsWith("/dashboard/product/livestockCategory")) return capabilities.canCreateProducts;
   if (p.startsWith("/dashboard/product/liveProduct")) return capabilities.canViewLivestockInventory;
   if (p.startsWith("/dashboard/product/processedProduct")) return capabilities.canViewProcessedInventory;
+  if (p.startsWith("/dashboard/product/wasteProduct")) return capabilities.canViewProcessedInventory;
   if (p.startsWith("/dashboard/product")) return capabilities.canViewInventory;
   if (p.startsWith("/dashboard/accounts/analytics")) return capabilities.canViewAttendance;
   if (p.startsWith("/dashboard/accounts/clock-in-out")) return capabilities.canClockInOut;

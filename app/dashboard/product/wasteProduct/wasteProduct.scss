@@ -1,0 +1,19 @@
+.wasteProductPage .wasteProductRowHeader {
+  grid-template-columns: 2fr 1.5fr 1fr;
+}
+
+.wasteProductPage .wasteProductRow {
+  grid-template-columns: 2fr 1.5fr 1fr;
+}
+
+.wasteProductEmpty {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.wasteProductEmptyHint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+}
