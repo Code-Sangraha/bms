@@ -4,32 +4,206 @@
     gap: 1rem;
   }
 
+  .outletExpensesBackLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .outletExpensesBackLink:hover {
+    background: #f9fafb;
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
   .outletExpensesToolbar {
-    margin-bottom: 1.25rem;
-    padding: 1rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 0;
+    padding: 16px 20px;
+  }
+
+  .outletExpensesToolbarFilters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
   }
 
   .outletExpensesFilter {
-    max-width: 20rem;
+    min-width: 200px;
+    max-width: 280px;
     margin: 0;
   }
 
+  .outletExpensesFilter .select {
+    height: 38px;
+    min-width: 200px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    font-size: 13px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .outletExpensesFilter .select:focus {
+    outline: none;
+    border-color: rgba(2, 149, 90, 0.45);
+    box-shadow: 0 0 0 3px rgba(2, 149, 90, 0.12);
+  }
+
+  .outletExpensesSummary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .outletExpensesSummaryChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: #f9fafb;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4b5563;
+  }
+
+  .outletExpensesSummaryChip strong {
+    color: #111827;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .outletExpensesSummaryChipDue strong {
+    color: #b45309;
+  }
+
+  .outletExpensesTableCard {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
   .outletExpensesTableWrap {
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     overflow-x: auto;
   }
 
   .outletExpensesTable {
     min-width: 56rem;
+    width: 100%;
+    border-collapse: collapse;
   }
 
-  .outletExpensesActionBtn {
-    border: none;
-    background: transparent;
-    color: var(--color-primary, #2563eb);
-    cursor: pointer;
-    font-size: 0.875rem;
-    padding: 0;
-    text-decoration: underline;
+  .outletExpensesTable thead th {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+    background: #f8fafc;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    text-align: left;
+  }
+
+  .outletExpensesTable tbody td {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #374151;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    vertical-align: middle;
+  }
+
+  .outletExpensesTable tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .outletExpensesTable tbody tr:hover td {
+    background: rgba(2, 149, 90, 0.03);
+  }
+
+  .outletExpensesAmountCell {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .outletExpensesAmountCellDue {
+    color: #b45309;
+    font-weight: 600;
+  }
+
+  .outletExpensesEmptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 48px 24px;
+    text-align: center;
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    background: #fafafa;
+  }
+
+  .outletExpensesEmptyTitle {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .outletExpensesEmptyHint {
+    margin: 0;
+    max-width: 420px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+  }
+
+  .outletExpensesActionsCell {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .outletExpensesPage .outletExpensesToolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .outletExpensesPage .outletExpensesFilter {
+    max-width: none;
+    width: 100%;
+  }
+
+  .outletExpensesPage .outletExpensesFilter .select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .outletExpensesPage .outletHeader {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

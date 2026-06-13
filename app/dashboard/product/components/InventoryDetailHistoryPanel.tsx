@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
+import ExpenseRecordPaymentButton from "@/app/dashboard/shared/ExpenseRecordPaymentButton";
 import {
   MdInventory2,
   MdPayments,
@@ -398,13 +399,7 @@ export default function InventoryDetailHistoryPanel({
         <td>{row.remarks ?? "\u2014"}</td>
         <td>
           {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
-            <button
-              type="button"
-              className="inventoryDetailExpenseActionBtn"
-              onClick={() => setExpenseToPay(row)}
-            >
-              {t("Record payment")}
-            </button>
+            <ExpenseRecordPaymentButton compact onClick={() => setExpenseToPay(row)} />
           ) : (
             "\u2014"
           )}

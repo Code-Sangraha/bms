@@ -47,6 +47,20 @@
   }
 }
 
+.modalCompact.partialPaymentModal {
+  width: min(640px, 100%);
+  padding: 14px 20px 12px;
+
+  .modalBody {
+    padding: 6px 0 8px;
+    gap: 8px;
+  }
+
+  .modalHeader {
+    padding-bottom: 4px;
+  }
+}
+
 .modalHeader {
   display: flex;
   justify-content: space-between;

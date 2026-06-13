@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { MdBusiness, MdInfoOutline } from "react-icons/md";
 import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -45,7 +46,10 @@ type LivestockCompletePartialPaymentModalProps = {
 };
 
 function formatAmount(n: number): string {
-  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `Rs. ${n.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export default function LivestockCompletePartialPaymentModal({
@@ -113,30 +117,43 @@ export default function LivestockCompletePartialPaymentModal({
       isOpen={isOpen && Boolean(expense)}
       onClose={onClose}
       title={t("Record partial payment")}
-      subtitle={expense?.supplierName ?? ""}
-      modalClassName="modalWide"
+      subtitle={t("Add a payment toward the outstanding balance.")}
+      modalClassName="modalWide modalCompact partialPaymentModal"
     >
       {expense && (
-        <form onSubmit={handleSubmit(onSubmit)} className="livestockDetailModalForm space-y-3">
-          <div className="livestockDetailModalSummary">
-            <p>
-              <span className="livestockDetailModalLabel">{t("Total")}</span>
-              {formatAmount(expense.totalAmount)}
-            </p>
-            <p>
-              <span className="livestockDetailModalLabel">{t("Paid")}</span>
-              {formatAmount(expense.paidAmount)}
-            </p>
-            <p>
-              <span className="livestockDetailModalLabel">{t("Due")}</span>
-              {formatAmount(expense.dueAmount)}
-            </p>
-            <p>
-              <span className="livestockDetailModalLabel">{t("Payment status")}</span>
+        <form onSubmit={handleSubmit(onSubmit)} className="partialPaymentModalForm">
+          <div className="partialPaymentModalSupplier">
+            <MdBusiness aria-hidden />
+            <span>
+              {t("Supplier")}: <strong>{expense.supplierName}</strong>
+            </span>
+          </div>
+
+          <div className="livestockDetailModalSummary partialPaymentModalSummary">
+            <div className="livestockDetailModalSummaryCard">
+              <span className="livestockDetailModalSummaryLabel">{t("Total")}</span>
+              <span className="livestockDetailModalSummaryValue">
+                {formatAmount(expense.totalAmount)}
+              </span>
+            </div>
+            <div className="livestockDetailModalSummaryCard">
+              <span className="livestockDetailModalSummaryLabel">{t("Paid")}</span>
+              <span className="livestockDetailModalSummaryValue">
+                {formatAmount(expense.paidAmount)}
+              </span>
+            </div>
+            <div className="livestockDetailModalSummaryCard livestockDetailModalSummaryCardHighlight">
+              <span className="livestockDetailModalSummaryLabel">{t("Due")}</span>
+              <span className="livestockDetailModalSummaryValue livestockDetailModalSummaryValueDue">
+                {formatAmount(expense.dueAmount)}
+              </span>
+            </div>
+            <div className="livestockDetailModalSummaryCard">
+              <span className="livestockDetailModalSummaryLabel">{t("Payment status")}</span>
               <span className={PAYMENT_STATUS_BADGE_CLASS[expense.paymentStatus]}>
                 {expense.paymentStatus === "PARTIAL" ? t("Partial") : expense.paymentStatus}
               </span>
-            </p>
+            </div>
           </div>
 
           <div className="livestockDetailModalField">
@@ -150,9 +167,14 @@ export default function LivestockCompletePartialPaymentModal({
               step="any"
               max={expense.dueAmount}
               className="livestockDetailModalInput"
+              placeholder={t("Enter amount up to due balance")}
               disabled={isPending}
               {...register("paidAmount", { valueAsNumber: true })}
             />
+            <p className="livestockDetailModalHint livestockDetailModalHintWithIcon" role="note">
+              <MdInfoOutline aria-hidden className="livestockDetailModalHintIcon" />
+              {t("Maximum")}: {formatAmount(expense.dueAmount)}
+            </p>
             {errors.paidAmount?.message && (
               <p className="livestockDetailModalError" role="alert">
                 {errors.paidAmount.message}

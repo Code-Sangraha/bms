@@ -10,13 +10,13 @@ import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
+import ExpenseRecordPaymentButton from "@/app/dashboard/shared/ExpenseRecordPaymentButton";
 import {
   getOutletExpenses,
   getOutlets,
   type OutletExpenseEntry,
   type OutletExpensePaymentStatus,
 } from "@/handlers/outlet";
-import "../../product/inventoryDetailPage.scss";
 import "../../product/liveProduct/livestockDetailShell.scss";
 import "../../outlet/outlet.scss";
 import "./expenses.scss";
@@ -32,7 +32,7 @@ const PAYMENT_STATUS_BADGE_CLASS: Record<OutletExpensePaymentStatus, string> = {
 
 function formatPriceCell(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "\u2014";
-  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `Rs. ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function OutletExpensesPage() {
@@ -45,6 +45,8 @@ export default function OutletExpensesPage() {
 
   const isOutletLocked =
     accessTier === "outlet_staff" || accessTier === "driver" || Boolean(userOutletId);
+
+  const canChangeOutletFilter = !isOutletLocked && !(isScoped && rowFilterOutletId);
 
   const [filterOutletId, setFilterOutletId] = useState<string>("");
   const [expenseToPay, setExpenseToPay] = useState<OutletExpenseEntry | null>(null);
@@ -63,30 +65,28 @@ export default function OutletExpensesPage() {
     },
   });
 
-  const effectiveFilterOutletId = useMemo(() => {
+  const lockedOutletId = useMemo(() => {
     if (isOutletLocked && userOutletId) return userOutletId;
     if (isScoped && rowFilterOutletId) return rowFilterOutletId;
-    return filterOutletId.trim() || undefined;
-  }, [filterOutletId, isOutletLocked, isScoped, rowFilterOutletId, userOutletId]);
-
-  useEffect(() => {
-    if (isOutletLocked && userOutletId) {
-      setFilterOutletId(userOutletId);
-    } else if (isScoped && rowFilterOutletId) {
-      setFilterOutletId(rowFilterOutletId);
-    }
+    return undefined;
   }, [isOutletLocked, isScoped, rowFilterOutletId, userOutletId]);
 
+  useEffect(() => {
+    if (lockedOutletId) {
+      setFilterOutletId(lockedOutletId);
+    }
+  }, [lockedOutletId]);
+
   const {
-    data: expenses = [],
+    data: allExpenses = [],
     isLoading,
     isError,
     error: errorDetail,
   } = useQuery({
-    queryKey: [OUTLET_EXPENSES_QUERY_KEY, effectiveFilterOutletId ?? "all"],
+    queryKey: [OUTLET_EXPENSES_QUERY_KEY, lockedOutletId ?? "all"],
     queryFn: async () => {
       const result = await getOutletExpenses(
-        effectiveFilterOutletId ? { outletId: effectiveFilterOutletId } : {}
+        lockedOutletId ? { outletId: lockedOutletId } : {}
       );
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
@@ -96,6 +96,19 @@ export default function OutletExpensesPage() {
     },
   });
 
+  const filteredExpenses = useMemo(() => {
+    if (!canChangeOutletFilter) return allExpenses;
+    const outletId = filterOutletId.trim();
+    if (!outletId) return allExpenses;
+    return allExpenses.filter((row) => row.outletId === outletId);
+  }, [allExpenses, canChangeOutletFilter, filterOutletId]);
+
+  const expenseSummary = useMemo(() => {
+    const totalDue = filteredExpenses.reduce((sum, row) => sum + row.dueAmount, 0);
+    const partialCount = filteredExpenses.filter((row) => row.paymentStatus === "PARTIAL").length;
+    return { totalDue, partialCount, count: filteredExpenses.length };
+  }, [filteredExpenses]);
+
   const {
     currentPage,
     setCurrentPage,
@@ -104,11 +117,11 @@ export default function OutletExpensesPage() {
     totalPages,
     startIndex,
     endIndex,
-  } = usePagination(expenses.length, { defaultPageSize: 10 });
+  } = usePagination(filteredExpenses.length, { defaultPageSize: 10 });
 
   const paginatedRows = useMemo(
-    () => paginate(expenses, startIndex, endIndex),
-    [expenses, startIndex, endIndex]
+    () => paginate(filteredExpenses, startIndex, endIndex),
+    [filteredExpenses, startIndex, endIndex]
   );
 
   const paymentStatusLabel: Record<OutletExpensePaymentStatus, string> = {
@@ -124,24 +137,20 @@ export default function OutletExpensesPage() {
         <td>{row.livestockItem.name}</td>
         <td>{row.supplierName}</td>
         <td>{row.supplierContact ?? "\u2014"}</td>
-        <td>{formatPriceCell(row.totalAmount)}</td>
-        <td>{formatPriceCell(row.paidAmount)}</td>
-        <td>{formatPriceCell(row.dueAmount)}</td>
+        <td className="outletExpensesAmountCell">{formatPriceCell(row.totalAmount)}</td>
+        <td className="outletExpensesAmountCell">{formatPriceCell(row.paidAmount)}</td>
+        <td className="outletExpensesAmountCell outletExpensesAmountCellDue">
+          {formatPriceCell(row.dueAmount)}
+        </td>
         <td>
           <span className={PAYMENT_STATUS_BADGE_CLASS[row.paymentStatus]}>
             {paymentStatusLabel[row.paymentStatus]}
           </span>
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
-        <td>
+        <td className="outletExpensesActionsCell">
           {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
-            <button
-              type="button"
-              className="outletExpensesActionBtn"
-              onClick={() => setExpenseToPay(row)}
-            >
-              {t("Record payment")}
-            </button>
+            <ExpenseRecordPaymentButton onClick={() => setExpenseToPay(row)} />
           ) : (
             "\u2014"
           )}
@@ -155,38 +164,57 @@ export default function OutletExpensesPage() {
         <span>{t("Dashboard")}</span> {"›"} {t("Outlet expenses")}
       </div>
 
-      <div className="outletHeader">
+      <header className="outletHeader">
         <div className="outletHeaderText">
           <h1 className="pageTitle">{t("Outlet expenses")}</h1>
           <p className="pageSubtitle">
             {t("Livestock restock expenses by outlet and supplier.")}
           </p>
         </div>
-        <Link to="/dashboard/outlet" className="button">
+        <Link to="/dashboard/outlet" className="outletExpensesBackLink">
           {t("Outlet Management")}
         </Link>
-      </div>
+      </header>
 
       <div className="outletExpensesToolbar card">
-        <label className="field outletExpensesFilter">
-          <span className="label">{t("Outlet")}</span>
-          <select
-            className="select"
-            value={filterOutletId}
-            onChange={(e) => setFilterOutletId(e.target.value)}
-            disabled={isOutletLocked || (isScoped && Boolean(rowFilterOutletId))}
-            aria-label={t("Filter by outlet")}
-          >
-            {!isOutletLocked && !(isScoped && rowFilterOutletId) && (
-              <option value="">{t("All outlets")}</option>
+        <div className="outletExpensesToolbarFilters">
+          <label className="field outletExpensesFilter">
+            <span className="label">{t("Filter by outlet")}</span>
+            <select
+              className="select"
+              value={filterOutletId}
+              onChange={(e) => {
+                setFilterOutletId(e.target.value);
+                setCurrentPage(1);
+              }}
+              disabled={!canChangeOutletFilter}
+              aria-label={t("Filter by outlet")}
+            >
+              {canChangeOutletFilter && <option value="">{t("All outlets")}</option>}
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {!isLoading && !isError && filteredExpenses.length > 0 && (
+          <div className="outletExpensesSummary" aria-label={t("Expense summary")}>
+            <span className="outletExpensesSummaryChip">
+              {t("Records")}: <strong>{expenseSummary.count}</strong>
+            </span>
+            <span className="outletExpensesSummaryChip outletExpensesSummaryChipDue">
+              {t("Total due")}: <strong>{formatPriceCell(expenseSummary.totalDue)}</strong>
+            </span>
+            {expenseSummary.partialCount > 0 && (
+              <span className="outletExpensesSummaryChip">
+                {t("Partial")}: <strong>{expenseSummary.partialCount}</strong>
+              </span>
             )}
-            {outlets.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          </div>
+        )}
       </div>
 
       {isLoading && (
@@ -199,35 +227,44 @@ export default function OutletExpensesPage() {
             : t("Failed to load expense history")}
         </p>
       )}
-      {!isLoading && !isError && expenses.length === 0 && (
-        <p className="outletPageMessage">{t("No expense records found.")}</p>
+      {!isLoading && !isError && filteredExpenses.length === 0 && (
+        <div className="outletExpensesEmptyState">
+          <h2 className="outletExpensesEmptyTitle">{t("No expense records found.")}</h2>
+          <p className="outletExpensesEmptyHint">
+            {canChangeOutletFilter && filterOutletId
+              ? t("Try selecting a different outlet or view all outlets.")
+              : t("Restock expenses will appear here after livestock inventory is added.")}
+          </p>
+        </div>
       )}
 
-      {!isLoading && !isError && expenses.length > 0 && (
+      {!isLoading && !isError && filteredExpenses.length > 0 && (
         <>
-          <div className="outletExpensesTableWrap inventoryDetailSampleTableWrap">
-            <table className="inventoryDetailSampleTable outletExpensesTable">
-              <thead>
-                <tr>
-                  <th>{t("Outlet")}</th>
-                  <th>{t("Livestock item")}</th>
-                  <th>{t("Supplier")}</th>
-                  <th>{t("Supplier contact")}</th>
-                  <th>{t("Total")}</th>
-                  <th>{t("Paid")}</th>
-                  <th>{t("Due")}</th>
-                  <th>{t("Payment status")}</th>
-                  <th>{t("Remarks")}</th>
-                  <th>{t("Actions")}</th>
-                </tr>
-              </thead>
-              <tbody>{renderRows(paginatedRows)}</tbody>
-            </table>
+          <div className="outletExpensesTableCard">
+            <div className="outletExpensesTableWrap">
+              <table className="outletExpensesTable">
+                <thead>
+                  <tr>
+                    <th>{t("Outlet")}</th>
+                    <th>{t("Livestock item")}</th>
+                    <th>{t("Supplier")}</th>
+                    <th>{t("Supplier contact")}</th>
+                    <th>{t("Total")}</th>
+                    <th>{t("Paid")}</th>
+                    <th>{t("Due")}</th>
+                    <th>{t("Payment status")}</th>
+                    <th>{t("Remarks")}</th>
+                    <th>{t("Actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>{renderRows(paginatedRows)}</tbody>
+              </table>
+            </div>
           </div>
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={expenses.length}
+            totalItems={filteredExpenses.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
             pageSizeOptions={[10, 20, 50]}

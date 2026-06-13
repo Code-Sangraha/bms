@@ -39,6 +39,7 @@ import {
 import "./dashboard.scss";
 import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
 import LivestockCompletePartialPaymentModal from "./product/liveProduct/LivestockCompletePartialPaymentModal";
+import ExpenseRecordPaymentButton from "./shared/ExpenseRecordPaymentButton";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 /** Up to LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT rows for aggregates (pagination on list endpoints). */
@@ -1151,13 +1152,10 @@ export default function DashboardPage() {
                             {canRecordPayment && (
                               <td>
                                 {row.paymentStatus === "PARTIAL" ? (
-                                  <button
-                                    type="button"
-                                    className="dashboardExpenseActionBtn"
+                                  <ExpenseRecordPaymentButton
+                                    compact
                                     onClick={() => setExpenseToPay(row)}
-                                  >
-                                    {t("Record payment")}
-                                  </button>
+                                  />
                                 ) : (
                                   "—"
                                 )}
