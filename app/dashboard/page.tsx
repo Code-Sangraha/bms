@@ -100,6 +100,24 @@ function formatDashboardExpenseDate(iso: string): string {
   return new Date(ms).toLocaleString();
 }
 
+function truncateToTwoDecimals(value: number): number {
+  return Math.trunc(value * 100) / 100;
+}
+
+function formatDashboardMoney(value: number): string {
+  if (!Number.isFinite(value)) return "Rs.0.00";
+  return `Rs.${truncateToTwoDecimals(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatDashboardDecimal(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const fixed = truncateToTwoDecimals(value).toFixed(2);
+  return fixed.endsWith(".00") ? fixed.slice(0, -3) : fixed;
+}
+
 function expensePaymentStatusLabel(
   status: LivestockExpenseHistoryEntry["paymentStatus"],
   t: (key: string) => string
@@ -750,7 +768,7 @@ export default function DashboardPage() {
   const salesMetricCards = [
     {
       label: t("Total Revenue"),
-      value: `Rs.${totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      value: formatDashboardMoney(totalRevenue),
       icon: LuWallet,
       toneClassName: "dashboardCardRevenue",
     },
@@ -762,13 +780,13 @@ export default function DashboardPage() {
     },
     {
       label: t("Weight Sold"),
-      value: `${totalWeight} kg`,
+      value: `${formatDashboardDecimal(totalWeight)} kg`,
       icon: LuScale,
       toneClassName: "dashboardCardWeight",
     },
     {
       label: t("Quantity Sold"),
-      value: String(totalQuantity),
+      value: formatDashboardDecimal(totalQuantity),
       icon: LuBoxes,
       toneClassName: "dashboardCardQuantity",
     },
@@ -776,19 +794,19 @@ export default function DashboardPage() {
   const expenseMetricCards = [
     {
       label: t("Total amount"),
-      value: `Rs.${totalExpenses.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      value: formatDashboardMoney(totalExpenses),
       icon: LuBanknote,
       toneClassName: "dashboardCardTransactions",
     },
     {
       label: t("Paid amount"),
-      value: `Rs.${totalExpensePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      value: formatDashboardMoney(totalExpensePaid),
       icon: LuCreditCard,
       toneClassName: "dashboardCardRevenue",
     },
     {
       label: t("Due amount"),
-      value: `Rs.${totalExpenseDue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      value: formatDashboardMoney(totalExpenseDue),
       icon: LuWallet,
       toneClassName: "dashboardCardQuantity",
     },
@@ -939,10 +957,10 @@ export default function DashboardPage() {
                       {dailySalesRows.map((row) => (
                         <tr key={row.dateKey}>
                           <td>{row.dateKey}</td>
-                          <td>Rs.{row.revenue.toLocaleString("en-IN")}</td>
+                          <td>{formatDashboardMoney(row.revenue)}</td>
                           <td>{row.transactions}</td>
-                          <td>{row.weight} kg</td>
-                          <td>{row.quantity}</td>
+                          <td>{formatDashboardDecimal(row.weight)} kg</td>
+                          <td>{formatDashboardDecimal(row.quantity)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -964,7 +982,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="dashboardMobileMiniLabel">{row.outletName}</span>
                           <span className="dashboardMobileMiniValue">
-                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                            {formatDashboardMoney(row.totalAmount ?? 0)}
                           </span>
                         </div>
                       ))}
@@ -979,7 +997,7 @@ export default function DashboardPage() {
                             <div className="dashboardBarTrack">
                               <div className="dashboardBarFill" style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="dashboardBarValue">Rs.{amount.toLocaleString("en-IN")}</span>
+                            <span className="dashboardBarValue">{formatDashboardMoney(amount)}</span>
                           </div>
                         );
                       })}
@@ -997,7 +1015,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="dashboardMobileMiniLabel">{row.productName}</span>
                           <span className="dashboardMobileMiniValue">
-                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                            {formatDashboardMoney(row.totalAmount ?? 0)}
                           </span>
                         </div>
                       ))}
@@ -1007,7 +1025,7 @@ export default function DashboardPage() {
                         <div key={row.productId} className="dashboardProductRow">
                           <span className="dashboardProductName">{row.productName}</span>
                           <span className="dashboardProductAmount">
-                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                            {formatDashboardMoney(row.totalAmount ?? 0)}
                           </span>
                         </div>
                       ))}
@@ -1025,7 +1043,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="dashboardMobileMiniLabel">{row.customerName}</span>
                           <span className="dashboardMobileMiniValue">
-                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                            {formatDashboardMoney(row.totalAmount ?? 0)}
                           </span>
                         </div>
                       ))}
@@ -1035,7 +1053,7 @@ export default function DashboardPage() {
                         <div key={idx} className="dashboardProductRow">
                           <span className="dashboardProductName">{row.customerName}</span>
                           <span className="dashboardProductAmount">
-                            Rs.{(row.totalAmount ?? 0).toLocaleString("en-IN")}
+                            {formatDashboardMoney(row.totalAmount ?? 0)}
                           </span>
                         </div>
                       ))}
@@ -1054,7 +1072,7 @@ export default function DashboardPage() {
               <div className="dashboardCards dashboardCardsLivestock">
                 <DashboardMetricCard
                   label={t("Processed Revenue")}
-                  value={`Rs.${processedRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  value={formatDashboardMoney(processedRevenue)}
                   toneClassName="dashboardCardRevenue"
                   icon={LuWallet}
                 />
@@ -1066,7 +1084,7 @@ export default function DashboardPage() {
                 />
                 <DashboardMetricCard
                   label={t("Processed Weight Sold")}
-                  value={`${processedWeight} kg`}
+                  value={`${formatDashboardDecimal(processedWeight)} kg`}
                   toneClassName="dashboardCardWeight"
                   icon={LuScale}
                 />
@@ -1085,9 +1103,9 @@ export default function DashboardPage() {
                       <div key={item.name} className="dashboardTrendingRow">
                         <span className="dashboardTrendingRank">{idx + 1}</span>
                         <span className="dashboardTrendingItem">{item.name}</span>
-                        <span className="dashboardTrendingQty">{item.quantity}</span>
+                        <span className="dashboardTrendingQty">{formatDashboardDecimal(item.quantity)}</span>
                         <span className="dashboardTrendingAmount">
-                          Rs.{item.revenue.toLocaleString("en-IN")}
+                          {formatDashboardMoney(item.revenue)}
                         </span>
                       </div>
                     ))}
@@ -1121,9 +1139,9 @@ export default function DashboardPage() {
                           <td>{row.contact || "-"}</td>
                           <td>{row.type || "-"}</td>
                           <td>{row.productName || "-"}</td>
-                          <td>{row.quantity || 0}</td>
-                          <td>{row.weight || 0}</td>
-                          <td>Rs.{row.amount.toLocaleString("en-IN")}</td>
+                          <td>{formatDashboardDecimal(row.quantity || 0)}</td>
+                          <td>{formatDashboardDecimal(row.weight || 0)}</td>
+                          <td>{formatDashboardMoney(row.amount)}</td>
                           <td>{row.date ? new Date(row.date).toLocaleString() : "-"}</td>
                         </tr>
                       ))}
@@ -1139,7 +1157,7 @@ export default function DashboardPage() {
               <div className="dashboardCards dashboardCardsLivestock">
                 <DashboardMetricCard
                   label={t("Livestock Revenue")}
-                  value={`Rs.${livestockRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+                  value={formatDashboardMoney(livestockRevenue)}
                   toneClassName="dashboardCardRevenue"
                   icon={LuWallet}
                 />
@@ -1151,13 +1169,13 @@ export default function DashboardPage() {
                 />
                 <DashboardMetricCard
                   label={t("Livestock Weight Sold")}
-                  value={`${livestockWeight} kg`}
+                  value={`${formatDashboardDecimal(livestockWeight)} kg`}
                   toneClassName="dashboardCardWeight"
                   icon={LuScale}
                 />
                 <DashboardMetricCard
                   label={t("Livestock Quantity Sold")}
-                  value={String(livestockQuantity)}
+                  value={formatDashboardDecimal(livestockQuantity)}
                   toneClassName="dashboardCardQuantity"
                   icon={LuBoxes}
                 />
@@ -1195,15 +1213,16 @@ export default function DashboardPage() {
                     <tbody>
                       {livestockSalesRows.map((row: LivestockSale, index) => {
                         const rowDate = row.createdAt ?? row.date;
+                        const quantity = row.quantity ?? row.itemQuantityOrWeight ?? row.weight;
                         return (
                           <tr key={`${row.id ?? row.transactionId ?? "ls"}-${index}`}>
                             <td>{row.name ?? "-"}</td>
                             <td>{row.contact ?? "-"}</td>
                             <td>{getLivestockDisplay(row)}</td>
-                            <td>{row.quantity ?? row.itemQuantityOrWeight ?? row.weight ?? "-"}</td>
+                            <td>{typeof quantity === "number" ? formatDashboardDecimal(quantity) : "-"}</td>
                             <td>
                               {typeof row.amount === "number"
-                                ? `Rs.${row.amount.toLocaleString("en-IN")}`
+                                ? formatDashboardMoney(row.amount)
                                 : "-"}
                             </td>
                             <td>{rowDate ? new Date(rowDate).toLocaleString() : "-"}</td>
@@ -1277,9 +1296,9 @@ export default function DashboardPage() {
                             <td>{formatDashboardExpenseDate(row.createdAt)}</td>
                             <td>{row.livestockItem.name}</td>
                             <td>{row.supplierName}</td>
-                            <td>Rs.{row.totalAmount.toLocaleString("en-IN")}</td>
-                            <td>Rs.{row.paidAmount.toLocaleString("en-IN")}</td>
-                            <td>Rs.{row.dueAmount.toLocaleString("en-IN")}</td>
+                            <td>{formatDashboardMoney(row.totalAmount)}</td>
+                            <td>{formatDashboardMoney(row.paidAmount)}</td>
+                            <td>{formatDashboardMoney(row.dueAmount)}</td>
                             <td>{expensePaymentStatusLabel(row.paymentStatus, t)}</td>
                             {canRecordPayment && (
                               <td>

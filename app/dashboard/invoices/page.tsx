@@ -92,6 +92,24 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
+function truncateToTwoDecimals(value: number): number {
+  return Math.trunc(value * 100) / 100;
+}
+
+function formatAnalyticsMoney(value: number): string {
+  if (!Number.isFinite(value)) return "Rs.0.00";
+  return `Rs.${truncateToTwoDecimals(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatAnalyticsDecimal(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const fixed = truncateToTwoDecimals(value).toFixed(2);
+  return fixed.endsWith(".00") ? fixed.slice(0, -3) : fixed;
+}
+
 function isInRange(timestamp: number, now: number, rangeMs: number): boolean {
   if (!timestamp) return false;
   return now - timestamp <= rangeMs;
@@ -576,7 +594,7 @@ export default function InvoicesAnalyticsPage() {
           <div className="summaryCards">
             <div className="summaryCard">
               <div className="summaryCardLabel">{t("Total Revenue")}</div>
-              <div className="summaryCardValue">Rs.{totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+              <div className="summaryCardValue">{formatAnalyticsMoney(totalRevenue)}</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
             <div className="summaryCard">
@@ -586,12 +604,12 @@ export default function InvoicesAnalyticsPage() {
             </div>
             <div className="summaryCard">
               <div className="summaryCardLabel">{t("Total Weight")}</div>
-              <div className="summaryCardValue">{totalWeight} kg</div>
+              <div className="summaryCardValue">{formatAnalyticsDecimal(totalWeight)} kg</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
             <div className="summaryCard">
               <div className="summaryCardLabel">{t("Total Quantity")}</div>
-              <div className="summaryCardValue">{totalQuantity}</div>
+              <div className="summaryCardValue">{formatAnalyticsDecimal(totalQuantity)}</div>
               <div className="summaryCardTrend positive">—</div>
             </div>
           </div>
@@ -601,7 +619,7 @@ export default function InvoicesAnalyticsPage() {
             <div className="summaryCards livestockSummaryCards">
               <div className="summaryCard">
                 <div className="summaryCardLabel">{t("Livestock Revenue")}</div>
-                <div className="summaryCardValue">Rs.{livestockTotalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                <div className="summaryCardValue">{formatAnalyticsMoney(livestockTotalRevenue)}</div>
                 <div className="summaryCardTrend positive">—</div>
               </div>
               <div className="summaryCard">
@@ -611,12 +629,12 @@ export default function InvoicesAnalyticsPage() {
               </div>
               <div className="summaryCard">
                 <div className="summaryCardLabel">{t("Livestock Quantity")}</div>
-                <div className="summaryCardValue">{livestockTotalQuantity}</div>
+                <div className="summaryCardValue">{formatAnalyticsDecimal(livestockTotalQuantity)}</div>
                 <div className="summaryCardTrend positive">—</div>
               </div>
               <div className="summaryCard">
                 <div className="summaryCardLabel">{t("Livestock Weight (kg)")}</div>
-                <div className="summaryCardValue">{livestockTotalWeight}</div>
+                <div className="summaryCardValue">{formatAnalyticsDecimal(livestockTotalWeight)}</div>
                 <div className="summaryCardTrend positive">—</div>
               </div>
             </div>
@@ -637,7 +655,7 @@ export default function InvoicesAnalyticsPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="outletBarValue">Rs.{row.amount.toLocaleString("en-IN")}</span>
+                      <span className="outletBarValue">{formatAnalyticsMoney(row.amount)}</span>
                     </div>
                   );
                 })}
@@ -662,9 +680,9 @@ export default function InvoicesAnalyticsPage() {
                     {salesByProduct.map((row) => (
                       <tr key={row.key}>
                         <td>{row.name}</td>
-                        <td>{row.amount.toLocaleString("en-IN")}</td>
-                        <td>{row.weight}</td>
-                        <td>{row.quantity}</td>
+                        <td>{formatAnalyticsMoney(row.amount)}</td>
+                        <td>{formatAnalyticsDecimal(row.weight)}</td>
+                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -690,9 +708,9 @@ export default function InvoicesAnalyticsPage() {
                     {salesByCustomer.map((row) => (
                       <tr key={row.key}>
                         <td>{row.name}</td>
-                        <td>{row.amount.toLocaleString("en-IN")}</td>
-                        <td>{row.weight}</td>
-                        <td>{row.quantity}</td>
+                        <td>{formatAnalyticsMoney(row.amount)}</td>
+                        <td>{formatAnalyticsDecimal(row.weight)}</td>
+                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -718,9 +736,9 @@ export default function InvoicesAnalyticsPage() {
                     {livestockSalesByItem.map((row) => (
                       <tr key={row.key}>
                         <td>{row.name}</td>
-                        <td>{row.amount.toLocaleString("en-IN")}</td>
-                        <td>{row.weight}</td>
-                        <td>{row.quantity}</td>
+                        <td>{formatAnalyticsMoney(row.amount)}</td>
+                        <td>{formatAnalyticsDecimal(row.weight)}</td>
+                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -746,9 +764,9 @@ export default function InvoicesAnalyticsPage() {
                     {livestockSalesByCustomer.map((row) => (
                       <tr key={row.key}>
                         <td>{row.name}</td>
-                        <td>{row.amount.toLocaleString("en-IN")}</td>
-                        <td>{row.weight}</td>
-                        <td>{row.quantity}</td>
+                        <td>{formatAnalyticsMoney(row.amount)}</td>
+                        <td>{formatAnalyticsDecimal(row.weight)}</td>
+                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>

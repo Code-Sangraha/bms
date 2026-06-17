@@ -135,11 +135,16 @@ export type AttendanceAnalyticsFilters = {
   period?: AttendancePeriod | null;
 };
 
+type AttendanceAnalyticsRequestBody = {
+  outletId: string | null;
+  period?: AttendancePeriod;
+};
+
 /** Build GET body for `/attendances/get`; backend reads `req.body` (axios — fetch cannot attach GET bodies). */
 function buildAttendanceAnalyticsBody(
   filters: AttendanceAnalyticsFilters = {}
-): Record<string, string> {
-  const body: Record<string, string> = {};
+): AttendanceAnalyticsRequestBody {
+  const body: AttendanceAnalyticsRequestBody = { outletId: null };
   const outletId = filters.outletId;
   if (typeof outletId === "string" && outletId.trim() !== "") {
     body.outletId = outletId.trim();

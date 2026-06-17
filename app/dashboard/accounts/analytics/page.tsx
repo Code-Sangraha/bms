@@ -18,10 +18,9 @@ import "./analytics.scss";
 const EMPLOYEES_QUERY_KEY = ["employees"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
-type PeriodFilter = "all" | AttendancePeriod;
+type PeriodFilter = AttendancePeriod;
 
 const PERIOD_OPTIONS: { value: PeriodFilter; labelKey: string }[] = [
-  { value: "all", labelKey: "All time" },
   { value: "day", labelKey: "Today" },
   { value: "week", labelKey: "This week" },
   { value: "month", labelKey: "This month" },
@@ -115,8 +114,7 @@ export default function AccountsAnalyticsPage() {
   const effectiveOutletKey =
     isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
 
-  const apiPeriod: AttendancePeriod | null =
-    periodFilter === "all" ? null : periodFilter;
+  const apiPeriod: AttendancePeriod = periodFilter;
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
