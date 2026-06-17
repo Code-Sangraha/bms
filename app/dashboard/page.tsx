@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { type ComponentType, useMemo, useState } from "react";
 import {
   LuArrowRight,
+  LuBanknote,
   LuBoxes,
   LuClipboardList,
+  LuCreditCard,
   LuPackage,
   LuReceiptText,
   LuScale,
@@ -19,6 +21,8 @@ import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
+import { getAttendanceAnalytics } from "@/handlers/attendance";
+import { getEmployees } from "@/handlers/employee";
 import { getProducts, getLivestockExpenseHistory, type Product } from "@/handlers/product";
 import type { LivestockExpenseHistoryEntry } from "@/lib/api/livestockExpenseHistory";
 import { getProductTypes } from "@/handlers/productType";
@@ -40,6 +44,7 @@ import "./dashboard.scss";
 import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
 import LivestockCompletePartialPaymentModal from "./product/liveProduct/LivestockCompletePartialPaymentModal";
 import ExpenseRecordPaymentButton from "./shared/ExpenseRecordPaymentButton";
+import { canRecordExpensePayment } from "@/lib/billing/expensePaymentUi";
 
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 /** Up to LIVESTOCK_SALES_DASHBOARD_SUMMARY_LIMIT rows for aggregates (pagination on list endpoints). */
@@ -49,12 +54,17 @@ const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 const LIVESTOCK_EXPENSE_DASHBOARD_QUERY_KEY = ["livestockExpenseHistory", "dashboard"];
+const DASHBOARD_ATTENDANCE_QUERY_KEY = ["attendanceAnalytics", "dashboard", "day"];
+const EMPLOYEES_QUERY_KEY = ["employees"];
 const DASHBOARD_EXPENSE_ROW_LIMIT = 20;
-const STATIC_ATTENDANCE_PREVIEW = [
-  { name: "John Smith", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
-  { name: "Maria Garcia", clockIn: "07:00", clockOut: "16:00", status: "Present" as const },
-  { name: "David Chen", clockIn: "—", clockOut: "—", status: "Absent" as const },
-];
+
+function formatDashboardAttendanceHours(h: number): string {
+  if (!Number.isFinite(h)) return "—";
+  const totalMinutes = Math.round(h * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return `${hh}h ${String(mm).padStart(2, "0")}m`;
+}
 
 type DashboardMetricCardProps = {
   label: string;
@@ -147,6 +157,7 @@ export default function DashboardPage() {
   const { capabilities } = usePermissions();
   const [expenseToPay, setExpenseToPay] = useState<LivestockExpenseHistoryEntry | null>(null);
   const canRecordPayment = capabilities.canRestockLivestockInventory;
+  const canShowAttendance = capabilities.canViewAttendance;
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -168,6 +179,40 @@ export default function DashboardPage() {
     if (!userOutletId) return null;
     return mainOutletId && userOutletId === mainOutletId ? null : userOutletId;
   }, [accessTier, lockedOutletId, mainOutletId, rowFilterOutletId, userOutletId]);
+
+  const { data: employees = [] } = useQuery({
+    queryKey: EMPLOYEES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getEmployees();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    enabled: canShowAttendance,
+  });
+
+  const {
+    data: dayAttendanceRows = [],
+    isLoading: dayAttendanceLoading,
+  } = useQuery({
+    queryKey: [...DASHBOARD_ATTENDANCE_QUERY_KEY, effectiveOutletScopeId ?? "all"],
+    queryFn: async () => {
+      const result = await getAttendanceAnalytics({
+        outletId: effectiveOutletScopeId,
+        period: "day",
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      const list = result.data.data ?? [];
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: canShowAttendance,
+  });
+
   const isOutletScopedDashboard = Boolean(effectiveOutletScopeId);
   const canShowUnscopedLivestock = !isOutletScopedDashboard;
   const showTopOutlets = !isOutletScopedDashboard;
@@ -689,6 +734,9 @@ export default function DashboardPage() {
   const totalTransactions = processedTransactions + livestockTransactions;
   const totalWeight = processedWeight + livestockWeight;
   const totalQuantity = processedQuantity + livestockQuantity;
+  const totalExpenses = livestockExpenseRows.reduce((sum, row) => sum + row.totalAmount, 0);
+  const totalExpensePaid = livestockExpenseRows.reduce((sum, row) => sum + row.paidAmount, 0);
+  const totalExpenseDue = livestockExpenseRows.reduce((sum, row) => sum + row.dueAmount, 0);
 
   const livestockSalesRows = [...dashboardLivestockSales]
     .sort((a, b) => {
@@ -725,22 +773,92 @@ export default function DashboardPage() {
       toneClassName: "dashboardCardQuantity",
     },
   ];
-  const attendanceMetricCards = [
+  const expenseMetricCards = [
     {
-      label: t("Total Staff"),
-      value: "32",
-      sub: t("4 departments"),
-      icon: LuUsers,
-      toneClassName: "dashboardCardStaff",
+      label: t("Total amount"),
+      value: `Rs.${totalExpenses.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      icon: LuBanknote,
+      toneClassName: "dashboardCardTransactions",
     },
     {
-      label: t("Present Today"),
-      value: "20",
-      sub: t("70% present"),
-      icon: LuClipboardList,
-      toneClassName: "dashboardCardPresent",
+      label: t("Paid amount"),
+      value: `Rs.${totalExpensePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      icon: LuCreditCard,
+      toneClassName: "dashboardCardRevenue",
+    },
+    {
+      label: t("Due amount"),
+      value: `Rs.${totalExpenseDue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      icon: LuWallet,
+      toneClassName: "dashboardCardQuantity",
+    },
+    {
+      label: t("Records"),
+      value: String(livestockExpenseRows.length),
+      icon: LuReceiptText,
+      toneClassName: "dashboardCardWeight",
     },
   ];
+  const attendanceMetricCards = useMemo(() => {
+    const staffInScope = effectiveOutletScopeId
+      ? employees.filter((e) => e.outletId === effectiveOutletScopeId)
+      : employees;
+    const totalStaff = staffInScope.length;
+    const presentToday = dayAttendanceRows.filter((r) => r.presentDays > 0).length;
+    const pct =
+      totalStaff > 0 ? Math.round((presentToday / totalStaff) * 100) : 0;
+    const totalHours = dayAttendanceRows.reduce(
+      (sum, r) => sum + (r.totalHoursWorked ?? 0),
+      0
+    );
+
+    return [
+      {
+        label: t("Total Staff"),
+        value: dayAttendanceLoading ? "—" : String(totalStaff),
+        sub: effectiveOutletScopeId
+          ? t("In selected outlet")
+          : `${outlets.length} ${t("Outlets")}`,
+        icon: LuUsers,
+        toneClassName: "dashboardCardStaff",
+      },
+      {
+        label: t("Active in period"),
+        value: dayAttendanceLoading ? "—" : String(presentToday),
+        sub: totalStaff > 0 ? `${pct}% · ${t("Last 24 hours")}` : t("Last 24 hours"),
+        icon: LuClipboardList,
+        toneClassName: "dashboardCardPresent",
+      },
+      {
+        label: t("Total hours"),
+        value: dayAttendanceLoading ? "—" : formatDashboardAttendanceHours(totalHours),
+        sub: t("Last 24 hours"),
+        icon: LuScale,
+        toneClassName: "dashboardCardWeight",
+      },
+    ];
+  }, [
+    dayAttendanceLoading,
+    dayAttendanceRows,
+    effectiveOutletScopeId,
+    employees,
+    outlets.length,
+    t,
+  ]);
+
+  const dashboardAttendanceTableRows = useMemo(() => {
+    return dayAttendanceRows
+      .slice()
+      .sort((a, b) => b.totalHoursWorked - a.totalHoursWorked)
+      .slice(0, 8)
+      .map((row) => ({
+        id: `${row.type}-${row.id}`,
+        name: row.name,
+        sessions: row.presentDays,
+        hours: formatDashboardAttendanceHours(row.totalHoursWorked),
+        status: row.presentDays > 0 ? ("Present" as const) : ("Absent" as const),
+      }));
+  }, [dayAttendanceRows]);
 
   return (
     <>
@@ -750,8 +868,9 @@ export default function DashboardPage() {
         scopedOutletId={isScoped && scopedOutletId ? scopedOutletId : null}
         search={search}
         totalRevenue={totalRevenue}
+        totalExpenses={totalExpenses}
+        totalExpenseDue={totalExpenseDue}
         totalTransactions={totalTransactions}
-        totalWeight={totalWeight}
         cashflowDays={cashflowLast7Days}
         canCreate={capabilities.canCreateProcessedSales}
         outletScopedMobile={isOutletScopedDashboard && !capabilities.canCreateLivestockSales}
@@ -1103,6 +1222,19 @@ export default function DashboardPage() {
               <p className="dashboardChartSubtitle">
                 {t("Livestock restock payments from expense history (most recent first).")}
               </p>
+              {!livestockExpenseLoading && !livestockExpenseError && (
+                <div className="dashboardCards dashboardCardsLivestock dashboardCardsExpenses">
+                  {expenseMetricCards.map((card) => (
+                    <DashboardMetricCard
+                      key={card.label}
+                      label={card.label}
+                      value={card.value}
+                      toneClassName={card.toneClassName}
+                      icon={card.icon}
+                    />
+                  ))}
+                </div>
+              )}
               {livestockExpenseLoading && (
                 <div className="dashboardBlock dashboardMessage dashboardMessageInline">
                   {t("Loading expense history…")}
@@ -1151,7 +1283,7 @@ export default function DashboardPage() {
                             <td>{expensePaymentStatusLabel(row.paymentStatus, t)}</td>
                             {canRecordPayment && (
                               <td>
-                                {row.paymentStatus === "PARTIAL" ? (
+                                {canRecordExpensePayment(row.paymentStatus) ? (
                                   <ExpenseRecordPaymentButton
                                     compact
                                     onClick={() => setExpenseToPay(row)}
@@ -1172,8 +1304,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Attendance section hidden until it can use live API-backed data. */}
-      {false && (
+      {canShowAttendance ? (
       <div className="dashboardSection dashboardSectionAttendance">
         <div className="dashboardSectionHead">
           <h2 className="dashboardSectionTitle">{t("Attendance")}</h2>
@@ -1202,34 +1333,46 @@ export default function DashboardPage() {
           ))}
         </div>
         <div className="dashboardChartBlock">
-          <h3 className="dashboardChartTitle">{t("Daily attendance")}</h3>
+          <h3 className="dashboardChartTitle">{t("Staff attendance summary")}</h3>
           <div className="dashboardAttendanceTableWrap">
             <table className="dashboardAttendanceTable">
               <thead>
                 <tr>
                   <th>{t("Name")}</th>
-                  <th>{t("Clock In")}</th>
-                  <th>{t("Clock Out")}</th>
+                  <th>{t("Present days")}</th>
+                  <th>{t("Total Hours")}</th>
                   <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
-                {STATIC_ATTENDANCE_PREVIEW.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>{row.name}</td>
-                    <td>{row.clockIn}</td>
-                    <td>{row.clockOut}</td>
-                    <td>
-                      <span className={`dashboardPill dashboardPill${row.status}`}>{t(row.status)}</span>
-                    </td>
+                {dayAttendanceLoading ? (
+                  <tr>
+                    <td colSpan={4}>{t("Loading…")}</td>
                   </tr>
-                ))}
+                ) : dashboardAttendanceTableRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>{t("No attendance records yet.")}</td>
+                  </tr>
+                ) : (
+                  dashboardAttendanceTableRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.name}</td>
+                      <td>{row.sessions}</td>
+                      <td>{row.hours}</td>
+                      <td>
+                        <span className={`dashboardPill dashboardPill${row.status}`}>
+                          {t(row.status)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      )}
+      ) : null}
     </section>
     <LivestockCompletePartialPaymentModal
       isOpen={Boolean(expenseToPay)}

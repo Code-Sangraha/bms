@@ -3,9 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { LuClock, LuUsers } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
-import { getAttendances, type AttendanceRecord } from "@/handlers/attendance";
+import {
+  getAttendanceAnalytics,
+  type AttendanceAnalyticsRow,
+  type AttendancePeriod,
+} from "@/handlers/attendance";
 import { getEmployees } from "@/handlers/employee";
 import { getOutlets } from "@/handlers/outlet";
 import "./analytics.scss";
@@ -13,11 +18,79 @@ import "./analytics.scss";
 const EMPLOYEES_QUERY_KEY = ["employees"];
 const OUTLETS_QUERY_KEY = ["outlets"];
 
-function formatTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+type PeriodFilter = "all" | AttendancePeriod;
+
+const PERIOD_OPTIONS: { value: PeriodFilter; labelKey: string }[] = [
+  { value: "all", labelKey: "All time" },
+  { value: "day", labelKey: "Today" },
+  { value: "week", labelKey: "This week" },
+  { value: "month", labelKey: "This month" },
+];
+
+type DisplayRow = {
+  key: string;
+  name: string;
+  type: AttendanceAnalyticsRow["type"];
+  outletId: string;
+  presentDays: number;
+  totalHoursWorked: number;
+};
+
+function analyticsRowKey(row: AttendanceAnalyticsRow): string {
+  return `${row.type}:${row.id}`;
+}
+
+function findAnalyticsForEmployee(
+  employee: { id: string; userId?: string },
+  byKey: Map<string, AttendanceAnalyticsRow>
+): AttendanceAnalyticsRow | undefined {
+  const asEmployee = byKey.get(`employee:${employee.id}`);
+  if (asEmployee) return asEmployee;
+  if (employee.userId) {
+    const asUser = byKey.get(`user:${employee.userId}`);
+    if (asUser) return asUser;
+  }
+  return undefined;
+}
+
+function buildDisplayRows(
+  employeesInScope: Array<{ id: string; name: string; outletId: string; userId?: string }>,
+  analyticsRows: AttendanceAnalyticsRow[]
+): DisplayRow[] {
+  const byKey = new Map(analyticsRows.map((row) => [analyticsRowKey(row), row]));
+  const matchedKeys = new Set<string>();
+  const rows: DisplayRow[] = [];
+
+  for (const employee of employeesInScope) {
+    const match = findAnalyticsForEmployee(employee, byKey);
+    if (match) matchedKeys.add(analyticsRowKey(match));
+    rows.push({
+      key: `employee:${employee.id}`,
+      name: employee.name,
+      type: match?.type ?? "employee",
+      outletId: employee.outletId,
+      presentDays: match?.presentDays ?? 0,
+      totalHoursWorked: match?.totalHoursWorked ?? 0,
+    });
+  }
+
+  for (const row of analyticsRows) {
+    const key = analyticsRowKey(row);
+    if (matchedKeys.has(key)) continue;
+    rows.push({
+      key,
+      name: row.name,
+      type: row.type,
+      outletId: row.outletId,
+      presentDays: row.presentDays ?? 0,
+      totalHoursWorked: row.totalHoursWorked ?? 0,
+    });
+  }
+
+  return rows.sort((a, b) => {
+    if (b.presentDays !== a.presentDays) return b.presentDays - a.presentDays;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 function formatHours(h: number | null | undefined): string {
@@ -28,23 +101,10 @@ function formatHours(h: number | null | undefined): string {
   return `${hh}h ${String(mm).padStart(2, "0")}m`;
 }
 
-function isClockInToday(clockInIso: string): boolean {
-  const d = new Date(clockInIso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
-
-function rowOutletId(row: AttendanceRecord): string | undefined {
-  return row.employee?.outletId ?? row.user?.outletId;
-}
-
 export default function AccountsAnalyticsPage() {
   const navigate = useNavigate();
   const [outletFilter, setOutletFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("week");
   const { t } = useI18n();
   const { isScoped, rowFilterOutletId } = useRowFilterOutletId();
 
@@ -54,6 +114,9 @@ export default function AccountsAnalyticsPage() {
 
   const effectiveOutletKey =
     isScoped && rowFilterOutletId ? rowFilterOutletId : outletFilter;
+
+  const apiPeriod: AttendancePeriod | null =
+    periodFilter === "all" ? null : periodFilter;
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -79,16 +142,28 @@ export default function AccountsAnalyticsPage() {
     },
   });
 
+  const outletMap = useMemo(
+    () => new Map(outlets.map((o) => [o.id, o.name])),
+    [outlets]
+  );
+
   const {
-    data: attendanceRows = [],
+    data: analyticsRows = [],
     isLoading: attendancesLoading,
     isFetching: attendancesFetching,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ["attendances", effectiveOutletKey === "all" ? "all" : effectiveOutletKey],
+    queryKey: [
+      "attendanceAnalytics",
+      effectiveOutletKey === "all" ? "all" : effectiveOutletKey,
+      periodFilter,
+    ],
     queryFn: async () => {
       const outletArg = effectiveOutletKey === "all" ? null : effectiveOutletKey;
-      const result = await getAttendances(outletArg);
+      const result = await getAttendanceAnalytics({
+        outletId: outletArg,
+        period: apiPeriod,
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -98,41 +173,43 @@ export default function AccountsAnalyticsPage() {
     },
   });
 
-  /** Staff for the current filter (URL scope when in sub-outlet, else dropdown). */
-  const employeesForSelectedOutlet = useMemo(() => {
-    if (effectiveOutletKey === "all") return employees;
-    return employees.filter((e) => e.outletId === effectiveOutletKey);
-  }, [employees, effectiveOutletKey]);
-
-  const employeesInScope = useMemo(
-    () =>
-      isScoped && rowFilterOutletId
+  const employeesInScope = useMemo(() => {
+    if (effectiveOutletKey === "all") {
+      return isScoped && rowFilterOutletId
         ? employees.filter((e) => e.outletId === rowFilterOutletId)
-        : employees,
-    [employees, isScoped, rowFilterOutletId]
-  );
+        : employees;
+    }
+    return employees.filter((e) => e.outletId === effectiveOutletKey);
+  }, [employees, effectiveOutletKey, isScoped, rowFilterOutletId]);
 
   const filteredRows = useMemo(() => {
-    if (effectiveOutletKey === "all") return attendanceRows;
-    return attendanceRows.filter((r) => {
-      const rid = rowOutletId(r);
-      if (rid === effectiveOutletKey) return true;
-      if (rid && rid !== effectiveOutletKey) return false;
-      return employeesForSelectedOutlet.some((e) => e.id === r.employeeId);
-    });
-  }, [attendanceRows, effectiveOutletKey, employeesForSelectedOutlet]);
+    if (effectiveOutletKey === "all") return analyticsRows;
+    return analyticsRows.filter((r) => r.outletId === effectiveOutletKey);
+  }, [analyticsRows, effectiveOutletKey]);
 
-  const presentTodayCount = useMemo(() => {
-    const todayRows = attendanceRows.filter((r) => r.clockIn && isClockInToday(r.clockIn));
-    const scopeIds = new Set(employeesInScope.map((e) => e.id));
-    return new Set(
-      todayRows.filter((r) => scopeIds.has(r.employeeId)).map((r) => r.employeeId)
-    ).size;
-  }, [attendanceRows, employeesInScope]);
+  const displayRows = useMemo(
+    () => buildDisplayRows(employeesInScope, filteredRows),
+    [employeesInScope, filteredRows]
+  );
+
+  const activeInPeriod = useMemo(
+    () => displayRows.filter((r) => r.presentDays > 0).length,
+    [displayRows]
+  );
+
+  const totalPresentDays = useMemo(
+    () => displayRows.reduce((sum, r) => sum + r.presentDays, 0),
+    [displayRows]
+  );
+
+  const totalHoursInPeriod = useMemo(
+    () => displayRows.reduce((sum, r) => sum + (r.totalHoursWorked ?? 0), 0),
+    [displayRows]
+  );
 
   const totalStaff = employeesInScope.length;
-  const pctPresent =
-    totalStaff > 0 ? Math.round((presentTodayCount / totalStaff) * 100) : 0;
+  const pctActive =
+    totalStaff > 0 ? Math.round((activeInPeriod / totalStaff) * 100) : 0;
 
   const lastUpdatedLabel =
     attendancesFetching && !dataUpdatedAt
@@ -140,6 +217,8 @@ export default function AccountsAnalyticsPage() {
       : dataUpdatedAt
         ? new Date(dataUpdatedAt).toLocaleTimeString()
         : "";
+
+  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === periodFilter)?.labelKey ?? "";
 
   return (
     <section className="analyticsPage">
@@ -155,6 +234,18 @@ export default function AccountsAnalyticsPage() {
           <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
+          <div className="analyticsPeriodSegment" role="group" aria-label={t("Time period")}>
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`analyticsPeriodBtn${periodFilter === opt.value ? " analyticsPeriodBtnActive" : ""}`}
+                onClick={() => setPeriodFilter(opt.value)}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
           {!isScoped ? (
             <select
               className="analyticsOutletSelect"
@@ -179,6 +270,9 @@ export default function AccountsAnalyticsPage() {
 
       <div className="analyticsCards">
         <div className="analyticsCard analyticsCardTotal">
+          <div className="analyticsCardIconWrap">
+            <LuUsers aria-hidden />
+          </div>
           <div className="analyticsCardLabel">{t("Total Staff")}</div>
           <div className="analyticsCardValue">
             {employeesLoading ? "—" : totalStaff}
@@ -192,73 +286,95 @@ export default function AccountsAnalyticsPage() {
           </div>
         </div>
         <div className="analyticsCard analyticsCardPresent">
-          <div className="analyticsCardLabel">{t("Present Today")}</div>
+          <div className="analyticsCardIconWrap">
+            <LuUsers aria-hidden />
+          </div>
+          <div className="analyticsCardLabel">{t("Active in period")}</div>
           <div className="analyticsCardValue">
-            {employeesLoading || attendancesLoading ? "—" : presentTodayCount}
+            {employeesLoading || attendancesLoading ? "—" : activeInPeriod}
           </div>
           <div className="analyticsCardSub">
             {totalStaff > 0 && !employeesLoading && !attendancesLoading
-              ? `${pctPresent}% ${t("Present")}`
-              : ""}
+              ? `${pctActive}% · ${t(periodLabel)}`
+              : t(periodLabel)}
           </div>
+        </div>
+        <div className="analyticsCard analyticsCardSessions">
+          <div className="analyticsCardIconWrap">
+            <LuClock aria-hidden />
+          </div>
+          <div className="analyticsCardLabel">{t("Present days")}</div>
+          <div className="analyticsCardValue">
+            {attendancesLoading ? "—" : totalPresentDays}
+          </div>
+          <div className="analyticsCardSub">{t("Total sessions in period")}</div>
+        </div>
+        <div className="analyticsCard analyticsCardHours">
+          <div className="analyticsCardIconWrap">
+            <LuClock aria-hidden />
+          </div>
+          <div className="analyticsCardLabel">{t("Total hours")}</div>
+          <div className="analyticsCardValue">
+            {attendancesLoading ? "—" : formatHours(totalHoursInPeriod)}
+          </div>
+          <div className="analyticsCardSub">{t(periodLabel)}</div>
         </div>
       </div>
 
       <div className="analyticsTableSection">
-        <h2 className="analyticsTableTitle">{t("Daily Attendance")}</h2>
+        <div className="analyticsTableSectionHead">
+          <h2 className="analyticsTableTitle">{t("Staff attendance summary")}</h2>
+          <p className="analyticsTableHint">
+            {t("Present days counts attendance sessions in the selected period.")}
+          </p>
+        </div>
         <div className="analyticsTableWrap">
           <table className="analyticsTable">
             <thead>
               <tr>
-                <th>{t("Employee ID")}</th>
                 <th>{t("Name")}</th>
-                <th>{t("Clock In")}</th>
-                <th>{t("Clock Out")}</th>
-                <th>{t("Status")}</th>
+                <th>{t("Type")}</th>
+                <th>{t("Outlet")}</th>
+                <th>{t("Present days")}</th>
                 <th>{t("Total Hours")}</th>
-                <th aria-hidden />
               </tr>
             </thead>
             <tbody>
-              {attendancesLoading ? (
+              {attendancesLoading || employeesLoading ? (
                 <tr>
-                  <td colSpan={7}>{t("Loading…")}</td>
+                  <td colSpan={5}>{t("Loading…")}</td>
                 </tr>
-              ) : filteredRows.length === 0 ? (
+              ) : displayRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>{t("No attendance records yet.")}</td>
+                  <td colSpan={5}>
+                    <div className="analyticsEmptyState">
+                      <LuClock className="analyticsEmptyIcon" aria-hidden />
+                      <p>{t("No attendance records yet.")}</p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
-                filteredRows.map((row) => {
-                  const name = row.employee?.name ?? row.user?.fullName ?? "—";
-                  const empCode = row.employee?.employeeId ?? "—";
-                  const statusLabel = row.status ? "Present" : "Absent";
-                  return (
-                    <tr key={row.id}>
-                      <td>{empCode}</td>
-                      <td>{name}</td>
-                      <td>{formatTime(row.clockIn)}</td>
-                      <td>{formatTime(row.clockOut ?? undefined)}</td>
-                      <td>
-                        <span
-                          className={`analyticsPill analyticsPill${statusLabel}`}
-                        >
-                          {t(statusLabel)}
-                        </span>
-                      </td>
-                      <td>{formatHours(row.hoursWorked ?? undefined)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="analyticsRowAction"
-                          aria-label={t("More options")}
-                        >
-                          ⋮
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                displayRows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="analyticsCellName">{row.name || "—"}</td>
+                    <td>
+                      <span
+                        className={`analyticsTypeBadge analyticsTypeBadge${row.type === "employee" ? "Employee" : "User"}`}
+                      >
+                        {row.type === "employee" ? t("Employee") : t("User")}
+                      </span>
+                    </td>
+                    <td>{outletMap.get(row.outletId) ?? row.outletId ?? "—"}</td>
+                    <td>
+                      <span
+                        className={`analyticsPresentDays${row.presentDays > 0 ? " analyticsPresentDaysActive" : ""}`}
+                      >
+                        {row.presentDays}
+                      </span>
+                    </td>
+                    <td>{formatHours(row.totalHoursWorked)}</td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

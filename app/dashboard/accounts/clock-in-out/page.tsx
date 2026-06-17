@@ -14,14 +14,12 @@ import { findEmployeeForAttendanceClockAmongCandidates } from "@/handlers/employ
 import {
   clockIn as clockInApi,
   clockOut as clockOutApi,
-  getAttendances,
+  getAttendanceAnalytics,
   getTodayAttendanceStatus,
-  type AttendanceRecord,
   type ClockInResponse,
   type ClockOutResponse,
 } from "@/handlers/attendance";
 import {
-  findTodayAttendanceForIdentity,
   getAttendanceStatus,
   msUntilNepalAutoClockOut,
   readLocalAttendanceSnapshot,
@@ -33,8 +31,12 @@ import "./clock-in-out.scss";
 
 const EMPLOYEES_QUERY_KEY = ["employees"];
 
-function attendanceQueryKey(base: string | null) {
-  return ["attendances", base ?? "all"] as const;
+function formatHoursShort(h: number | null | undefined): string {
+  if (h == null || Number.isNaN(h)) return "0h 00m";
+  const totalMinutes = Math.round(h * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return `${hh}h ${String(mm).padStart(2, "0")}m`;
 }
 
 function formatElapsed(seconds: number) {
@@ -91,7 +93,7 @@ function clockInResponseToSnapshot(
 
 function clockOutResponseToSnapshot(
   data: ClockOutResponse["data"],
-  currentRecord: AttendanceRecord | LocalAttendanceSnapshot | null | undefined,
+  currentRecord: LocalAttendanceSnapshot | null | undefined,
   fallbackUserId: string | null,
   fallbackEmployeeId: string | null,
   isFinalClockedOut = false
@@ -129,7 +131,7 @@ export default function ClockInOutPage() {
     return rowFilterOutletId ?? fromHighlandUrl ?? userOutletId ?? null;
   }, [search, rowFilterOutletId, userOutletId]);
 
-  const attendancesKey = attendanceQueryKey(attendanceOutletId);
+  const attendancesKey = ["attendanceAnalytics", attendanceOutletId ?? "all", "week"] as const;
 
   const { data: employees = [] } = useQuery({
     queryKey: EMPLOYEES_QUERY_KEY,
@@ -176,10 +178,31 @@ export default function ClockInOutPage() {
     roleName
   );
 
-  const { data: attendanceRows = [], isLoading: attendancesLoading } = useQuery({
+  const { data: weekAnalytics = [], isLoading: weekAnalyticsLoading } = useQuery({
     queryKey: attendancesKey,
     queryFn: async () => {
-      const result = await getAttendances(attendanceOutletId);
+      const result = await getAttendanceAnalytics({
+        outletId: attendanceOutletId,
+        period: "week",
+      });
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      const list = result.data.data ?? [];
+      return Array.isArray(list) ? list : [];
+    },
+  });
+
+  const dayAnalyticsKey = ["attendanceAnalytics", attendanceOutletId ?? "all", "day"] as const;
+
+  const { data: dayAnalytics = [], isLoading: dayAnalyticsLoading } = useQuery({
+    queryKey: dayAnalyticsKey,
+    queryFn: async () => {
+      const result = await getAttendanceAnalytics({
+        outletId: attendanceOutletId,
+        period: "day",
+      });
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -227,14 +250,9 @@ export default function ClockInOutPage() {
       ) {
         return localAttendanceRecord;
       }
-      return (
-        findTodayAttendanceForIdentity(attendanceRows, {
-          userId: attendanceUserId,
-          employeeId: employeeRowId,
-        }) ?? localAttendanceRecord
-      );
+      return localAttendanceRecord;
     },
-    [attendanceRows, attendanceUserId, employeeRowId, localAttendanceRecord, todayStatusRecord]
+    [attendanceUserId, employeeRowId, localAttendanceRecord, todayStatusRecord]
   );
 
   const persistedStatus = getAttendanceStatus(todayAttendanceRecord);
@@ -266,7 +284,7 @@ export default function ClockInOutPage() {
         }
         setClockError(null);
         await queryClient.invalidateQueries({ queryKey: ["attendanceTodayStatus"] });
-        await queryClient.invalidateQueries({ queryKey: ["attendances"] });
+        await queryClient.invalidateQueries({ queryKey: ["attendanceAnalytics"] });
       } else {
         if (result.status === 401) navigate("/login");
         else {
@@ -302,7 +320,7 @@ export default function ClockInOutPage() {
         }
         setClockError(null);
         await queryClient.invalidateQueries({ queryKey: ["attendanceTodayStatus"] });
-        await queryClient.invalidateQueries({ queryKey: ["attendances"] });
+        await queryClient.invalidateQueries({ queryKey: ["attendanceAnalytics"] });
       } else {
         if (result.status === 401) navigate("/login");
         else {
@@ -417,11 +435,44 @@ export default function ClockInOutPage() {
 
   const { h, m, s } = formatElapsed(elapsedSeconds);
   const loading = clockInMutation.isPending || clockOutMutation.isPending;
-  const resolvingAttendance = (todayStatusLoading || attendancesLoading) && !localAttendanceRecord;
+  const resolvingAttendance = todayStatusLoading && !localAttendanceRecord;
   const buttonStatus: AttendanceStatus = resolvingAttendance ? "loading" : persistedStatus;
   const hasTodayAttendance = !!todayAttendanceRecord?.clockIn;
   const todayHoursWorkedLabel = formatHoursWorked(todayAttendanceRecord?.hoursWorked);
   const showTodayHoursWorked = hasTodayAttendance && todayHoursWorkedLabel != null;
+
+  const employeesInOutlet = useMemo(() => {
+    if (!attendanceOutletId) return employees;
+    return employees.filter((e) => e.outletId === attendanceOutletId);
+  }, [employees, attendanceOutletId]);
+
+  const myWeekRow = useMemo(() => {
+    const ids = [attendanceUserId, employeeRowId].filter(Boolean) as string[];
+    return weekAnalytics.find((row) => ids.includes(row.id)) ?? null;
+  }, [weekAnalytics, attendanceUserId, employeeRowId]);
+
+  const stats = useMemo(() => {
+    const totalStaff = employeesInOutlet.length;
+    const presentToday = dayAnalytics.filter(
+      (r) =>
+        r.presentDays > 0 &&
+        (!attendanceOutletId || r.outletId === attendanceOutletId)
+    ).length;
+    return {
+      totalStaff,
+      weeklyWorkLabel: formatHoursShort(myWeekRow?.totalHoursWorked),
+      weeklySessions: myWeekRow?.presentDays ?? 0,
+      presentToday,
+      absentToday: Math.max(0, totalStaff - presentToday),
+    };
+  }, [employeesInOutlet, dayAnalytics, myWeekRow, attendanceOutletId]);
+
+  const statsLoading = weekAnalyticsLoading || dayAnalyticsLoading;
+
+  const statPresentSub =
+    stats.totalStaff > 0
+      ? `${Math.round((stats.presentToday / stats.totalStaff) * 100)}% ${t("Present")}`
+      : "";
 
   return (
     <section className="clockInOutPage">
@@ -544,25 +595,29 @@ export default function ClockInOutPage() {
           )}
         </div>
 
-        {/* <div className="clockInOutStats">
+        <div className="clockInOutStats">
           <div className="clockInOutStatCard">
             <span className="clockInOutStatTitle">{t("Weekly Work")}</span>
             <span className="clockInOutStatValue">
-              {attendancesLoading ? "—" : stats.weeklyWorkLabel}
+              {statsLoading ? "—" : stats.weeklyWorkLabel}
             </span>
-            <span className="clockInOutStatSub">{t("This week")}</span>
+            <span className="clockInOutStatSub">
+              {stats.weeklySessions > 0
+                ? `${stats.weeklySessions} ${t("Present days")}`
+                : t("This week")}
+            </span>
           </div>
           <div className="clockInOutStatCard">
             <span className="clockInOutStatTitle">{t("Present Today")}</span>
             <span className="clockInOutStatValue">
-              {attendancesLoading ? "—" : String(stats.presentToday)}
+              {statsLoading ? "—" : String(stats.presentToday)}
             </span>
             <span className="clockInOutStatSub">{statPresentSub}</span>
           </div>
           <div className="clockInOutStatCard">
             <span className="clockInOutStatTitle">{t("Absent Today")}</span>
             <span className="clockInOutStatValue">
-              {attendancesLoading ? "—" : String(stats.absentToday)}
+              {statsLoading ? "—" : String(stats.absentToday)}
             </span>
             <span className="clockInOutStatSub">
               {stats.totalStaff > 0 ? `${t("Total Staff")}: ${stats.totalStaff}` : ""}
@@ -571,9 +626,9 @@ export default function ClockInOutPage() {
           <div className="clockInOutStatCard">
             <span className="clockInOutStatTitle">{t("Total Staff")}</span>
             <span className="clockInOutStatValue">{String(stats.totalStaff)}</span>
-            <span className="clockInOutStatSub">{t("Total Staff")}</span>
+            <span className="clockInOutStatSub">{t("In selected outlet")}</span>
           </div>
-        </div> */}
+        </div>
       </div>
     </section>
   );

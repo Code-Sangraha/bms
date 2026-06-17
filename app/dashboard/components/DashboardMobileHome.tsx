@@ -30,8 +30,9 @@ type DashboardMobileHomeProps = {
   scopedOutletId: string | null;
   search: string;
   totalRevenue: number;
+  totalExpenses: number;
+  totalExpenseDue: number;
   totalTransactions: number;
-  totalWeight: number;
   cashflowDays: CashflowDay[];
   canCreate: boolean;
   /** Hide livestock and org-only shortcuts (outlet manager tier). */
@@ -73,8 +74,9 @@ export default function DashboardMobileHome({
   scopedOutletId,
   search,
   totalRevenue,
+  totalExpenses,
+  totalExpenseDue,
   totalTransactions: _totalTransactions,
-  totalWeight,
   cashflowDays,
   canCreate,
   outletScopedMobile = false,
@@ -206,16 +208,16 @@ export default function DashboardMobileHome({
             {t("Sales")} ({periodName})
           </span>
         </Link>
-        <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__summaryCell">
+        <Link to={to("/dashboard/outlets/expenses")} className="dashboardMobileHome__summaryCell">
           <span className="dashboardMobileHome__summaryValue">
-            Rs.{totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            Rs.{totalExpenses.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
           </span>
-          <span className="dashboardMobileHome__summaryLabel">{t("Total Balance")}</span>
+          <span className="dashboardMobileHome__summaryLabel">{t("Expenses")}</span>
           <span
             className="dashboardMobileHome__summaryLabel"
             style={{ textTransform: "none", fontSize: 10 }}
           >
-            {t("Cash & Bank")} · {totalWeight} kg
+            {t("Due amount")}: Rs.{totalExpenseDue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
           </span>
         </Link>
       </div>

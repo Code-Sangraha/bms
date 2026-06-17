@@ -13,7 +13,7 @@ import ProcessedProductDetailContent from "@/app/dashboard/product/components/Pr
 import InventoryDetailHistoryPanel from "@/app/dashboard/product/components/InventoryDetailHistoryPanel";
 import type { ProcessedDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import ProcessedProductRestockDetailModal from "./ProcessedProductRestockDetailModal";
-import ProcessedProductReduceDetailModal from "./ProcessedProductReduceDetailModal";
+import ProcessedProductSalesPanel from "./ProcessedProductSalesPanel";
 import "../inventoryDetailPage.scss";
 import "../liveProduct/livestockDetailShell.scss";
 import "./processedProduct.scss";
@@ -211,6 +211,10 @@ export default function ProcessedProductDetailPage() {
                 : null
             }
           />
+
+          {product.id?.trim() ? (
+            <ProcessedProductSalesPanel productId={product.id} />
+          ) : null}
 
           {openRestockModal && canRestockStorage && (
             <ProcessedProductRestockDetailModal

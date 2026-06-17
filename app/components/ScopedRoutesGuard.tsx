@@ -22,6 +22,7 @@ function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabil
   if (p.startsWith("/dashboard/invoices/new")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/transaction")) return capabilities.canViewTransactions;
   if (p.startsWith("/dashboard/invoices")) return capabilities.canViewSalesAnalytics;
+  if (p.startsWith("/dashboard/analytics")) return capabilities.canViewSalesAnalytics;
   if (p.startsWith("/dashboard/product/productType")) return capabilities.canCreateProducts;
   if (p.startsWith("/dashboard/product/livestockCategory")) return capabilities.canCreateProducts;
   if (p.startsWith("/dashboard/product/liveProduct")) return capabilities.canViewLivestockInventory;

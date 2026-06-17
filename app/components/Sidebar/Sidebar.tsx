@@ -38,6 +38,7 @@ type TranslationKey =
   | "roles"
   | "salesBilling"
   | "analytics"
+  | "salesDashboard"
   | "pointOfSale"
   | "wasteSales"
   | "livestockSales"
@@ -115,6 +116,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   roles: "Roles",
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
+  salesDashboard: "Sales Dashboard",
   pointOfSale: "Processed Sale",
   wasteSales: "Waste Sales",
   livestockSales: "Livestock Sales",
@@ -238,7 +240,11 @@ const sidebarConfig = {
               { labelKey: "departments", href: "/dashboard/departments" },
               // { labelKey: "processingPlant", href: "/dashboard/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
-              // { label: "Analytics", href: "/dashboard/analytics" },
+              {
+                labelKey: "salesDashboard",
+                href: "/dashboard/analytics",
+                capability: "canViewSalesAnalytics" as const,
+              },
               // { label: "Reports", href: "/dashboard/reports" },
             ] as MenuItem[],
           },
@@ -310,6 +316,11 @@ const sidebarConfig = {
                 titleKey: "salesBilling",
                 items: [
                   { labelKey: "analytics", href: "/dashboard/invoices" },
+                  {
+                    labelKey: "salesDashboard",
+                    href: "/dashboard/analytics",
+                    capability: "canViewSalesAnalytics" as const,
+                  },
                   {
                     labelKey: "pointOfSale",
                     href: "/dashboard/invoices/new",

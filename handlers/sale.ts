@@ -25,6 +25,7 @@ export type SaleItemPayload = {
 export type WasteSaleItemPayload = {
   name: string;
   contact: string;
+  customerTypeId: string;
   productId: string;
   outletId: string;
   weight: number;
@@ -454,6 +455,7 @@ function toWasteSaleCreateBody(item: WasteSaleItemPayload) {
     {
       name: item.name,
       contact: item.contact,
+      customerTypeId: item.customerTypeId,
       productId: item.productId,
       outletId: item.outletId,
       weight: item.weight,

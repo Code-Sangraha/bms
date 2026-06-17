@@ -59,6 +59,11 @@ export default function LivestockCompletePartialPaymentModal({
   onSuccess,
 }: LivestockCompletePartialPaymentModalProps) {
   const { t } = useI18n();
+  const paymentStatusLabel: Record<PaymentStatus, string> = {
+    ADVANCE: t("Advance"),
+    PARTIAL: t("Partial"),
+    FULL: t("Full"),
+  };
   const { showToast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -151,7 +156,7 @@ export default function LivestockCompletePartialPaymentModal({
             <div className="livestockDetailModalSummaryCard">
               <span className="livestockDetailModalSummaryLabel">{t("Payment status")}</span>
               <span className={PAYMENT_STATUS_BADGE_CLASS[expense.paymentStatus]}>
-                {expense.paymentStatus === "PARTIAL" ? t("Partial") : expense.paymentStatus}
+                {paymentStatusLabel[expense.paymentStatus]}
               </span>
             </div>
           </div>

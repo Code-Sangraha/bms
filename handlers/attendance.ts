@@ -73,11 +73,26 @@ export type ClockOutResponse = {
   };
 };
 
-export type GetAttendancesResponse = {
+export type AttendancePeriod = "day" | "week" | "month";
+
+/** Aggregated row from GET /attendances/get (analytics, not session records). */
+export type AttendanceAnalyticsRow = {
+  id: string;
+  type: "employee" | "user";
+  name: string;
+  outletId: string;
+  totalHoursWorked: number;
+  presentDays: number;
+};
+
+export type GetAttendanceAnalyticsResponse = {
   success?: boolean;
   message?: string;
-  data?: AttendanceRecord[];
+  data?: AttendanceAnalyticsRow[];
 };
+
+/** @deprecated Use GetAttendanceAnalyticsResponse — backend returns aggregated rows. */
+export type GetAttendancesResponse = GetAttendanceAnalyticsResponse;
 
 export type TodayAttendanceStatusResponse = {
   success?: boolean;
@@ -115,25 +130,38 @@ async function attendanceRequest<T extends { success?: boolean; message?: string
   return result;
 }
 
-/** Build GET body for `/attendances/get`; backend reads `req.body.outletId` (axios — fetch cannot attach GET bodies). */
-function buildGetAttendancesBody(outletId: string | null | undefined): Record<string, string> | Record<string, never> {
+export type AttendanceAnalyticsFilters = {
+  outletId?: string | null;
+  period?: AttendancePeriod | null;
+};
+
+/** Build GET body for `/attendances/get`; backend reads `req.body` (axios — fetch cannot attach GET bodies). */
+function buildAttendanceAnalyticsBody(
+  filters: AttendanceAnalyticsFilters = {}
+): Record<string, string> {
+  const body: Record<string, string> = {};
+  const outletId = filters.outletId;
   if (typeof outletId === "string" && outletId.trim() !== "") {
-    return { outletId: outletId.trim() };
+    body.outletId = outletId.trim();
   }
-  return {};
+  const period = filters.period;
+  if (period === "day" || period === "week" || period === "month") {
+    body.period = period;
+  }
+  return body;
 }
 
-export async function getAttendances(
-  outletFilter: string | null | undefined = undefined
-): Promise<ApiResult<GetAttendancesResponse>> {
+export async function getAttendanceAnalytics(
+  filters: AttendanceAnalyticsFilters = {}
+): Promise<ApiResult<GetAttendanceAnalyticsResponse>> {
   const baseUrl = getBaseUrl();
   if (!baseUrl) return { ok: false, error: "API URL not configured", status: 0 };
 
   const url = `${baseUrl}${ATTENDANCE_ROUTES.GET}`;
-  const body = buildGetAttendancesBody(outletFilter);
+  const body = buildAttendanceAnalyticsBody(filters);
 
   const requestWithToken = (token: string | null) =>
-    axios.get<GetAttendancesResponse>(url, {
+    axios.get<GetAttendanceAnalyticsResponse>(url, {
       data: body,
       headers: {
         "Content-Type": "application/json",
@@ -175,10 +203,18 @@ export async function getAttendances(
       };
     }
 
-    return { ok: true, data: payload as GetAttendancesResponse };
+    return { ok: true, data: payload as GetAttendanceAnalyticsResponse };
   } catch {
     return { ok: false, error: "Something went wrong. Please try again.", status: 0 };
   }
+}
+
+/** @deprecated Use getAttendanceAnalytics({ outletId, period }). */
+export async function getAttendances(
+  outletFilter: string | null | undefined = undefined,
+  period?: AttendancePeriod | null
+): Promise<ApiResult<GetAttendanceAnalyticsResponse>> {
+  return getAttendanceAnalytics({ outletId: outletFilter, period });
 }
 
 export async function getTodayAttendanceStatus(): Promise<ApiResult<TodayAttendanceStatusResponse>> {

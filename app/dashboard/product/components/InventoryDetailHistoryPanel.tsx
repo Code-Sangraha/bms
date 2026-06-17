@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/app/providers/AuthProvider";
-import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
+import { canRecordExpensePayment } from "@/lib/billing/expensePaymentUi";
 import ExpenseRecordPaymentButton from "@/app/dashboard/shared/ExpenseRecordPaymentButton";
 import {
   MdInventory2,
@@ -398,7 +398,7 @@ export default function InventoryDetailHistoryPanel({
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
         <td>
-          {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
+          {canRecordPayment && canRecordExpensePayment(row.paymentStatus) ? (
             <ExpenseRecordPaymentButton compact onClick={() => setExpenseToPay(row)} />
           ) : (
             "\u2014"

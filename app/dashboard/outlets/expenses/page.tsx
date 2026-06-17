@@ -9,8 +9,9 @@ import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
-import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
+import { canRecordExpensePayment } from "@/lib/billing/expensePaymentUi";
 import ExpenseRecordPaymentButton from "@/app/dashboard/shared/ExpenseRecordPaymentButton";
+import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
 import {
   getOutletExpenses,
   getOutlets,
@@ -105,8 +106,8 @@ export default function OutletExpensesPage() {
 
   const expenseSummary = useMemo(() => {
     const totalDue = filteredExpenses.reduce((sum, row) => sum + row.dueAmount, 0);
-    const partialCount = filteredExpenses.filter((row) => row.paymentStatus === "PARTIAL").length;
-    return { totalDue, partialCount, count: filteredExpenses.length };
+    const openCount = filteredExpenses.filter((row) => canRecordExpensePayment(row.paymentStatus)).length;
+    return { totalDue, partialCount: openCount, count: filteredExpenses.length };
   }, [filteredExpenses]);
 
   const {
@@ -149,7 +150,7 @@ export default function OutletExpensesPage() {
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
         <td className="outletExpensesActionsCell">
-          {canRecordPayment && row.paymentStatus === "PARTIAL" ? (
+          {canRecordPayment && canRecordExpensePayment(row.paymentStatus) ? (
             <ExpenseRecordPaymentButton onClick={() => setExpenseToPay(row)} />
           ) : (
             "\u2014"

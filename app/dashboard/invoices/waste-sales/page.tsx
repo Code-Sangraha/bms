@@ -2,13 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import WasteProductSelect from "@/app/dashboard/product/wasteProduct/WasteProductSelect";
+import { getCustomerTypes } from "@/handlers/customerType";
 import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
 import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
 import { createWasteSale } from "@/handlers/sale";
@@ -26,6 +27,8 @@ const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 
+const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
+
 export default function WasteSalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -36,6 +39,7 @@ export default function WasteSalesPage() {
 
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
+  const [customerTypeId, setCustomerTypeId] = useState("");
   const [wasteProductId, setWasteProductId] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
@@ -56,6 +60,24 @@ export default function WasteSalesPage() {
       return result.data;
     },
   });
+
+  const { data: customerTypes = [] } = useQuery({
+    queryKey: CUSTOMER_TYPES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCustomerTypes();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  useEffect(() => {
+    if (!customerTypeId && customerTypes.length > 0) {
+      setCustomerTypeId(customerTypes[0].id);
+    }
+  }, [customerTypeId, customerTypes]);
 
   const selectedWasteProduct = useMemo(
     () => wasteProducts.find((product) => product.id === wasteProductId) ?? null,
@@ -98,6 +120,7 @@ export default function WasteSalesPage() {
       const payload = {
         name: trimmedName,
         contact: trimmedContact,
+        customerTypeId: customerTypeId.trim(),
         productId: wasteProductId.trim(),
         outletId: saleOutletId.trim(),
         weight,
@@ -135,6 +158,7 @@ export default function WasteSalesPage() {
 
       setCustomerName("");
       setCustomerContact("");
+      setCustomerTypeId(customerTypes[0]?.id ?? "");
       setWasteProductId("");
       setWeightInput("");
       setAmountInput("");
@@ -165,6 +189,10 @@ export default function WasteSalesPage() {
     }
     if (!customerContact.trim()) {
       setError(t("Enter customer contact."));
+      return;
+    }
+    if (!customerTypeId.trim()) {
+      setError(t("Customer type is required"));
       return;
     }
     if (!wasteProductId.trim()) {
@@ -198,6 +226,7 @@ export default function WasteSalesPage() {
     const validation = validateWasteSaleCreate({
       name: customerName.trim(),
       contact: customerContact.trim(),
+      customerTypeId: customerTypeId.trim(),
       productId: wasteProductId.trim(),
       outletId: saleOutletId.trim(),
       weight,
@@ -265,6 +294,22 @@ export default function WasteSalesPage() {
                 aria-label={t("Customer contact")}
                 autoComplete="tel"
               />
+            </label>
+            <label className="posField posField--customerType">
+              <span className="posLabel">{t("Customer Type")}</span>
+              <select
+                className="posInput posSelect"
+                value={customerTypeId}
+                onChange={(e) => setCustomerTypeId(e.target.value)}
+                aria-label={t("Customer Type")}
+              >
+                <option value="">{t("Select customer type")}</option>
+                {customerTypes.map((ct) => (
+                  <option key={ct.id} value={ct.id}>
+                    {ct.name}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
         </section>

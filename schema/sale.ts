@@ -42,6 +42,7 @@ export function validateProcessedSaleCreate(items: unknown):
 export const wasteSaleLineSchema = z.object({
   name: z.string().trim().min(1, "Customer name is required"),
   contact: z.string().trim().min(1, "Customer contact is required"),
+  customerTypeId: z.string().min(1, "Customer type is required"),
   productId: z.string().trim().min(1, "Waste product is required"),
   outletId: z.string().trim().min(1, "Outlet is required"),
   weight: z.number().positive("Weight must be greater than 0"),
