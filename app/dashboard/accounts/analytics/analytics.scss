@@ -68,7 +68,7 @@
 .analyticsLastSync {
   font-size: 13px;
   font-weight: 500;
-  color: #02955a;
+  color: var(--color-primary);
 }
 
 .analyticsCards {
@@ -245,7 +245,7 @@
 .analyticsCardSub {
   font-size: 13px;
   font-weight: 500;
-  color: #02955a;
+  color: var(--color-primary);
   margin-top: 6px;
 }
 

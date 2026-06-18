@@ -37,7 +37,7 @@ import MorePage from "./dashboard/more/page";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans antialiased">
+    <div className="min-h-screen bg-background font-sans text-foreground antialiased">
       <QueryProvider>
         <I18nProvider>
           <InstallPrompt />

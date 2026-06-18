@@ -30,10 +30,10 @@ $mobile-breakpoint: 768px;
   width: 76px;
   flex-direction: column;
   min-height: 0;
-  gap: 20px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  background: #ffffff;
-  padding: 32px 16px;
+  gap: 18px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 24px 14px;
 
   @media (min-width: #{$mobile-breakpoint + 1px}) {
     height: 100%;
@@ -55,9 +55,9 @@ $mobile-breakpoint: 768px;
     padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0);
     border-right: none;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-top: 1px solid var(--color-border);
     gap: 2px;
-    box-shadow: 0 -1px 0 0 rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -1px 0 0 var(--color-border);
   }
 }
 
@@ -72,30 +72,30 @@ $mobile-breakpoint: 768px;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-primary);
+  text-align: center;
 }
 
 .subtitle {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 
   @media (max-width: $mobile-breakpoint) {
-    /* Flatten so each rail control is a direct flex child of .sidebar (even spacing) */
     display: contents;
   }
 }
 
-/* Section wrapper divs inside .nav – on mobile flatten with nav (see .nav mobile) */
 .nav > div {
   @media (max-width: $mobile-breakpoint) {
     display: contents;
@@ -104,11 +104,11 @@ $mobile-breakpoint: 768px;
 
 .sectionLabel {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #9ca3af;
+  color: var(--color-muted-foreground);
 }
 
 .link {
@@ -118,15 +118,15 @@ $mobile-breakpoint: 768px;
   gap: 10px;
   margin-bottom: 4px;
   border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 9px 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-foreground);
   text-decoration: none;
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease;
 
   @media (max-width: $mobile-breakpoint) {
     margin-bottom: 0;
@@ -137,11 +137,6 @@ $mobile-breakpoint: 768px;
   }
 }
 
-/*
- * Mobile bottom bar: equal width for every rail control. Must use a descendant
- * selector — rail buttons are NOT direct children of aside (DOM is aside > nav > … > button
- * and aside > .footer > button); `display: contents` only affects layout, not `>` selectors.
- */
 @media (max-width: $mobile-breakpoint) {
   .sidebar button.link {
     flex: 1 1 0;
@@ -150,13 +145,14 @@ $mobile-breakpoint: 768px;
   }
 }
 
-/* Desktop: all sub-outlet plant buttons in a column (mobile uses a single hub + picker) */
 .subOutletRailTrack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  gap: 10px;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
 }
 
 .mobileRailIcon,
@@ -167,55 +163,57 @@ $mobile-breakpoint: 768px;
   flex-shrink: 0;
 }
 
-/* Sub-outlet (processing plant) rail: same tap height as other rail items, light fill so the control reads as a button */
 .link.subOutletRail {
   box-sizing: border-box;
   min-height: 40px;
-  background: #f1f2f4;
+  background: var(--color-muted);
+  color: var(--color-foreground);
 
   @media (max-width: $mobile-breakpoint) {
     min-height: 44px;
   }
 
   &:hover:not(:disabled) {
-    background: #e5e7eb;
+    background: var(--brand-50);
+    color: var(--brand-700);
   }
 
   &:disabled {
     cursor: not-allowed;
+    opacity: 0.6;
   }
 
   &.active {
-    background: #02955a1a;
-    color: #02955a !important;
+    background: var(--brand-50);
+    color: var(--brand-700) !important;
+    box-shadow: inset 0 0 0 1px var(--brand-200);
   }
 
   &.active:hover:not(:disabled) {
-    background: rgba(2, 149, 90, 0.18);
+    background: var(--brand-100);
   }
 }
 
 .plantRailBadge {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   min-width: 1.5em;
   text-align: center;
 }
 
-/* Mobile: one hub control for all sub-outlets; opens picker when there are 2+ plants */
 .subOutletHub.subOutletHubOpen {
-  box-shadow: inset 0 0 0 1px rgba(2, 149, 90, 0.35);
+  box-shadow: inset 0 0 0 1px var(--brand-300);
 }
 
-/* Mobile: sheet to choose a processing plant (above tab bar) */
 .subOutletPickerBackdrop {
   position: fixed;
   inset: 0;
   bottom: calc(var(--mobile-chrome-bottom, 96px) + env(safe-area-inset-bottom, 0));
   z-index: 32;
-  background: rgba(17, 24, 39, 0.4);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
 }
 
 .subOutletPicker {
@@ -228,9 +226,9 @@ $mobile-breakpoint: 768px;
   display: flex;
   flex-direction: column;
   border-radius: 16px 16px 0 0;
-  background: #fff;
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--color-card);
+  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--color-border);
   border-bottom: none;
   overflow: hidden;
 }
@@ -241,7 +239,7 @@ $mobile-breakpoint: 768px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
   flex-shrink: 0;
 }
 
@@ -264,19 +262,19 @@ $mobile-breakpoint: 768px;
   gap: 12px;
   padding: 12px 16px;
   border: none;
-  background: #fff;
+  background: var(--color-card);
   text-align: left;
-  font-size: 15px;
-  color: #111827;
+  font-size: 14px;
+  color: var(--color-foreground);
   cursor: pointer;
-  border-top: 1px solid #f1f2f4;
+  border-top: 1px solid var(--color-border);
 
   .subOutletPickerItem:first-child & {
     border-top: none;
   }
 
   &:hover:not(:disabled) {
-    background: #f9fafb;
+    background: var(--color-muted);
   }
 
   &:disabled {
@@ -285,8 +283,8 @@ $mobile-breakpoint: 768px;
   }
 
   &.active {
-    background: #02955a0d;
-    color: #02955a;
+    background: var(--brand-50);
+    color: var(--brand-700);
   }
 }
 
@@ -298,11 +296,11 @@ $mobile-breakpoint: 768px;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #f1f2f4;
+  background: var(--color-muted);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #111827;
+  color: var(--color-foreground);
 }
 
 .subOutletPickerItemName {
@@ -321,29 +319,28 @@ $mobile-breakpoint: 768px;
   line-height: 1;
 }
 
-/* Narrow primary rail: icon-only (labels live in drawer, title, aria-label). Applies to desktop + mobile. */
 .sidebar .mobileRailLabel,
 .sidebar .languageToggleLabel {
   display: none;
 }
 
 .link:focus-visible {
-  outline: 2px solid #02955a;
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 
 .link:hover {
-  background: rgba(17, 24, 39, 0.06);
+  background: var(--color-muted);
 }
 
 .link.active {
-  background: #02955a12;
-  color: #02955a !important;
+  background: var(--brand-50);
+  color: var(--brand-700) !important;
 }
 
 .link.active:hover {
-  background: rgba(2, 149, 90, 0.18);
-  color: #02955a !important;
+  background: var(--brand-100);
+  color: var(--brand-700) !important;
 }
 
 .footer {
@@ -351,15 +348,16 @@ $mobile-breakpoint: 768px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding-bottom: 24px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  padding-bottom: 12px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
 
   @media (max-width: $mobile-breakpoint) {
     margin-top: 0;
     display: contents;
-    border-bottom: none;
+    border-top: none;
     padding: 0;
     min-width: 0;
   }
@@ -377,7 +375,7 @@ $mobile-breakpoint: 768px;
 
 .user {
   font-weight: 600;
-  color: #111827;
+  color: var(--color-foreground);
 }
 
 .drawer {
@@ -386,8 +384,8 @@ $mobile-breakpoint: 768px;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #ffffff;
-  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--color-card);
+  border-right: 1px solid var(--color-border);
   transition: width 0.2s ease;
 
   @media (min-width: #{$mobile-breakpoint + 1px}) {
@@ -405,7 +403,7 @@ $mobile-breakpoint: 768px;
     max-height: 0;
     border: none;
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.16);
     transition: max-height 0.3s ease, transform 0.3s ease;
     overflow: hidden;
     visibility: hidden;
@@ -414,7 +412,7 @@ $mobile-breakpoint: 768px;
 }
 
 .drawer.open {
-  width: 240px;
+  width: 248px;
 
   @media (max-width: $mobile-breakpoint) {
     width: 100%;
@@ -431,7 +429,7 @@ $mobile-breakpoint: 768px;
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 0.4);
   opacity: 0;
   transition: opacity 0.3s ease;
 
@@ -450,19 +448,20 @@ $mobile-breakpoint: 768px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28px 20px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 22px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 
   @media (max-width: $mobile-breakpoint) {
-    padding: 20px 16px 12px;
+    padding: 18px 16px 12px;
   }
 }
 
 .drawerTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-foreground);
+  letter-spacing: -0.01em;
 }
 
 .drawerClose {
@@ -471,7 +470,14 @@ $mobile-breakpoint: 768px;
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
+  border-radius: 6px;
+  padding: 4px 8px;
+
+  &:hover {
+    background: var(--color-muted);
+    color: var(--color-foreground);
+  }
 }
 
 .drawerBody {
@@ -479,8 +485,8 @@ $mobile-breakpoint: 768px;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 14px 16px;
   overflow-y: auto;
 }
 
@@ -492,24 +498,23 @@ $mobile-breakpoint: 768px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #9ca3af;
+  color: var(--color-muted-foreground);
 }
 
 .drawerSectionTitle:first-child {
   margin-top: 0;
 }
 
-/* Grouped menu (e.g. Highland): accordion in drawer (all breakpoints) */
 .drawerAccordionSection {
   flex-shrink: 0;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(17, 24, 39, 0.02);
+  border: 1px solid var(--color-border);
+  background: var(--color-muted);
   overflow: hidden;
 }
 
 .drawerAccordionSection + .drawerAccordionSection {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .drawerAccordionTrigger {
@@ -524,24 +529,26 @@ $mobile-breakpoint: 768px;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: #111827;
+  letter-spacing: 0.02em;
+  color: var(--color-foreground);
+  text-transform: uppercase;
   transition: background 0.15s ease;
 
   @media (max-width: $mobile-breakpoint) {
     gap: 12px;
     padding: 12px 14px;
-    font-size: 14px;
+    font-size: 13px;
   }
 }
 
 .drawerAccordionTrigger:hover {
-  background: rgba(17, 24, 39, 0.04);
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .drawerAccordionTrigger:focus-visible {
-  outline: 2px solid #02955a;
+  outline: 2px solid var(--color-ring);
   outline-offset: -2px;
 }
 
@@ -553,7 +560,7 @@ $mobile-breakpoint: 768px;
 
 .drawerAccordionChevron {
   flex-shrink: 0;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
   transition: transform 0.2s ease;
 }
 
@@ -566,8 +573,8 @@ $mobile-breakpoint: 768px;
   flex-direction: column;
   gap: 2px;
   padding: 4px 6px 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: #fff;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-card);
 
   @media (max-width: $mobile-breakpoint) {
     padding: 4px 8px 10px;
@@ -578,7 +585,7 @@ $mobile-breakpoint: 768px;
   padding-left: 12px;
   padding-right: 8px;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.4;
   word-break: break-word;
 
   @media (max-width: $mobile-breakpoint) {
@@ -591,8 +598,8 @@ $mobile-breakpoint: 768px;
 .drawerFooter {
   margin-top: auto;
   flex-shrink: 0;
-  padding: 16px 20px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
 }
 
 .drawerItem {
@@ -601,41 +608,42 @@ $mobile-breakpoint: 768px;
   padding: 8px 10px;
   border-radius: 8px;
   text-decoration: none;
-  color: #111827;
-  font-size: 14px;
-  transition: background 0.2s ease;
+  color: var(--color-foreground);
+  font-size: 13px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .drawerItem:hover {
-  background: rgba(17, 24, 39, 0.06);
+  background: var(--color-muted);
 }
 
 .drawerItem.active {
-  background: #02955a12;
-  color: #02955a;
+  background: var(--brand-50);
+  color: var(--brand-700);
 }
 
 .drawerItem.active:hover {
-  background: rgba(2, 149, 90, 0.18);
-  color: #02955a;
+  background: var(--brand-100);
+  color: var(--brand-700);
 }
 
 .drawerItemLogout {
   width: 100%;
   display: block;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: 8px;
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
-  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-destructive);
 }
 
 .drawerItemLogout:hover {
   background: rgba(220, 38, 38, 0.08);
-  color: #b91c1c;
+  color: var(--color-destructive);
 }
 
 @media (max-width: $mobile-breakpoint) {
@@ -647,8 +655,8 @@ $mobile-breakpoint: 768px;
     z-index: 30;
     display: flex;
     flex-direction: column;
-    background: #ffffff;
-    box-shadow: 0 -2px 12px rgba(17, 24, 39, 0.06);
+    background: var(--color-card);
+    box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.08);
   }
 
   .mobilePlantStrip {
@@ -657,7 +665,7 @@ $mobile-breakpoint: 768px;
     min-height: var(--mobile-plant-strip-height);
     padding: 0 8px;
     border-bottom: 1px solid var(--mobile-border);
-    background: #fafafa;
+    background: var(--color-muted);
   }
 
   .mobilePlantStrip__btn {
@@ -673,7 +681,7 @@ $mobile-breakpoint: 768px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--color-foreground);
     text-align: left;
   }
 
@@ -683,11 +691,11 @@ $mobile-breakpoint: 768px;
   }
 
   .mobilePlantStrip__btn--active {
-    color: var(--mobile-teal);
+    color: var(--color-primary);
   }
 
   .mobilePlantStrip__btn--open {
-    box-shadow: inset 0 0 0 1px rgba(51, 179, 140, 0.35);
+    box-shadow: inset 0 0 0 1px var(--brand-300);
   }
 
   .mobilePlantStrip__icon {
@@ -705,4 +713,3 @@ $mobile-breakpoint: 768px;
     white-space: nowrap;
   }
 }
-

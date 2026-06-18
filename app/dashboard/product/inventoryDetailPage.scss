@@ -4,7 +4,7 @@
 }
 
 .inventoryDetailPage .breadcrumbLink:hover {
-  color: #02955a;
+  color: var(--color-primary);
   text-decoration: underline;
 }
 
@@ -22,7 +22,7 @@
   align-self: flex-start;
   font-size: 14px;
   font-weight: 500;
-  color: #02955a;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -165,7 +165,7 @@
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  background: #02955a;
+  background: var(--color-primary);
   cursor: pointer;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .inventoryDetailTabActive {
-  color: #02955a;
+  color: var(--color-primary);
   background: rgba(2, 149, 90, 0.1);
   border-color: rgba(2, 149, 90, 0.25);
 }

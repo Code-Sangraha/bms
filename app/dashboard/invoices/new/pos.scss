@@ -1,6 +1,6 @@
 /* Point of Sale — full-width layout + mobile patterns (aligned with livestock sales) */
 
-$brand: #02955a;
+$brand: var(--color-primary);
 $brand-muted: rgba(2, 149, 90, 0.1);
 $brand-ring: rgba(2, 149, 90, 0.18);
 $text: #111827;
@@ -921,8 +921,8 @@ $radius-pill: 9999px;
 
 .posAddMoreBtn:hover {
   background: #f9fafb;
-  border-color: #02955a;
-  color: #02955a;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .posCheckoutBtn {

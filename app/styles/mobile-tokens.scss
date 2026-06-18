@@ -1,17 +1,25 @@
-/* Reference-aligned mobile design tokens — load with `@use "…/mobile-tokens" as *;` from component SCSS. */
+/*
+ * Mobile design tokens.
+ *
+ * These vars are kept for backwards compatibility with the mobile-only SCSS
+ * modules. They now read from the new shadcn/brand token set in
+ * `app/globals.css` so the mobile shell follows the same theme automatically.
+ *
+ * Load with: `@use "…/mobile-tokens" as *;`
+ */
 :root {
-  --mobile-page-bg: #f5f6f8;
-  --mobile-card-bg: #ffffff;
+  --mobile-page-bg: var(--color-muted, #f5f6f8);
+  --mobile-card-bg: var(--color-card, #ffffff);
   --mobile-card-radius: 12px;
-  --mobile-border: rgba(0, 0, 0, 0.08);
-  --mobile-teal: #33b38c;
-  --mobile-teal-dark: #02955a;
-  --mobile-teal-soft: rgba(51, 179, 140, 0.12);
+  --mobile-border: var(--color-border, rgba(0, 0, 0, 0.08));
+  --mobile-teal: var(--brand-400, #2cb673);
+  --mobile-teal-dark: var(--brand-500, #02955a);
+  --mobile-teal-soft: var(--brand-50, rgba(2, 149, 90, 0.08));
   --mobile-coral: #e85d6f;
   --mobile-coral-soft: rgba(232, 93, 111, 0.12);
   --mobile-lavender: #e8e4f5;
-  --mobile-text: #1f2937;
-  --mobile-text-muted: #6b7280;
+  --mobile-text: var(--color-foreground, #1f2937);
+  --mobile-text-muted: var(--color-muted-foreground, #6b7280);
   --mobile-nav-height: 56px;
   --mobile-plant-strip-height: 40px;
   /* Set by Sidebar on mobile: nav-only (56) or nav+plant strip (96) */

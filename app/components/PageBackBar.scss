@@ -1,7 +1,7 @@
 .pageBackBar {
   width: 100%;
   align-self: stretch;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   flex-shrink: 0;
 }
 
@@ -9,13 +9,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.7rem;
   border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(17, 24, 39, 0.03);
-  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-foreground);
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -24,20 +24,21 @@
 }
 
 .pageBackButton:hover {
-  background: rgba(17, 24, 39, 0.06);
-  border-color: rgba(0, 0, 0, 0.14);
+  background: var(--color-muted);
+  border-color: var(--brand-200);
+  color: var(--brand-700);
 }
 
 .pageBackButton:focus-visible {
-  outline: 2px solid #02955a;
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 
 .pageBackIcon {
   flex-shrink: 0;
-  color: #374151;
+  color: var(--color-muted-foreground);
 }
 
 .pageBackButton:hover .pageBackIcon {
-  color: #02955a;
+  color: var(--color-primary);
 }

@@ -66,7 +66,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #02955a;
+  color: var(--color-primary);
   margin-bottom: 16px;
 }
 
@@ -186,12 +186,12 @@
 }
 
 .clockInOutBtnGreen {
-  background: #02955a;
+  background: var(--color-primary);
   color: #ffffff;
 }
 
 .clockInOutBtnGreen:hover:not(:disabled) {
-  background: #027a4a;
+  background: var(--brand-600);
 }
 
 .clockInOutBtnYellow {
@@ -253,5 +253,5 @@
 .clockInOutStatSub {
   font-size: 13px;
   font-weight: 500;
-  color: #02955a;
+  color: var(--color-primary);
 }

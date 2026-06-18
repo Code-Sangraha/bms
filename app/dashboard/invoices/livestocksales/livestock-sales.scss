@@ -1,6 +1,6 @@
-/* Livestock sales — aligned with dashboard POS card patterns (mint accent #02955a) */
+/* Livestock sales — aligned with dashboard POS card patterns (mint accent var(--color-primary)) */
 
-$brand: #02955a;
+$brand: var(--color-primary);
 $brand-muted: rgba(2, 149, 90, 0.1);
 $brand-ring: rgba(2, 149, 90, 0.18);
 $text: #111827;

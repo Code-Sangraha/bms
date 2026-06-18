@@ -4,13 +4,30 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
+
 import { useI18n } from "@/app/providers/I18nProvider";
-import { getTokenFromAuthResponse, getUserFromAuthResponse, register as registerApi } from "@/handlers/auth";
+import {
+  getTokenFromAuthResponse,
+  getUserFromAuthResponse,
+  register as registerApi,
+} from "@/handlers/auth";
 import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
 import { setAuthToken } from "@/lib/auth/token";
 import { setStoredUser } from "@/lib/auth/user";
 import { registerSchema, type RegisterFormValues } from "@/schema/auth";
-import "../auth.scss";
+
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { FormField } from "@/app/components/ui-ext/FormField";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -72,13 +89,18 @@ export default function RegisterPage() {
                 ? user.outletId.trim()
                 : null;
             const fromApiEmail =
-              "email" in user && typeof user.email === "string" && user.email.trim() !== ""
+              "email" in user &&
+              typeof user.email === "string" &&
+              user.email.trim() !== ""
                 ? user.email.trim()
                 : undefined;
             setStoredUser({
               outletId: topOutletId ?? nestedId,
               outletName: nestedName,
-              id: "id" in user && typeof user.id === "string" ? user.id : undefined,
+              id:
+                "id" in user && typeof user.id === "string"
+                  ? user.id
+                  : undefined,
               email: fromApiEmail ?? values.email.trim(),
             });
           } else {
@@ -93,7 +115,9 @@ export default function RegisterPage() {
       }
     },
     onError: () => {
-      setError("root", { message: t("Something went wrong. Please try again.") });
+      setError("root", {
+        message: t("Something went wrong. Please try again."),
+      });
     },
   });
 
@@ -105,105 +129,119 @@ export default function RegisterPage() {
   const errorMessage = errors.root?.message;
 
   return (
-    <div className="authLayout">
-    <div className="authCard">
-      <div className="authHeader">
-        <h1 className="authTitle">{t("Create account")}</h1>
-        <p className="authSubtitle">{t("Register to get started with BMS.")}</p>
-      </div>
+    <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-8">
+      <Card className="w-full max-w-md shadow-md">
+        <CardHeader className="space-y-2 pb-2 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <span className="text-sm font-bold tracking-wide">HMP</span>
+          </div>
+          <CardTitle className="text-xl">{t("Create account")}</CardTitle>
+          <CardDescription>
+            {t("Register to get started with BMS.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            {errorMessage ? (
+              <Alert variant="destructive">
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            ) : null}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="authForm">
-        {errorMessage && <p className="authError">{errorMessage}</p>}
-        <label htmlFor="register-username" className="authField">
-          <span className="authLabel">{t("User name")}</span>
-          <input
-            id="register-username"
-            type="text"
-            placeholder="e.g. John"
-            className="authInput"
-            autoComplete="username"
-            {...registerField("userName")}
-          />
-          {errors.userName && (
-            <span className="authFieldError">{errors.userName.message}</span>
-          )}
-        </label>
-        <label htmlFor="register-fullname" className="authField">
-          <span className="authLabel">{t("Full name")}</span>
-          <input
-            id="register-fullname"
-            type="text"
-            placeholder="e.g. John Doe"
-            className="authInput"
-            autoComplete="name"
-            {...registerField("fullName")}
-          />
-          {errors.fullName && (
-            <span className="authFieldError">{errors.fullName.message}</span>
-          )}
-        </label>
-        <label htmlFor="register-email" className="authField">
-          <span className="authLabel">{t("Email")}</span>
-          <input
-            id="register-email"
-            type="email"
-            placeholder="you@example.com"
-            className="authInput"
-            autoComplete="email"
-            {...registerField("email")}
-          />
-          {errors.email && (
-            <span className="authFieldError">{errors.email.message}</span>
-          )}
-        </label>
-        <label htmlFor="register-password" className="authField">
-          <span className="authLabel">{t("Password")}</span>
-          <input
-            id="register-password"
-            type="password"
-            placeholder="••••••••"
-            className="authInput"
-            autoComplete="new-password"
-            {...registerField("password")}
-          />
-          {errors.password && (
-            <span className="authFieldError">{errors.password.message}</span>
-          )}
-        </label>
-        <label htmlFor="register-confirm" className="authField">
-          <span className="authLabel">{t("Confirm password")}</span>
-          <input
-            id="register-confirm"
-            type="password"
-            placeholder="••••••••"
-            className="authInput"
-            autoComplete="new-password"
-            {...registerField("confirmPassword")}
-          />
-          {errors.confirmPassword && (
-            <span className="authFieldError">
-              {errors.confirmPassword.message}
-            </span>
-          )}
-        </label>
-        <div className="authActions">
-          <button
-            type="submit"
-            className="authButton authButtonPrimary"
-            disabled={loading}
-          >
-            {loading ? t("Creating account…") : t("Create account")}
-          </button>
-        </div>
-      </form>
+            <FormField
+              id="register-username"
+              label={t("User name")}
+              error={errors.userName?.message}
+            >
+              <Input
+                id="register-username"
+                type="text"
+                placeholder="e.g. John"
+                autoComplete="username"
+                aria-invalid={Boolean(errors.userName)}
+                {...registerField("userName")}
+              />
+            </FormField>
 
-      <p className="authFooter">
-        {t("Already have an account?")}{" "}
-        <Link to="/login" className="authLink">
-          {t("Sign in")}
-        </Link>
-      </p>
-    </div>
+            <FormField
+              id="register-fullname"
+              label={t("Full name")}
+              error={errors.fullName?.message}
+            >
+              <Input
+                id="register-fullname"
+                type="text"
+                placeholder="e.g. John Doe"
+                autoComplete="name"
+                aria-invalid={Boolean(errors.fullName)}
+                {...registerField("fullName")}
+              />
+            </FormField>
+
+            <FormField
+              id="register-email"
+              label={t("Email")}
+              error={errors.email?.message}
+            >
+              <Input
+                id="register-email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+                {...registerField("email")}
+              />
+            </FormField>
+
+            <FormField
+              id="register-password"
+              label={t("Password")}
+              error={errors.password?.message}
+            >
+              <Input
+                id="register-password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="new-password"
+                aria-invalid={Boolean(errors.password)}
+                {...registerField("password")}
+              />
+            </FormField>
+
+            <FormField
+              id="register-confirm"
+              label={t("Confirm password")}
+              error={errors.confirmPassword?.message}
+            >
+              <Input
+                id="register-confirm"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="new-password"
+                aria-invalid={Boolean(errors.confirmPassword)}
+                {...registerField("confirmPassword")}
+              />
+            </FormField>
+
+            <Button type="submit" disabled={loading} className="mt-2 w-full">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              {loading ? t("Creating account…") : t("Create account")}
+            </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              {t("Already have an account?")}{" "}
+              <Link
+                to="/login"
+                className="font-medium text-primary hover:underline"
+              >
+                {t("Sign in")}
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

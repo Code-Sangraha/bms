@@ -1,23 +1,181 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter/index.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* -----------------------------------------------------------------
+ * Design tokens
+ *
+ * Brand: Highland green (#02955a). All semantic colors derive from
+ * a small palette so theme changes happen in one place.
+ * ----------------------------------------------------------------- */
+@theme inline {
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --radius-xs: calc(var(--radius) - 6px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+}
 
 :root {
+  --radius: 0.625rem;
+
+  /* Brand palette */
+  --brand-50: #ebfaf2;
+  --brand-100: #c8f0db;
+  --brand-200: #93e0b8;
+  --brand-300: #57cd92;
+  --brand-400: #2cb673;
+  --brand-500: #02955a;
+  --brand-600: #027a4a;
+  --brand-700: #015a37;
+  --brand-800: #014127;
+  --brand-900: #002d1b;
+
+  /* Surfaces */
   --background: #ffffff;
-  --foreground: #171717;
-  /* Mobile redesign tokens (see app/styles/mobile-tokens.scss for full set) */
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Primary = brand green */
+  --primary: var(--brand-500);
+  --primary-foreground: #ffffff;
+
+  /* Secondary = soft neutral surface */
+  --secondary: #f5f6f8;
+  --secondary-foreground: #0f172a;
+
+  /* Muted = lighter neutral, used for chips, skeletons */
+  --muted: #f5f6f8;
+  --muted-foreground: #6b7280;
+
+  /* Accent = subtle brand tint (hover bg, soft highlight) */
+  --accent: var(--brand-50);
+  --accent-foreground: var(--brand-700);
+
+  /* Destructive */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* Status */
+  --success: var(--brand-500);
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --info: #0284c7;
+  --info-foreground: #ffffff;
+
+  /* Borders / inputs / focus ring */
+  --border: rgba(15, 23, 42, 0.08);
+  --input: rgba(15, 23, 42, 0.12);
+  --ring: var(--brand-500);
+
+  /* Legacy mobile tokens kept for compatibility; re-pointed at brand. */
   --mobile-page-bg: #f5f6f8;
-  --mobile-teal: #33b38c;
+  --mobile-teal: var(--brand-400);
   --mobile-coral: #e85d6f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: #0a0f0c;
+  --foreground: #f1f5f4;
+  --card: #111815;
+  --card-foreground: #f1f5f4;
+  --popover: #111815;
+  --popover-foreground: #f1f5f4;
+
+  --primary: var(--brand-400);
+  --primary-foreground: #052016;
+
+  --secondary: #1a2320;
+  --secondary-foreground: #f1f5f4;
+  --muted: #1a2320;
+  --muted-foreground: #98a39f;
+
+  --accent: rgba(2, 149, 90, 0.18);
+  --accent-foreground: var(--brand-300);
+
+  --destructive: #f04438;
+  --destructive-foreground: #1a0a0a;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: var(--brand-400);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: var(--color-border);
+    outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1,
+      "ss01" 1;
+  }
+
+  /* Default form controls match the new ring color */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }

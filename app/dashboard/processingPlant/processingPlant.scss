@@ -118,7 +118,7 @@
   }
 
   .ppCardWorkflow {
-    border-left: 3px solid #02955a;
+    border-left: 3px solid var(--color-primary);
     padding-left: 21px;
   }
 
@@ -149,7 +149,7 @@
     border-radius: 10px;
     font-size: 14px;
     font-weight: 700;
-    color: #027a4a;
+    color: var(--brand-600);
     background: rgba(2, 149, 90, 0.12);
     border: 1px solid rgba(2, 149, 90, 0.2);
   }
@@ -338,7 +338,7 @@
   .ppInput:focus,
   .ppSelect:focus {
     outline: none;
-    border-color: #02955a;
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.15);
   }
 
@@ -352,11 +352,11 @@
   .ppBtnPrimary {
     height: 40px;
     padding: 0 20px;
-    border: 1px solid #02955a;
+    border: 1px solid var(--color-primary);
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
-    background: #02955a;
+    background: var(--color-primary);
     color: #ffffff;
     cursor: pointer;
     white-space: nowrap;
@@ -364,8 +364,8 @@
   }
 
   .ppBtnPrimary:hover:not(:disabled) {
-    background: #027a4a;
-    border-color: #027a4a;
+    background: var(--brand-600);
+    border-color: var(--brand-600);
     box-shadow: 0 4px 12px -2px rgba(2, 149, 90, 0.35);
   }
 
@@ -375,7 +375,7 @@
   }
 
   .ppBtnPrimary:focus-visible {
-    outline: 2px solid #02955a;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
@@ -403,7 +403,7 @@
   }
 
   .ppBtnSecondary:focus-visible {
-    outline: 2px solid #02955a;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
@@ -512,7 +512,7 @@
 
   .ppBadgeActive {
     background: rgba(2, 149, 90, 0.12);
-    color: #027a4a;
+    color: var(--brand-600);
   }
 
   /* —— Pagination block inside card —— */

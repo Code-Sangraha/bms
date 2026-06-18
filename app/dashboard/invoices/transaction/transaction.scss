@@ -1,4 +1,4 @@
-$brand: #33b38c;
+$brand: var(--brand-400);
 $border: rgba(0, 0, 0, 0.08);
 
 .transactionPage {
@@ -35,7 +35,7 @@ $border: rgba(0, 0, 0, 0.08);
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  color: #33b38c;
+  color: var(--brand-400);
   border: 1px solid rgba(51, 179, 140, 0.35);
   background: #fff;
   text-decoration: none;
@@ -323,7 +323,7 @@ $border: rgba(0, 0, 0, 0.08);
     padding: 0 14px;
     border: 1px solid rgba(2, 149, 90, 0.35);
     border-radius: 8px;
-    background: #33b38c;
+    background: var(--brand-400);
     color: #ffffff;
     font-size: 13px;
     font-weight: 600;
@@ -422,7 +422,7 @@ $border: rgba(0, 0, 0, 0.08);
   .transactionCardMobileId {
     font-size: 12px;
     font-weight: 600;
-    color: #33b38c;
+    color: var(--brand-400);
     word-break: break-word;
   }
 

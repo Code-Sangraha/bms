@@ -8,7 +8,7 @@
   width: 100%;
   min-height: var(--mobile-nav-height);
   padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 0px));
-  background: #ffffff;
+  background: var(--color-card, #ffffff);
   border-top: 1px solid var(--mobile-border);
   box-sizing: border-box;
 }
@@ -34,8 +34,8 @@
 }
 
 .mobileBottomNav__tab--active {
-  color: var(--mobile-teal);
-  border-top-color: var(--mobile-teal);
+  color: var(--mobile-teal-dark, var(--color-primary));
+  border-top-color: var(--mobile-teal-dark, var(--color-primary));
 }
 
 .mobileBottomNav__icon {

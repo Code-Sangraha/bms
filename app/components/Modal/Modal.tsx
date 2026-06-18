@@ -1,7 +1,13 @@
 "use client";
 
-import { useI18n } from "@/app/providers/I18nProvider";
-import "./Modal.scss";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type ModalProps = {
   isOpen: boolean;
@@ -14,6 +20,12 @@ type ModalProps = {
   modalClassName?: string;
 };
 
+/**
+ * Backwards-compatible Modal. Same prop surface as the legacy SCSS-based
+ * modal so every existing caller (~12 product/invoice modals + ConfirmModal)
+ * keeps working, but the rendering layer is now shadcn Dialog so it picks up
+ * the theme, focus ring, animations, and a11y for free.
+ */
 export default function Modal({
   isOpen,
   title,
@@ -23,43 +35,30 @@ export default function Modal({
   footer,
   modalClassName,
 }: ModalProps) {
-  const { t } = useI18n();
-
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="modalOverlay" onClick={onClose} aria-hidden="true">
-      <div
-        className={["modal", modalClassName].filter(Boolean).join(" ")}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        onClick={(event) => event.stopPropagation()}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent
+        className={cn(
+          "sm:max-w-2xl",
+          modalClassName,
+        )}
       >
-        <div className="modalHeader">
-          <div>
-            <h2 id="modal-title" className="modalTitle">
-              {title}
-            </h2>
-            {subtitle && <p className="modalSubtitle">{subtitle}</p>}
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {subtitle ? <DialogDescription>{subtitle}</DialogDescription> : null}
+        </DialogHeader>
+        <div className="flex flex-col gap-4">{children}</div>
+        {footer ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+            {footer}
           </div>
-          <button
-            type="button"
-            className="modalClose"
-            aria-label={t("Close modal")}
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="modalBody">{children}</div>
-
-        {footer && <div className="modalActions">{footer}</div>}
-      </div>
-    </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
-

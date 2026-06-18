@@ -317,7 +317,7 @@ export default function DashboardMobileHome({
               const y = chartModel.padT + chartModel.innerH - hIn;
               return (
                 <g key={d.dateKey}>
-                  <rect x={x} y={y} width={chartModel.barW} height={hIn} rx={3} fill="#33b38c" />
+                  <rect x={x} y={y} width={chartModel.barW} height={hIn} rx={3} fill="var(--brand-400, #2cb673)" />
                   <text
                     x={cx}
                     y={chartModel.h - 8}

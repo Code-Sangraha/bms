@@ -47,9 +47,9 @@
 .livestockCategoryPage .addBtn {
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #02955a;
+  border: 1px solid var(--color-primary);
   border-radius: 8px;
-  background: #02955a;
+  background: var(--color-primary);
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
@@ -58,8 +58,8 @@
 }
 
 .livestockCategoryPage .addBtn:hover {
-  background: #027a4a;
-  border-color: #027a4a;
+  background: var(--brand-600);
+  border-color: var(--brand-600);
 }
 
 .livestockCategoryPage .createForm {
@@ -88,7 +88,7 @@
 
 .livestockCategoryPage .categoryInput:focus {
   outline: none;
-  border-color: #02955a;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(2, 149, 90, 0.15);
 }
 
@@ -118,9 +118,9 @@
 .livestockCategoryPage .saveBtn {
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #02955a;
+  border: 1px solid var(--color-primary);
   border-radius: 8px;
-  background: #02955a;
+  background: var(--color-primary);
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
@@ -128,8 +128,8 @@
 }
 
 .livestockCategoryPage .saveBtn:hover:not(:disabled) {
-  background: #027a4a;
-  border-color: #027a4a;
+  background: var(--brand-600);
+  border-color: var(--brand-600);
 }
 
 .livestockCategoryPage .saveBtn:disabled {

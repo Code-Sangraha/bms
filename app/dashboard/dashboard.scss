@@ -28,19 +28,19 @@
 }
 
 .dashboardSection {
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .dashboardSectionSales {
-  border-top: 3px solid #02955a;
+  border-top: 3px solid var(--color-primary);
 }
 
 .dashboardSectionAttendance {
-  border-top: 3px solid #2563eb;
+  border-top: 3px solid var(--color-info);
 }
 
 .dashboardSectionHead {
@@ -64,7 +64,7 @@
 .dashboardSectionLink {
   font-size: 13px;
   font-weight: 600;
-  color: #02955a;
+  color: var(--color-primary);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -76,7 +76,7 @@
 }
 
 .dashboardSectionAttendance .dashboardSectionLink {
-  color: #2563eb;
+  color: var(--color-info);
 }
 
 .dashboardBlock {
@@ -294,7 +294,7 @@
 
 .dashboardBarFill {
   height: 100%;
-  background: linear-gradient(90deg, #02955a, #10b981);
+  background: linear-gradient(90deg, var(--color-primary), #10b981);
   border-radius: 999px;
   min-width: 4px;
   transition: width 0.3s ease;

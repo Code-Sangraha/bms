@@ -230,7 +230,7 @@
 
 .badgeActive {
   background: rgba(2, 149, 90, 0.12);
-  color: #02955a;
+  color: var(--color-primary);
 }
 
 .button {
@@ -246,8 +246,8 @@
 }
 
 .buttonPrimary {
-  border-color: #02955a;
-  background: #02955a;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #ffffff;
 }
 

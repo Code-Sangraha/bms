@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+
 import {
   getRefreshTokenFromAuthResponse,
   getTokenFromAuthResponse,
@@ -19,10 +21,25 @@ import {
 import { defaultPathForTier, deriveAccessTier } from "@/lib/auth/accessTier";
 import { normalizeRoleName } from "@/lib/auth/permissions";
 import { setAuthToken, setRefreshToken } from "@/lib/auth/token";
-import { getStoredEmployeeId, getStoredOutletId, setStoredUser } from "@/lib/auth/user";
+import {
+  getStoredEmployeeId,
+  getStoredOutletId,
+  setStoredUser,
+} from "@/lib/auth/user";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { loginSchema, type LoginFormValues } from "@/schema/auth";
-import "../auth.scss";
+
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { FormField } from "@/app/components/ui-ext/FormField";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -76,7 +93,9 @@ export default function LoginPage() {
                 ? user.outletId.trim()
                 : null;
             const roleId =
-              "roleId" in user && typeof user.roleId === "string" && user.roleId.trim() !== ""
+              "roleId" in user &&
+              typeof user.roleId === "string" &&
+              user.roleId.trim() !== ""
                 ? user.roleId.trim()
                 : null;
             const roleName =
@@ -98,22 +117,31 @@ export default function LoginPage() {
                 ? (user as { name: string }).name.trim()
                 : undefined;
             const apiUserFullName =
-              "fullName" in user && typeof user.fullName === "string" && user.fullName.trim() !== ""
+              "fullName" in user &&
+              typeof user.fullName === "string" &&
+              user.fullName.trim() !== ""
                 ? user.fullName.trim()
                 : undefined;
             const fromApiEmail =
-              "email" in user && typeof user.email === "string" && user.email.trim() !== ""
+              "email" in user &&
+              typeof user.email === "string" &&
+              user.email.trim() !== ""
                 ? user.email.trim()
                 : undefined;
             const responseData = result.data.data ?? result.data;
             const permissions = Array.isArray(responseData.permissions)
-              ? responseData.permissions.filter((p): p is string => typeof p === "string")
+              ? responseData.permissions.filter(
+                  (p): p is string => typeof p === "string",
+                )
               : [];
             const loggedInIdentity = values.email.trim();
             setStoredUser({
               outletId: topOutletId ?? nestedId ?? null,
               outletName: nestedName ?? null,
-              id: "id" in user && typeof user.id === "string" ? user.id.trim() || null : undefined,
+              id:
+                "id" in user && typeof user.id === "string"
+                  ? user.id.trim() || null
+                  : undefined,
               roleId,
               roleName,
               permissions,
@@ -125,21 +153,30 @@ export default function LoginPage() {
             setStoredUser({ email: values.email.trim() });
           }
           syncStoredOutletFromAccessToken(token);
-          const roleName = normalizeRoleName(getRoleFromToken()) ?? (getStoredEmployeeId() ? "Staff" : null);
+          const roleName =
+            normalizeRoleName(getRoleFromToken()) ??
+            (getStoredEmployeeId() ? "Staff" : null);
           const outletId = getOutletIdFromToken() ?? getStoredOutletId();
-          const accessTier = deriveAccessTier({ roleName, userOutletId: outletId });
+          const accessTier = deriveAccessTier({
+            roleName,
+            userOutletId: outletId,
+          });
           queryClient.cancelQueries();
           queryClient.clear();
           navigate(defaultPathForTier(accessTier, outletId), { replace: true });
         } else {
-          setError("root", { message: t("No token received. Please try again.") });
+          setError("root", {
+            message: t("No token received. Please try again."),
+          });
         }
       } else {
         setError("root", { message: result.error });
       }
     },
     onError: () => {
-      setError("root", { message: t("Something went wrong. Please try again.") });
+      setError("root", {
+        message: t("Something went wrong. Please try again."),
+      });
     },
   });
 
@@ -150,58 +187,86 @@ export default function LoginPage() {
   const loading = isSubmitting || mutation.isPending;
 
   return (
-    <div className="authLayout">
-      <div className="authCard">
-        <div className="authHeader">
-          <h1 className="authTitle">{t("Sign in")}</h1>
-          <p className="authSubtitle">
-            {t("Enter your credentials to access Highland Meat Processing.")}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="authForm" noValidate>
-          {errors.root?.message && <p className="authError">{errors.root.message}</p>}
-          <label htmlFor="login-identifier" className="authField">
-            <span className="authLabel">{t("Email or Employee ID")}</span>
-            <input
-              id="login-identifier"
-              type="text"
-              placeholder={t("e.g. you@example.com or staff ID")}
-              className="authInput"
-              autoComplete="username"
-              {...registerField("email")}
-            />
-            {errors.email && <span className="authFieldError">{errors.email.message}</span>}
-          </label>
-          <label htmlFor="login-password" className="authField">
-            <span className="authLabel">{t("Password")}</span>
-            <div className="authPasswordWrap">
-              <input
-                id="login-password"
-                type={showPassword ? "text" : "password"}
-                placeholder={t("Enter your password")}
-                className="authInput authInputPassword"
-                autoComplete="current-password"
-                {...registerField("password")}
-              />
-              <button
-                type="button"
-                className="authPasswordToggle"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? t("Hide password") : t("Show password")}
-              >
-                {showPassword ? t("Hide") : t("Show")}
-              </button>
-            </div>
-            {errors.password && <span className="authFieldError">{errors.password.message}</span>}
-          </label>
-          <div className="authActions">
-            <button type="submit" className="authButton authButtonPrimary" disabled={loading}>
-              {loading ? t("Signing in…") : t("Sign in")}
-            </button>
+    <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-8">
+      <Card className="w-full max-w-md shadow-md">
+        <CardHeader className="space-y-2 pb-2 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <span className="text-sm font-bold tracking-wide">HMP</span>
           </div>
-        </form>
-      </div>
+          <CardTitle className="text-xl">{t("Sign in")}</CardTitle>
+          <CardDescription>
+            {t("Enter your credentials to access Highland Meat Processing.")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+            noValidate
+          >
+            {errors.root?.message ? (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.root.message}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <FormField
+              id="login-identifier"
+              label={t("Email or Employee ID")}
+              error={errors.email?.message}
+            >
+              <Input
+                id="login-identifier"
+                type="text"
+                placeholder={t("e.g. you@example.com or staff ID")}
+                autoComplete="username"
+                aria-invalid={Boolean(errors.email)}
+                {...registerField("email")}
+              />
+            </FormField>
+
+            <FormField
+              id="login-password"
+              label={t("Password")}
+              error={errors.password?.message}
+            >
+              <div className="relative">
+                <Input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={t("Enter your password")}
+                  autoComplete="current-password"
+                  aria-invalid={Boolean(errors.password)}
+                  className="pr-10"
+                  {...registerField("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={
+                    showPassword ? t("Hide password") : t("Show password")
+                  }
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
+              </div>
+            </FormField>
+
+            <Button type="submit" disabled={loading} className="mt-2 w-full">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              {loading ? t("Signing in…") : t("Sign in")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
