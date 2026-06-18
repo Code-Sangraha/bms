@@ -40,6 +40,21 @@ import {
   type SalesByOutletItem,
   type SalesByProductItem,
 } from "@/handlers/sale";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import { Badge } from "@/app/components/ui/badge";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import {
+  CardGridSkeleton,
+  TableSkeleton,
+} from "@/app/components/ui-ext/LoadingState";
 import "./dashboard.scss";
 import DashboardMobileHome, { type CashflowDay } from "./components/DashboardMobileHome";
 import LivestockCompletePartialPaymentModal from "./product/liveProduct/LivestockCompletePartialPaymentModal";
@@ -916,11 +931,21 @@ export default function DashboardPage() {
         </div>
 
         {salesLoading && (
-          <div className="dashboardBlock dashboardMessage">{t("Loading sales…")}</div>
+          <div className="dashboardBlock flex flex-col gap-4">
+            <CardGridSkeleton count={4} />
+            <TableSkeleton rows={6} columns={5} />
+          </div>
         )}
         {salesError && (
-          <div className="dashboardBlock dashboardMessage dashboardError">
-            {salesErrorDetail instanceof Error ? salesErrorDetail.message : t("Failed to load sales")}
+          <div className="dashboardBlock">
+            <ErrorState
+              title={t("Failed to load sales")}
+              description={
+                salesErrorDetail instanceof Error
+                  ? salesErrorDetail.message
+                  : t("We couldn't load this section. Please try again.")
+              }
+            />
           </div>
         )}
 
@@ -942,29 +967,29 @@ export default function DashboardPage() {
             {dailySalesRows.length > 0 && (
               <div className="dashboardChartBlock dashboardLiveStockBlock">
                 <h3 className="dashboardChartTitle">{t("Per Day Sales")}</h3>
-                <div className="dashboardSalesTableWrap">
-                  <table className="dashboardSalesTable">
-                    <thead>
-                      <tr>
-                        <th>{t("Date")}</th>
-                        <th>{t("Revenue")}</th>
-                        <th>{t("Transactions")}</th>
-                        <th>{t("Weight Sold")}</th>
-                        <th>{t("Quantity Sold")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-hidden rounded-lg border bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Date")}</TableHead>
+                        <TableHead>{t("Revenue")}</TableHead>
+                        <TableHead>{t("Transactions")}</TableHead>
+                        <TableHead>{t("Weight Sold")}</TableHead>
+                        <TableHead>{t("Quantity Sold")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {dailySalesRows.map((row) => (
-                        <tr key={row.dateKey}>
-                          <td>{row.dateKey}</td>
-                          <td>{formatDashboardMoney(row.revenue)}</td>
-                          <td>{row.transactions}</td>
-                          <td>{formatDashboardDecimal(row.weight)} kg</td>
-                          <td>{formatDashboardDecimal(row.quantity)}</td>
-                        </tr>
+                        <TableRow key={row.dateKey}>
+                          <TableCell>{row.dateKey}</TableCell>
+                          <TableCell>{formatDashboardMoney(row.revenue)}</TableCell>
+                          <TableCell>{row.transactions}</TableCell>
+                          <TableCell>{formatDashboardDecimal(row.weight)} kg</TableCell>
+                          <TableCell>{formatDashboardDecimal(row.quantity)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             )}
@@ -1064,7 +1089,12 @@ export default function DashboardPage() {
             )}
 
             {totalTransactions === 0 && salesByOutlet.length === 0 && salesByProduct.length === 0 && salesByCustomer.length === 0 && (
-              <div className="dashboardBlock dashboardMessage">{t("No sales data yet.")}</div>
+              <div className="dashboardBlock">
+                <EmptyState
+                  title={t("No sales data yet.")}
+                  description={t("Sales activity will appear here as soon as transactions are recorded.")}
+                />
+              </div>
             )}
 
             <div className="dashboardChartBlock dashboardLiveStockBlock">
@@ -1113,40 +1143,38 @@ export default function DashboardPage() {
                 </div>
               )}
               {processedRows.length === 0 && (
-                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
-                  {t("No processed sales yet.")}
-                </div>
+                <EmptyState title={t("No processed sales yet.")} />
               )}
               {processedRows.length > 0 && (
-                <div className="dashboardSalesTableWrap">
-                  <table className="dashboardSalesTable">
-                    <thead>
-                      <tr>
-                        <th>{t("Name")}</th>
-                        <th>{t("Contact")}</th>
-                        <th>{t("Type")}</th>
-                        <th>{t("Processed Item")}</th>
-                        <th>{t("Quantity")}</th>
-                        <th>{t("Weight")}</th>
-                        <th>{t("Amount")}</th>
-                        <th>{t("Date")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-hidden rounded-lg border bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Name")}</TableHead>
+                        <TableHead>{t("Contact")}</TableHead>
+                        <TableHead>{t("Type")}</TableHead>
+                        <TableHead>{t("Processed Item")}</TableHead>
+                        <TableHead>{t("Quantity")}</TableHead>
+                        <TableHead>{t("Weight")}</TableHead>
+                        <TableHead>{t("Amount")}</TableHead>
+                        <TableHead>{t("Date")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {processedRows.map((row, index) => (
-                        <tr key={`${row.transactionId}-${row.productName}-${index}`}>
-                          <td>{row.customerName || "-"}</td>
-                          <td>{row.contact || "-"}</td>
-                          <td>{row.type || "-"}</td>
-                          <td>{row.productName || "-"}</td>
-                          <td>{formatDashboardDecimal(row.quantity || 0)}</td>
-                          <td>{formatDashboardDecimal(row.weight || 0)}</td>
-                          <td>{formatDashboardMoney(row.amount)}</td>
-                          <td>{row.date ? new Date(row.date).toLocaleString() : "-"}</td>
-                        </tr>
+                        <TableRow key={`${row.transactionId}-${row.productName}-${index}`}>
+                          <TableCell>{row.customerName || "-"}</TableCell>
+                          <TableCell>{row.contact || "-"}</TableCell>
+                          <TableCell>{row.type || "-"}</TableCell>
+                          <TableCell>{row.productName || "-"}</TableCell>
+                          <TableCell>{formatDashboardDecimal(row.quantity || 0)}</TableCell>
+                          <TableCell>{formatDashboardDecimal(row.weight || 0)}</TableCell>
+                          <TableCell>{formatDashboardMoney(row.amount)}</TableCell>
+                          <TableCell>{row.date ? new Date(row.date).toLocaleString() : "-"}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </div>
@@ -1181,56 +1209,55 @@ export default function DashboardPage() {
                 />
               </div>
               {livestockSalesLoading && (
-                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
-                  {t("Loading sales…")}
-                </div>
+                <TableSkeleton rows={5} columns={6} />
               )}
               {livestockSalesError && (
-                <div className="dashboardBlock dashboardMessage dashboardError dashboardMessageInline">
-                  {livestockSalesErrorDetail instanceof Error
-                    ? livestockSalesErrorDetail.message
-                    : t("Failed to load sales")}
-                </div>
+                <ErrorState
+                  title={t("Failed to load sales")}
+                  description={
+                    livestockSalesErrorDetail instanceof Error
+                      ? livestockSalesErrorDetail.message
+                      : t("We couldn't load this section. Please try again.")
+                  }
+                />
               )}
               {!livestockSalesLoading && !livestockSalesError && livestockSalesRows.length === 0 && (
-                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
-                  {t("No live stock sales yet.")}
-                </div>
+                <EmptyState title={t("No live stock sales yet.")} />
               )}
               {!livestockSalesLoading && !livestockSalesError && livestockSalesRows.length > 0 && (
-                <div className="dashboardSalesTableWrap">
-                  <table className="dashboardSalesTable">
-                    <thead>
-                      <tr>
-                        <th>{t("Name")}</th>
-                        <th>{t("Contact")}</th>
-                        <th>{t("Livestock Item")}</th>
-                        <th>{t("Quantity")}</th>
-                        <th>{t("Amount")}</th>
-                        <th>{t("Date")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-hidden rounded-lg border bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Name")}</TableHead>
+                        <TableHead>{t("Contact")}</TableHead>
+                        <TableHead>{t("Livestock Item")}</TableHead>
+                        <TableHead>{t("Quantity")}</TableHead>
+                        <TableHead>{t("Amount")}</TableHead>
+                        <TableHead>{t("Date")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {livestockSalesRows.map((row: LivestockSale, index) => {
                         const rowDate = row.createdAt ?? row.date;
                         const quantity = row.quantity ?? row.itemQuantityOrWeight ?? row.weight;
                         return (
-                          <tr key={`${row.id ?? row.transactionId ?? "ls"}-${index}`}>
-                            <td>{row.name ?? "-"}</td>
-                            <td>{row.contact ?? "-"}</td>
-                            <td>{getLivestockDisplay(row)}</td>
-                            <td>{typeof quantity === "number" ? formatDashboardDecimal(quantity) : "-"}</td>
-                            <td>
+                          <TableRow key={`${row.id ?? row.transactionId ?? "ls"}-${index}`}>
+                            <TableCell>{row.name ?? "-"}</TableCell>
+                            <TableCell>{row.contact ?? "-"}</TableCell>
+                            <TableCell>{getLivestockDisplay(row)}</TableCell>
+                            <TableCell>{typeof quantity === "number" ? formatDashboardDecimal(quantity) : "-"}</TableCell>
+                            <TableCell>
                               {typeof row.amount === "number"
                                 ? formatDashboardMoney(row.amount)
                                 : "-"}
-                            </td>
-                            <td>{rowDate ? new Date(rowDate).toLocaleString() : "-"}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell>{rowDate ? new Date(rowDate).toLocaleString() : "-"}</TableCell>
+                          </TableRow>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </div>
@@ -1255,53 +1282,52 @@ export default function DashboardPage() {
                 </div>
               )}
               {livestockExpenseLoading && (
-                <div className="dashboardBlock dashboardMessage dashboardMessageInline">
-                  {t("Loading expense history…")}
-                </div>
+                <TableSkeleton rows={5} columns={canRecordPayment ? 8 : 7} />
               )}
               {livestockExpenseError && (
-                <div className="dashboardBlock dashboardMessage dashboardError dashboardMessageInline">
-                  {livestockExpenseErrorDetail instanceof Error
-                    ? livestockExpenseErrorDetail.message
-                    : t("Failed to load expense history")}
-                </div>
+                <ErrorState
+                  title={t("Failed to load expense history")}
+                  description={
+                    livestockExpenseErrorDetail instanceof Error
+                      ? livestockExpenseErrorDetail.message
+                      : t("We couldn't load this section. Please try again.")
+                  }
+                />
               )}
               {!livestockExpenseLoading &&
                 !livestockExpenseError &&
                 dashboardExpenseRows.length === 0 && (
-                  <div className="dashboardBlock dashboardMessage dashboardMessageInline">
-                    {t("No restock expense records yet.")}
-                  </div>
+                  <EmptyState title={t("No restock expense records yet.")} />
                 )}
               {!livestockExpenseLoading &&
                 !livestockExpenseError &&
                 dashboardExpenseRows.length > 0 && (
-                  <div className="dashboardSalesTableWrap">
-                    <table className="dashboardSalesTable">
-                      <thead>
-                        <tr>
-                          <th>{t("Date")}</th>
-                          <th>{t("Livestock Item")}</th>
-                          <th>{t("Supplier name")}</th>
-                          <th>{t("Total amount")}</th>
-                          <th>{t("Paid amount")}</th>
-                          <th>{t("Due amount")}</th>
-                          <th>{t("Payment status")}</th>
-                          {canRecordPayment && <th>{t("Actions")}</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="overflow-hidden rounded-lg border bg-card">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("Date")}</TableHead>
+                          <TableHead>{t("Livestock Item")}</TableHead>
+                          <TableHead>{t("Supplier name")}</TableHead>
+                          <TableHead>{t("Total amount")}</TableHead>
+                          <TableHead>{t("Paid amount")}</TableHead>
+                          <TableHead>{t("Due amount")}</TableHead>
+                          <TableHead>{t("Payment status")}</TableHead>
+                          {canRecordPayment && <TableHead>{t("Actions")}</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {dashboardExpenseRows.map((row) => (
-                          <tr key={row.id}>
-                            <td>{formatDashboardExpenseDate(row.createdAt)}</td>
-                            <td>{row.livestockItem.name}</td>
-                            <td>{row.supplierName}</td>
-                            <td>{formatDashboardMoney(row.totalAmount)}</td>
-                            <td>{formatDashboardMoney(row.paidAmount)}</td>
-                            <td>{formatDashboardMoney(row.dueAmount)}</td>
-                            <td>{expensePaymentStatusLabel(row.paymentStatus, t)}</td>
+                          <TableRow key={row.id}>
+                            <TableCell>{formatDashboardExpenseDate(row.createdAt)}</TableCell>
+                            <TableCell>{row.livestockItem.name}</TableCell>
+                            <TableCell>{row.supplierName}</TableCell>
+                            <TableCell>{formatDashboardMoney(row.totalAmount)}</TableCell>
+                            <TableCell>{formatDashboardMoney(row.paidAmount)}</TableCell>
+                            <TableCell>{formatDashboardMoney(row.dueAmount)}</TableCell>
+                            <TableCell>{expensePaymentStatusLabel(row.paymentStatus, t)}</TableCell>
                             {canRecordPayment && (
-                              <td>
+                              <TableCell>
                                 {canRecordExpensePayment(row.paymentStatus) ? (
                                   <ExpenseRecordPaymentButton
                                     compact
@@ -1310,12 +1336,12 @@ export default function DashboardPage() {
                                 ) : (
                                   "—"
                                 )}
-                              </td>
+                              </TableCell>
                             )}
-                          </tr>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
             </div>
@@ -1353,42 +1379,40 @@ export default function DashboardPage() {
         </div>
         <div className="dashboardChartBlock">
           <h3 className="dashboardChartTitle">{t("Staff attendance summary")}</h3>
-          <div className="dashboardAttendanceTableWrap">
-            <table className="dashboardAttendanceTable">
-              <thead>
-                <tr>
-                  <th>{t("Name")}</th>
-                  <th>{t("Present days")}</th>
-                  <th>{t("Total Hours")}</th>
-                  <th>{t("Status")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dayAttendanceLoading ? (
-                  <tr>
-                    <td colSpan={4}>{t("Loading…")}</td>
-                  </tr>
-                ) : dashboardAttendanceTableRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4}>{t("No attendance records yet.")}</td>
-                  </tr>
-                ) : (
-                  dashboardAttendanceTableRows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{row.sessions}</td>
-                      <td>{row.hours}</td>
-                      <td>
-                        <span className={`dashboardPill dashboardPill${row.status}`}>
+          {dayAttendanceLoading ? (
+            <TableSkeleton rows={5} columns={4} />
+          ) : dashboardAttendanceTableRows.length === 0 ? (
+            <EmptyState title={t("No attendance records yet.")} />
+          ) : (
+            <div className="overflow-hidden rounded-lg border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("Name")}</TableHead>
+                    <TableHead>{t("Present days")}</TableHead>
+                    <TableHead>{t("Total Hours")}</TableHead>
+                    <TableHead>{t("Status")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dashboardAttendanceTableRows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.sessions}</TableCell>
+                      <TableCell>{row.hours}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={row.status === "Present" ? "success" : "warning"}
+                        >
                           {t(row.status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       </div>
       ) : null}

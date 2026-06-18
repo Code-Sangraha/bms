@@ -3,14 +3,35 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useForm } from "react-hook-form";
+import { useMemo, useState, type FormEvent, useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { getOutlets } from "@/handlers/outlet";
 import { getRoles } from "@/handlers/role";
@@ -46,7 +67,6 @@ export default function UsersPage() {
   const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [openActionUserId, setOpenActionUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editModalUser, setEditModalUser] = useState<User | null>(null);
@@ -103,6 +123,7 @@ export default function UsersPage() {
     handleSubmit,
     setError,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),
@@ -112,12 +133,6 @@ export default function UsersPage() {
   useEffect(() => {
     if (!isModalOpen) reset(defaultFormValues);
   }, [isModalOpen, reset]);
-
-  useEffect(() => {
-    const handleWindowClick = () => setOpenActionUserId(null);
-    window.addEventListener("click", handleWindowClick);
-    return () => window.removeEventListener("click", handleWindowClick);
-  }, []);
 
   const createMutation = useMutation({
     mutationFn: (values: CreateUserFormValues) => createUserApi(values),
@@ -145,7 +160,6 @@ export default function UsersPage() {
       if (result.ok) {
         setDeleteError(null);
         setUserToDelete(null);
-        setOpenActionUserId(null);
         queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       } else if (result.status === 401) {
         setUserToDelete(null);
@@ -207,7 +221,6 @@ export default function UsersPage() {
   };
 
   const handleOpenEdit = (user: User) => {
-    setOpenActionUserId(null);
     setEditError(null);
     setEditModalUser(user);
     setEditFullName(typeof user.fullName === "string" ? user.fullName : "");
@@ -242,7 +255,6 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = (user: User) => {
-    setOpenActionUserId(null);
     setUserToDelete(user);
   };
 
@@ -300,67 +312,72 @@ export default function UsersPage() {
           <p className="pageSubtitle">{t("Manage system users and permissions")}</p>
         </div>
         {canCreate && (
-          <button
-            type="button"
-            className="button buttonPrimary"
-            onClick={() => setIsModalOpen(true)}
-          >
+          <Button type="button" onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
             {t("Add User")}
-          </button>
+          </Button>
         )}
       </div>
 
-      <div className="usersSearch">
-        <span className="searchIcon">🔍</span>
-        <input
-          className="searchInput"
+      <div className="relative w-full sm:max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
           placeholder={t("Search users")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label={t("Search users")}
+          className="pl-8"
         />
       </div>
-      {deleteError && <p className="usersDeleteError">{deleteError}</p>}
+      {deleteError && (
+        <Alert variant="destructive">
+          <AlertDescription>{deleteError}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="usersTable">
-        <div className="usersRow usersRowHeader">
-          <span>{t("Employee ID")}</span>
-          <span>{t("Name")}</span>
-          <span>{t("Role")}</span>
-          <span>{t("Contact")}</span>
-        </div>
-        {usersLoading && (
-          <div className="usersRow usersRowMessage">
-            <span className="usersMessage">{t("Loading users…")}</span>
-          </div>
+      {usersLoading && <TableSkeleton rows={6} columns={4} />}
+      {usersError && (
+        <ErrorState
+          title={t("Failed to load users")}
+          description={
+            usersErrorDetail instanceof Error
+              ? usersErrorDetail.message
+              : undefined
+          }
+        />
+      )}
+      {!usersLoading && !usersError && users.length === 0 && (
+        <EmptyState
+          title={t("No users yet. Add one to get started.")}
+          action={
+            canCreate ? (
+              <Button type="button" onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add User")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!usersLoading &&
+        !usersError &&
+        users.length > 0 &&
+        filteredUsers.length === 0 && (
+          <EmptyState title={`${t("No users match")} "${searchQuery.trim()}"`} />
         )}
-        {usersError && (
-          <div className="usersRow usersRowMessage">
-            <span className="usersMessage usersError">
-              {usersErrorDetail instanceof Error
-                ? usersErrorDetail.message
-                : t("Failed to load users")}
-            </span>
+      {!usersLoading && !usersError && filteredUsers.length > 0 && (
+        <div className="usersTable">
+          <div className="usersRow usersRowHeader">
+            <span>{t("Employee ID")}</span>
+            <span>{t("Name")}</span>
+            <span>{t("Role")}</span>
+            <span>{t("Contact")}</span>
           </div>
-        )}
-        {!usersLoading && !usersError && users.length === 0 && (
-          <div className="usersRow usersRowMessage">
-            <span className="usersMessage">{t("No users yet. Add one to get started.")}</span>
-          </div>
-        )}
-        {!usersLoading &&
-          !usersError &&
-          users.length > 0 &&
-          filteredUsers.length === 0 && (
-            <div className="usersRow usersRowMessage">
-              <span className="usersMessage">
-                {t("No users match")} &quot;{searchQuery.trim()}&quot;.
-              </span>
-            </div>
-          )}
-        {!usersLoading &&
-          !usersError &&
-          paginatedUsers.map((user) => (
+          {paginatedUsers.map((user) => (
             <div key={user.id} className="usersRow usersRowData">
               <span className="usersCellId">{user.id}</span>
               <span className="usersCellName" data-field-label={t("Name")}>
@@ -368,44 +385,34 @@ export default function UsersPage() {
               </span>
               <div className="usersRoleActions">
                 <div>
-                <span className="usersRoleLabelMobile">{t("Role")}</span>
-                <span className="usersRoleValue">{getRoleName(user)}</span>
+                  <span className="usersRoleLabelMobile">{t("Role")}</span>
+                  <span className="usersRoleValue">{getRoleName(user)}</span>
                 </div>
                 <span className="usersActionsCell">
-                  <button
-                    type="button"
-                    className="moreButton"
-                    aria-label={t("Open actions")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenActionUserId((prev) => (prev === user.id ? null : user.id));
-                    }}
-                  >
-                    ⋮
-                  </button>
-                  {openActionUserId === user.id && (
-                    <div
-                      className="usersActionsMenu"
-                      role="menu"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
                         type="button"
-                        className="usersActionItem"
-                        onClick={() => handleOpenEdit(user)}
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("Open actions")}
                       >
+                        <MoreHorizontal className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => handleOpenEdit(user)}>
                         {t("Edit")}
-                      </button>
-                      <button
-                        type="button"
-                        className="usersActionItem usersActionDelete"
-                        onClick={() => handleDeleteUser(user)}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => handleDeleteUser(user)}
                         disabled={deleteMutation.isPending}
+                        className="text-destructive focus:text-destructive"
                       >
                         {deleteMutation.isPending ? t("Deleting…") : t("Delete")}
-                      </button>
-                    </div>
-                  )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </span>
               </div>
               <span className="usersCellContact" data-field-label={t("Contact")}>
@@ -413,7 +420,8 @@ export default function UsersPage() {
               </span>
             </div>
           ))}
-      </div>
+        </div>
+      )}
 
       {!usersLoading && !usersError && filteredUsers.length > 0 && (
         <Pagination
@@ -434,97 +442,86 @@ export default function UsersPage() {
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
-              type="submit"
-              form="add-user-form"
-              className="button buttonPrimary modalButton"
-              disabled={loading}
-            >
+            </Button>
+            <Button type="submit" form="add-user-form" disabled={loading}>
               {loading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-user-form"
           onSubmit={handleSubmit(onAddSubmit)}
-          className="usersAddForm"
+          className="space-y-4"
         >
           {errors.root?.message && (
-            <p className="usersFormError" role="alert">
-              {errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{errors.root.message}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Full name")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. John Smith")}
-              {...register("fullName")}
-            />
-            {errors.fullName && (
-              <span className="usersFieldError">{errors.fullName.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Email")}</span>
-            <input
-              className="input"
+          <FormField label={t("Full name")} error={errors.fullName?.message}>
+            <Input placeholder={t("e.g. John Smith")} {...register("fullName")} />
+          </FormField>
+          <FormField label={t("Email")} error={errors.email?.message}>
+            <Input
               type="email"
               placeholder={t("e.g. john@example.com")}
               {...register("email")}
             />
-            {errors.email && (
-              <span className="usersFieldError">{errors.email.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Contact")}</span>
-            <input
-              className="input"
+          </FormField>
+          <FormField label={t("Contact")} error={errors.contact?.message}>
+            <Input
               type="text"
               placeholder={t("e.g. +91 9876543210")}
               {...register("contact")}
             />
-            {errors.contact && (
-              <span className="usersFieldError">{errors.contact.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Role")}</span>
-            <select className="select" {...register("roleId")}>
-              <option value="">{t("Select role")}</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-            {errors.roleId && (
-              <span className="usersFieldError">{errors.roleId.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...register("outletId")}>
-              <option value="">{t("No outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {errors.outletId && (
-              <span className="usersFieldError">{errors.outletId.message}</span>
-            )}
-          </label>
+          </FormField>
+          <FormField label={t("Role")} error={errors.roleId?.message}>
+            <Controller
+              control={control}
+              name="roleId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select role")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
+          <FormField label={t("Outlet")} error={errors.outletId?.message}>
+            <Controller
+              control={control}
+              name="outletId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("No outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
 
@@ -551,89 +548,80 @@ export default function UsersPage() {
         onClose={() => setEditModalUser(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditModalUser(null)}
             >
               {t("Cancel")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="edit-user-form"
-              className="button buttonPrimary modalButton"
               disabled={updateMutation.isPending}
             >
               {updateMutation.isPending ? t("Saving…") : t("Update")}
-            </button>
+            </Button>
           </>
         }
       >
-        <form id="edit-user-form" onSubmit={handleEditSubmit} className="usersAddForm">
+        <form id="edit-user-form" onSubmit={handleEditSubmit} className="space-y-4">
           {editError && (
-            <p className="usersFormError" role="alert">
-              {editError}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{editError}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Full name")}</span>
-            <input
-              className="input"
+          <FormField label={t("Full name")}>
+            <Input
               value={editFullName}
               onChange={(e) => setEditFullName(e.target.value)}
               placeholder={t("e.g. John Smith")}
             />
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Email")}</span>
-            <input
-              className="input"
+          </FormField>
+          <FormField label={t("Email")}>
+            <Input
               type="email"
               value={editEmail}
               onChange={(e) => setEditEmail(e.target.value)}
               placeholder={t("e.g. john@example.com")}
             />
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Contact")}</span>
-            <input
-              className="input"
+          </FormField>
+          <FormField label={t("Contact")}>
+            <Input
               type="text"
               value={editContact}
               onChange={(e) => setEditContact(e.target.value)}
               placeholder={t("e.g. +91 9876543210")}
             />
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Role")}</span>
-            <select
-              className="select"
-              value={editRoleId}
-              onChange={(e) => setEditRoleId(e.target.value)}
-            >
-              <option value="">{t("Select role")}</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select
-              className="select"
-              value={editOutletId}
-              onChange={(e) => setEditOutletId(e.target.value)}
-            >
-              <option value="">{t("No outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Role")}>
+            <Select value={editRoleId || undefined} onValueChange={setEditRoleId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("Select role")} />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label={t("Outlet")}>
+            <Select value={editOutletId || undefined} onValueChange={setEditOutletId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("No outlet")} />
+              </SelectTrigger>
+              <SelectContent>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </form>
       </Modal>
     </section>

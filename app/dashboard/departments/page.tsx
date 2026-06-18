@@ -3,13 +3,43 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Badge } from "@/app/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createDepartment as createDepartmentApi,
@@ -44,11 +74,9 @@ export default function DepartmentsPage() {
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const { t } = useI18n();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: departments = [],
@@ -84,20 +112,6 @@ export default function DepartmentsPage() {
   useEffect(() => {
     if (editingDepartment) editForm.reset(toFormValues(editingDepartment));
   }, [editingDepartment, editForm.reset]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const createMutation = useMutation({
     mutationFn: (values: CreateDepartmentFormValues) =>
@@ -209,141 +223,118 @@ export default function DepartmentsPage() {
           </p>
         </div>
         {canCreate && (
-          <button
-            type="button"
-            className="button buttonPrimary"
-            onClick={() => setIsModalOpen(true)}
-          >
+          <Button type="button" onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
             {t("Add Department")}
-          </button>
+          </Button>
         )}
       </div>
 
-      <div className="departmentsSearch">
-        <span className="searchIcon">🔍</span>
-        <input
-          className="searchInput"
+      <div className="relative w-full sm:max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
           placeholder={t("Search departments")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label={t("Search departments")}
+          className="pl-8"
         />
       </div>
 
-      <div className="departmentsTable">
-        <div className="departmentsRow departmentsRowHeader">
-          <span>{t("Department")}</span>
-          <span>{t("Status")}</span>
-          <span />
-        </div>
-        {departmentsLoading && (
-          <div className="departmentsRow">
-            <span className="departmentsMessage">{t("Loading departments…")}</span>
-            <span />
-            <span />
+      {departmentsLoading && <TableSkeleton rows={6} columns={3} />}
+      {departmentsError && (
+        <ErrorState
+          title={t("Failed to load departments")}
+          description={
+            departmentsErrorDetail instanceof Error
+              ? departmentsErrorDetail.message
+              : undefined
+          }
+        />
+      )}
+      {!departmentsLoading && !departmentsError && departments.length === 0 && (
+        <EmptyState
+          title={t("No departments yet. Add one to get started.")}
+          action={
+            canCreate ? (
+              <Button type="button" onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add Department")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!departmentsLoading &&
+        !departmentsError &&
+        departments.length > 0 &&
+        filteredDepartments.length === 0 && (
+          <EmptyState title={`${t("No departments match")} "${searchQuery.trim()}"`} />
+        )}
+      {!departmentsLoading &&
+        !departmentsError &&
+        filteredDepartments.length > 0 && (
+          <div className="rounded-md border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("Department")}</TableHead>
+                  <TableHead>{t("Status")}</TableHead>
+                  <TableHead className="w-[60px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedDepartments.map((department) => (
+                  <TableRow key={department.id}>
+                    <TableCell className="font-medium">{department.name}</TableCell>
+                    <TableCell>
+                      <Badge variant={department.status ? "default" : "secondary"}>
+                        {department.status ? t("Active") : t("Inactive")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {(canUpdate || canDelete) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={t("More options")}
+                            >
+                              <MoreHorizontal className="h-4 w-4" aria-hidden />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {canUpdate && (
+                              <DropdownMenuItem
+                                onSelect={() => setEditingDepartment(department)}
+                              >
+                                {t("Edit")}
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem
+                                onSelect={() => setDepartmentToDelete(department)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                {t("Delete")}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
-        {departmentsError && (
-          <div className="departmentsRow">
-            <span className="departmentsMessage departmentsError">
-              {departmentsErrorDetail instanceof Error
-                ? departmentsErrorDetail.message
-                : t("Failed to load departments")}
-            </span>
-            <span />
-            <span />
-          </div>
-        )}
-        {!departmentsLoading &&
-          !departmentsError &&
-          departments.length === 0 && (
-            <div className="departmentsRow">
-              <span className="departmentsMessage">
-                {t("No departments yet. Add one to get started.")}
-              </span>
-              <span />
-              <span />
-            </div>
-          )}
-        {!departmentsLoading &&
-          !departmentsError &&
-          departments.length > 0 &&
-          filteredDepartments.length === 0 && (
-            <div className="departmentsRow">
-              <span className="departmentsMessage">
-                {t("No departments match")} &quot;{searchQuery.trim()}&quot;.
-              </span>
-              <span />
-              <span />
-            </div>
-          )}
-        {!departmentsLoading &&
-          !departmentsError &&
-          paginatedDepartments.map((department) => (
-            <div key={department.id} className="departmentsRow">
-              <span>{department.name}</span>
-              <span>
-                <span
-                  className={
-                    department.status ? "badge badgeActive" : "badge"
-                  }
-                >
-                  {department.status ? t("Active") : t("Inactive")}
-                </span>
-              </span>
-              <div
-                className="departmentsMenuWrap"
-                ref={openMenuId === department.id ? menuButtonRef : undefined}
-              >
-                {(canUpdate || canDelete) && (
-                  <>
-                    <button
-                      type="button"
-                      className="departmentsMenuTrigger"
-                      onClick={() =>
-                        setOpenMenuId((id) =>
-                          id === department.id ? null : department.id
-                        )
-                      }
-                      aria-label={t("More options")}
-                      aria-expanded={openMenuId === department.id}
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === department.id && (
-                      <div className="departmentsMenuDropdown">
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="departmentsMenuItem"
-                            onClick={() => {
-                              setEditingDepartment(department);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {t("Edit")}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="departmentsMenuItem departmentsMenuItemDanger"
-                            onClick={() => {
-                              setDepartmentToDelete(department);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {t("Delete")}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-      </div>
 
       {!departmentsLoading && !departmentsError && filteredDepartments.length > 0 && (
         <Pagination
@@ -380,54 +371,61 @@ export default function DepartmentsPage() {
         onClose={() => setEditingDepartment(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditingDepartment(null)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="edit-department-form"
-              className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
               {editLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="edit-department-form"
           onSubmit={editForm.handleSubmit(onEditSubmit)}
-          className="departmentsAddForm"
+          className="space-y-4"
         >
           {editForm.formState.errors.root?.message && (
-            <p className="departmentsFormError">
-              {editForm.formState.errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {editForm.formState.errors.root.message}
+              </AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Department name")}</span>
-            <input
-              className="input"
+          <FormField
+            label={t("Department name")}
+            error={editForm.formState.errors.name?.message}
+          >
+            <Input
               placeholder={t("e.g. Production")}
               {...editForm.register("name")}
             />
-            {editForm.formState.errors.name && (
-              <span className="departmentsFieldError">
-                {editForm.formState.errors.name.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...editForm.register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={editForm.control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
 
@@ -438,54 +436,61 @@ export default function DepartmentsPage() {
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="add-department-form"
-              className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
               {addLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-department-form"
           onSubmit={addForm.handleSubmit(onAddSubmit)}
-          className="departmentsAddForm"
+          className="space-y-4"
         >
           {addForm.formState.errors.root?.message && (
-            <p className="departmentsFormError">
-              {addForm.formState.errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {addForm.formState.errors.root.message}
+              </AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Department name")}</span>
-            <input
-              className="input"
+          <FormField
+            label={t("Department name")}
+            error={addForm.formState.errors.name?.message}
+          >
+            <Input
               placeholder={t("e.g. Production")}
               {...addForm.register("name")}
             />
-            {addForm.formState.errors.name && (
-              <span className="departmentsFieldError">
-                {addForm.formState.errors.name.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...addForm.register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={addForm.control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
     </section>

@@ -25,6 +25,9 @@ import {
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import "./livestock-sales.scss";
 
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
@@ -632,55 +635,69 @@ export default function LivestockSalesPage() {
           <h2 className="cardTitle">{t("Live Stock Sale Details")}</h2>
           <p className="cardDescription">{t("Recent livestock sales from your account.")}</p>
         </header>
-        <div className="tableWrap tableWrap--tight tableWrap--mobileCards">
-          <table className="table table--stack table--saleDetails">
-            <thead>
-              <tr>
-                <th>{t("Name")}</th>
-                <th>{t("Contact")}</th>
-                <th>{t("Livestock Item ID")}</th>
-                <th>{t("Quantity")}</th>
-                <th>{t("Amount")}</th>
-                <th>{t("Date")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {livestockSalesLoading && (
-                <tr className="tableRow--empty">
-                  <td colSpan={6} className="emptyCell">{t("Loading livestock sales...")}</td>
-                </tr>
-              )}
-              {livestockSalesIsError && (
-                <tr className="tableRow--empty">
-                  <td colSpan={6} className="emptyCell">
-                    {livestockSalesErrorDetail instanceof Error
-                      ? livestockSalesErrorDetail.message
-                      : t("Failed to load livestock sales")}
-                  </td>
-                </tr>
-              )}
-              {!livestockSalesLoading && !livestockSalesIsError && livestockSales.length === 0 && (
-                <tr className="tableRow--empty">
-                  <td colSpan={6} className="emptyCell">{t("No livestock sales yet.")}</td>
-                </tr>
-              )}
-              {!livestockSalesLoading &&
-                !livestockSalesIsError &&
-                livestockSales.map((sale: LivestockSale, index: number) => (
-                  <tr key={sale.id ?? sale.transactionId ?? `${sale.livestockItemId ?? "item"}-${index}`}>
-                    <td data-label={t("Name")}>{String(sale.name ?? "-")}</td>
-                    <td data-label={t("Contact")}>{String(sale.contact ?? "-")}</td>
-                    <td data-label={t("Livestock Item ID")}>{getLivestockDisplay(sale)}</td>
-                    <td data-label={t("Quantity")}>
-                      {sale.quantity ?? sale.itemQuantityOrWeight ?? sale.weight ?? "-"}
-                    </td>
-                    <td data-label={t("Amount")}>{sale.amount ?? "-"}</td>
-                    <td data-label={t("Date")}>{String(sale.createdAt ?? "-")}</td>
+        {livestockSalesLoading && <TableSkeleton rows={5} columns={6} />}
+        {livestockSalesIsError && (
+          <ErrorState
+            title={t("Failed to load livestock sales")}
+            description={
+              livestockSalesErrorDetail instanceof Error
+                ? livestockSalesErrorDetail.message
+                : undefined
+            }
+          />
+        )}
+        {!livestockSalesLoading &&
+          !livestockSalesIsError &&
+          livestockSales.length === 0 && (
+            <EmptyState title={t("No livestock sales yet.")} />
+          )}
+        {!livestockSalesLoading &&
+          !livestockSalesIsError &&
+          livestockSales.length > 0 && (
+            <div className="tableWrap tableWrap--tight tableWrap--mobileCards">
+              <table className="table table--stack table--saleDetails">
+                <thead>
+                  <tr>
+                    <th>{t("Name")}</th>
+                    <th>{t("Contact")}</th>
+                    <th>{t("Livestock Item ID")}</th>
+                    <th>{t("Quantity")}</th>
+                    <th>{t("Amount")}</th>
+                    <th>{t("Date")}</th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {livestockSales.map((sale: LivestockSale, index: number) => (
+                    <tr
+                      key={
+                        sale.id ??
+                        sale.transactionId ??
+                        `${sale.livestockItemId ?? "item"}-${index}`
+                      }
+                    >
+                      <td data-label={t("Name")}>{String(sale.name ?? "-")}</td>
+                      <td data-label={t("Contact")}>
+                        {String(sale.contact ?? "-")}
+                      </td>
+                      <td data-label={t("Livestock Item ID")}>
+                        {getLivestockDisplay(sale)}
+                      </td>
+                      <td data-label={t("Quantity")}>
+                        {sale.quantity ??
+                          sale.itemQuantityOrWeight ??
+                          sale.weight ??
+                          "-"}
+                      </td>
+                      <td data-label={t("Amount")}>{sale.amount ?? "-"}</td>
+                      <td data-label={t("Date")}>
+                        {String(sale.createdAt ?? "-")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
         <div className="livestockListPaging">
           <label className="livestockPagingSize">

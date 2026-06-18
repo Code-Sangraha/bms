@@ -2,16 +2,29 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MdMoreHoriz } from "react-icons/md";
-import { IoGridOutline, IoLayersOutline, IoSettingsOutline } from "react-icons/io5";
+import { useEffect, useMemo, useState } from "react";
+import { IoGridOutline, IoLayersOutline } from "react-icons/io5";
 import { LuBeef, LuBoxes, LuTag } from "react-icons/lu";
+import { MoreHorizontal, Plus, Search, Settings } from "lucide-react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "../../components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { CardGridSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
@@ -47,14 +60,12 @@ export default function ProductPage() {
   const { showToast } = useToast();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [addProductName, setAddProductName] = useState("");
   const [addFormError, setAddFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pricelistModalOpen, setPricelistModalOpen] = useState(false);
   const [pricelistTargets, setPricelistTargets] = useState<PricelistOutletTarget[]>([]);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: products = [],
@@ -109,20 +120,6 @@ export default function ProductPage() {
       setAddFormError(null);
     }
   }, [isAddModalOpen]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const closeEditModal = () => setSelectedProductId(null);
@@ -423,69 +420,79 @@ export default function ProductPage() {
           </p>
         </div>
         <div className="productHeaderActions">
-          <Link
-            to={buildPathWithOutletScope("/dashboard/more", scopedOutletId, search)}
-            className="productHeaderSettings"
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="text-muted-foreground"
             aria-label={t("Settings")}
           >
-            <IoSettingsOutline size={22} aria-hidden />
-          </Link>
-          <div className="productSearch">
-            <span className="searchIcon" aria-hidden>
-              🔍
-            </span>
-            <input
-              className="searchInput"
+            <Link
+              to={buildPathWithOutletScope("/dashboard/more", scopedOutletId, search)}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+          <div className="relative w-full sm:w-64">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              type="search"
               placeholder={t("Search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label={t("Search products")}
+              className="pl-8"
             />
           </div>
           {capabilities.canCreateProducts && (
-          <button
-            type="button"
-            className="button buttonPrimary productHeaderAddBtn"
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            {t("Add Product")}
-          </button>
+            <Button type="button" onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              {t("Add Product")}
+            </Button>
           )}
         </div>
       </div>
 
+      {productsLoading && (
+        <CardGridSkeleton count={6} />
+      )}
+      {productsError && (
+        <ErrorState
+          title={t("Failed to load products")}
+          description={
+            productsErrorDetail instanceof Error
+              ? productsErrorDetail.message
+              : t("We couldn't load this section. Please try again.")
+          }
+        />
+      )}
+      {!productsLoading && !productsError && products.length === 0 && (
+        <EmptyState
+          title={t("No products yet. Add one to get started.")}
+          description={t("Create and manage products by type and outlet")}
+          action={
+            capabilities.canCreateProducts ? (
+              <Button type="button" onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add Product")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!productsLoading &&
+        !productsError &&
+        products.length > 0 &&
+        filteredProducts.length === 0 && (
+          <EmptyState
+            title={`${t("No products match")} "${searchQuery.trim()}"`}
+          />
+        )}
+
       <div className="cardList">
-        {productsLoading && (
-          <div className="productPageState productPageStateMessage" role="status">
-            <p className="productPageMessage">{t("Loading products…")}</p>
-          </div>
-        )}
-        {productsError && (
-          <div className="productPageState productPageStateMessage" role="alert">
-            <p className="productPageMessage productPageError">
-              {productsErrorDetail instanceof Error
-                ? productsErrorDetail.message
-                : t("Failed to load products")}
-            </p>
-          </div>
-        )}
-        {!productsLoading && !productsError && products.length === 0 && (
-          <div className="productPageState productPageStateMessage">
-            <p className="productPageMessage">
-              {t("No products yet. Add one to get started.")}
-            </p>
-          </div>
-        )}
-        {!productsLoading &&
-          !productsError &&
-          products.length > 0 &&
-          filteredProducts.length === 0 && (
-            <div className="productPageState productPageStateMessage">
-              <p className="productPageMessage">
-                {t("No products match")} &quot;{searchQuery.trim()}&quot;.
-              </p>
-            </div>
-          )}
         {!productsLoading &&
           !productsError &&
           filteredProducts.length > 0 &&
@@ -506,58 +513,38 @@ export default function ProductPage() {
                   </div>
                 </div>
                 {(capabilities.canEditProducts || capabilities.canDeleteProducts) && (
-                <div className="cardTopActions">
-                  <div
-                    className="cardMenuWrap"
-                    ref={openMenuId === product.id ? menuButtonRef : undefined}
-                  >
-                    <button
-                      type="button"
-                      className="cardMenuTrigger"
-                      onClick={() =>
-                        setOpenMenuId((id) =>
-                          id === product.id ? null : product.id
-                        )
-                      }
-                      aria-label={t("More options")}
-                      aria-expanded={openMenuId === product.id}
-                    >
-                      <MdMoreHoriz aria-hidden size={22} />
-                    </button>
-                    {openMenuId === product.id && (
-                      <div className="cardMenuDropdown">
-                        {capabilities.canEditProducts && (
-                        <button
+                  <div className="cardTopActions">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
                           type="button"
-                          className="cardMenuItem cardMenuItemEditMobile"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedProductId(product.id);
-                            setOpenMenuId(null);
-                          }}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                          aria-label={t("More options")}
                         >
-                          {t("Edit")}
-                        </button>
+                          <MoreHorizontal className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-32">
+                        {capabilities.canEditProducts && (
+                          <DropdownMenuItem
+                            onSelect={() => setSelectedProductId(product.id)}
+                          >
+                            {t("Edit")}
+                          </DropdownMenuItem>
                         )}
                         {capabilities.canDeleteProducts && (
-                        <button
-                          type="button"
-                          className="cardMenuItem cardMenuItemDanger"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setProductToDelete(product);
-                            setOpenMenuId(null);
-                          }}
-                        >
-                          {t("Delete")}
-                        </button>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setProductToDelete(product)}
+                          >
+                            {t("Delete")}
+                          </DropdownMenuItem>
                         )}
-                      </div>
-                    )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
                 )}
               </div>
 
@@ -573,15 +560,15 @@ export default function ProductPage() {
                   </div>
                 </dl>
                 {capabilities.canEditProducts && (
-                <div className="cardEditSlot">
-                  <button
-                    type="button"
-                    className="button buttonPrimary cardEditBtn"
-                    onClick={() => setSelectedProductId(product.id)}
-                  >
-                    {t("Edit")}
-                  </button>
-                </div>
+                  <div className="cardEditSlot">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setSelectedProductId(product.id)}
+                    >
+                      {t("Edit")}
+                    </Button>
+                  </div>
                 )}
               </div>
             </article>
@@ -655,9 +642,9 @@ export default function ProductPage() {
         }}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => {
                 setIsAddModalOpen(false);
                 setAddProductName("");
@@ -665,43 +652,44 @@ export default function ProductPage() {
               }}
             >
               {t("Discard")}
-            </button>
-            <button
-              type="submit"
-              form="add-product-form"
-              className="button buttonPrimary modalButton"
-              disabled={loading}
-            >
+            </Button>
+            <Button type="submit" form="add-product-form" disabled={loading}>
               {loading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-product-form"
           onSubmit={onAddSubmit}
-          className="productAddForm"
+          className="flex flex-col gap-4"
         >
           {addFormError && (
-            <p className="productFormError">{addFormError}</p>
+            <Alert variant="destructive">
+              <AlertDescription>{addFormError}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Product name")}</span>
-            <input
-              className="input"
+          <FormField
+            id="add-product-name"
+            label={t("Product name")}
+            required
+          >
+            <Input
+              id="add-product-name"
               placeholder={t("e.g. Pork")}
               value={addProductName}
               onChange={(e) => setAddProductName(e.target.value)}
+              autoFocus
             />
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Product Type")}</span>
-            <input
-              className="input"
+          </FormField>
+          <FormField id="add-product-type" label={t("Product Type")}>
+            <Input
+              id="add-product-type"
               value={processedProductType?.name ?? t("Processed")}
               readOnly
+              disabled
             />
-          </label>
+          </FormField>
         </form>
       </Modal>
     </section>

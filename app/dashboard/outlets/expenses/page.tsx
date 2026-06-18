@@ -3,7 +3,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import Pagination from "@/app/components/Pagination/Pagination";
+import { Button } from "@/app/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
@@ -172,33 +184,46 @@ export default function OutletExpensesPage() {
             {t("Livestock restock expenses by outlet and supplier.")}
           </p>
         </div>
-        <Link to="/dashboard/outlet" className="outletExpensesBackLink">
-          {t("Outlet Management")}
-        </Link>
+        <Button asChild variant="outline">
+          <Link to="/dashboard/outlet">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {t("Outlet Management")}
+          </Link>
+        </Button>
       </header>
 
       <div className="outletExpensesToolbar card">
         <div className="outletExpensesToolbarFilters">
-          <label className="field outletExpensesFilter">
-            <span className="label">{t("Filter by outlet")}</span>
-            <select
-              className="select"
-              value={filterOutletId}
-              onChange={(e) => {
-                setFilterOutletId(e.target.value);
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t("Filter by outlet")}
+            </span>
+            <Select
+              value={filterOutletId || (canChangeOutletFilter ? "__all__" : undefined)}
+              onValueChange={(value) => {
+                setFilterOutletId(value === "__all__" ? "" : value);
                 setCurrentPage(1);
               }}
               disabled={!canChangeOutletFilter}
-              aria-label={t("Filter by outlet")}
             >
-              {canChangeOutletFilter && <option value="">{t("All outlets")}</option>}
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger
+                className="w-[220px]"
+                aria-label={t("Filter by outlet")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {canChangeOutletFilter && (
+                  <SelectItem value="__all__">{t("All outlets")}</SelectItem>
+                )}
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {!isLoading && !isError && filteredExpenses.length > 0 && (
@@ -218,25 +243,26 @@ export default function OutletExpensesPage() {
         )}
       </div>
 
-      {isLoading && (
-        <p className="outletPageMessage">{t("Loading expense history…")}</p>
-      )}
+      {isLoading && <TableSkeleton rows={6} columns={10} />}
       {isError && (
-        <p className="outletPageMessage outletPageError" role="alert">
-          {errorDetail instanceof Error
-            ? errorDetail.message
-            : t("Failed to load expense history")}
-        </p>
+        <ErrorState
+          title={t("Failed to load expense history")}
+          description={
+            errorDetail instanceof Error ? errorDetail.message : undefined
+          }
+        />
       )}
       {!isLoading && !isError && filteredExpenses.length === 0 && (
-        <div className="outletExpensesEmptyState">
-          <h2 className="outletExpensesEmptyTitle">{t("No expense records found.")}</h2>
-          <p className="outletExpensesEmptyHint">
-            {canChangeOutletFilter && filterOutletId
+        <EmptyState
+          title={t("No expense records found.")}
+          description={
+            canChangeOutletFilter && filterOutletId
               ? t("Try selecting a different outlet or view all outlets.")
-              : t("Restock expenses will appear here after livestock inventory is added.")}
-          </p>
-        </div>
+              : t(
+                  "Restock expenses will appear here after livestock inventory is added."
+                )
+          }
+        />
       )}
 
       {!isLoading && !isError && filteredExpenses.length > 0 && (

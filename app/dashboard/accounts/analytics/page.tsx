@@ -6,6 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import { LuClock, LuUsers } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
+import { Button } from "@/app/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 import {
   getAttendanceAnalytics,
   type AttendanceAnalyticsRow,
@@ -232,33 +240,44 @@ export default function AccountsAnalyticsPage() {
           <p className="pageSubtitle">{t("Track staff attendance and working hours.")}</p>
         </div>
         <div className="analyticsToolbar">
-          <div className="analyticsPeriodSegment" role="group" aria-label={t("Time period")}>
+          <div
+            className="inline-flex items-center rounded-md border bg-card p-0.5"
+            role="group"
+            aria-label={t("Time period")}
+          >
             {PERIOD_OPTIONS.map((opt) => (
-              <button
+              <Button
                 key={opt.value}
                 type="button"
-                className={`analyticsPeriodBtn${periodFilter === opt.value ? " analyticsPeriodBtnActive" : ""}`}
+                size="sm"
+                variant={periodFilter === opt.value ? "default" : "ghost"}
                 onClick={() => setPeriodFilter(opt.value)}
               >
                 {t(opt.labelKey)}
-              </button>
+              </Button>
             ))}
           </div>
           {!isScoped ? (
-            <select
-              className="analyticsOutletSelect"
+            <Select
               value={outletFilter}
-              onChange={(e) => setOutletFilter(e.target.value)}
-              aria-label={t("Filter by outlet")}
+              onValueChange={setOutletFilter}
               disabled={outletsLoading}
             >
-              <option value="all">{t("All Outlets")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label={t("Filter by outlet")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All Outlets")}</SelectItem>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
           <span className="analyticsLastSync">
             {lastUpdatedLabel ? `${t("Last updated")}: ${lastUpdatedLabel}` : ""}

@@ -3,14 +3,37 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Checkbox } from "@/app/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { clearAuthToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
@@ -68,7 +91,6 @@ export default function RolesPage() {
   const { canCreate, canUpdate, canDelete } = usePermissions();
   const { t } = useI18n();
   const { showToast } = useToast();
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -76,7 +98,6 @@ export default function RolesPage() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: roles = [],
@@ -107,20 +128,6 @@ export default function RolesPage() {
   useEffect(() => {
     if (!roleToDelete) setDeleteError(null);
   }, [roleToDelete]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: CreateRoleFormValues }) =>
@@ -302,134 +309,119 @@ export default function RolesPage() {
           </p>
         </div>
         {canCreate && (
-          <Link
-            to="/dashboard/accounts/roles/create"
-            className="button buttonPrimary"
-          >
-            {t("Create role")}
-          </Link>
+          <Button asChild>
+            <Link to="/dashboard/accounts/roles/create">
+              <Plus className="h-4 w-4" aria-hidden />
+              {t("Create role")}
+            </Link>
+          </Button>
         )}
       </div>
 
-      <div className="rolesSearch">
-        <span className="searchIcon">🔍</span>
-        <input
-          className="searchInput"
+      <div className="relative w-full sm:max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
           placeholder={t("Search roles")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label={t("Search roles")}
+          className="pl-8"
         />
       </div>
 
-      <div className="rolesTable">
-        <div className="rolesRow rolesRowHeader">
-          <span>{t("Role")}</span>
-          <span />
-        </div>
-        {rolesLoading && (
-          <div className="rolesRow">
-            <span className="rolesMessage">{t("Loading roles…")}</span>
-            <span />
-          </div>
+      {rolesLoading && <TableSkeleton rows={6} columns={2} />}
+      {rolesError && (
+        <ErrorState
+          title={t("Failed to load roles")}
+          description={
+            rolesErrorDetail instanceof Error
+              ? rolesErrorDetail.message
+              : undefined
+          }
+        />
+      )}
+      {!rolesLoading && !rolesError && roles.length === 0 && (
+        <EmptyState
+          title={t("No roles yet. Create one to get started.")}
+          action={
+            canCreate ? (
+              <Button asChild>
+                <Link to="/dashboard/accounts/roles/create">
+                  <Plus className="h-4 w-4" aria-hidden />
+                  {t("Create role")}
+                </Link>
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!rolesLoading &&
+        !rolesError &&
+        roles.length > 0 &&
+        filteredRoles.length === 0 && (
+          <EmptyState title={`${t("No roles match")} "${searchQuery.trim()}"`} />
         )}
-        {rolesError && (
-          <div className="rolesRow">
-            <span className="rolesMessage rolesError">
-              {rolesErrorDetail instanceof Error
-                ? rolesErrorDetail.message
-                : t("Failed to load roles")}
-            </span>
-            <span />
-          </div>
-        )}
-        {!rolesLoading && !rolesError && roles.length === 0 && (
-          <div className="rolesRow">
-            <span className="rolesMessage">
-              {t("No roles yet. Create one to get started.")}
-            </span>
-            <span />
-          </div>
-        )}
-        {!rolesLoading &&
-          !rolesError &&
-          roles.length > 0 &&
-          filteredRoles.length === 0 && (
-            <div className="rolesRow">
-              <span className="rolesMessage">
-                {t("No roles match")} &quot;{searchQuery.trim()}&quot;.
-              </span>
-              <span />
-            </div>
-          )}
-        {!rolesLoading &&
-          !rolesError &&
-          paginatedRoles.map((role) => (
-            <div key={role.id} className="rolesRow">
-              <span>{role.name}</span>
-              <div
-                className="rolesMenuWrap"
-                ref={openMenuId === role.id ? menuButtonRef : undefined}
-              >
-                {(canUpdate || canDelete) && (
-                  <>
-                    <button
-                      type="button"
-                      className="rolesMenuTrigger"
-                      onClick={() =>
-                        setOpenMenuId((id) => (id === role.id ? null : role.id))
-                      }
-                      aria-label={t("More options")}
-                      aria-expanded={openMenuId === role.id}
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === role.id && (
-                      <div className="rolesMenuDropdown">
-                        {canUpdate && (
-                          <>
-                            <button
-                              type="button"
-                              className="rolesMenuItem"
-                              onClick={() => {
-                                setEditingRole(role);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              {t("Edit")}
-                            </button>
-                            <button
-                              type="button"
-                              className="rolesMenuItem"
-                              onClick={() => {
-                                openPermissionModal(role);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              {t("Manage permissions")}
-                            </button>
-                          </>
-                        )}
-                        {canDelete && (
-                          <button
+      {!rolesLoading && !rolesError && filteredRoles.length > 0 && (
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("Role")}</TableHead>
+                <TableHead className="w-[60px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedRoles.map((role) => (
+                <TableRow key={role.id}>
+                  <TableCell className="font-medium">{role.name}</TableCell>
+                  <TableCell>
+                    {(canUpdate || canDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
                             type="button"
-                            className="rolesMenuItem rolesMenuItemDanger"
-                            onClick={() => {
-                              setRoleToDelete(role);
-                              setOpenMenuId(null);
-                            }}
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t("More options")}
                           >
-                            {t("Delete")}
-                          </button>
-                        )}
-                      </div>
+                            <MoreHorizontal className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canUpdate && (
+                            <>
+                              <DropdownMenuItem onSelect={() => setEditingRole(role)}>
+                                {t("Edit")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => openPermissionModal(role)}
+                              >
+                                {t("Manage permissions")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {canDelete && (
+                            <DropdownMenuItem
+                              onSelect={() => setRoleToDelete(role)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              {t("Delete")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-      </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {!rolesLoading && !rolesError && filteredRoles.length > 0 && (
         <Pagination
@@ -468,47 +460,40 @@ export default function RolesPage() {
         onClose={() => setEditingRole(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditingRole(null)}
             >
               {t("Discard")}
-            </button>
-            <button
-              type="submit"
-              form="edit-role-form"
-              className="button buttonPrimary modalButton"
-              disabled={editLoading}
-            >
+            </Button>
+            <Button type="submit" form="edit-role-form" disabled={editLoading}>
               {editLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="edit-role-form"
           onSubmit={editForm.handleSubmit(onEditSubmit)}
-          className="rolesAddForm"
+          className="space-y-4"
         >
           {editForm.formState.errors.root?.message && (
-            <p className="rolesFormError">
-              {editForm.formState.errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {editForm.formState.errors.root.message}
+              </AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Role name")}</span>
-            <input
-              className="input"
+          <FormField
+            label={t("Role name")}
+            error={editForm.formState.errors.name?.message}
+          >
+            <Input
               placeholder={t("e.g. Employee")}
               {...editForm.register("name")}
             />
-            {editForm.formState.errors.name && (
-              <span className="rolesFieldError">
-                {editForm.formState.errors.name.message}
-              </span>
-            )}
-          </label>
+          </FormField>
         </form>
       </Modal>
 
@@ -520,18 +505,17 @@ export default function RolesPage() {
         modalClassName="rolesPermissionsModal"
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={closePermissionModal}
               disabled={updatePermissionsMutation.isPending}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="role-permissions-form"
-              className="button buttonPrimary modalButton"
               disabled={
                 updatePermissionsMutation.isPending ||
                 permissionsLoading ||
@@ -541,7 +525,7 @@ export default function RolesPage() {
               {updatePermissionsMutation.isPending
                 ? t("Saving...")
                 : t("Save permissions")}
-            </button>
+            </Button>
           </>
         }
       >
@@ -559,9 +543,9 @@ export default function RolesPage() {
           </p>
 
           {permissionError && (
-            <p className="rolesFormError" role="alert">
-              {permissionError}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{permissionError}</AlertDescription>
+            </Alert>
           )}
 
           {permissionsLoading && (
@@ -569,11 +553,13 @@ export default function RolesPage() {
           )}
 
           {permissionsIsError && (
-            <p className="rolesFormError" role="alert">
-              {permissionsErrorDetail instanceof Error
-                ? permissionsErrorDetail.message
-                : t("Failed to load permissions")}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {permissionsErrorDetail instanceof Error
+                  ? permissionsErrorDetail.message
+                  : t("Failed to load permissions")}
+              </AlertDescription>
+            </Alert>
           )}
 
           {!permissionsLoading &&
@@ -599,12 +585,11 @@ export default function RolesPage() {
                         {group.permissions.map((permission) => (
                           <label
                             key={permission.id}
-                            className="rolesPermissionOption"
+                            className="rolesPermissionOption flex items-center gap-2"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedPermissionIds.includes(permission.id)}
-                              onChange={() => togglePermission(permission.id)}
+                              onCheckedChange={() => togglePermission(permission.id)}
                             />
                             <span>{permission.name}</span>
                           </label>

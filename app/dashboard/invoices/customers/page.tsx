@@ -3,8 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -12,6 +13,34 @@ import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../../components/Modal/ConfirmModal";
 import Modal from "../../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createCustomer as createCustomerApi,
@@ -64,12 +93,10 @@ export default function CustomersPage() {
   const { rowFilterOutletId, isScoped } = useRowFilterOutletId();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<Customer | null>(null);
   const [editingItem, setEditingItem] = useState<Customer | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState<string>("");
-  const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const isGlobal = accessTier === "global";
   const effectiveOutletId = isScoped
@@ -140,20 +167,6 @@ export default function CustomersPage() {
   useEffect(() => {
     if (editingItem) editForm.reset(toFormValues(editingItem));
   }, [editingItem, editForm.reset]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const createMutation = useMutation({
     mutationFn: (values: CustomerFormValues) => createCustomerApi(values),
@@ -247,76 +260,106 @@ export default function CustomersPage() {
   );
 
   const renderCustomerFormFields = (
-    form: ReturnType<typeof useForm<CustomerFormValues>>
-  ) => (
-    <>
-      {form.formState.errors.root?.message && (
-        <p className="customersFormError">{form.formState.errors.root.message}</p>
-      )}
-      <label className="modalField">
-        <span className="label">{t("Name")}</span>
-        <input
-          className="input"
-          placeholder={t("Customer name")}
-          {...form.register("name")}
-        />
-        {form.formState.errors.name && (
-          <span className="customersFieldError">
-            {form.formState.errors.name.message}
-          </span>
+    form: ReturnType<typeof useForm<CustomerFormValues>>,
+    idPrefix: string
+  ) => {
+    const { register, control, formState: { errors } } = form;
+    return (
+      <>
+        {errors.root?.message && (
+          <Alert variant="destructive">
+            <AlertDescription>{errors.root.message}</AlertDescription>
+          </Alert>
         )}
-      </label>
-      <label className="modalField">
-        <span className="label">{t("Contact")}</span>
-        <input
-          className="input"
-          placeholder={t("Phone or email")}
-          {...form.register("contact")}
-        />
-        {form.formState.errors.contact && (
-          <span className="customersFieldError">
-            {form.formState.errors.contact.message}
-          </span>
-        )}
-      </label>
-      <label className="modalField">
-        <span className="label">{t("Outlet")}</span>
-        <select
-          className="select"
-          {...form.register("outletId")}
-          disabled={outletLocked}
+        <FormField
+          id={`${idPrefix}-name`}
+          label={t("Name")}
+          required
+          error={errors.name?.message}
         >
-          <option value="">{t("Select outlet")}</option>
-          {outlets.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
-        {form.formState.errors.outletId && (
-          <span className="customersFieldError">
-            {form.formState.errors.outletId.message}
-          </span>
-        )}
-      </label>
-      <label className="modalField">
-        <span className="label">{t("Customer Type")}</span>
-        <select className="select" {...form.register("customerTypeId")}>
-          <option value="">{t("Select customer type")}</option>
-          {customerTypes.map((ct) => (
-            <option key={ct.id} value={ct.id}>
-              {ct.name}
-            </option>
-          ))}
-        </select>
-        {form.formState.errors.customerTypeId && (
-          <span className="customersFieldError">
-            {form.formState.errors.customerTypeId.message}
-          </span>
-        )}
-      </label>
-    </>
-  );
+          <Input
+            id={`${idPrefix}-name`}
+            placeholder={t("Customer name")}
+            aria-invalid={Boolean(errors.name)}
+            {...register("name")}
+          />
+        </FormField>
+        <FormField
+          id={`${idPrefix}-contact`}
+          label={t("Contact")}
+          required
+          error={errors.contact?.message}
+        >
+          <Input
+            id={`${idPrefix}-contact`}
+            placeholder={t("Phone or email")}
+            aria-invalid={Boolean(errors.contact)}
+            {...register("contact")}
+          />
+        </FormField>
+        <FormField
+          id={`${idPrefix}-outlet`}
+          label={t("Outlet")}
+          required
+          error={errors.outletId?.message}
+        >
+          <Controller
+            control={control}
+            name="outletId"
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={outletLocked}
+              >
+                <SelectTrigger
+                  id={`${idPrefix}-outlet`}
+                  aria-invalid={Boolean(errors.outletId)}
+                >
+                  <SelectValue placeholder={t("Select outlet")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {outlets.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </FormField>
+        <FormField
+          id={`${idPrefix}-type`}
+          label={t("Customer Type")}
+          required
+          error={errors.customerTypeId?.message}
+        >
+          <Controller
+            control={control}
+            name="customerTypeId"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id={`${idPrefix}-type`}
+                  aria-invalid={Boolean(errors.customerTypeId)}
+                >
+                  <SelectValue placeholder={t("Select customer type")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {customerTypes.map((ct) => (
+                    <SelectItem key={ct.id} value={ct.id}>
+                      {ct.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </FormField>
+      </>
+    );
+  };
 
   return (
     <section className="customersPage">
@@ -332,152 +375,150 @@ export default function CustomersPage() {
           </p>
         </div>
         {canCreate && (
-          <button
-            type="button"
-            className="button buttonPrimary"
-            onClick={() => setIsModalOpen(true)}
-          >
+          <Button type="button" onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
             {t("Add Customer")}
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="customersToolbar">
-        <div className="customersSearch">
-          <span className="searchIcon">🔍</span>
-          <input
-            className="searchInput"
+        <div className="relative w-full sm:max-w-sm">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
             placeholder={t("Search customers")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label={t("Search customers")}
+            className="pl-8"
           />
         </div>
         {isGlobal && !isScoped && (
-          <select
-            className="select customersOutletFilter"
-            value={outletFilter}
-            onChange={(e) => setOutletFilter(e.target.value)}
-            aria-label={t("Filter by outlet")}
+          <Select
+            value={outletFilter || "__all__"}
+            onValueChange={(v) => setOutletFilter(v === "__all__" ? "" : v)}
           >
-            <option value="">{t("All outlets")}</option>
-            {outlets.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className="w-full sm:w-56"
+              aria-label={t("Filter by outlet")}
+            >
+              <SelectValue placeholder={t("All outlets")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t("All outlets")}</SelectItem>
+              {outlets.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
-      <div className="customersTable">
-        <div className="customersRow customersRowHeader">
-          <span>{t("Name")}</span>
-          <span>{t("Contact")}</span>
-          <span>{t("Outlet")}</span>
-          <span>{t("Customer Type")}</span>
-          <span>{t("Created")}</span>
-          <span />
-        </div>
-        {itemsLoading && (
-          <div className="customersRow customersRowMessage">
-            <span className="customersMessage">{t("Loading…")}</span>
-          </div>
+      {itemsLoading && <TableSkeleton rows={6} columns={6} />}
+      {itemsError && (
+        <ErrorState
+          title={t("Failed to load")}
+          description={
+            itemsErrorDetail instanceof Error
+              ? itemsErrorDetail.message
+              : t("We couldn't load this section. Please try again.")
+          }
+        />
+      )}
+      {!itemsLoading && !itemsError && items.length === 0 && (
+        <EmptyState
+          title={t("No customers yet. Add one to get started.")}
+          action={
+            canCreate ? (
+              <Button type="button" onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add Customer")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!itemsLoading &&
+        !itemsError &&
+        items.length > 0 &&
+        filteredItems.length === 0 && (
+          <EmptyState title={`${t("No items match")} "${searchQuery.trim()}"`} />
         )}
-        {itemsError && (
-          <div className="customersRow customersRowMessage">
-            <span className="customersMessage customersError">
-              {itemsErrorDetail instanceof Error
-                ? itemsErrorDetail.message
-                : t("Failed to load")}
-            </span>
-          </div>
-        )}
-        {!itemsLoading && !itemsError && items.length === 0 && (
-          <div className="customersRow customersRowMessage">
-            <span className="customersMessage">
-              {t("No customers yet. Add one to get started.")}
-            </span>
-          </div>
-        )}
-        {!itemsLoading &&
-          !itemsError &&
-          items.length > 0 &&
-          filteredItems.length === 0 && (
-            <div className="customersRow customersRowMessage">
-              <span className="customersMessage">
-                {t("No items match")} &quot;{searchQuery.trim()}&quot;.
-              </span>
-            </div>
-          )}
-        {!itemsLoading &&
-          !itemsError &&
-          paginatedItems.map((c) => (
-            <div key={c.id} className="customersRow customersRowData">
-              <div className="customersRowMain">
-                <span className="customersName">{c.name}</span>
-                <span className="customersCellMuted">{c.contact}</span>
-                <span className="customersCellMuted">
-                  {outletName(outlets, c.outletId)}
-                </span>
-                <span className="customersCellMuted">
-                  {c.customerType?.name ?? c.customerTypeId}
-                </span>
-                <span className="customersCellMuted">
-                  {formatCreatedAt(c.createdAt)}
-                </span>
-              </div>
-              <div
-                className="customersMenuWrap"
-                ref={openMenuId === c.id ? menuButtonRef : undefined}
-              >
-                {(canUpdate || canDelete) && (
-                  <>
-                    <button
-                      type="button"
-                      className="customersMenuTrigger"
-                      onClick={() =>
-                        setOpenMenuId((id) => (id === c.id ? null : c.id))
-                      }
-                      aria-label={t("More options")}
-                      aria-expanded={openMenuId === c.id}
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === c.id && (
-                      <div className="customersMenuDropdown">
-                        {canUpdate && (
-                          <button
+      {!itemsLoading && !itemsError && filteredItems.length > 0 && (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("Name")}</TableHead>
+                <TableHead>{t("Contact")}</TableHead>
+                <TableHead>{t("Outlet")}</TableHead>
+                <TableHead>{t("Customer Type")}</TableHead>
+                <TableHead>{t("Created")}</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedItems.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.contact}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {outletName(outlets, c.outletId)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.customerType?.name ?? c.customerTypeId}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatCreatedAt(c.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {(canUpdate || canDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
                             type="button"
-                            className="customersMenuItem"
-                            onClick={() => {
-                              setEditingItem(c);
-                              setOpenMenuId(null);
-                            }}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            aria-label={t("More options")}
                           >
-                            {t("Edit")}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="customersMenuItem customersMenuItemDanger"
-                            onClick={() => {
-                              setItemToDelete(c);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {t("Delete")}
-                          </button>
-                        )}
-                      </div>
+                            <MoreHorizontal className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          {canUpdate && (
+                            <DropdownMenuItem
+                              onSelect={() => setEditingItem(c)}
+                            >
+                              {t("Edit")}
+                            </DropdownMenuItem>
+                          )}
+                          {canDelete && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => setItemToDelete(c)}
+                            >
+                              {t("Delete")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-      </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {!itemsLoading && !itemsError && filteredItems.length > 0 && (
         <Pagination
@@ -516,30 +557,29 @@ export default function CustomersPage() {
         onClose={() => setEditingItem(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditingItem(null)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="edit-customer-form"
-              className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
               {editLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="edit-customer-form"
           onSubmit={editForm.handleSubmit(onEditSubmit)}
-          className="customersAddForm"
+          className="flex flex-col gap-4"
         >
-          {renderCustomerFormFields(editForm)}
+          {renderCustomerFormFields(editForm, "edit-customer")}
         </form>
       </Modal>
 
@@ -550,30 +590,29 @@ export default function CustomersPage() {
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="add-customer-form"
-              className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
               {addLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-customer-form"
           onSubmit={addForm.handleSubmit(onAddSubmit)}
-          className="customersAddForm"
+          className="flex flex-col gap-4"
         >
-          {renderCustomerFormFields(addForm)}
+          {renderCustomerFormFields(addForm, "add-customer")}
         </form>
       </Modal>
     </section>

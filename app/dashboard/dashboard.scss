@@ -83,19 +83,6 @@
   padding: 24px;
 }
 
-.dashboardMessage {
-  font-size: 14px;
-  color: #6b7280;
-  background: #f9fafb;
-  border-radius: 10px;
-  margin: 0 24px 24px;
-}
-
-.dashboardError {
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.06);
-}
-
 .dashboardCards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
@@ -340,46 +327,6 @@
   display: none;
 }
 
-.dashboardAttendanceTableWrap {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.dashboardSalesTableWrap {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  overflow-x: auto;
-}
-
-.dashboardSalesTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  min-width: 720px;
-}
-
-.dashboardSalesTable th {
-  padding: 10px 16px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7280;
-  background: #f3f4f6;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.dashboardSalesTable td {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  color: #374151;
-}
-
-.dashboardSalesTable tbody tr:last-child td {
-  border-bottom: none;
-}
-
 .dashboardExpenseActionBtn {
   border: none;
   background: transparent;
@@ -388,56 +335,6 @@
   font-size: 0.875rem;
   padding: 0;
   text-decoration: underline;
-}
-
-.dashboardAttendanceTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.dashboardAttendanceTable th {
-  padding: 10px 16px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7280;
-  background: #f3f4f6;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.dashboardAttendanceTable td {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  color: #374151;
-}
-
-.dashboardAttendanceTable tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.dashboardPill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.dashboardPillPresent {
-  background: #d1fae5;
-  color: #047857;
-}
-
-.dashboardPillAbsent {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.dashboardMessageInline {
-  margin: 12px 16px;
 }
 
 .dashboardTrendingCard {
@@ -609,11 +506,6 @@
     padding: 14px;
   }
 
-  .dashboardMessage {
-    margin: 0 12px 12px;
-    font-size: 13px;
-  }
-
   .dashboardCardsAttendance {
     grid-template-columns: 1fr;
   }
@@ -771,25 +663,6 @@
     text-align: right;
   }
 
-  .dashboardSalesTable {
-    min-width: 640px;
-    font-size: 12px;
-  }
-
-  .dashboardSalesTable th,
-  .dashboardSalesTable td {
-    padding: 10px 12px;
-  }
-
-  .dashboardAttendanceTable {
-    min-width: 520px;
-    font-size: 12px;
-  }
-
-  .dashboardAttendanceTable th,
-  .dashboardAttendanceTable td {
-    padding: 10px 12px;
-  }
 }
 
 @media (max-width: 420px) {

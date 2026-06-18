@@ -3,10 +3,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { IoSettingsOutline } from "react-icons/io5";
 import { LuShoppingCart } from "react-icons/lu";
+import { Search, Settings } from "lucide-react";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
@@ -361,42 +373,86 @@ export default function TransactionPage() {
               <span>{t("Processed Sale")}</span>
             </Link>
           ) : null}
-          <Link to={moreHref} className="transactionHeaderSettings" aria-label={t("Settings")}>
-            <IoSettingsOutline size={22} aria-hidden />
-          </Link>
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="text-muted-foreground"
+            aria-label={t("Settings")}
+          >
+            <Link to={moreHref}>
+              <Settings className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
         </div>
       </div>
 
       <div className="transactionToolbar">
-        <div className="transactionSearch">
-          <span className="searchIcon">🔍</span>
-          <input
-            className="searchInput"
+        <div className="relative w-full sm:max-w-sm">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
             placeholder={t("Search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label={t("Search transactions")}
+            className="pl-8"
           />
         </div>
         <div className="transactionFilterWrap">
           {!isScoped ? (
-            <select
-              className="transactionFilterSelect"
-              value={outletFilter}
-              onChange={(e) => setOutletFilter(e.target.value)}
-              aria-label={t("Filter by outlet")}
+            <Select
+              value={outletFilter || "__all__"}
+              onValueChange={(v) =>
+                setOutletFilter(v === "__all__" ? "" : v)
+              }
             >
-              <option value="">{t("All Outlets")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                className="w-full sm:w-56"
+                aria-label={t("Filter by outlet")}
+              >
+                <SelectValue placeholder={t("All Outlets")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t("All Outlets")}</SelectItem>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
         </div>
       </div>
 
+      {loading && <TableSkeleton rows={6} columns={7} />}
+      {error && (
+        <ErrorState
+          title={t("Failed to load transactions")}
+          description={
+            salesErrorDetail instanceof Error
+              ? salesErrorDetail.message
+              : livestockErrorDetail instanceof Error
+                ? livestockErrorDetail.message
+                : t("We couldn't load this section. Please try again.")
+          }
+        />
+      )}
+      {!loading && !error && transactions.length === 0 && (
+        <EmptyState title={t("No transactions yet.")} />
+      )}
+      {!loading &&
+        !error &&
+        transactions.length > 0 &&
+        filteredTransactions.length === 0 && (
+          <EmptyState title={t("No transactions match your search.")} />
+        )}
+
+      {!loading && !error && filteredTransactions.length > 0 && (
       <div className="transactionTable">
         <div className="transactionRow transactionRowHeader">
           <span>{t("Transaction ID")}</span>
@@ -407,40 +463,7 @@ export default function TransactionPage() {
           <span>{t("Payment")}</span>
           <span className="transactionColAmount">{t("Amount")}</span>
         </div>
-        {loading && (
-          <div className="transactionRow transactionRowMessage">
-            <span className="transactionMessage">{t("Loading transactions…")}</span>
-          </div>
-        )}
-        {error && (
-          <div className="transactionRow transactionRowMessage">
-            <span className="transactionMessage transactionError">
-              {salesErrorDetail instanceof Error
-                ? salesErrorDetail.message
-                : livestockErrorDetail instanceof Error
-                  ? livestockErrorDetail.message
-                  : t("Failed to load transactions")}
-            </span>
-          </div>
-        )}
-        {!loading && !error && transactions.length === 0 && (
-          <div className="transactionRow transactionRowMessage">
-            <span className="transactionMessage">{t("No transactions yet.")}</span>
-          </div>
-        )}
-        {!loading &&
-          !error &&
-          transactions.length > 0 &&
-          filteredTransactions.length === 0 && (
-            <div className="transactionRow transactionRowMessage">
-              <span className="transactionMessage">
-                {t("No transactions match your search.")}
-              </span>
-            </div>
-          )}
-        {!loading &&
-          !error &&
-          paginatedTransactions.map((tx, i) => (
+        {paginatedTransactions.map((tx, i) => (
             <div
               key={`tx-row-${startIndex + i}`}
               className="transactionRow transactionRowData transactionRowClickable"
@@ -510,6 +533,7 @@ export default function TransactionPage() {
             </div>
           ))}
       </div>
+      )}
 
       {!loading && !error && filteredTransactions.length > 0 && (
         <Pagination

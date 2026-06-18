@@ -26,6 +26,28 @@ import {
   type SaleTransaction,
 } from "@/handlers/sale";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
+import { Button } from "@/app/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import {
+  CardGridSkeleton,
+  TableSkeleton,
+} from "@/app/components/ui-ext/LoadingState";
 import "./invoicesAnalytics.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
@@ -547,33 +569,44 @@ export default function InvoicesAnalyticsPage() {
           </p>
         </div>
         <div className="invoicesAnalyticsToolbar">
-          <div className="dateRangePills">
+          <div
+            className="inline-flex flex-wrap gap-1 rounded-lg border bg-card p-1"
+            role="tablist"
+            aria-label={t("Date range")}
+          >
             {(["12 months", "3 months", "30 days", "7 days", "24 hours"] as DateRangeLabel[]).map((label) => (
-              <button
+              <Button
                 key={label}
                 type="button"
-                className={`dateRangePill ${dateRange === label ? "active" : ""}`}
+                variant={dateRange === label ? "default" : "ghost"}
+                size="sm"
                 onClick={() => setDateRange(label)}
+                aria-pressed={dateRange === label}
+                role="tab"
+                className="h-8"
               >
                 {t(label)}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="toolbarRight">
             {!isScoped ? (
-              <select
-                className="outletSelect"
-                value={outletFilter}
-                onChange={(e) => setOutletFilter(e.target.value)}
-                aria-label={t("Filter by outlet")}
-              >
-                <option value="all">{t("All Outlets")}</option>
-                {outlets.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={outletFilter} onValueChange={setOutletFilter}>
+                <SelectTrigger
+                  className="w-48"
+                  aria-label={t("Filter by outlet")}
+                >
+                  <SelectValue placeholder={t("All Outlets")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("All Outlets")}</SelectItem>
+                  {outlets.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : null}
             <span className="lastSync">{t("Live filter")}</span>
           </div>
@@ -581,12 +614,13 @@ export default function InvoicesAnalyticsPage() {
       </div>
 
       {isLoading && (
-        <div className="invoicesAnalyticsMessage">{t("Loading analytics…")}</div>
+        <div className="flex flex-col gap-4">
+          <CardGridSkeleton count={4} />
+          <TableSkeleton rows={5} columns={4} />
+        </div>
       )}
       {isError && (
-        <div className="invoicesAnalyticsMessage invoicesAnalyticsError">
-          {errorMessage}
-        </div>
+        <ErrorState title={t("Failed to load analytics")} description={errorMessage} />
       )}
 
       {!isLoading && !isError && (
@@ -666,27 +700,27 @@ export default function InvoicesAnalyticsPage() {
           {salesByProduct.length > 0 && (
             <div className="chartSection">
               <h2 className="chartSectionTitle">{t("Sales by Product")}</h2>
-              <div className="salesByProductTableWrap">
-                <table className="salesByProductTable">
-                  <thead>
-                    <tr>
-                      <th>{t("Product")}</th>
-                      <th>{t("Amount (Rs.)")}</th>
-                      <th>{t("Weight (kg)")}</th>
-                      <th>{t("Quantity")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("Product")}</TableHead>
+                      <TableHead>{t("Amount (Rs.)")}</TableHead>
+                      <TableHead>{t("Weight (kg)")}</TableHead>
+                      <TableHead>{t("Quantity")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {salesByProduct.map((row) => (
-                      <tr key={row.key}>
-                        <td>{row.name}</td>
-                        <td>{formatAnalyticsMoney(row.amount)}</td>
-                        <td>{formatAnalyticsDecimal(row.weight)}</td>
-                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
-                      </tr>
+                      <TableRow key={row.key}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>{formatAnalyticsMoney(row.amount)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.weight)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.quantity)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -694,27 +728,27 @@ export default function InvoicesAnalyticsPage() {
           {salesByCustomer.length > 0 && (
             <div className="chartSection">
               <h2 className="chartSectionTitle">{t("Sales by Customer")}</h2>
-              <div className="salesByProductTableWrap">
-                <table className="salesByProductTable">
-                  <thead>
-                    <tr>
-                      <th>{t("Customer")}</th>
-                      <th>{t("Amount (Rs.)")}</th>
-                      <th>{t("Weight (kg)")}</th>
-                      <th>{t("Quantity")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("Customer")}</TableHead>
+                      <TableHead>{t("Amount (Rs.)")}</TableHead>
+                      <TableHead>{t("Weight (kg)")}</TableHead>
+                      <TableHead>{t("Quantity")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {salesByCustomer.map((row) => (
-                      <tr key={row.key}>
-                        <td>{row.name}</td>
-                        <td>{formatAnalyticsMoney(row.amount)}</td>
-                        <td>{formatAnalyticsDecimal(row.weight)}</td>
-                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
-                      </tr>
+                      <TableRow key={row.key}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>{formatAnalyticsMoney(row.amount)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.weight)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.quantity)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -722,27 +756,27 @@ export default function InvoicesAnalyticsPage() {
           {livestockSalesByItem.length > 0 && (
             <div className="chartSection">
               <h2 className="chartSectionTitle">{t("Livestock Sales by Item")}</h2>
-              <div className="salesByProductTableWrap">
-                <table className="salesByProductTable">
-                  <thead>
-                    <tr>
-                      <th>{t("Livestock Item")}</th>
-                      <th>{t("Amount (Rs.)")}</th>
-                      <th>{t("Weight (kg)")}</th>
-                      <th>{t("Quantity")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("Livestock Item")}</TableHead>
+                      <TableHead>{t("Amount (Rs.)")}</TableHead>
+                      <TableHead>{t("Weight (kg)")}</TableHead>
+                      <TableHead>{t("Quantity")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {livestockSalesByItem.map((row) => (
-                      <tr key={row.key}>
-                        <td>{row.name}</td>
-                        <td>{formatAnalyticsMoney(row.amount)}</td>
-                        <td>{formatAnalyticsDecimal(row.weight)}</td>
-                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
-                      </tr>
+                      <TableRow key={row.key}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>{formatAnalyticsMoney(row.amount)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.weight)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.quantity)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -750,27 +784,27 @@ export default function InvoicesAnalyticsPage() {
           {livestockSalesByCustomer.length > 0 && (
             <div className="chartSection">
               <h2 className="chartSectionTitle">{t("Livestock Sales by Customer")}</h2>
-              <div className="salesByProductTableWrap">
-                <table className="salesByProductTable">
-                  <thead>
-                    <tr>
-                      <th>{t("Customer")}</th>
-                      <th>{t("Amount (Rs.)")}</th>
-                      <th>{t("Weight (kg)")}</th>
-                      <th>{t("Quantity")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("Customer")}</TableHead>
+                      <TableHead>{t("Amount (Rs.)")}</TableHead>
+                      <TableHead>{t("Weight (kg)")}</TableHead>
+                      <TableHead>{t("Quantity")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {livestockSalesByCustomer.map((row) => (
-                      <tr key={row.key}>
-                        <td>{row.name}</td>
-                        <td>{formatAnalyticsMoney(row.amount)}</td>
-                        <td>{formatAnalyticsDecimal(row.weight)}</td>
-                        <td>{formatAnalyticsDecimal(row.quantity)}</td>
-                      </tr>
+                      <TableRow key={row.key}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>{formatAnalyticsMoney(row.amount)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.weight)}</TableCell>
+                        <TableCell>{formatAnalyticsDecimal(row.quantity)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -782,7 +816,10 @@ export default function InvoicesAnalyticsPage() {
             livestockSalesByCustomer.length === 0 &&
             totalTransactions === 0 &&
             livestockTotalTransactions === 0 && (
-              <div className="invoicesAnalyticsMessage">{t("No sales data yet.")}</div>
+              <EmptyState
+                title={t("No sales data yet.")}
+                description={t("Sales activity will appear here as soon as transactions are recorded.")}
+              />
             )}
         </>
       )}

@@ -4,12 +4,32 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
+import {
+  Controller,
+  useForm,
+  type Resolver,
+  type SubmitHandler,
+} from "react-hook-form";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { CardGridSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import {
   createDualPricing as createDualPricingApi,
@@ -299,78 +319,98 @@ export default function DualPricingPage() {
           </p>
         </div>
         {capabilities.canEditDualPricing && (
-          <button
+          <Button
             type="button"
-            className="button buttonPrimary dualPricingUpgradeBtn"
+            className="dualPricingUpgradeBtn"
             onClick={() => setIsModalOpen(true)}
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {t("Upgrade Price")}
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="dualPricingFilters">
         {!isScoped ? (
-          <label className="dualPricingOutletFilter">
-            <span className="dualPricingOutletLabel">{t("Outlet")}</span>
-            <select
-              className="dualPricingOutletSelect"
-              value={outletFilter}
-              onChange={(e) => setOutletFilter(e.target.value)}
-              aria-label={t("Filter by outlet")}
-            >
-              <option value="all">{t("All Outlets")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t("Outlet")}
+            </span>
+            <Select value={outletFilter} onValueChange={setOutletFilter}>
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label={t("Filter by outlet")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All Outlets")}</SelectItem>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ) : null}
-        <div className="dualPricingSearch">
-          <span className="searchIcon">🔍</span>
-          <input
-            className="searchInput"
+        <div className="relative w-full sm:max-w-sm">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
             placeholder={t("Search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label={t("Search dual pricing")}
+            className="pl-8"
           />
         </div>
       </div>
 
-      <div className="dualPricingCardGrid">
-        {itemsLoading && (
-          <div className="dualPricingCardMessage">{t("Loading…")}</div>
-        )}
-        {itemsError && (
-          <div className="dualPricingCardMessage dualPricingError">
-            {itemsErrorDetail instanceof Error
+      {itemsLoading && <CardGridSkeleton items={6} />}
+      {itemsError && (
+        <ErrorState
+          title={t("Failed to load")}
+          description={
+            itemsErrorDetail instanceof Error
               ? itemsErrorDetail.message
-              : t("Failed to load")}
-          </div>
-        )}
-        {!itemsLoading && !itemsError && items.length === 0 && (
-          <div className="dualPricingCardMessage">
-            {t("No dual pricing yet. Add one to get started.")}
-          </div>
-        )}
-        {!itemsLoading &&
-          !itemsError &&
-          items.length > 0 &&
-          filteredItems.length === 0 && (
-            <div className="dualPricingCardMessage">
-              {searchQuery.trim()
-                ? `${t("No items match")} "${searchQuery.trim()}".`
+              : undefined
+          }
+        />
+      )}
+      {!itemsLoading && !itemsError && items.length === 0 && (
+        <EmptyState
+          title={t("No dual pricing yet. Add one to get started.")}
+          action={
+            capabilities.canEditDualPricing ? (
+              <Button type="button" onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Upgrade Price")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!itemsLoading &&
+        !itemsError &&
+        items.length > 0 &&
+        filteredItems.length === 0 && (
+          <EmptyState
+            title={
+              searchQuery.trim()
+                ? `${t("No items match")} "${searchQuery.trim()}"`
                 : effectiveOutletFilter !== "all"
                   ? t("No dual pricing for this outlet.")
-                  : t("No items match your filters.")}
-            </div>
-          )}
-        {!itemsLoading &&
-          !itemsError &&
-          filteredItems.map((item) => (
+                  : t("No items match your filters.")
+            }
+          />
+        )}
+      {!itemsLoading && !itemsError && filteredItems.length > 0 && (
+        <div className="dualPricingCardGrid">
+          {filteredItems.map((item) => (
             <div key={item.id} className="dualPricingCard">
               <div className="dualPricingCardTop">
                 <h3 className="dualPricingCardTitle">
@@ -380,32 +420,26 @@ export default function DualPricingPage() {
                   )}
                 </h3>
                 {capabilities.canEditDualPricing && (
-                <div className="dualPricingCardActions">
-                  <button
-                    type="button"
-                    className="dualPricingCardIconBtn"
-                    onClick={() => setItemToDelete(item)}
-                    aria-label={t("Delete")}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="dualPricingCardIconBtn"
-                    onClick={() => setEditingItem(item)}
-                    aria-label={t("Edit")}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </div>
+                  <div className="dualPricingCardActions">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setItemToDelete(item)}
+                      aria-label={t("Delete")}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingItem(item)}
+                      aria-label={t("Edit")}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </div>
                 )}
               </div>
               <div className="dualPricingCardBody">
@@ -429,7 +463,8 @@ export default function DualPricingPage() {
               </div>
             </div>
           ))}
-      </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={!!itemToDelete && capabilities.canEditDualPricing}
@@ -454,105 +489,128 @@ export default function DualPricingPage() {
         onClose={() => setEditingItem(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditingItem(null)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="edit-dual-pricing-form"
-              className="button buttonPrimary modalButton"
               disabled={editLoading}
             >
               {editLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="edit-dual-pricing-form"
           onSubmit={editForm.handleSubmit(onEditSubmit)}
-          className="dualPricingAddForm"
+          className="space-y-4"
         >
           {editForm.formState.errors.root?.message && (
-            <p className="dualPricingFormError">
-              {editForm.formState.errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {editForm.formState.errors.root.message}
+              </AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...editForm.register("outletId")}>
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {editForm.formState.errors.outletId && (
-              <span className="dualPricingFieldError">
-                {editForm.formState.errors.outletId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Product")}</span>
-            <select className="select" {...editForm.register("productId")}>
-              <option value="">
-                {editOutletId ? t("Select product") : t("Select outlet first")}
-              </option>
-              {productsForEditOutlet.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {editForm.formState.errors.productId && (
-              <span className="dualPricingFieldError">
-                {editForm.formState.errors.productId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Wholesale price")}</span>
-            <input
+          <FormField
+            label={t("Outlet")}
+            error={editForm.formState.errors.outletId?.message}
+          >
+            <Controller
+              control={editForm.control}
+              name="outletId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o: Outlet) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
+          <FormField
+            label={t("Product")}
+            error={editForm.formState.errors.productId?.message}
+          >
+            <Controller
+              control={editForm.control}
+              name="productId"
+              render={({ field }) => (
+                <Select
+                  value={field.value || undefined}
+                  onValueChange={field.onChange}
+                  disabled={!editOutletId}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        editOutletId ? t("Select product") : t("Select outlet first")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productsForEditOutlet.map((p: Product) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
+          <FormField
+            label={t("Wholesale price")}
+            error={editForm.formState.errors.wholesalePrice?.message}
+          >
+            <Input
               type="number"
               min={0}
               step={0.01}
-              className="input"
               {...editForm.register("wholesalePrice")}
             />
-            {editForm.formState.errors.wholesalePrice && (
-              <span className="dualPricingFieldError">
-                {editForm.formState.errors.wholesalePrice.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Retail price")}</span>
-            <input
+          </FormField>
+          <FormField
+            label={t("Retail price")}
+            error={editForm.formState.errors.retailPrice?.message}
+          >
+            <Input
               type="number"
               min={0}
               step={0.01}
-              className="input"
               {...editForm.register("retailPrice")}
             />
-            {editForm.formState.errors.retailPrice && (
-              <span className="dualPricingFieldError">
-                {editForm.formState.errors.retailPrice.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...editForm.register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={editForm.control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
 
@@ -563,105 +621,128 @@ export default function DualPricingPage() {
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="add-dual-pricing-form"
-              className="button buttonPrimary modalButton"
               disabled={addLoading}
             >
               {addLoading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-dual-pricing-form"
           onSubmit={addForm.handleSubmit(onAddSubmit)}
-          className="dualPricingAddForm"
+          className="space-y-4"
         >
           {addForm.formState.errors.root?.message && (
-            <p className="dualPricingFormError">
-              {addForm.formState.errors.root.message}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {addForm.formState.errors.root.message}
+              </AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...addForm.register("outletId")}>
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {addForm.formState.errors.outletId && (
-              <span className="dualPricingFieldError">
-                {addForm.formState.errors.outletId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Product")}</span>
-            <select className="select" {...addForm.register("productId")}>
-              <option value="">
-                {addOutletId ? t("Select product") : t("Select outlet first")}
-              </option>
-              {productsForAddOutlet.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {addForm.formState.errors.productId && (
-              <span className="dualPricingFieldError">
-                {addForm.formState.errors.productId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Wholesale price")}</span>
-            <input
+          <FormField
+            label={t("Outlet")}
+            error={addForm.formState.errors.outletId?.message}
+          >
+            <Controller
+              control={addForm.control}
+              name="outletId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o: Outlet) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
+          <FormField
+            label={t("Product")}
+            error={addForm.formState.errors.productId?.message}
+          >
+            <Controller
+              control={addForm.control}
+              name="productId"
+              render={({ field }) => (
+                <Select
+                  value={field.value || undefined}
+                  onValueChange={field.onChange}
+                  disabled={!addOutletId}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        addOutletId ? t("Select product") : t("Select outlet first")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productsForAddOutlet.map((p: Product) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
+          <FormField
+            label={t("Wholesale price")}
+            error={addForm.formState.errors.wholesalePrice?.message}
+          >
+            <Input
               type="number"
               min={0}
               step={0.01}
-              className="input"
               {...addForm.register("wholesalePrice")}
             />
-            {addForm.formState.errors.wholesalePrice && (
-              <span className="dualPricingFieldError">
-                {addForm.formState.errors.wholesalePrice.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Retail price")}</span>
-            <input
+          </FormField>
+          <FormField
+            label={t("Retail price")}
+            error={addForm.formState.errors.retailPrice?.message}
+          >
+            <Input
               type="number"
               min={0}
               step={0.01}
-              className="input"
               {...addForm.register("retailPrice")}
             />
-            {addForm.formState.errors.retailPrice && (
-              <span className="dualPricingFieldError">
-                {addForm.formState.errors.retailPrice.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...addForm.register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={addForm.control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
     </section>

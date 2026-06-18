@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
+
 import Modal from "@/app/components/Modal/Modal";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { FormField } from "@/app/components/ui-ext/FormField";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { createDualPricing } from "@/handlers/dualPricing";
 
@@ -101,61 +106,83 @@ export default function SetPricelistAfterCreateModal({
       onClose={handleClose}
       footer={
         <>
-          <button
+          <Button
             type="button"
-            className="button modalButton"
+            variant="outline"
             onClick={handleClose}
             disabled={saving}
           >
             {t("Skip for now")}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button buttonPrimary modalButton"
             onClick={() => void handleSave()}
             disabled={saving}
           >
             {saving ? t("Saving pricelist…") : t("Save pricelist")}
-          </button>
+          </Button>
         </>
       }
     >
-      {formError && <p className="productFormError" role="alert">{formError}</p>}
-      <div className="setPricelistGrid">
-        <label className="modalField">
-          <span className="label">{t("Retail price per kg")}</span>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            step="any"
-            value={retailInput}
-            onChange={(e) => setRetailInput(e.target.value)}
-            disabled={saving}
-          />
-        </label>
-        <label className="modalField">
-          <span className="label">{t("Wholesale price per kg")}</span>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            step="any"
-            value={wholesaleInput}
-            onChange={(e) => setWholesaleInput(e.target.value)}
-            disabled={saving}
-          />
-        </label>
+      <div className="flex flex-col gap-4">
+        {formError && (
+          <Alert variant="destructive">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            id="pricelist-retail"
+            label={t("Retail price per kg")}
+            required
+          >
+            <Input
+              id="pricelist-retail"
+              type="number"
+              min={0}
+              step="any"
+              value={retailInput}
+              onChange={(e) => setRetailInput(e.target.value)}
+              disabled={saving}
+              inputMode="decimal"
+            />
+          </FormField>
+          <FormField
+            id="pricelist-wholesale"
+            label={t("Wholesale price per kg")}
+            required
+          >
+            <Input
+              id="pricelist-wholesale"
+              type="number"
+              min={0}
+              step="any"
+              value={wholesaleInput}
+              onChange={(e) => setWholesaleInput(e.target.value)}
+              disabled={saving}
+              inputMode="decimal"
+            />
+          </FormField>
+        </div>
+        <div className="rounded-lg border bg-muted/40 p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("Applies to")}
+          </p>
+          <ul className="flex flex-col divide-y divide-border">
+            {targets.map((row) => (
+              <li
+                key={`${row.productId}-${row.outletId}`}
+                className="flex items-center justify-between gap-3 py-2 text-sm"
+              >
+                <span className="font-medium text-foreground">
+                  {row.productName}
+                </span>
+                <span className="text-muted-foreground">{row.outletName}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <ul className="setPricelistTargetList">
-        {targets.map((row) => (
-          <li key={`${row.productId}-${row.outletId}`}>
-            <span className="setPricelistTargetName">{row.productName}</span>
-            <span className="setPricelistTargetSep"> — </span>
-            <span className="setPricelistTargetOutlet">{row.outletName}</span>
-          </li>
-        ))}
-      </ul>
     </Modal>
   );
 }

@@ -3,14 +3,36 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { MoreHorizontal, Plus, Receipt } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
 import Modal from "../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Badge } from "@/app/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { CardGridSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createOutlet as createOutletApi,
@@ -41,9 +63,7 @@ export default function OutletPage() {
   const { showToast } = useToast();
   const [selectedOutletId, setSelectedOutletId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [outletToDelete, setOutletToDelete] = useState<Outlet | null>(null);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
 
   const {
     data: outlets = [],
@@ -97,6 +117,7 @@ export default function OutletPage() {
     handleSubmit,
     setError,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateOutletFormValues>({
     resolver: zodResolver(createOutletSchema),
@@ -106,20 +127,6 @@ export default function OutletPage() {
   useEffect(() => {
     if (!isAddModalOpen) reset(defaultAddFormValues);
   }, [isAddModalOpen, reset]);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(e.target as Node)
-      ) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteOutletApi(id),
@@ -199,38 +206,49 @@ export default function OutletPage() {
           </p>
         </div>
         <div className="outletHeaderActions">
-          <Link to="/dashboard/outlets/expenses" className="button">
-            {t("Outlet expenses")}
-          </Link>
+          <Button asChild variant="outline">
+            <Link to="/dashboard/outlets/expenses">
+              <Receipt className="h-4 w-4" aria-hidden />
+              {t("Outlet expenses")}
+            </Link>
+          </Button>
           {canCreate && (
-            <button
-              type="button"
-              className="button buttonPrimary"
-              onClick={() => setIsAddModalOpen(true)}
-            >
+            <Button type="button" onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
               {t("Add Outlet")}
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      <div className="cardList">
-        {outletsLoading && (
-          <p className="outletPageMessage">{t("Loading outlets…")}</p>
-        )}
-        {outletsError && (
-          <p className="outletPageMessage outletPageError">
-            {outletsErrorDetail instanceof Error
+      {outletsLoading && <CardGridSkeleton items={3} />}
+      {outletsError && (
+        <ErrorState
+          title={t("Failed to load outlets")}
+          description={
+            outletsErrorDetail instanceof Error
               ? outletsErrorDetail.message
-              : t("Failed to load outlets")}
-          </p>
-        )}
-        {!outletsLoading && !outletsError && outlets.length === 0 && (
-          <p className="outletPageMessage">{t("No outlets yet. Add one to get started.")}</p>
-        )}
-        {!outletsLoading &&
-          !outletsError &&
-          paginatedOutlets.map((outlet) => (
+              : undefined
+          }
+        />
+      )}
+      {!outletsLoading && !outletsError && outlets.length === 0 && (
+        <EmptyState
+          title={t("No outlets yet. Add one to get started.")}
+          action={
+            canCreate ? (
+              <Button type="button" onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add Outlet")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+
+      {!outletsLoading && !outletsError && outlets.length > 0 && (
+        <div className="cardList">
+          {paginatedOutlets.map((outlet) => (
           <article key={outlet.id} className="card">
             <div className="cardTop">
               <div className="cardTitleBlock">
@@ -238,44 +256,30 @@ export default function OutletPage() {
                 <span className="cardId">{outlet.id}</span>
               </div>
               <div className="badgeGroup">
-                <span
-                  className={
-                    outlet.status ? "badge badgeActive" : "badge"
-                  }
-                >
+                <Badge variant={outlet.status ? "default" : "secondary"}>
                   {outlet.status ? t("Active") : t("Inactive")}
-                </span>
+                </Badge>
                 {canDelete && (
-                  <div
-                    className="cardMenuWrap"
-                    ref={openMenuId === outlet.id ? menuButtonRef : undefined}
-                  >
-                    <button
-                      type="button"
-                      className="cardMenuTrigger"
-                      onClick={() =>
-                        setOpenMenuId((id) => (id === outlet.id ? null : outlet.id))
-                      }
-                      aria-label={t("More options")}
-                      aria-expanded={openMenuId === outlet.id}
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === outlet.id && (
-                      <div className="cardMenuDropdown">
-                        <button
-                          type="button"
-                          className="cardMenuItem cardMenuItemDanger"
-                          onClick={() => {
-                            setOutletToDelete(outlet);
-                            setOpenMenuId(null);
-                          }}
-                        >
-                          {t("Delete")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("More options")}
+                      >
+                        <MoreHorizontal className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => setOutletToDelete(outlet)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        {t("Delete")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>
@@ -319,18 +323,18 @@ export default function OutletPage() {
 
             {canUpdate && (
               <div className="cardActions">
-                <button
+                <Button
                   type="button"
-                  className="button buttonPrimary"
                   onClick={() => setSelectedOutletId(outlet.id)}
                 >
                   {t("Edit")}
-                </button>
+                </Button>
               </div>
             )}
           </article>
           ))}
-      </div>
+        </div>
+      )}
 
       {!outletsLoading && !outletsError && outlets.length > 0 && (
         <Pagination
@@ -378,79 +382,75 @@ export default function OutletPage() {
         onClose={() => setIsAddModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsAddModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
-              type="submit"
-              form="add-outlet-form"
-              className="button buttonPrimary modalButton"
-              disabled={loading}
-            >
+            </Button>
+            <Button type="submit" form="add-outlet-form" disabled={loading}>
               {loading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-outlet-form"
           onSubmit={handleSubmit(onAddSubmit)}
-          className="outletAddForm"
+          className="space-y-4"
         >
           {errors.root?.message && (
-            <p className="outletFormError">{errors.root.message}</p>
+            <Alert variant="destructive">
+              <AlertDescription>{errors.root.message}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Outlet name")}</span>
-            <input
-              className="input"
+          <FormField label={t("Outlet name")} error={errors.name?.message}>
+            <Input
               placeholder={t("e.g. Main processing plant")}
               {...register("name")}
             />
-            {errors.name && (
-              <span className="outletFieldError">{errors.name.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Manager")}</span>
-            <select className="select" {...register("managerId")}>
-              <option value="">{t("Select manager")}</option>
-              {managers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.fullName ?? user.email ?? user.id}
-                </option>
-              ))}
-            </select>
-            {errors.managerId && (
-              <span className="outletFieldError">
-                {errors.managerId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Contact")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. 987654321")}
-              {...register("contact")}
+          </FormField>
+          <FormField label={t("Manager")} error={errors.managerId?.message}>
+            <Controller
+              control={control}
+              name="managerId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select manager")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {managers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.fullName ?? user.email ?? user.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.contact && (
-              <span className="outletFieldError">
-                {errors.contact.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
+          <FormField label={t("Contact")} error={errors.contact?.message}>
+            <Input placeholder={t("e.g. 987654321")} {...register("contact")} />
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </FormField>
         </form>
       </Modal>
     </section>

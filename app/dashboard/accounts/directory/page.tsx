@@ -4,14 +4,28 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { IoPersonAddOutline, IoSettingsOutline } from "react-icons/io5";
-import { useForm } from "react-hook-form";
+import { Plus, Search, Settings, UserPlus } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
 import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "../../../components/Modal/Modal";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { EmptyState } from "@/app/components/ui-ext/EmptyState";
+import { ErrorState } from "@/app/components/ui-ext/ErrorState";
+import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   createEmployee as createEmployeeApi,
@@ -154,6 +168,7 @@ export default function DirectoryPage() {
     handleSubmit,
     setError,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateEmployeeFormValues>({
     resolver: zodResolver(createEmployeeSchema),
@@ -307,87 +322,94 @@ export default function DirectoryPage() {
         </div>
         <div className="directoryHeaderActions">
           {accessTier !== "outlet_staff" ? (
-            <Link to={moreHref} className="directoryHeaderSettings" aria-label={t("Settings")}>
-              <IoSettingsOutline size={22} aria-hidden />
-            </Link>
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="text-muted-foreground"
+              aria-label={t("Settings")}
+            >
+              <Link to={moreHref}>
+                <Settings className="h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
           ) : null}
           {canCreate ? (
-            <button
+            <Button
               type="button"
-              className="button buttonPrimary directoryHeaderAddBtn"
+              className="directoryHeaderAddBtn"
               onClick={() => setIsModalOpen(true)}
             >
+              <Plus className="h-4 w-4" aria-hidden />
               {t("Add Employees")}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
 
-      <div className="directorySearch">
-        <span className="searchIcon">🔍</span>
-        <input
-          className="searchInput"
+      <div className="relative w-full sm:max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
           placeholder={t("Search employees")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label={t("Search employees")}
+          className="pl-8"
         />
       </div>
 
-      <div className="directoryTable">
-        <div className="directoryRow directoryRowHeader">
-          <span>{t("Employee ID")}</span>
-          <span>{t("IOT")}</span>
-          <span>{t("Name")}</span>
-          <span>{t("Role")}</span>
-          <span>{t("Department")}</span>
-          <span>{t("Contact")}</span>
-          <span />
-        </div>
-        {employeesLoading && (
-          <div className="directoryRow directoryRowMessage">
-            <span className="directoryMessage">{t("Loading employees…")}</span>
-          </div>
+      {employeesLoading && <TableSkeleton rows={6} columns={7} />}
+      {employeesError && (
+        <ErrorState
+          title={t("Failed to load employees")}
+          description={
+            employeesErrorDetail instanceof Error
+              ? employeesErrorDetail.message
+              : undefined
+          }
+        />
+      )}
+      {!employeesLoading && !employeesError && employees.length === 0 && (
+        <EmptyState
+          title={t("No employees yet. Add one to get started.")}
+          action={
+            canCreate ? (
+              <Button type="button" onClick={() => setIsModalOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden />
+                {t("Add Employees")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
+      {!employeesLoading &&
+        !employeesError &&
+        employees.length > 0 &&
+        employeesForDirectory.length === 0 && (
+          <EmptyState title={t("No employees for this outlet.")} />
         )}
-        {employeesError && (
-          <div className="directoryRow directoryRowMessage">
-            <span className="directoryMessage directoryError">
-              {employeesErrorDetail instanceof Error
-                ? employeesErrorDetail.message
-                : t("Failed to load employees")}
-            </span>
-          </div>
+      {!employeesLoading &&
+        !employeesError &&
+        employeesForDirectory.length > 0 &&
+        filteredEmployees.length === 0 && (
+          <EmptyState title={`${t("No employees match")} "${searchQuery.trim()}"`} />
         )}
-        {!employeesLoading && !employeesError && employees.length === 0 && (
-          <div className="directoryRow directoryRowMessage">
-            <span className="directoryMessage">
-              {t("No employees yet. Add one to get started.")}
-            </span>
+      {!employeesLoading && !employeesError && filteredEmployees.length > 0 && (
+        <div className="directoryTable">
+          <div className="directoryRow directoryRowHeader">
+            <span>{t("Employee ID")}</span>
+            <span>{t("IOT")}</span>
+            <span>{t("Name")}</span>
+            <span>{t("Role")}</span>
+            <span>{t("Department")}</span>
+            <span>{t("Contact")}</span>
+            <span />
           </div>
-        )}
-        {!employeesLoading &&
-          !employeesError &&
-          employees.length > 0 &&
-          employeesForDirectory.length === 0 && (
-            <div className="directoryRow directoryRowMessage">
-              <span className="directoryMessage">
-                {t("No employees for this outlet.")}
-              </span>
-            </div>
-          )}
-        {!employeesLoading &&
-          !employeesError &&
-          employeesForDirectory.length > 0 &&
-          filteredEmployees.length === 0 && (
-            <div className="directoryRow directoryRowMessage">
-              <span className="directoryMessage">
-                {t("No employees match")} &quot;{searchQuery.trim()}&quot;.
-              </span>
-            </div>
-          )}
-        {!employeesLoading &&
-          !employeesError &&
-          paginatedEmployees.map((emp) => (
+          {paginatedEmployees.map((emp) => (
             <div key={emp.id} className="directoryRow directoryRowData">
               <span data-label={t("Employee ID")}>{emp.employeeId}</span>
               <span data-label={t("IOT")}>{emp.iot}</span>
@@ -401,19 +423,21 @@ export default function DirectoryPage() {
                 )}
               </span>
               {canUpdate ? (
-                <button
+                <Button
                   type="button"
-                  className="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleOpenEditEmployee(emp)}
                 >
                   {t("Edit")}
-                </button>
+                </Button>
               ) : (
                 <span aria-hidden="true" />
               )}
             </div>
           ))}
-      </div>
+        </div>
+      )}
 
       {!employeesLoading && !employeesError && filteredEmployees.length > 0 && (
         <Pagination
@@ -434,137 +458,122 @@ export default function DirectoryPage() {
         onClose={() => setIsModalOpen(false)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
             >
               {t("Discard")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="add-employee-form"
-              className="button buttonPrimary modalButton"
               disabled={loading}
             >
               {loading ? t("Saving…") : t("Save")}
-            </button>
+            </Button>
           </>
         }
       >
         <form
           id="add-employee-form"
           onSubmit={handleSubmit(onAddSubmit)}
-          className="directoryForm"
+          className="space-y-4"
         >
           {errors.root?.message && (
-            <p className="directoryFormError">{errors.root.message}</p>
+            <Alert variant="destructive">
+              <AlertDescription>{errors.root.message}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Employee Email")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. TXN-001")}
-              {...register("employeeId")}
+          <FormField label={t("Employee Email")} error={errors.employeeId?.message}>
+            <Input placeholder={t("e.g. TXN-001")} {...register("employeeId")} />
+          </FormField>
+          <FormField label={t("IOT")} error={errors.iot?.message}>
+            <Input placeholder={t("e.g. 1ab2c58a")} {...register("iot")} />
+          </FormField>
+          <FormField label={t("Name")} error={errors.name?.message}>
+            <Input placeholder={t("e.g. Employ number one")} {...register("name")} />
+          </FormField>
+          <FormField label={t("Department")} error={errors.departmentId?.message}>
+            <Controller
+              control={control}
+              name="departmentId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select department")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.employeeId && (
-              <span className="directoryFieldError">
-                {errors.employeeId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("IOT")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. 1ab2c58a")}
-              {...register("iot")}
+          </FormField>
+          <FormField label={t("Outlet")} error={errors.outletId?.message}>
+            <Controller
+              control={control}
+              name="outletId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.iot && (
-              <span className="directoryFieldError">{errors.iot.message}</span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Name")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. Employ number one")}
-              {...register("name")}
+          </FormField>
+          <FormField label={t("Role")} error={errors.roleId?.message}>
+            <Controller
+              control={control}
+              name="roleId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("Select role")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.name && (
-              <span className="directoryFieldError">
-                {errors.name.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Department")}</span>
-            <select className="select" {...register("departmentId")}>
-              <option value="">{t("Select department")}</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            {errors.departmentId && (
-              <span className="directoryFieldError">
-                {errors.departmentId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select className="select" {...register("outletId")}>
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            {errors.outletId && (
-              <span className="directoryFieldError">
-                {errors.outletId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Role")}</span>
-            <select className="select" {...register("roleId")}>
-              <option value="">{t("Select role")}</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-            {errors.roleId && (
-              <span className="directoryFieldError">
-                {errors.roleId.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Contact")}</span>
-            <input
-              className="input"
-              placeholder={t("e.g. 9876543210")}
-              {...register("contact")}
+          </FormField>
+          <FormField label={t("Contact")} error={errors.contact?.message}>
+            <Input placeholder={t("e.g. 9876543210")} {...register("contact")} />
+          </FormField>
+          <FormField label={t("Status")}>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t("Active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.contact && (
-              <span className="directoryFieldError">
-                {errors.contact.message}
-              </span>
-            )}
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Status")}</span>
-            <select className="select" {...register("status")}>
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+          </FormField>
         </form>
       </Modal>
 
@@ -579,83 +588,94 @@ export default function DirectoryPage() {
         onClose={() => setEditEmployee(null)}
         footer={
           <>
-            <button
+            <Button
               type="button"
-              className="button modalButton"
+              variant="outline"
               onClick={() => setEditEmployee(null)}
             >
               {t("Cancel")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="edit-employee-form"
-              className="button buttonPrimary modalButton"
               disabled={updateEmployeeMutation.isPending}
             >
               {updateEmployeeMutation.isPending ? t("Saving…") : t("Update")}
-            </button>
+            </Button>
           </>
         }
       >
-        <form id="edit-employee-form" onSubmit={handleEditEmployeeSubmit} className="directoryForm">
+        <form
+          id="edit-employee-form"
+          onSubmit={handleEditEmployeeSubmit}
+          className="space-y-4"
+        >
           {editEmployeeError && (
-            <p className="directoryFormError" role="alert">
-              {editEmployeeError}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{editEmployeeError}</AlertDescription>
+            </Alert>
           )}
-          <label className="modalField">
-            <span className="label">{t("Department")}</span>
-            <select
-              className="select"
-              value={editDepartmentId}
-              onChange={(e) => setEditDepartmentId(e.target.value)}
+          <FormField label={t("Department")}>
+            <Select
+              value={editDepartmentId || undefined}
+              onValueChange={setEditDepartmentId}
             >
-              <option value="">{t("Select department")}</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Outlet")}</span>
-            <select
-              className="select"
-              value={editOutletId}
-              onChange={(e) => setEditOutletId(e.target.value)}
+              <SelectTrigger>
+                <SelectValue placeholder={t("Select department")} />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label={t("Outlet")}>
+            <Select value={editOutletId || undefined} onValueChange={setEditOutletId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("Select outlet")} />
+              </SelectTrigger>
+              <SelectContent>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label={t("Role")}>
+            <Select
+              value={editRoleIdState || undefined}
+              onValueChange={setEditRoleIdState}
             >
-              <option value="">{t("Select outlet")}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="modalField">
-            <span className="label">{t("Role")}</span>
-            <select
-              className="select"
-              value={editRoleIdState}
-              onChange={(e) => setEditRoleIdState(e.target.value)}
-            >
-              <option value="">{t("Select role")}</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger>
+                <SelectValue placeholder={t("Select role")} />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </form>
       </Modal>
 
       {canCreate ? (
-        <button type="button" className="directoryFab" onClick={() => setIsModalOpen(true)}>
-          <IoPersonAddOutline size={20} aria-hidden />
+        <Button
+          type="button"
+          size="lg"
+          className="directoryFab fixed bottom-6 right-6 z-40 shadow-lg lg:hidden"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <UserPlus className="h-5 w-5" aria-hidden />
           <span>{t("Add Employees")}</span>
-        </button>
+        </Button>
       ) : null}
     </section>
   );
