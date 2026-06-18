@@ -3,9 +3,29 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { IoBusinessOutline, IoChevronDown } from "react-icons/io5";
+import { IoBusinessOutline } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
+import { X } from "lucide-react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/app/components/ui/tooltip";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/app/components/ui/accordion";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/app/components/ui/sheet";
+import { Button } from "@/app/components/ui/button";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import MobileBottomNav from "@/app/components/MobileBottomNav/MobileBottomNav";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -996,23 +1016,25 @@ export default function Sidebar() {
               const railActive =
                 activePrimaryId === item.id &&
                 (!isHighland || highlandContext.mode === "main");
+              const label = getSidebarLabel(item.menu.titleKey);
               return (
-                <button
-                  key={item.id}
-                  className={railActive ? "link active" : "link"}
-                  type="button"
-                  aria-label={getSidebarLabel(item.menu.titleKey)}
-                  aria-pressed={activeMenuId === item.id}
-                  title={getSidebarLabel(item.menu.titleKey)}
-                  onClick={() => handleMenuToggle(item.id)}
-                >
-                  <span className="mobileRailIcon" aria-hidden>
-                    {item.icon}
-                  </span>
-                  <span className="mobileRailLabel">
-                    {getSidebarLabel(item.menu.titleKey)}
-                  </span>
-                </button>
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={railActive ? "link active" : "link"}
+                      type="button"
+                      aria-label={label}
+                      aria-pressed={activeMenuId === item.id}
+                      onClick={() => handleMenuToggle(item.id)}
+                    >
+                      <span className="mobileRailIcon" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span className="mobileRailLabel">{label}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
               );
             })}
           </div>
@@ -1027,28 +1049,35 @@ export default function Sidebar() {
                 const isActiveSub =
                   highlandContext.mode === "plant" &&
                   highlandContext.plantId === subOutlet.id;
+                const tooltipLabel = canSelect
+                  ? subOutlet.name
+                  : t("This outlet is inactive.");
                 return (
-                  <button
-                    key={`sub-outlet-${subOutlet.id}`}
-                    type="button"
-                    className={
-                      isActiveSub ? "link subOutletRail active" : "link subOutletRail"
-                    }
-                    disabled={!canSelect}
-                    title={
-                      canSelect
-                        ? subOutlet.name
-                        : t("This outlet is inactive.")
-                    }
-                    aria-label={subOutlet.name}
-                    aria-pressed={isActiveSub}
-                    onClick={() => handleDesktopSubOutletClick(subOutlet)}
-                  >
-                    <span className="mobileRailIcon plantRailBadge" aria-hidden>
-                      {twoLetterLabelFromPlantName(subOutlet.name)}
-                    </span>
-                    <span className="mobileRailLabel">{subOutlet.name}</span>
-                  </button>
+                  <Tooltip key={`sub-outlet-${subOutlet.id}`}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={
+                          isActiveSub
+                            ? "link subOutletRail active"
+                            : "link subOutletRail"
+                        }
+                        disabled={!canSelect}
+                        aria-label={subOutlet.name}
+                        aria-pressed={isActiveSub}
+                        onClick={() => handleDesktopSubOutletClick(subOutlet)}
+                      >
+                        <span
+                          className="mobileRailIcon plantRailBadge"
+                          aria-hidden
+                        >
+                          {twoLetterLabelFromPlantName(subOutlet.name)}
+                        </span>
+                        <span className="mobileRailLabel">{subOutlet.name}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{tooltipLabel}</TooltipContent>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -1059,39 +1088,49 @@ export default function Sidebar() {
         <div className="footer">
           <LanguageToggle className="link" />
           {showInstallButton && (
-            <button
-              type="button"
-              className="link"
-              onClick={handleInstallClick}
-              aria-label={t("Install App")}
-              title={t("Install App")}
-            >
-              <span className="mobileRailIcon" aria-hidden>
-                <LuDownload size={20} />
-              </span>
-              <span className="mobileRailLabel">{t("Install")}</span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={handleInstallClick}
+                  aria-label={t("Install App")}
+                >
+                  <span className="mobileRailIcon" aria-hidden>
+                    <LuDownload size={20} />
+                  </span>
+                  <span className="mobileRailLabel">{t("Install")}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t("Install App")}</TooltipContent>
+            </Tooltip>
           )}
           {sidebarConfig.footer[0].items
             .filter((item) => !isMobile || item.id !== "settings")
-            .map((item) => (
-              <button
-                key={item.id}
-                className={activePrimaryId === item.id ? "link active" : "link"}
-                type="button"
-                aria-label={getSidebarLabel(item.menu.titleKey)}
-                aria-pressed={activeMenuId === item.id}
-                title={getSidebarLabel(item.menu.titleKey)}
-                onClick={() => handleMenuToggle(item.id)}
-              >
-                <span className="mobileRailIcon" aria-hidden>
-                  {item.icon}
-                </span>
-                <span className="mobileRailLabel">
-                  {getSidebarLabel(item.menu.titleKey)}
-                </span>
-              </button>
-            ))}
+            .map((item) => {
+              const label = getSidebarLabel(item.menu.titleKey);
+              return (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={
+                        activePrimaryId === item.id ? "link active" : "link"
+                      }
+                      type="button"
+                      aria-label={label}
+                      aria-pressed={activeMenuId === item.id}
+                      onClick={() => handleMenuToggle(item.id)}
+                    >
+                      <span className="mobileRailIcon" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span className="mobileRailLabel">{label}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
         </div>
         )}
       </aside>
@@ -1151,30 +1190,39 @@ export default function Sidebar() {
         </div>
       )}
 
-      {isMobile && showSubOutletSwitcher && subOutletPickerOpen && subOutletCount > 1 && (
-        <>
-          <div
-            className="subOutletPickerBackdrop"
-            onClick={() => setSubOutletPickerOpen(false)}
-            aria-hidden
-          />
-          <div
-            className="subOutletPicker"
+      {isMobile && showSubOutletSwitcher && subOutletCount > 1 && (
+        <Sheet
+          open={subOutletPickerOpen}
+          onOpenChange={setSubOutletPickerOpen}
+        >
+          <SheetContent
+            side="bottom"
             id="sub-outlet-picker"
-            role="dialog"
             aria-label={t("Sub-outlets")}
+            className="rounded-t-2xl border-t pb-[calc(env(safe-area-inset-bottom)+1rem)]"
           >
-            <div className="subOutletPickerHeader">{t("Sub-outlets")}</div>
-            <ul className="subOutletPickerList" role="listbox" aria-label={t("Sub-outlets")}>
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-base">{t("Sub-outlets")}</SheetTitle>
+            </SheetHeader>
+            <ul
+              className="mt-2 flex max-h-[60vh] flex-col gap-1 overflow-y-auto"
+              role="listbox"
+              aria-label={t("Sub-outlets")}
+            >
               {visibleSubOutlets.map((subOutlet) => {
                 const canSelect = subOutlet.status;
                 const isActive =
-                  highlandContext.mode === "plant" && highlandContext.plantId === subOutlet.id;
+                  highlandContext.mode === "plant" &&
+                  highlandContext.plantId === subOutlet.id;
                 return (
-                  <li key={subOutlet.id} className="subOutletPickerItem">
+                  <li key={subOutlet.id}>
                     <button
                       type="button"
-                      className={isActive ? "subOutletPickerItemBtn active" : "subOutletPickerItemBtn"}
+                      className={
+                        isActive
+                          ? "subOutletPickerItemBtn active"
+                          : "subOutletPickerItemBtn"
+                      }
                       role="option"
                       aria-selected={isActive}
                       disabled={!canSelect}
@@ -1188,14 +1236,16 @@ export default function Sidebar() {
                       <span className="subOutletPickerItemBadge" aria-hidden>
                         {twoLetterLabelFromPlantName(subOutlet.name)}
                       </span>
-                      <span className="subOutletPickerItemName">{subOutlet.name}</span>
+                      <span className="subOutletPickerItemName">
+                        {subOutlet.name}
+                      </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
-          </div>
-        </>
+          </SheetContent>
+        </Sheet>
       )}
 
       {activeMenu && (
@@ -1211,128 +1261,126 @@ export default function Sidebar() {
           <span className="drawerTitle">
             {activeMenu ? getSidebarLabel(activeMenu.titleKey) : ""}
           </span>
-          <button
+          <Button
             type="button"
-            className="drawerClose"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => setActiveMenuId(null)}
             aria-label={t("Close menu")}
           >
-            ×
-          </button>
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
         </div>
         <div className="drawerBody">
           {activeMenu &&
-            (isGroupedRailMenu(activeMenu as RailMenu)
-              ? (
-                  (() => {
-                    if (activeMenuId === STAFF_HUB_ID || activeMenuId === OUTLET_LOGO_HUB_ID) {
-                      return accessTier === "driver" ? driverDrawerSections : outletStaffDrawerSections;
-                    }
-                    const useScopedPlantMenu =
-                      activeMenuId === "highland" &&
-                      ((highlandContext.mode === "plant" && highlandContext.outletId) ||
-                        (accessTier === "outlet_manager" && Boolean(lockedOutletId)));
-                    if (useScopedPlantMenu) return highlandPlantMenuSections;
-                    return (activeMenu as RailMenu & { sections: MenuSectionBlock[] }).sections;
-                  })()
-                ).map((section) => {
-                        const visibleItems = section.items.filter((entry) =>
-                          menuItemIsVisible(entry, canCreate, capabilities)
-                        );
-                        if (visibleItems.length === 0) return null;
-
-                        const panelId = `drawer-section-${section.titleKey}`;
-                        const isAccordionOpen =
-                          groupedDrawerAccordionKey === section.titleKey;
-
-                        return (
-                          <div key={section.titleKey} className="drawerAccordionSection">
-                            <button
-                              type="button"
-                              className="drawerAccordionTrigger"
-                              aria-expanded={isAccordionOpen}
-                              aria-controls={panelId}
-                              id={`drawer-trigger-${section.titleKey}`}
-                              onClick={() =>
-                                setGroupedDrawerAccordionKey((current) =>
-                                  current === section.titleKey ? null : section.titleKey
-                                )
-                              }
-                            >
-                              <span className="drawerAccordionTriggerLabel">
-                                {getSidebarLabel(section.titleKey)}
-                              </span>
-                              <IoChevronDown
-                                className={
-                                  isAccordionOpen
-                                    ? "drawerAccordionChevron open"
-                                    : "drawerAccordionChevron"
-                                }
-                                aria-hidden
-                                size={20}
-                              />
-                            </button>
-                            {isAccordionOpen && (
-                              <div
-                                className="drawerAccordionPanel"
-                                id={panelId}
-                                role="region"
-                                aria-labelledby={`drawer-trigger-${section.titleKey}`}
-                              >
-                                {visibleItems.map((entry) => {
-                                  const scopeId =
-                                    lockedOutletId ??
-                                    (highlandContext.mode === "plant" ? highlandContext.outletId : null);
-                                  const to = scopeId
-                                    ? buildPathWithOutletScope(entry.href, scopeId, "")
-                                    : entry.href;
-                                  const isActive = drawerLinkIsActive(
-                                    to,
-                                    pathname,
-                                    locationSearch
-                                  );
-                                  return (
-                                    <Link
-                                      key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
-                                      className={
-                                        isActive
-                                          ? "drawerItem drawerItemNested active"
-                                          : "drawerItem drawerItemNested"
-                                      }
-                                      to={to}
-                                      onClick={() => setActiveMenuId(null)}
-                                      aria-current={isActive ? "page" : undefined}
-                                    >
-                                      {getSidebarLabel(entry.labelKey)}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-              : (activeMenu as { items: MenuItem[] }).items
-                  .filter((entry) =>
-                    menuItemIsVisible(entry, canCreate, capabilities)
+            (isGroupedRailMenu(activeMenu as RailMenu) ? (
+              <Accordion
+                type="single"
+                collapsible
+                value={groupedDrawerAccordionKey ?? ""}
+                onValueChange={(v) =>
+                  setGroupedDrawerAccordionKey(
+                    v ? (v as TranslationKey) : null,
                   )
-                  .map((entry) => (
-                    <Link
-                      key={entry.href}
-                      className={
-                        activeHrefInOpenMenu === entry.href
-                          ? "drawerItem active"
-                          : "drawerItem"
-                      }
-                      to={entry.href}
-                      onClick={() => setActiveMenuId(null)}
-                      aria-current={
-                        activeHrefInOpenMenu === entry.href ? "page" : undefined
-                      }
+                }
+                className="flex flex-col gap-1.5"
+              >
+                {(() => {
+                  if (
+                    activeMenuId === STAFF_HUB_ID ||
+                    activeMenuId === OUTLET_LOGO_HUB_ID
+                  ) {
+                    return accessTier === "driver"
+                      ? driverDrawerSections
+                      : outletStaffDrawerSections;
+                  }
+                  const useScopedPlantMenu =
+                    activeMenuId === "highland" &&
+                    ((highlandContext.mode === "plant" &&
+                      highlandContext.outletId) ||
+                      (accessTier === "outlet_manager" &&
+                        Boolean(lockedOutletId)));
+                  if (useScopedPlantMenu) return highlandPlantMenuSections;
+                  return (
+                    activeMenu as RailMenu & { sections: MenuSectionBlock[] }
+                  ).sections;
+                })().map((section) => {
+                  const visibleItems = section.items.filter((entry) =>
+                    menuItemIsVisible(entry, canCreate, capabilities),
+                  );
+                  if (visibleItems.length === 0) return null;
+
+                  return (
+                    <AccordionItem
+                      key={section.titleKey}
+                      value={section.titleKey}
+                      className="overflow-hidden rounded-lg border border-border bg-muted/40"
                     >
-                      {getSidebarLabel(entry.labelKey)}
-                    </Link>
-                  )))}
+                      <AccordionTrigger className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-foreground hover:no-underline hover:bg-muted">
+                        {getSidebarLabel(section.titleKey)}
+                      </AccordionTrigger>
+                      <AccordionContent className="border-t border-border bg-card px-1.5 py-1.5">
+                        <div className="flex flex-col gap-0.5">
+                          {visibleItems.map((entry) => {
+                            const scopeId =
+                              lockedOutletId ??
+                              (highlandContext.mode === "plant"
+                                ? highlandContext.outletId
+                                : null);
+                            const to = scopeId
+                              ? buildPathWithOutletScope(entry.href, scopeId, "")
+                              : entry.href;
+                            const isActive = drawerLinkIsActive(
+                              to,
+                              pathname,
+                              locationSearch,
+                            );
+                            return (
+                              <Link
+                                key={`${section.titleKey}-${entry.labelKey}-${entry.href}`}
+                                className={
+                                  isActive
+                                    ? "drawerItem drawerItemNested active"
+                                    : "drawerItem drawerItemNested"
+                                }
+                                to={to}
+                                onClick={() => setActiveMenuId(null)}
+                                aria-current={isActive ? "page" : undefined}
+                              >
+                                {getSidebarLabel(entry.labelKey)}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            ) : (
+              (activeMenu as { items: MenuItem[] }).items
+                .filter((entry) =>
+                  menuItemIsVisible(entry, canCreate, capabilities),
+                )
+                .map((entry) => (
+                  <Link
+                    key={entry.href}
+                    className={
+                      activeHrefInOpenMenu === entry.href
+                        ? "drawerItem active"
+                        : "drawerItem"
+                    }
+                    to={entry.href}
+                    onClick={() => setActiveMenuId(null)}
+                    aria-current={
+                      activeHrefInOpenMenu === entry.href ? "page" : undefined
+                    }
+                  >
+                    {getSidebarLabel(entry.labelKey)}
+                  </Link>
+                ))
+            ))}
         </div>
         <div className="drawerFooter">
           <button

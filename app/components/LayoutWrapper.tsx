@@ -4,10 +4,10 @@ import { AuthProvider } from "@/app/providers/AuthProvider";
 import ToastProvider from "@/app/providers/ToastProvider";
 import { OutletAccessProvider } from "@/app/providers/OutletAccessProvider";
 import { OutletScopeProvider } from "@/app/providers/OutletScopeProvider";
+import { TooltipProvider } from "@/app/components/ui/tooltip";
 import ScopedRoutesGuard from "./ScopedRoutesGuard";
 import PageBackBar from "./PageBackBar";
 import Sidebar from "./Sidebar/Sidebar";
-import "./PageBackBar.scss";
 import "./Sidebar/Sidebar.scss";
 import "./mobile-shell.scss";
 
@@ -35,6 +35,7 @@ export default function LayoutWrapper() {
       <ToastProvider>
         <OutletAccessProvider>
           <OutletScopeProvider>
+            <TooltipProvider delayDuration={200} skipDelayDuration={300}>
             <div className="flex h-dvh max-h-dvh min-h-0 w-full overflow-x-hidden overflow-y-hidden">
               <Sidebar />
               <main
@@ -49,6 +50,7 @@ export default function LayoutWrapper() {
                 </div>
               </main>
             </div>
+            </TooltipProvider>
           </OutletScopeProvider>
         </OutletAccessProvider>
       </ToastProvider>
