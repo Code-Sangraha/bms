@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Input } from "@/app/components/ui/input";
 import type { Customer } from "@/handlers/customer";
 import { filterCustomersForTypeahead, formatCustomerSuggestionLabel } from "./filterCustomersForTypeahead";
 
@@ -92,11 +93,10 @@ export default function PosCustomerNameCombobox({
   };
 
   return (
-    <div className="posCustomerCombobox" ref={rootRef}>
-      <input
+    <div className="saleCustomerCombobox" ref={rootRef}>
+      <Input
         ref={inputRef}
         id="pos-customer-name"
-        className="posInput"
         type="text"
         role="combobox"
         aria-expanded={showList}
@@ -125,11 +125,11 @@ export default function PosCustomerNameCombobox({
         <ul
           id={listId}
           role="listbox"
-          className="posCustomerSuggestList"
+          className="saleCustomerSuggestList"
           aria-label={t("Matching customers")}
         >
           {suggestions.length === 0 ? (
-            <li className="posCustomerSuggestEmpty" role="presentation">
+            <li className="saleCustomerSuggestEmpty" role="presentation">
               {t("No matching customers")}
             </li>
           ) : (
@@ -141,14 +141,14 @@ export default function PosCustomerNameCombobox({
                 aria-selected={index === activeIndex}
                 className={
                   index === activeIndex
-                    ? "posCustomerSuggestOption posCustomerSuggestOption--active"
-                    : "posCustomerSuggestOption"
+                    ? "saleCustomerSuggestOption saleCustomerSuggestOption--active"
+                    : "saleCustomerSuggestOption"
                 }
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectCustomer(customer)}
                 onMouseEnter={() => setActiveIndex(index)}
               >
-                <span className="posCustomerSuggestLabel">
+                <span className="saleCustomerSuggestLabel">
                   {formatCustomerSuggestionLabel(customer)}
                 </span>
               </li>

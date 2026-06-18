@@ -4,19 +4,35 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LuArrowRight,
-  LuCircleCheck,
-  LuCreditCard,
-  LuPackageCheck,
-  LuScale,
-  LuUserRound,
-} from "react-icons/lu";
+  ArrowRight,
+  CircleCheck,
+  CreditCard,
+  PackageCheck,
+  Scale,
+  UserRound,
+} from "lucide-react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { FormField } from "@/app/components/ui-ext/FormField";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useRowFilterOutletId } from "@/app/hooks/useRowFilterOutletId";
 import WasteProductSelect from "@/app/dashboard/product/wasteProduct/WasteProductSelect";
+import { PaymentMethodPicker } from "@/app/dashboard/invoices/components/PaymentMethodPicker";
+import { SaleFormSection } from "@/app/dashboard/invoices/components/SaleFormSection";
+import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { getCustomerTypes } from "@/handlers/customerType";
 import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
 import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
@@ -25,11 +41,10 @@ import { formatSaleAmount } from "@/lib/saleCalculations";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
   paymentMethodLabel,
-  SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
 import { validateWasteSaleCreate } from "@/schema/sale";
-import "./waste-sales.scss";
+import "../components/sale-entry.scss";
 
 const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
@@ -275,255 +290,232 @@ export default function WasteSalesPage() {
   };
 
   return (
-    <section className="wasteSalesPage">
-      <div className="wasteSalesBreadcrumb">
-        <span>{t("Sales & Billing")}</span> {" > "} {t("Waste Sales")}
-      </div>
-
-      <header className="wasteSalesHeader">
-        <div className="wasteSalesHeaderText">
-          <h1 className="wasteSalesTitle">{t("Waste Sales")}</h1>
-          <p className="wasteSalesSubtitle">
-            {t("Record a sale of processed waste by weight and amount.")}
-          </p>
-        </div>
-        <div className="wasteSalesHeaderBadge">
-          <LuPackageCheck aria-hidden />
-          <span>{t("Waste sale")}</span>
-        </div>
-      </header>
-
-      <div className="wasteSalesLayout">
-        <form
-          className="wasteSalesFormPanel"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleCheckout();
-          }}
-        >
-          <header className="wasteSalesFormHeader">
-            <div>
-              <span className="wasteSalesFormKicker">{t("Invoice form")}</span>
-              <h2 className="wasteSalesFormTitle">{t("Waste sale details")}</h2>
-            </div>
-            <div className="wasteSalesFormTotal" aria-live="polite">
-              <span>{t("Total due")}</span>
-              <strong>{totalDueDisplay}</strong>
-            </div>
-          </header>
-
-          <dl className="wasteSalesInlineSummary" aria-label={t("Waste sale details")}>
-            <div>
-              <dt>{t("Product")}</dt>
-              <dd>{selectedProductName}</dd>
-            </div>
-            <div>
-              <dt>{t("Stock")}</dt>
-              <dd>{stockDisplay}</dd>
-            </div>
-            <div>
-              <dt>{t("Weight")}</dt>
-              <dd>{weightDisplay}</dd>
-            </div>
-            <div>
-              <dt>{t("Payment")}</dt>
-              <dd>{paymentDisplay}</dd>
-            </div>
-          </dl>
-
-          <section className="wasteSalesSection" aria-labelledby="waste-section-customer">
-            <div className="wasteSalesSectionHead">
-              <span className="wasteSalesSectionIcon" aria-hidden>
-                <LuUserRound />
-              </span>
-              <h3 id="waste-section-customer" className="wasteSalesSectionTitle">
-                {t("Customer")}
-              </h3>
-            </div>
-            <div className="wasteSalesGrid wasteSalesGrid--customer">
-              <label className="wasteSalesField" htmlFor="waste-customer-name">
-                <span className="wasteSalesLabel">{t("Customer Details")}</span>
-                <input
-                  id="waste-customer-name"
-                  className="wasteSalesInput"
-                  placeholder={t("Customer name")}
-                  value={customerName}
-                  onChange={(e) => {
-                    setCustomerName(e.target.value);
-                    clearError();
-                  }}
-                  aria-label={t("Customer Details")}
-                  autoComplete="name"
-                />
-              </label>
-              <label className="wasteSalesField" htmlFor="waste-customer-contact">
-                <span className="wasteSalesLabel">{t("Contact")}</span>
-                <input
-                  id="waste-customer-contact"
-                  className="wasteSalesInput"
-                  placeholder={t("Phone or email")}
-                  value={customerContact}
-                  onChange={(e) => {
-                    setCustomerContact(e.target.value);
-                    clearError();
-                  }}
-                  aria-label={t("Customer contact")}
-                  autoComplete="tel"
-                />
-              </label>
-              <label className="wasteSalesField" htmlFor="waste-customer-type">
-                <span className="wasteSalesLabel">{t("Customer Type")}</span>
-                <select
-                  id="waste-customer-type"
-                  className="wasteSalesInput wasteSalesSelect"
-                  value={customerTypeId}
-                  onChange={(e) => {
-                    setCustomerTypeId(e.target.value);
-                    clearError();
-                  }}
-                  aria-label={t("Customer Type")}
-                >
-                  <option value="">{t("Select customer type")}</option>
-                  {customerTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <section className="wasteSalesSection" aria-labelledby="waste-section-sale">
-            <div className="wasteSalesSectionHead">
-              <span className="wasteSalesSectionIcon" aria-hidden>
-                <LuScale />
-              </span>
-              <h3 id="waste-section-sale" className="wasteSalesSectionTitle">
-                {t("Sale details")}
-              </h3>
-            </div>
-            <div className="wasteSalesGrid wasteSalesGrid--product">
-              <div className="wasteSalesProductControl">
-                <WasteProductSelect
-                  id="waste-sale-product"
-                  value={wasteProductId}
-                  onChange={(value) => {
-                    setWasteProductId(value);
-                    setError(null);
-                  }}
-                />
-              </div>
-              {selectedWasteProduct && (
-                <div className="wasteSalesStockStrip" role="status">
-                  <LuPackageCheck aria-hidden />
-                  <span>{t("Available waste stock")}</span>
-                  <strong>{stockDisplay}</strong>
+    <SalePageLayout
+      sectionLabel={t("Sales & Billing")}
+      pageTitle={t("Waste Sales")}
+      subtitle={t("Record a sale of processed waste by weight and amount.")}
+      actions={
+        <Badge variant="success" className="gap-1.5 px-3 py-1.5 text-xs font-semibold">
+          <PackageCheck className="size-3.5" aria-hidden />
+          {t("Waste sale")}
+        </Badge>
+      }
+    >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:items-start">
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader className="border-b pb-5">
+            <CardTitle>{t("Waste sale details")}</CardTitle>
+            <CardDescription>
+              {t("Enter customer information, select a waste product, and set weight and amount.")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form
+              id="waste-sale-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleCheckout();
+              }}
+            >
+              <SaleFormSection
+                divided={false}
+                id="waste-section-customer"
+                title={t("Customer")}
+                icon={<UserRound className="size-4" />}
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField id="waste-customer-name" label={t("Customer Details")}>
+                    <Input
+                      id="waste-customer-name"
+                      placeholder={t("Customer name")}
+                      value={customerName}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        clearError();
+                      }}
+                      autoComplete="name"
+                    />
+                  </FormField>
+                  <FormField id="waste-customer-contact" label={t("Contact")}>
+                    <Input
+                      id="waste-customer-contact"
+                      placeholder={t("Phone or email")}
+                      value={customerContact}
+                      onChange={(e) => {
+                        setCustomerContact(e.target.value);
+                        clearError();
+                      }}
+                      autoComplete="tel"
+                    />
+                  </FormField>
+                  <FormField
+                    id="waste-customer-type"
+                    label={t("Customer Type")}
+                    className="sm:col-span-2"
+                  >
+                    <select
+                      id="waste-customer-type"
+                      className="saleSelect"
+                      value={customerTypeId}
+                      onChange={(e) => {
+                        setCustomerTypeId(e.target.value);
+                        clearError();
+                      }}
+                    >
+                      <option value="">{t("Select customer type")}</option>
+                      {customerTypes.map((ct) => (
+                        <option key={ct.id} value={ct.id}>
+                          {ct.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
                 </div>
-              )}
-            </div>
-            <div className="wasteSalesGrid wasteSalesGrid--amounts">
-              <label className="wasteSalesField" htmlFor="waste-sale-weight">
-                <span className="wasteSalesLabel">{t("Weight (kg)")}</span>
-                <input
-                  id="waste-sale-weight"
-                  className="wasteSalesInput"
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={weightInput}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onChange={(e) => {
-                    setWeightInput(e.target.value);
-                    clearError();
-                  }}
-                  aria-label={t("Weight (kg)")}
-                  inputMode="decimal"
-                />
-              </label>
-              <label className="wasteSalesField" htmlFor="waste-sale-amount">
-                <span className="wasteSalesLabel">{t("Line amount (Rs.)")}</span>
-                <input
-                  id="waste-sale-amount"
-                  className="wasteSalesInput"
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={amountInput}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onChange={(e) => {
-                    setAmountInput(e.target.value);
-                    clearError();
-                  }}
-                  aria-label={t("Line amount")}
-                  inputMode="decimal"
-                />
-              </label>
-            </div>
-          </section>
+              </SaleFormSection>
 
-          <section className="wasteSalesSection" aria-labelledby="waste-section-payment">
-            <div className="wasteSalesSectionHead">
-              <span className="wasteSalesSectionIcon" aria-hidden>
-                <LuCreditCard />
-              </span>
-              <h3 id="waste-section-payment" className="wasteSalesSectionTitle">
-                {t("Payment")}
-              </h3>
-            </div>
-            <div className="wasteSalesPaymentRow">
-              <div className="wasteSalesField wasteSalesField--segment">
-                <span className="wasteSalesLabel" id="waste-payment-method-label">
-                  {t("Payment method")}
-                </span>
-                <div
-                  className="wasteSalesSegment"
-                  role="radiogroup"
-                  aria-labelledby="waste-payment-method-label"
-                >
-                  {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => {
-                    const selected = paymentMethod === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        className={`wasteSalesSegmentBtn${
-                          selected ? " wasteSalesSegmentBtn--active" : ""
-                        }`}
-                        onClick={() => {
-                          setPaymentMethod(opt.value);
+              <SaleFormSection
+                id="waste-section-sale"
+                title={t("Sale details")}
+                icon={<Scale className="size-4" />}
+                description={t("Choose the waste product and enter weight and line amount.")}
+              >
+                <div className="space-y-4">
+                  <WasteProductSelect
+                    id="waste-sale-product"
+                    value={wasteProductId}
+                    onChange={(value) => {
+                      setWasteProductId(value);
+                      setError(null);
+                    }}
+                  />
+                  {selectedWasteProduct ? (
+                    <div
+                      className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-sm"
+                      role="status"
+                    >
+                      <PackageCheck className="size-4 shrink-0 text-primary" aria-hidden />
+                      <span className="text-muted-foreground">{t("Available waste stock")}</span>
+                      <strong className="ml-auto font-semibold text-primary">{stockDisplay}</strong>
+                    </div>
+                  ) : null}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField id="waste-sale-weight" label={t("Weight (kg)")}>
+                      <Input
+                        id="waste-sale-weight"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={weightInput}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => {
+                          setWeightInput(e.target.value);
                           clearError();
                         }}
-                      >
-                        {t(opt.label)}
-                      </button>
-                    );
-                  })}
+                        inputMode="decimal"
+                      />
+                    </FormField>
+                    <FormField id="waste-sale-amount" label={t("Line amount (Rs.)")}>
+                      <Input
+                        id="waste-sale-amount"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={amountInput}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => {
+                          setAmountInput(e.target.value);
+                          clearError();
+                        }}
+                        inputMode="decimal"
+                      />
+                    </FormField>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </section>
+              </SaleFormSection>
 
-          {error && (
-            <div className="wasteSalesErrorBlock" role="alert">
-              <p>{error}</p>
-            </div>
-          )}
+              <SaleFormSection
+                id="waste-section-payment"
+                title={t("Payment")}
+                icon={<CreditCard className="size-4" />}
+              >
+                <FormField id="waste-payment-method" label={t("Payment method")}>
+                  <PaymentMethodPicker
+                    labelId="waste-payment-method"
+                    value={paymentMethod}
+                    onChange={(value) => {
+                      setPaymentMethod(value);
+                      clearError();
+                    }}
+                    t={t}
+                  />
+                </FormField>
+              </SaleFormSection>
 
-          <button
-            type="submit"
-            className="wasteSalesCheckoutBtn"
-            disabled={createWasteSaleMutation.isPending}
-          >
-            <LuCircleCheck aria-hidden />
-            <span>
+              {error ? (
+                <Alert variant="destructive" className="mt-6">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+            </form>
+          </CardContent>
+          <CardFooter className="border-t bg-muted/20 pt-6 lg:hidden">
+            <Button
+              type="submit"
+              form="waste-sale-form"
+              className="h-11 w-full gap-2 rounded-full text-base font-semibold"
+              disabled={createWasteSaleMutation.isPending}
+            >
+              <CircleCheck className="size-4" aria-hidden />
               {createWasteSaleMutation.isPending ? t("Processing...") : t("Checkout")}
-            </span>
-            <LuArrowRight className="wasteSalesCheckoutArrow" aria-hidden />
-          </button>
-        </form>
+              <ArrowRight className="size-4" aria-hidden />
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t("Order summary")}</CardTitle>
+              <CardDescription>{t("Review before checkout")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="saleSummaryPanel">
+                <div className="saleSummaryRow">
+                  <dt>{t("Product")}</dt>
+                  <dd>{selectedProductName}</dd>
+                </div>
+                <div className="saleSummaryRow">
+                  <dt>{t("Stock")}</dt>
+                  <dd>{stockDisplay}</dd>
+                </div>
+                <div className="saleSummaryRow">
+                  <dt>{t("Weight")}</dt>
+                  <dd>{weightDisplay}</dd>
+                </div>
+                <div className="saleSummaryRow">
+                  <dt>{t("Payment")}</dt>
+                  <dd>{paymentDisplay}</dd>
+                </div>
+                <div className="saleSummaryTotal" aria-live="polite">
+                  <span>{t("Total due")}</span>
+                  <strong>{totalDueDisplay}</strong>
+                </div>
+              </dl>
+            </CardContent>
+            <CardFooter className="hidden flex-col gap-2 pt-0 lg:flex">
+              <Button
+                type="submit"
+                form="waste-sale-form"
+                className="h-11 w-full gap-2 rounded-full text-base font-semibold"
+                disabled={createWasteSaleMutation.isPending}
+              >
+                <CircleCheck className="size-4" aria-hidden />
+                {createWasteSaleMutation.isPending ? t("Processing...") : t("Checkout")}
+                <ArrowRight className="size-4" aria-hidden />
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
 
       <ConfirmModal
@@ -536,6 +528,6 @@ export default function WasteSalesPage() {
         onClose={() => setCheckoutConfirmOpen(false)}
         onConfirm={doCheckout}
       />
-    </section>
+    </SalePageLayout>
   );
 }

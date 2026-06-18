@@ -3,7 +3,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CreditCard, Package, Plus, ShoppingCart, UserRound } from "lucide-react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { PaymentMethodPicker } from "@/app/dashboard/invoices/components/PaymentMethodPicker";
+import { SaleFormSection } from "@/app/dashboard/invoices/components/SaleFormSection";
+import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
+import { SegmentPicker } from "@/app/dashboard/invoices/components/SegmentPicker";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -29,14 +47,13 @@ import {
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
   paymentMethodLabel,
-  SALE_PAYMENT_METHOD_OPTIONS,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
 import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
 import { findMatchingCustomer } from "./findMatchingCustomer";
-import "./pos.scss";
+import "../components/sale-entry.scss";
 
 type LinePricingMode = "weight" | "amount";
 
@@ -686,418 +703,383 @@ export default function PointOfSalePage() {
     setCheckoutConfirmOpen(true);
   };
 
+  const linePricingOptions = useMemo(
+    () => [
+      { value: "weight" as const, label: t("Weight") },
+      { value: "amount" as const, label: t("Fixed amount") },
+    ],
+    [t],
+  );
+
   return (
-    <section className="posPage">
-      <div className="breadcrumb">
-        <span>{t("Sales & Billing")}</span> {" > "} {t("Point of Sale")}
-      </div>
-
-      <div className="posHeader">
-        <div className="posHeaderText">
-          <h1 className="pageTitle">{t("Point of Sale")}</h1>
-          <p className="pageSubtitle">
-            {t("Scan barcode or search products")}
-          </p>
-        </div>
-      </div>
-
-      <div className="posCard posCard--primary">
-        <header className="posCardHeader">
-          <h2 className="posCardTitle">{t("Current Sale")}</h2>
-          <p className="posCardDescription">
-            {t(
-              "Choose outlet and payment, add processed product lines, then checkout to record the sale."
-            )}
-          </p>
-        </header>
-
-        <section className="posSection" aria-labelledby="pos-section-customer">
-          <h3 id="pos-section-customer" className="posSectionTitle">
-            {t("Customer & outlet")}
-          </h3>
-          <div className="posFormRow posFormRow--customer">
-            <label className="posField posField--customerName" htmlFor="pos-customer-name">
-              <span className="posLabel">{t("Customer Details")}</span>
-              <PosCustomerNameCombobox
-                customers={allCustomers}
-                outletId={outletId}
-                value={customerName}
-                onChange={handleCustomerNameChange}
-                onSelectCustomer={applyRegisteredCustomer}
-                t={t}
-              />
-            </label>
-            <label className="posField posField--contact">
-              <span className="posLabel">{t("Contact")}</span>
-              <input
-                className="posInput"
-                placeholder={t("Phone or email")}
-                value={customerContact}
-                onChange={(e) => handleCustomerContactChange(e.target.value)}
-                aria-label={t("Customer contact")}
-                autoComplete="tel"
-              />
-            </label>
-          </div>
-          <div className="posFormRow posFormRow--outletPayment">
-            <label className="posField">
-              <span className="posLabel">{t("Outlet")}</span>
-              <select
-                className="posSelect"
-                value={outletId}
-                onChange={(e) => setOutletId(e.target.value)}
-                aria-label={t("Outlet")}
-              >
-                <option value="">{t("Select outlet")}</option>
-                {outletsForSelect.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="posField posField--segment posField--payment">
-              <span className="posLabel" id="pos-payment-method-label">
-                {t("Payment method")}
-              </span>
-              <div
-                className="posSegment"
-                role="radiogroup"
-                aria-labelledby="pos-payment-method-label"
-              >
-                {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => {
-                  const selected = paymentMethod === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      className={`posSegment__btn${selected ? " posSegment__btn--active" : ""}`}
-                      onClick={() => setPaymentMethod(opt.value)}
-                    >
-                      {t(opt.label)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="posSection" aria-labelledby="pos-section-add-line">
-          <h3 id="pos-section-add-line" className="posSectionTitle">
-            {editingLineIndex !== null ? t("Edit product line") : t("Add product line")}
-          </h3>
-
-          <div className="posLineForm">
-            <div className="posLineForm__row posLineForm__row--product">
-              <label className="posField">
-                <span className="posLabel">{t("Product")}</span>
-                <select
-                  ref={productSelectRef}
-                  className="posSelect"
-                  value={productId}
-                  onChange={(e) => setProductId(e.target.value)}
-                  aria-label={t("Product")}
-                >
-                  <option value="">{t("Select product")}</option>
-                  {processedProductsForDropdown.map((p: Product) => (
-                    <option key={p.id} value={p.id}>
-                      {formatProcessedProductOptionLabel(
-                        p,
-                        outlets,
-                        getProcessedProductAvailableKg(p)
-                      )}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="posField">
-                <span className="posLabel">{t("Customer type")}</span>
-                <select
-                  className="posSelect"
-                  value={lineTypeId}
-                  onChange={(e) => setLineTypeId(e.target.value)}
-                  aria-label={t("Price type for this line (Retail/Wholesale)")}
-                >
-                  <option value="">{t("Retail / Wholesale")}</option>
-                  {customerTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="posLineForm__pricing">
-              <div className="posLineForm__pricingTop">
-                <div className="posLineForm__pricingIntro">
-                  <span className="posLineForm__pricingTitle">{t("Pricing")}</span>
-                  <p className="posLineForm__pricingDesc">
-                    {linePricingMode === "weight"
-                      ? t("Enter weight to calculate the line total from the pricelist.")
-                      : t("Enter a fixed line amount. Stock weight is derived from unit price.")}
-                  </p>
-                </div>
-                <div className="posField posField--segment">
-                  <span className="posLabel" id="pos-line-pricing-mode-label">
-                    {t("Price by")}
-                  </span>
-                  <div
-                    className="posSegment"
-                    role="radiogroup"
-                    aria-labelledby="pos-line-pricing-mode-label"
-                  >
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={linePricingMode === "weight"}
-                      className={`posSegment__btn${linePricingMode === "weight" ? " posSegment__btn--active" : ""}`}
-                      onClick={() => handleLinePricingModeChange("weight")}
-                    >
-                      {t("Weight")}
-                    </button>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={linePricingMode === "amount"}
-                      className={`posSegment__btn${linePricingMode === "amount" ? " posSegment__btn--active" : ""}`}
-                      onClick={() => handleLinePricingModeChange("amount")}
-                    >
-                      {t("Fixed amount")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="posLineForm__pricingGrid">
-                {linePricingMode === "weight" ? (
-                  <label className="posField">
-                    <span className="posLabel">{t("Weight (kg)")}</span>
-                    <input
-                      className="posInput"
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={lineWeightInput}
-                      onFocus={(e) => e.currentTarget.select()}
-                      onChange={(e) => setLineWeightInput(e.target.value)}
-                      aria-label={t("Weight (kg)")}
-                    />
-                  </label>
-                ) : (
-                  <label className="posField">
-                    <span className="posLabel">{t("Line amount (Rs.)")}</span>
-                    <input
-                      className="posInput"
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={lineAmountInput}
-                      onFocus={(e) => e.currentTarget.select()}
-                      onChange={(e) => setLineAmountInput(e.target.value)}
-                      aria-label={t("Line amount")}
-                    />
-                  </label>
-                )}
-
-                <label className="posField">
-                  <span className="posLabel">{t("Unit price (Rs.)")}</span>
-                  <input
-                    className="posInput posInput--readonly"
-                    readOnly
-                    value={
-                      previewLineUnitPrice != null
-                        ? formatSaleAmount(previewLineUnitPrice)
-                        : ""
-                    }
-                    placeholder="—"
-                    aria-label={t("Unit price")}
-                  />
-                </label>
-
-                <div className="posField posField--summary">
-                  <span className="posLabel">{t("Line total (Rs.)")}</span>
-                  <div className="posLineTotal" aria-live="polite">
-                    {linePricingMode === "weight"
-                      ? previewCalculatedLineAmount != null
-                        ? formatSaleAmount(previewCalculatedLineAmount)
-                        : "—"
-                      : (() => {
-                          const amount = Number(lineAmountInput);
-                          return lineAmountInput.trim() &&
-                            Number.isFinite(amount) &&
-                            amount > 0
-                            ? formatSaleAmount(amount)
-                            : "—";
-                        })()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="posLineForm__actions">
-              <button type="button" className="posAddBtn" onClick={handleSaveLine}>
-                {editingLineIndex !== null ? t("Update line") : t("+ Add product")}
-              </button>
-              {editingLineIndex !== null && (
-                <button type="button" className="posCancelEditBtn" onClick={cancelEditLine}>
-                  {t("Cancel")}
-                </button>
+    <SalePageLayout
+      sectionLabel={t("Sales & Billing")}
+      pageTitle={t("Point of Sale")}
+      subtitle={t("Scan barcode or search products")}
+    >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start">
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader className="border-b pb-5">
+            <CardTitle>{t("Current Sale")}</CardTitle>
+            <CardDescription>
+              {t(
+                "Choose outlet and payment, add processed product lines, then checkout to record the sale.",
               )}
-            </div>
-          </div>
-        </section>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <SaleFormSection
+              divided={false}
+              id="pos-section-customer"
+              title={t("Customer & outlet")}
+              icon={<UserRound className="size-4" />}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField id="pos-customer-name" label={t("Customer Details")}>
+                  <PosCustomerNameCombobox
+                    customers={allCustomers}
+                    outletId={outletId}
+                    value={customerName}
+                    onChange={handleCustomerNameChange}
+                    onSelectCustomer={applyRegisteredCustomer}
+                    t={t}
+                  />
+                </FormField>
+                <FormField id="pos-customer-contact" label={t("Contact")}>
+                  <Input
+                    id="pos-customer-contact"
+                    placeholder={t("Phone or email")}
+                    value={customerContact}
+                    onChange={(e) => handleCustomerContactChange(e.target.value)}
+                    autoComplete="tel"
+                  />
+                </FormField>
+                <FormField id="pos-outlet" label={t("Outlet")}>
+                  <select
+                    id="pos-outlet"
+                    className="saleSelect"
+                    value={outletId}
+                    onChange={(e) => setOutletId(e.target.value)}
+                  >
+                    <option value="">{t("Select outlet")}</option>
+                    {outletsForSelect.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField id="pos-payment-method" label={t("Payment method")}>
+                  <PaymentMethodPicker
+                    labelId="pos-payment-method"
+                    value={paymentMethod}
+                    onChange={setPaymentMethod}
+                    t={t}
+                  />
+                </FormField>
+              </div>
+            </SaleFormSection>
 
-        {error && (
-          <div className="posErrorBlock" role="alert">
-            <p className="posError">{error}</p>
-            {errorShowPricelistLink && accessTier === "global" && (
-              <p className="posErrorHint">
-                <Link className="posErrorLink" to="/dashboard/dualPricing">
-                  {t("Open Pricelist")}
-                </Link>
-              </p>
-            )}
-          </div>
-        )}
+            <SaleFormSection
+              id="pos-section-add-line"
+              title={editingLineIndex !== null ? t("Edit product line") : t("Add product line")}
+              icon={<Package className="size-4" />}
+              description={t("Select product, customer type, and pricing mode for each line.")}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField id="pos-product" label={t("Product")} className="sm:col-span-2">
+                  <select
+                    ref={productSelectRef}
+                    id="pos-product"
+                    className="saleSelect"
+                    value={productId}
+                    onChange={(e) => setProductId(e.target.value)}
+                  >
+                    <option value="">{t("Select product")}</option>
+                    {processedProductsForDropdown.map((p: Product) => (
+                      <option key={p.id} value={p.id}>
+                        {formatProcessedProductOptionLabel(
+                          p,
+                          outlets,
+                          getProcessedProductAvailableKg(p),
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField id="pos-customer-type" label={t("Customer type")}>
+                  <select
+                    id="pos-customer-type"
+                    className="saleSelect"
+                    value={lineTypeId}
+                    onChange={(e) => setLineTypeId(e.target.value)}
+                  >
+                    <option value="">{t("Retail / Wholesale")}</option>
+                    {customerTypes.map((ct) => (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </div>
 
-        <section className="posSection posSection--flush" aria-labelledby="pos-section-cart">
-          <div className="posTableHead">
-            <h3 id="pos-section-cart" className="posSectionTitle posSectionTitle--inline">
-              {t("Line items")}
-            </h3>
-            {lineItems.length > 0 && (
-              <span className="posLineCount" title={t("Number of lines in this sale")}>
-                {lineItems.length}
-              </span>
-            )}
-          </div>
-          <div className="posTableWrap">
-            <table className="posTable posTable--stack">
-              <thead>
-                <tr>
-                  <th>{t("PRODUCT NAME")}</th>
-                  <th>{t("TYPE")}</th>
-                  <th>{t("Weight (kg)")}</th>
-                  <th>{t("SUB-TOTAL")}</th>
-                  <th className="posRemoveHeader">{t("Actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.length === 0 ? (
-                  <tr className="posTableRow--empty">
-                    <td colSpan={5} className="posTableEmpty">
-                      <div className="posEmptyState">
-                        <p className="posEmptyStateTitle">{t("No products in this sale yet")}</p>
-                        <p className="posEmptyStateHint">
-                          {t(
-                            "Select product, retail or wholesale type, and weight (kg) above, then use Add Product."
-                          )}
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  lineItems.map((item, index) => {
-                    const sub = lineSubtotal(item);
-                    const hasOverride =
-                      item.amountOverride != null && item.amountOverride > 0;
-                    return (
-                      <tr
-                        key={`${item.productId}-${index}`}
-                        className={editingLineIndex === index ? "posTableRow--editing" : undefined}
-                      >
-                        <td data-label={t("PRODUCT NAME")}>{item.productName}</td>
-                        <td data-label={t("TYPE")}>
-                          <span className="posLineTypeBadge">{item.typeName}</span>
-                        </td>
-                        <td data-label={t("Weight (kg)")}>{item.weight}</td>
-                        <td data-label={t("SUB-TOTAL")}>
-                          <span>{formatSaleAmount(sub)}</span>
-                          {hasOverride && (
-                            <span className="posOverrideBadge">{t("Custom")}</span>
-                          )}
-                        </td>
-                        <td data-label={t("Actions")} className="posTableCell--action">
-                          <div className="posLineActions">
-                            <button
-                              type="button"
-                              className="posEditBtn"
-                              onClick={() => startEditLine(index)}
-                              aria-label={t("Edit line")}
-                            >
-                              {t("Edit")}
-                            </button>
-                            <button
-                              type="button"
-                              className="posRemoveBtn"
-                              onClick={() => removeLine(index)}
-                              aria-label={t("Remove line")}
-                              disabled={editingLineIndex !== null && editingLineIndex !== index}
-                            >
-                              {t("Delete")}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-              {lineItems.length > 0 && (
-                <tfoot>
-                  <tr className="posTableFootRow">
-                    <td colSpan={3} className="posTotalLabel">
-                      {t("Subtotal")}
-                    </td>
-                    <td className="posTotalValue">{formatSaleAmount(subtotal)}</td>
-                    <td className="posTableFootSpacer" aria-hidden />
-                  </tr>
-                  <tr className="posTableFootRow posTableFootRow--discount">
-                    <td colSpan={3} className="posTotalLabel">
-                      <label htmlFor="pos-cart-discount">{t("Discount (Rs.)")}</label>
-                    </td>
-                    <td className="posTotalValue">
-                      <input
-                        id="pos-cart-discount"
-                        className="posInput posInput--compact"
+              <div className="salePricingPanel">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{t("Pricing")}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {linePricingMode === "weight"
+                        ? t("Enter weight to calculate the line total from the pricelist.")
+                        : t("Enter a fixed line amount. Stock weight is derived from unit price.")}
+                    </p>
+                  </div>
+                  <FormField id="pos-line-pricing-mode" label={t("Price by")} className="sm:max-w-[280px]">
+                    <SegmentPicker
+                      labelId="pos-line-pricing-mode"
+                      value={linePricingMode}
+                      options={linePricingOptions}
+                      onChange={handleLinePricingModeChange}
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {linePricingMode === "weight" ? (
+                    <FormField id="pos-line-weight" label={t("Weight (kg)")}>
+                      <Input
+                        id="pos-line-weight"
                         type="number"
                         min={0}
                         step="any"
-                        value={cartDiscountInput}
+                        value={lineWeightInput}
                         onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => setCartDiscountInput(e.target.value)}
-                        aria-label={t("Discount (Rs.)")}
+                        onChange={(e) => setLineWeightInput(e.target.value)}
                       />
-                    </td>
-                    <td className="posTableFootSpacer" aria-hidden />
-                  </tr>
-                  <tr className="posTableFootRow posTableFootRow--totalDue">
-                    <td colSpan={3} className="posTotalLabel">
-                      {t("Total due")}
-                    </td>
-                    <td className="posTotalValue posTotalValue--emphasis">
-                      {formatSaleAmount(totalDue)}
-                    </td>
-                    <td className="posTableFootSpacer" aria-hidden />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </section>
+                    </FormField>
+                  ) : (
+                    <FormField id="pos-line-amount" label={t("Line amount (Rs.)")}>
+                      <Input
+                        id="pos-line-amount"
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={lineAmountInput}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => setLineAmountInput(e.target.value)}
+                      />
+                    </FormField>
+                  )}
+                  <FormField id="pos-unit-price" label={t("Unit price (Rs.)")}>
+                    <Input
+                      id="pos-unit-price"
+                      readOnly
+                      className="bg-muted"
+                      value={
+                        previewLineUnitPrice != null ? formatSaleAmount(previewLineUnitPrice) : ""
+                      }
+                      placeholder="—"
+                    />
+                  </FormField>
+                  <FormField id="pos-line-total" label={t("Line total (Rs.)")}>
+                    <div className="saleLineTotal" aria-live="polite">
+                      {linePricingMode === "weight"
+                        ? previewCalculatedLineAmount != null
+                          ? formatSaleAmount(previewCalculatedLineAmount)
+                          : "—"
+                        : (() => {
+                            const amount = Number(lineAmountInput);
+                            return lineAmountInput.trim() &&
+                              Number.isFinite(amount) &&
+                              amount > 0
+                              ? formatSaleAmount(amount)
+                              : "—";
+                          })()}
+                    </div>
+                  </FormField>
+                </div>
+              </div>
 
-        <button
-          type="button"
-          className="posCheckoutBtn"
-          onClick={handleCheckout}
-          disabled={createSaleMutation.isPending || lineItems.length === 0}
-        >
-          {createSaleMutation.isPending ? t("Processing…") : t("Checkout")}
-        </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" className="gap-1.5" onClick={handleSaveLine}>
+                  <Plus className="size-4" aria-hidden />
+                  {editingLineIndex !== null ? t("Update line") : t("Add product")}
+                </Button>
+                {editingLineIndex !== null ? (
+                  <Button type="button" variant="ghost" onClick={cancelEditLine}>
+                    {t("Cancel")}
+                  </Button>
+                ) : null}
+              </div>
+            </SaleFormSection>
+
+            {error ? (
+              <Alert variant="destructive" className="mt-6">
+                <AlertDescription>
+                  {error}
+                  {errorShowPricelistLink && accessTier === "global" ? (
+                    <>
+                      {" "}
+                      <Link className="font-semibold underline underline-offset-2" to="/dashboard/dualPricing">
+                        {t("Open Pricelist")}
+                      </Link>
+                    </>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <Card className="shadow-sm">
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="size-4 text-primary" aria-hidden />
+                <div>
+                  <CardTitle className="text-base">{t("Line items")}</CardTitle>
+                  <CardDescription>{t("Products in this sale")}</CardDescription>
+                </div>
+              </div>
+              {lineItems.length > 0 ? (
+                <Badge variant="success">{lineItems.length}</Badge>
+              ) : null}
+            </CardHeader>
+            <CardContent className="p-0 pt-0">
+              <div className="saleTableWrap">
+                <table className="saleTable saleTable--stack">
+                  <thead>
+                    <tr>
+                      <th>{t("PRODUCT NAME")}</th>
+                      <th>{t("TYPE")}</th>
+                      <th>{t("Weight (kg)")}</th>
+                      <th>{t("SUB-TOTAL")}</th>
+                      <th>{t("Actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineItems.length === 0 ? (
+                      <tr className="saleTableRow--empty">
+                        <td colSpan={5} className="saleTableEmpty">
+                          <div className="saleEmptyState">
+                            <p className="saleEmptyStateTitle">{t("No products in this sale yet")}</p>
+                            <p className="saleEmptyStateHint">
+                              {t(
+                                "Select product, retail or wholesale type, and weight (kg) above, then use Add Product.",
+                              )}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      lineItems.map((item, index) => {
+                        const sub = lineSubtotal(item);
+                        const hasOverride =
+                          item.amountOverride != null && item.amountOverride > 0;
+                        return (
+                          <tr
+                            key={`${item.productId}-${index}`}
+                            className={editingLineIndex === index ? "saleTableRow--editing" : undefined}
+                          >
+                            <td data-label={t("PRODUCT NAME")}>{item.productName}</td>
+                            <td data-label={t("TYPE")}>
+                              <Badge variant="secondary">{item.typeName}</Badge>
+                            </td>
+                            <td data-label={t("Weight (kg)")}>{item.weight}</td>
+                            <td data-label={t("SUB-TOTAL")}>
+                              <span>{formatSaleAmount(sub)}</span>
+                              {hasOverride ? (
+                                <Badge variant="warning" className="ml-2">
+                                  {t("Custom")}
+                                </Badge>
+                              ) : null}
+                            </td>
+                            <td data-label={t("Actions")} className="saleTableCell--action">
+                              <div className="saleLineActions">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="saleTableBtn h-8"
+                                  onClick={() => startEditLine(index)}
+                                >
+                                  {t("Edit")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="saleTableBtn h-8 text-destructive hover:text-destructive"
+                                  onClick={() => removeLine(index)}
+                                  disabled={editingLineIndex !== null && editingLineIndex !== index}
+                                >
+                                  {t("Delete")}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                  {lineItems.length > 0 ? (
+                    <tfoot>
+                      <tr className="saleTableFootRow">
+                        <td colSpan={3} className="saleTotalLabel">
+                          {t("Subtotal")}
+                        </td>
+                        <td className="saleTotalValue">{formatSaleAmount(subtotal)}</td>
+                        <td className="saleTableFootSpacer" aria-hidden />
+                      </tr>
+                      <tr className="saleTableFootRow">
+                        <td colSpan={3} className="saleTotalLabel">
+                          <label htmlFor="pos-cart-discount">{t("Discount (Rs.)")}</label>
+                        </td>
+                        <td className="saleTotalValue">
+                          <Input
+                            id="pos-cart-discount"
+                            className="h-8 max-w-[7.5rem]"
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={cartDiscountInput}
+                            onFocus={(e) => e.currentTarget.select()}
+                            onChange={(e) => setCartDiscountInput(e.target.value)}
+                          />
+                        </td>
+                        <td className="saleTableFootSpacer" aria-hidden />
+                      </tr>
+                      <tr className="saleTableFootRow">
+                        <td colSpan={3} className="saleTotalLabel">
+                          {t("Total due")}
+                        </td>
+                        <td className="saleTotalValue saleTotalValue--emphasis">
+                          {formatSaleAmount(totalDue)}
+                        </td>
+                        <td className="saleTableFootSpacer" aria-hidden />
+                      </tr>
+                    </tfoot>
+                  ) : null}
+                </table>
+              </div>
+            </CardContent>
+            <CardFooter className="flex-col gap-2 border-t bg-muted/20 pt-6">
+              <div className="flex w-full items-center justify-between text-sm lg:hidden">
+                <span className="font-medium text-muted-foreground">{t("Total due")}</span>
+                <span className="text-lg font-bold text-primary">{formatSaleAmount(totalDue)}</span>
+              </div>
+              <Button
+                type="button"
+                className="h-11 w-full gap-2 rounded-full text-base font-semibold"
+                onClick={handleCheckout}
+                disabled={createSaleMutation.isPending || lineItems.length === 0}
+              >
+                <CreditCard className="size-4" aria-hidden />
+                {createSaleMutation.isPending ? t("Processing…") : t("Checkout")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
 
       <ConfirmModal
@@ -1110,6 +1092,6 @@ export default function PointOfSalePage() {
         onClose={() => setCheckoutConfirmOpen(false)}
         onConfirm={doCheckout}
       />
-    </section>
+    </SalePageLayout>
   );
 }
