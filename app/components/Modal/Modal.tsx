@@ -1,30 +1,22 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/app/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+import ResponsiveOverlay from "@/app/components/ui-ext/ResponsiveOverlay";
 
 type ModalProps = {
   isOpen: boolean;
   title: string;
   subtitle?: string;
   onClose: () => void;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
   /** Extra class on the inner dialog (e.g. wider forms). */
   modalClassName?: string;
 };
 
 /**
  * Backwards-compatible Modal. Same prop surface as the legacy SCSS-based
- * modal so every existing caller (~12 product/invoice modals + ConfirmModal)
- * keeps working, but the rendering layer is now shadcn Dialog so it picks up
- * the theme, focus ring, animations, and a11y for free.
+ * modal; renders as a bottom Sheet on mobile and centered Dialog on desktop.
  */
 export default function Modal({
   isOpen,
@@ -36,29 +28,15 @@ export default function Modal({
   modalClassName,
 }: ModalProps) {
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+    <ResponsiveOverlay
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      footer={footer}
+      className={modalClassName}
     >
-      <DialogContent
-        className={cn(
-          "sm:max-w-2xl",
-          modalClassName,
-        )}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {subtitle ? <DialogDescription>{subtitle}</DialogDescription> : null}
-        </DialogHeader>
-        <div className="flex flex-col gap-4">{children}</div>
-        {footer ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            {footer}
-          </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+      {children}
+    </ResponsiveOverlay>
   );
 }

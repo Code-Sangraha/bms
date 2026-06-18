@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { IoCalculatorOutline, IoChevronDown, IoPencilOutline, IoStatsChartOutline } from "react-icons/io5";
-import { LuBeef, LuBoxes, LuList, LuShoppingCart, LuUsers } from "react-icons/lu";
+import {
+  BarChart3,
+  Beef,
+  Boxes,
+  Calculator,
+  ChevronDown,
+  List,
+  Pencil,
+  ShoppingCart,
+  Users,
+} from "lucide-react";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import { getStoredUser } from "@/lib/auth/user";
 import "./dashboardMobileHome.scss";
@@ -92,39 +101,39 @@ export default function DashboardMobileHome({
         id: "pos",
         labelKey: "Processed Sale",
         href: to("/dashboard/invoices/new"),
-        icon: <LuShoppingCart size={22} />,
+        icon: <ShoppingCart size={22} aria-hidden />,
         requiresCreate: true,
       },
       {
         id: "livestock",
         labelKey: "Livestock Sales",
         href: to("/dashboard/invoices/livestock-sales"),
-        icon: <LuBeef size={22} />,
+        icon: <Beef size={22} aria-hidden />,
         requiresCreate: true,
       },
       {
         id: "transactions",
         labelKey: "Transactions",
         href: to("/dashboard/invoices/transaction"),
-        icon: <LuList size={22} />,
+        icon: <List size={22} aria-hidden />,
       },
       {
         id: "product",
         labelKey: "Products",
         href: to("/dashboard/product"),
-        icon: <LuBoxes size={22} />,
+        icon: <Boxes size={22} aria-hidden />,
       },
       {
         id: "directory",
         labelKey: "Directory",
         href: to("/dashboard/accounts/directory"),
-        icon: <LuUsers size={22} />,
+        icon: <Users size={22} aria-hidden />,
       },
       {
         id: "invoices",
         labelKey: "Sales & Billing",
         href: to("/dashboard/invoices"),
-        icon: <IoStatsChartOutline size={22} />,
+        icon: <BarChart3 size={22} aria-hidden />,
       },
     ];
     if (outletScopedMobile) return raw.filter((s) => s.id !== "livestock");
@@ -193,7 +202,7 @@ export default function DashboardMobileHome({
           <div className="dashboardMobileHome__brandText">
             <p className="dashboardMobileHome__brandTitle">
               {workspaceTitle()}
-              <IoChevronDown size={16} aria-hidden style={{ opacity: 0.5 }} />
+              <ChevronDown size={16} className="opacity-50" aria-hidden />
             </p>
           </div>
         </div>
@@ -228,7 +237,7 @@ export default function DashboardMobileHome({
           {canCreate ? (
             <Link to={to("/dashboard/invoices/new")} className="dashboardMobileHome__exploreCard">
               <span className="dashboardMobileHome__exploreIcon" aria-hidden>
-                <IoCalculatorOutline size={26} />
+                <Calculator size={26} aria-hidden />
               </span>
               <span>{t("Quick Entry")}</span>
             </Link>
@@ -236,14 +245,14 @@ export default function DashboardMobileHome({
           {canCreate && !outletScopedMobile ? (
             <Link to={to("/dashboard/invoices/livestock-sales")} className="dashboardMobileHome__exploreCard">
               <span className="dashboardMobileHome__exploreIcon" aria-hidden>
-                <LuShoppingCart size={26} />
+                <ShoppingCart size={26} aria-hidden />
               </span>
               <span>{t("Quick POS")}</span>
             </Link>
           ) : null}
           <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__exploreCard">
             <span className="dashboardMobileHome__exploreIcon" aria-hidden>
-              <IoStatsChartOutline size={26} />
+              <BarChart3 size={26} aria-hidden />
             </span>
             <span>{t("View Reports")}</span>
           </Link>
@@ -256,7 +265,7 @@ export default function DashboardMobileHome({
             {t("Shortcuts")}
           </h2>
           <button type="button" className="dashboardMobileHome__editLink" onClick={() => setEditOpen(true)}>
-            <IoPencilOutline size={16} aria-hidden />
+            <Pencil size={16} aria-hidden />
             {t("Edit Menu")}
           </button>
         </div>
@@ -283,7 +292,8 @@ export default function DashboardMobileHome({
           <div className="dashboardMobileHome__cashflowHead">
             <h2 className="dashboardMobileHome__cashflowTitle">{t("Cashflow (Last 7 Days)")}</h2>
             <span className="dashboardMobileHome__cashflowPeriod">
-              {t("Daily")} <IoChevronDown size={14} style={{ verticalAlign: "middle" }} aria-hidden />
+              {t("Daily")}{" "}
+              <ChevronDown size={14} className="inline align-middle" aria-hidden />
             </span>
           </div>
           <svg
@@ -301,10 +311,10 @@ export default function DashboardMobileHome({
                     x2={chartModel.w - chartModel.padR}
                     y1={y}
                     y2={y}
-                    stroke="#e5e7eb"
+                    stroke="var(--color-border)"
                     strokeDasharray="4 4"
                   />
-                  <text x={4} y={y + 4} fontSize="9" fill="#9ca3af">
+                  <text x={4} y={y + 4} fontSize="9" fill="var(--color-muted-foreground)">
                     {Math.round(chartModel.maxVal * pct)}
                   </text>
                 </g>
@@ -322,7 +332,7 @@ export default function DashboardMobileHome({
                     x={cx}
                     y={chartModel.h - 8}
                     fontSize="9"
-                    fill="#6b7280"
+                    fill="var(--color-muted-foreground)"
                     textAnchor="middle"
                     transform={`rotate(-35 ${cx} ${chartModel.h - 8})`}
                   >
@@ -334,13 +344,13 @@ export default function DashboardMobileHome({
           </svg>
           <div className="dashboardMobileHome__legend">
             <div>
-              <div style={{ color: "#6b7280", fontWeight: 500 }}>{t("Total Money In")}</div>
+              <div className="dashboardMobileHome__legendLabel">{t("Total Money In")}</div>
               <div className="dashboardMobileHome__legendIn">
                 Rs.{totalIn.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ color: "#6b7280", fontWeight: 500 }}>{t("Total Money Out")}</div>
+              <div className="dashboardMobileHome__legendLabel">{t("Total Money Out")}</div>
               <div className="dashboardMobileHome__legendOut">
                 Rs.{totalOut.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
               </div>

@@ -2,13 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  IoGridOutline,
-  IoHomeOutline,
-  IoReceiptOutline,
-  IoTimeOutline,
-} from "react-icons/io5";
-import { LuPackage } from "react-icons/lu";
+import { Clock, Home, LayoutGrid, Package, Receipt } from "lucide-react";
 import type { AccessTier } from "@/lib/auth/accessTier";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import { mobileTabFromPathname, type MobileTabId } from "@/lib/mobileNav";
@@ -21,6 +15,8 @@ type MobileBottomNavProps = {
   accessTier: AccessTier;
   lockedOutletId: string | null;
 };
+
+const ICON_SIZE = 22;
 
 function tabClass(active: boolean): string {
   return ["mobileBottomNav__tab", active ? "mobileBottomNav__tab--active" : ""].filter(Boolean).join(" ");
@@ -47,7 +43,7 @@ export default function MobileBottomNav({
           aria-current={isClockInOut ? "page" : undefined}
         >
           <span className="mobileBottomNav__icon" aria-hidden>
-            <IoTimeOutline size={22} />
+            <Clock size={ICON_SIZE} />
           </span>
           <span className="mobileBottomNav__label">{t("Clock In/Out")}</span>
         </Link>
@@ -61,24 +57,29 @@ export default function MobileBottomNav({
     label: string;
     icon: ReactNode;
   }> = [
-    { id: "home", href: to("/dashboard"), label: t("Home"), icon: <IoHomeOutline size={22} /> },
+    {
+      id: "home",
+      href: to("/dashboard"),
+      label: t("Home"),
+      icon: <Home size={ICON_SIZE} />,
+    },
     {
       id: "transactions",
       href: to("/dashboard/invoices/new"),
       label: t("Transactions"),
-      icon: <IoReceiptOutline size={22} />,
+      icon: <Receipt size={ICON_SIZE} />,
     },
     {
       id: "inventory",
       href: to("/dashboard/product/processedProduct"),
       label: t("Inventory"),
-      icon: <LuPackage size={22} />,
+      icon: <Package size={ICON_SIZE} />,
     },
     {
       id: "more",
       href: to("/dashboard/more"),
       label: t("More"),
-      icon: <IoGridOutline size={22} />,
+      icon: <LayoutGrid size={ICON_SIZE} />,
     },
   ];
 

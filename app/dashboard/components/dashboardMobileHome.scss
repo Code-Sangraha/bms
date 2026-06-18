@@ -31,8 +31,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--color-muted, #f5f6f8);
+  color: var(--color-foreground, #374151);
   font-weight: 700;
   font-size: 15px;
   display: flex;
@@ -227,7 +227,7 @@
   border: 1px solid var(--mobile-border);
   border-radius: 8px;
   padding: 4px 10px;
-  background: #fafafa;
+  background: var(--color-muted, #fafafa);
 }
 
 .dashboardMobileHome__chartSvg {
@@ -246,6 +246,11 @@
   font-size: 12px;
 }
 
+.dashboardMobileHome__legendLabel {
+  color: var(--mobile-text-muted);
+  font-weight: 500;
+}
+
 .dashboardMobileHome__legendIn {
   color: var(--mobile-teal);
   font-weight: 700;
@@ -260,7 +265,7 @@
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(17, 24, 39, 0.45);
+  background: color-mix(in srgb, var(--color-foreground) 45%, transparent);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -272,10 +277,10 @@
   max-width: 400px;
   max-height: 70vh;
   overflow: auto;
-  background: #fff;
+  background: var(--mobile-card-bg);
   border-radius: 16px 16px 0 0;
   padding: 16px;
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 -8px 32px color-mix(in srgb, var(--color-foreground) 15%, transparent);
 }
 
 .dashboardMobileHome__modalTitle {
@@ -289,7 +294,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--mobile-border);
   font-size: 14px;
 }
 
@@ -299,8 +304,8 @@
   padding: 10px;
   border-radius: 10px;
   border: none;
-  background: var(--mobile-teal);
-  color: #fff;
+  background: var(--mobile-teal-dark, var(--color-primary));
+  color: var(--color-primary-foreground, #fff);
   font-weight: 600;
   cursor: pointer;
 }
