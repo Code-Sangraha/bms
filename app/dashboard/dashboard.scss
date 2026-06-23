@@ -1,12 +1,13 @@
 .dashboardOverview {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
+  padding: 24px;
   padding-bottom: 32px;
-  color: #111827;
+  color: var(--color-foreground);
 }
 
 .dashboardHero {
@@ -14,344 +15,347 @@
 }
 
 .dashboardTitle {
-  font-size: 28px;
+  font-size: 1.875rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-foreground);
   margin: 0 0 6px 0;
   letter-spacing: -0.02em;
 }
 
 .dashboardSubtitle {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
   margin: 0;
-}
-
-.dashboardSection {
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-card);
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.dashboardSectionSales {
-  border-top: 3px solid var(--color-primary);
-}
-
-.dashboardSectionAttendance {
-  border-top: 3px solid var(--color-info);
-}
-
-.dashboardSectionHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 20px 24px;
-  background: #fafafa;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.dashboardSectionTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.dashboardSectionLink {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dashboardSectionLink:hover {
-  text-decoration: underline;
-}
-
-.dashboardSectionAttendance .dashboardSectionLink {
-  color: var(--color-info);
 }
 
 .dashboardBlock {
   padding: 24px;
 }
 
-.dashboardCards {
+/* KPI Grid */
+.dashboardKPIGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
-  gap: 20px;
-  padding: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
 }
 
-.dashboardCardsAttendance {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-}
-
-.dashboardCardsLivestock {
-  padding: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: #f8fafc;
-}
-
-.dashboardCardsLivestock .dashboardCard {
-  background: #ffffff;
-}
-
-.dashboardCard {
+.dashboardKPICard {
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.dashboardCardTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
 }
 
-.dashboardCardIcon {
-  display: none;
+.dashboardKPICard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--color-primary);
 }
 
-.dashboardCardIconSvg {
-  width: 18px;
-  height: 18px;
+.dashboardKPICardRevenue::before {
+  background: var(--brand-500);
 }
 
-.dashboardCardLabel {
-  font-size: 11px;
+.dashboardKPICardTransactions::before {
+  background: var(--brand-400);
+}
+
+.dashboardKPICardWeight::before {
+  background: var(--color-info);
+}
+
+.dashboardKPICardQuantity::before {
+  background: #8b5cf6;
+}
+
+.dashboardKPICardExpense::before {
+  background: var(--color-warning);
+}
+
+.dashboardKPICardWarning::before {
+  background: var(--color-warning);
+}
+
+.dashboardKPICardStaff::before {
+  background: var(--color-warning);
+}
+
+.dashboardKPICardPresent::before {
+  background: var(--brand-500);
+}
+
+.dashboardKPIHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboardKPIIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  flex-shrink: 0;
+}
+
+.dashboardKPIIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.dashboardKPILabel {
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #6b7280;
+  letter-spacing: 0.05em;
+  color: var(--color-muted-foreground);
   min-width: 0;
   overflow-wrap: anywhere;
-  text-wrap: balance;
 }
 
-.dashboardCardValue {
+.dashboardKPIValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboardKPIValue {
   display: block;
   max-width: 100%;
-  font-size: clamp(1.45rem, 2.1vw, 1.75rem);
+  font-size: clamp(1.25rem, 1.8vw, 1.75rem);
   font-weight: 700;
-  color: #111827;
-  line-height: 1.12;
+  color: var(--color-foreground);
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
   word-break: normal;
 }
 
-.dashboardCardValueCompact {
-  font-size: clamp(1.28rem, 1.75vw, 1.55rem);
+.dashboardKPITrend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
-.dashboardCardValueLong {
-  font-size: clamp(1.08rem, 1.45vw, 1.35rem);
-  line-height: 1.18;
+.dashboardKPITrendUp {
+  color: var(--brand-700);
+  background: var(--brand-50);
 }
 
-.dashboardCardValueSm {
-  font-size: 18px;
-  line-height: 1.3;
+.dashboardKPITrendDown {
+  color: var(--color-destructive);
+  background: rgba(220, 38, 38, 0.1);
 }
 
-.dashboardCardSub {
-  font-size: 12px;
+.dashboardKPITrendIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.dashboardKPISub {
+  font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-muted-foreground);
 }
 
-.dashboardCardRevenue {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-.dashboardCardTransactions {
-  background: linear-gradient(135deg, #fef3e2 0%, #fde68a 100%);
-  border-color: rgba(251, 146, 60, 0.2);
-}
-
-.dashboardCardWeight {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-color: rgba(59, 130, 246, 0.2);
-}
-
-.dashboardCardQuantity {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-color: rgba(139, 92, 246, 0.2);
-}
-
-.dashboardCardStaff {
-  background: linear-gradient(135deg, #fef3e2 0%, #fed7aa 100%);
-  border-color: rgba(251, 146, 60, 0.2);
-}
-
-.dashboardCardPresent {
-  background: linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%);
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-.dashboardCharts {
+/* Charts Row */
+.dashboardChartsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  padding: 0 24px 24px;
+  gap: 16px;
 }
 
-@media (max-width: 900px) {
-  .dashboardCharts {
+@media (max-width: 1024px) {
+  .dashboardChartsRow {
     grid-template-columns: 1fr;
   }
 }
 
-.dashboardChartBlock {
-  border: 1px solid rgba(0, 0, 0, 0.06);
+.dashboardChartCard {
   border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 20px;
   overflow: hidden;
-  background: #fafafa;
-}
-
-.dashboardLiveStockBlock {
-  margin: 0 24px 24px;
 }
 
 .dashboardChartTitle {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
-  margin: 0;
-  padding: 14px 16px;
-  background: #f3f4f6;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--color-foreground);
+  margin: 0 0 16px 0;
 }
 
-.dashboardChartSubtitle {
-  margin: 0;
-  padding: 0 16px 12px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #6b7280;
-  background: #f3f4f6;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.dashboardOutletBars {
-  padding: 16px;
+.dashboardChartEmpty {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.dashboardBarRow {
-  display: grid;
-  grid-template-columns: 140px 1fr 90px;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
 }
 
-.dashboardBarLabel {
-  font-size: 13px;
-  color: #374151;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.dashboardDonutContainer {
+  position: relative;
+  width: 100%;
+  height: 220px;
 }
 
-.dashboardBarTrack {
-  height: 10px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 999px;
-  overflow: hidden;
+.dashboardDonutCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
 }
 
-.dashboardBarFill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), #10b981);
-  border-radius: 999px;
-  min-width: 4px;
-  transition: width 0.3s ease;
+.dashboardDonutLabel {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  margin: 0 0 4px 0;
 }
 
-.dashboardBarValue {
-  font-size: 12px;
-  font-weight: 600;
-  color: #047857;
-  text-align: right;
+.dashboardDonutValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
-.dashboardProductList {
-  padding: 12px 16px;
+.dashboardDonutLegend {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
 }
 
-.dashboardProductRow {
+.dashboardDonutLegendItem {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 8px;
+  font-size: 0.8125rem;
 }
 
-.dashboardProductName {
-  font-size: 13px;
-  color: #374151;
+.dashboardDonutLegendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.dashboardProductAmount {
-  font-size: 13px;
+.dashboardDonutLegendLabel {
+  flex: 1;
+  color: var(--color-foreground);
+}
+
+.dashboardDonutLegendValue {
   font-weight: 600;
-  color: #047857;
+  color: var(--color-foreground);
+  font-variant-numeric: tabular-nums;
 }
 
-.dashboardMobileList,
-.dashboardMobileMiniList {
-  display: none;
+.dashboardAreaChartContainer {
+  width: 100%;
+  height: 220px;
 }
 
-.dashboardExpenseActionBtn {
-  border: none;
-  background: transparent;
-  color: var(--color-primary, #2563eb);
-  cursor: pointer;
-  font-size: 0.875rem;
-  padding: 0;
-  text-decoration: underline;
+.dashboardChartLegend {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
 }
 
-.dashboardTrendingCard {
-  margin: 12px 16px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+.dashboardChartLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--color-foreground);
+}
+
+.dashboardChartLegendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Top Lists Grid */
+.dashboardTopListsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.dashboardBarChartContainer {
+  width: 100%;
+  height: 200px;
+}
+
+/* Detail Section with Tabs */
+.dashboardDetailSection {
   border-radius: 12px;
-  background: #ffffff;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 20px;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(2, 149, 90, 0.08);
+}
+
+.dashboardTabsList {
+  margin-bottom: 20px;
+}
+
+.dashboardTabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Trending Card */
+.dashboardTrendingCard {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-card);
+  overflow: hidden;
 }
 
 .dashboardTrendingTitle {
   margin: 0;
-  padding: 14px 16px 10px;
-  font-size: 18px;
+  padding: 16px 20px 12px;
+  font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-foreground);
 }
 
 .dashboardTrendingHead,
@@ -360,52 +364,52 @@
   grid-template-columns: 40px 1fr 120px 160px;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 12px 20px;
 }
 
 .dashboardTrendingHead {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #6b7280;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: #f9fafb;
+  color: var(--color-muted-foreground);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-muted);
 }
 
 .dashboardTrendingBody .dashboardTrendingRow {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border);
   transition: background-color 0.2s ease;
-}
 
-.dashboardTrendingBody .dashboardTrendingRow:hover {
-  background: #f8fffc;
-}
+  &:hover {
+    background: var(--color-accent);
+  }
 
-.dashboardTrendingBody .dashboardTrendingRow:last-child {
-  border-bottom: none;
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .dashboardTrendingRank {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #0f766e;
+  color: var(--brand-700);
 }
 
 .dashboardTrendingItem {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-foreground);
 }
 
 .dashboardTrendingQty {
   justify-self: start;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #111827;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  color: var(--color-foreground);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
   border-radius: 6px;
   min-width: 40px;
   text-align: center;
@@ -414,207 +418,158 @@
 
 .dashboardTrendingAmount {
   justify-self: end;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #047857;
+  color: var(--brand-700);
 }
 
-@media (max-width: 900px) {
-  .dashboardTrendingTitle {
-    font-size: 18px;
+/* Attendance Section */
+.dashboardAttendanceSection {
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboardSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboardSectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dashboardOverview {
+    padding: 16px;
+    gap: 20px;
+  }
+
+  .dashboardTitle {
+    font-size: 1.5rem;
+  }
+
+  .dashboardKPIGrid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 12px;
+  }
+
+  .dashboardKPICard {
+    padding: 16px;
   }
 
   .dashboardTrendingHead,
   .dashboardTrendingRow {
     grid-template-columns: 28px 1fr 80px 110px;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 10px 16px;
   }
 
   .dashboardTrendingRank {
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   .dashboardTrendingItem {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .dashboardTrendingQty {
-    font-size: 12px;
+    font-size: 0.75rem;
     min-width: 30px;
     padding: 2px 6px;
   }
 
   .dashboardTrendingAmount {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 }
 
 @media (max-width: 768px) {
   .dashboardOverview {
-    gap: 18px;
-    padding: 10px 12px 96px;
-  }
-
-  .dashboardHero {
-    padding: 6px 2px 0;
-  }
-
-  .dashboardHero .dashboardSubtitle {
-    max-width: 30ch;
+    padding: 12px;
+    gap: 16px;
   }
 
   .dashboardTitle {
-    font-size: 24px;
+    font-size: 1.25rem;
   }
 
   .dashboardSubtitle {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
-  .dashboardSection {
-    border-radius: 12px;
-  }
-
-  .dashboardSectionHead {
-    padding: 14px 16px;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .dashboardSectionLink {
-    font-size: 12px;
-    gap: 4px;
-  }
-
-  .dashboardSectionLinkIcon {
-    width: 14px;
-    height: 14px;
-  }
-
-  .dashboardSectionTitle {
-    font-size: 16px;
-  }
-
-  .dashboardCards {
-    padding: 12px;
-    gap: 12px;
+  .dashboardKPIGrid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .dashboardBlock {
+  .dashboardKPICard {
     padding: 14px;
+    border-radius: 10px;
   }
 
-  .dashboardCardsAttendance {
-    grid-template-columns: 1fr;
+  .dashboardKPIIconWrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
   }
 
-  .dashboardCardsLivestock {
-    padding: 12px;
-    grid-template-columns: 1fr;
+  .dashboardKPIIcon {
+    width: 18px;
+    height: 18px;
   }
 
-  .dashboardCard {
-    padding: 16px;
-    border-radius: 14px;
-    min-height: 118px;
-    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  .dashboardKPILabel {
+    font-size: 0.6875rem;
   }
 
-  .dashboardCardTop {
-    align-items: center;
+  .dashboardKPIValue {
+    font-size: clamp(1.125rem, 5vw, 1.5rem);
   }
 
-  .dashboardCardIcon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.72);
-    color: #111827;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  }
-
-  .dashboardCardLabel {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    max-width: none;
-  }
-
-  .dashboardCardValue {
-    font-size: clamp(1.35rem, 5vw, 1.8rem);
-    line-height: 1.08;
-  }
-
-  .dashboardCardValueCompact {
-    font-size: clamp(1.12rem, 4.1vw, 1.45rem);
-  }
-
-  .dashboardCardValueLong {
-    font-size: clamp(0.98rem, 3.45vw, 1.24rem);
-    line-height: 1.16;
-  }
-
-  .dashboardCardValueSm {
-    font-size: 16px;
-  }
-
-  .dashboardCardSub {
-    font-size: 12px;
-  }
-
-  .dashboardCharts {
+  .dashboardChartsRow {
     gap: 12px;
-    padding: 0 12px 12px;
   }
 
-  .dashboardLiveStockBlock {
-    margin: 0 12px 12px;
+  .dashboardChartCard {
+    padding: 16px;
   }
 
   .dashboardChartTitle {
-    font-size: 13px;
-    padding: 12px;
+    font-size: 0.8125rem;
+    margin-bottom: 12px;
   }
 
-  .dashboardOutletBars {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .dashboardBarRow {
+  .dashboardTopListsGrid {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 12px;
   }
 
-  .dashboardBarValue {
-    text-align: left;
+  .dashboardDetailSection {
+    padding: 16px;
   }
 
-  .dashboardProductList {
-    padding: 10px 12px;
-  }
-
-  .dashboardProductRow {
-    padding: 9px 10px;
-  }
-
-  .dashboardProductName,
-  .dashboardProductAmount {
-    font-size: 12px;
+  .dashboardTabsList {
+    margin-bottom: 16px;
   }
 
   .dashboardTrendingCard {
-    margin: 10px 12px;
     border-radius: 10px;
   }
 
   .dashboardTrendingTitle {
-    padding: 12px;
-    font-size: 16px;
+    padding: 12px 16px 10px;
+    font-size: 0.9375rem;
   }
 
   .dashboardTrendingHead,
@@ -625,7 +580,7 @@
   }
 
   .dashboardTrendingHead {
-    font-size: 10px;
+    font-size: 0.625rem;
     align-items: end;
   }
 
@@ -640,44 +595,48 @@
   }
 
   .dashboardTrendingRank {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .dashboardTrendingItem {
-    font-size: 12px;
+    font-size: 0.75rem;
     min-width: 0;
     line-height: 1.35;
     word-break: break-word;
   }
 
   .dashboardTrendingQty {
-    font-size: 11px;
+    font-size: 0.6875rem;
     min-width: 34px;
     padding: 2px 8px;
     justify-self: center;
   }
 
   .dashboardTrendingAmount {
-    font-size: 12px;
+    font-size: 0.75rem;
     min-width: 0;
     text-align: right;
   }
 
-}
-
-@media (max-width: 420px) {
-  .dashboardCard {
-    min-height: 0;
+  .dashboardAttendanceSection {
+    padding: 16px;
   }
 }
 
-@media (max-width: 768px) {
-  .dashboardSectionSales .dashboardChartBlock,
-  .dashboardSectionSales .dashboardCharts {
-    display: none;
+@media (max-width: 480px) {
+  .dashboardOverview {
+    padding: 10px;
   }
 
-  .dashboardSectionAttendance {
-    display: none;
+  .dashboardKPIGrid {
+    gap: 10px;
+  }
+
+  .dashboardKPICard {
+    padding: 12px;
+  }
+
+  .dashboardChartCard {
+    padding: 14px;
   }
 }
