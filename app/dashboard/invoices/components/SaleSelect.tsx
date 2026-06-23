@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,8 @@ export function SaleSelect({
 }: SaleSelectProps) {
   const hasPlaceholder = Boolean(placeholder);
   const selectedValue = value || (hasPlaceholder ? EMPTY_SELECT_VALUE : undefined);
+  const selectedLabel = options.find((option) => option.value === value)?.label;
+  const selectedTitle = typeof selectedLabel === "string" ? selectedLabel : undefined;
 
   return (
     <Select
@@ -60,7 +63,8 @@ export function SaleSelect({
         id={id}
         aria-label={ariaLabel}
         aria-invalid={ariaInvalid}
-        className={triggerClassName}
+        className={cn("min-w-0", triggerClassName)}
+        title={selectedTitle}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
@@ -74,6 +78,7 @@ export function SaleSelect({
               key={option.value}
               value={option.value}
               disabled={option.disabled}
+              className="min-w-0 [&>span:last-child]:truncate"
             >
               {option.label}
             </SelectItem>
