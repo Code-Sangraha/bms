@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import { buildPathWithOutletScope } from "@/lib/outletScope";
 import { getStoredUser } from "@/lib/auth/user";
+import MobileKPIGrid from "./MobileKPIGrid";
+import MobileRevenueDonut from "./MobileRevenueDonut";
+import MobileTabbedDetails from "./MobileTabbedDetails";
+import MobileAttendanceMini from "./MobileAttendanceMini";
+import type { ProcessedLineItem } from "../hooks/useDashboardData";
+import type { LivestockSale } from "@/handlers/sale";
+import type { LivestockExpenseHistoryEntry } from "@/lib/api/livestockExpenseHistory";
 import "./dashboardMobileHome.scss";
 
 const SHORTCUTS_STORAGE = "bms_dashboard_shortcuts_v1";
@@ -42,8 +49,20 @@ type DashboardMobileHomeProps = {
   totalExpenses: number;
   totalExpenseDue: number;
   totalTransactions: number;
+  totalWeight: number;
+  totalQuantity: number;
+  processedRevenue: number;
+  livestockRevenue: number;
   cashflowDays: CashflowDay[];
   canCreate: boolean;
+  canShowAttendance?: boolean;
+  presentToday?: number;
+  totalStaff?: number;
+  totalHours?: number;
+  processedRows?: ProcessedLineItem[];
+  livestockSalesRows?: LivestockSale[];
+  dashboardExpenseRows?: LivestockExpenseHistoryEntry[];
+  canShowUnscopedLivestock?: boolean;
   /** Hide livestock and org-only shortcuts (outlet manager tier). */
   outletScopedMobile?: boolean;
 };
@@ -86,8 +105,20 @@ export default function DashboardMobileHome({
   totalExpenses,
   totalExpenseDue,
   totalTransactions: _totalTransactions,
+  totalWeight,
+  totalQuantity,
+  processedRevenue,
+  livestockRevenue,
   cashflowDays,
   canCreate,
+  canShowAttendance = false,
+  presentToday = 0,
+  totalStaff = 0,
+  totalHours = 0,
+  processedRows = [],
+  livestockSalesRows = [],
+  dashboardExpenseRows = [],
+  canShowUnscopedLivestock = false,
   outletScopedMobile = false,
 }: DashboardMobileHomeProps) {
   const to = useCallback(
@@ -208,6 +239,7 @@ export default function DashboardMobileHome({
         </div>
       </header>
 
+      {/* 1. Sales & Expenses Cards (Priority: TOP) */}
       <div className="dashboardMobileHome__summaryGrid">
         <Link to={to("/dashboard/invoices")} className="dashboardMobileHome__summaryCell">
           <span className="dashboardMobileHome__summaryValue">
@@ -231,6 +263,7 @@ export default function DashboardMobileHome({
         </Link>
       </div>
 
+      {/* 2. Explore App Section */}
       <div>
         <h2 className="dashboardMobileHome__sectionTitle">{t("Explore App")}</h2>
         <div className="dashboardMobileHome__exploreScroll">
@@ -259,6 +292,7 @@ export default function DashboardMobileHome({
         </div>
       </div>
 
+      {/* 3. Shortcuts Section */}
       <div>
         <div className="dashboardMobileHome__sectionHead">
           <h2 className="dashboardMobileHome__sectionTitle" style={{ margin: 0 }}>
@@ -287,6 +321,47 @@ export default function DashboardMobileHome({
         </div>
       </div>
 
+      {/* 4. Mobile KPI Grid (2x2 compact metrics) */}
+      <MobileKPIGrid
+        totalTransactions={_totalTransactions}
+        totalWeight={totalWeight}
+        totalQuantity={totalQuantity}
+        totalRevenue={totalRevenue}
+        t={t}
+      />
+
+      {/* 5. Mobile Revenue Donut */}
+      <MobileRevenueDonut
+        processedRevenue={processedRevenue}
+        livestockRevenue={livestockRevenue}
+        totalExpenses={totalExpenses}
+        t={t}
+      />
+
+      {/* 6. Mobile Tabbed Details (Progressive Disclosure) */}
+      <MobileTabbedDetails
+        scopedOutletId={scopedOutletId}
+        search={search}
+        processedRows={processedRows}
+        livestockSalesRows={livestockSalesRows}
+        dashboardExpenseRows={dashboardExpenseRows}
+        canShowUnscopedLivestock={canShowUnscopedLivestock}
+        t={t}
+      />
+
+      {/* 7. Mobile Attendance Mini */}
+      {canShowAttendance && (
+        <MobileAttendanceMini
+          scopedOutletId={scopedOutletId}
+          search={search}
+          presentToday={presentToday}
+          totalStaff={totalStaff}
+          totalHours={totalHours}
+          t={t}
+        />
+      )}
+
+      {/* 8. Cashflow Chart (Optional - can be kept for trend visualization) */}
       {showCashflow ? (
         <div className="dashboardMobileHome__cashflowCard">
           <div className="dashboardMobileHome__cashflowHead">

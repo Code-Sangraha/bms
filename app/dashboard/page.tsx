@@ -99,8 +99,20 @@ export default function DashboardPage() {
         totalExpenses={totalExpenses}
         totalExpenseDue={totalExpenseDue}
         totalTransactions={totalTransactions}
+        totalWeight={totalWeight}
+        totalQuantity={totalQuantity}
+        processedRevenue={processedRevenue}
+        livestockRevenue={livestockRevenue}
         cashflowDays={cashflowLast7Days}
         canCreate={capabilities.canCreateProcessedSales}
+        canShowAttendance={canShowAttendance}
+        presentToday={presentToday}
+        totalStaff={totalStaff}
+        totalHours={totalHours}
+        processedRows={processedRows}
+        livestockSalesRows={livestockSalesRows}
+        dashboardExpenseRows={dashboardExpenseRows}
+        canShowUnscopedLivestock={canShowUnscopedLivestock}
         outletScopedMobile={isOutletScopedDashboard && !capabilities.canCreateLivestockSales}
       />
 

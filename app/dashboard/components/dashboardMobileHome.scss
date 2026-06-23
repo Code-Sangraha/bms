@@ -56,31 +56,39 @@
 }
 
 .dashboardMobileHome__summaryGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .dashboardMobileHome__summaryCell {
   border-radius: var(--mobile-card-radius);
-  padding: 12px 14px;
+  padding: 14px;
   border: 1px solid var(--mobile-border);
   background: var(--mobile-card-bg);
   text-decoration: none;
   color: inherit;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
-  min-height: 72px;
+  min-height: 80px;
   box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
 }
 
 .dashboardMobileHome__summaryValue {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--mobile-text);
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .dashboardMobileHome__summaryLabel {
@@ -88,7 +96,7 @@
   font-weight: 600;
   color: var(--mobile-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
   overflow-wrap: anywhere;
 }
 
@@ -121,24 +129,20 @@
 }
 
 .dashboardMobileHome__exploreScroll {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin: 0 -4px;
-  padding-left: 4px;
-  padding-right: 4px;
-  scrollbar-width: thin;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  overflow-x: visible;
 }
 
 .dashboardMobileHome__exploreCard {
-  flex: 0 0 42%;
-  max-width: 160px;
-  min-width: 120px;
+  flex: none;
+  max-width: none;
+  min-width: 0;
   border-radius: var(--mobile-card-radius);
   border: 1px solid var(--mobile-border);
   background: var(--mobile-card-bg);
-  padding: 16px 12px;
+  padding: 14px;
   text-decoration: none;
   color: var(--mobile-text);
   display: flex;
@@ -146,10 +150,17 @@
   align-items: center;
   text-align: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
   box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
 }
 
 .dashboardMobileHome__exploreIcon {
@@ -172,8 +183,8 @@
 
 .dashboardMobileHome__shortcutsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 8px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .dashboardMobileHome__shortcut {
@@ -190,14 +201,267 @@
 }
 
 .dashboardMobileHome__shortcutIcon {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--mobile-teal-soft);
   color: var(--mobile-teal);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Mobile KPI Grid
+.mobileKPIGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mobileKPICard {
+  background: var(--mobile-card-bg);
+  border: 1px solid var(--mobile-border);
+  border-radius: var(--mobile-card-radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mobileKPILabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mobile-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mobileKPIValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mobile-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+// Mobile Revenue Donut
+.mobileRevenueDonut {
+  background: var(--mobile-card-bg);
+  border: 1px solid var(--mobile-border);
+  border-radius: var(--mobile-card-radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mobileRevenueDonut__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mobile-text);
+  margin: 0 0 12px 0;
+}
+
+.mobileRevenueDonut__content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mobileRevenueDonut__chart {
+  flex-shrink: 0;
+}
+
+.mobileRevenueDonut__legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobileRevenueDonut__legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.mobileRevenueDonut__legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mobileRevenueDonut__legendLabel {
+  flex: 1;
+  color: var(--mobile-text);
+  font-weight: 500;
+}
+
+.mobileRevenueDonut__legendValue {
+  color: var(--mobile-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// Mobile Tabbed Details
+.mobileTabbedDetails {
+  background: var(--mobile-card-bg);
+  border: 1px solid var(--mobile-border);
+  border-radius: var(--mobile-card-radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mobileTabbedDetails__tabsList {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobileTabbedDetails__tab {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mobile-text-muted);
+  background: transparent;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &--active {
+    color: var(--mobile-card-bg);
+    background: var(--mobile-teal);
+    border-color: var(--mobile-teal);
+  }
+}
+
+.mobileTabbedDetails__content {
+  min-height: 200px;
+}
+
+.mobileTabbedDetails__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--mobile-text-muted);
+  font-size: 14px;
+}
+
+.mobileTableCell {
+  padding: 10px 8px;
+  font-size: 13px;
+}
+
+.mobileTabbedDetails__viewAll {
+  display: block;
+  text-align: center;
+  margin-top: 12px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mobile-teal);
+  text-decoration: none;
+  border: 1px solid var(--mobile-border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+    background: var(--mobile-teal-soft);
+  }
+}
+
+// Mobile Attendance Mini
+.mobileAttendanceMini {
+  background: var(--mobile-card-bg);
+  border: 1px solid var(--mobile-border);
+  border-radius: var(--mobile-card-radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mobileAttendanceMini__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.mobileAttendanceMini__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mobile-text);
+  margin: 0;
+}
+
+.mobileAttendanceMini__viewAll {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mobile-teal);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.mobileAttendanceMini__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mobileAttendanceMini__card {
+  background: var(--mobile-page-bg);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobileAttendanceMini__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mobile-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mobileAttendanceMini__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--mobile-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mobileAttendanceMini__subtext {
+  font-size: 11px;
+  color: var(--mobile-text-muted);
+  font-weight: 500;
 }
 
 .dashboardMobileHome__cashflowCard {
