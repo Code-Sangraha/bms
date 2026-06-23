@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group";
 
 export type SegmentOption<T extends string> = {
   value: T;
@@ -21,35 +22,28 @@ export function SegmentPicker<T extends string>({
   className,
 }: SegmentPickerProps<T>) {
   return (
-    <div
+    <ToggleGroup
+      type="single"
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue) onChange(nextValue as T);
+      }}
       className={cn(
-        "grid gap-0 rounded-lg border border-border bg-muted p-1",
+        "grid w-full gap-1 rounded-lg border border-border bg-muted p-1",
         options.length === 2 ? "grid-cols-2" : "grid-cols-3",
         className,
       )}
-      role="radiogroup"
       aria-labelledby={labelId}
     >
-      {options.map((opt) => {
-        const selected = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={cn(
-              "min-h-9 rounded-md px-2 text-xs font-semibold transition-colors sm:min-h-10 sm:text-sm",
-              selected
-                ? "border border-primary/25 bg-background text-primary shadow-sm"
-                : "border border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground",
-            )}
-            onClick={() => onChange(opt.value)}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+      {options.map((opt) => (
+        <ToggleGroupItem
+          key={opt.value}
+          value={opt.value}
+          className="min-h-9 w-full border border-transparent px-2 text-xs font-semibold data-[state=on]:border-primary/25 data-[state=on]:bg-background data-[state=on]:text-primary data-[state=on]:shadow-sm sm:min-h-10 sm:text-sm"
+        >
+          {opt.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

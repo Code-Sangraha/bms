@@ -70,7 +70,7 @@ export default function ConfirmDialog({
         disabled={loading}
       >
         {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
         ) : null}
         {t(confirmLabel)}
       </Button>

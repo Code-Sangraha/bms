@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
 import { logWasteProductsDebug } from "@/lib/wasteProductsDebug";
+import { FormField } from "@/app/components/ui-ext/FormField";
+import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
 
 type WasteProductSelectProps = {
   id?: string;
@@ -46,42 +48,42 @@ export default function WasteProductSelect({
     },
   });
 
+  const options = wasteProducts.map((product) => {
+    const stock =
+      typeof product.weight === "number" && Number.isFinite(product.weight)
+        ? product.weight
+        : product.quantity;
+    const stockLabel =
+      typeof stock === "number" && Number.isFinite(stock) ? ` (${stock} kg)` : "";
+    return {
+      value: product.id,
+      label: `${product.name}${stockLabel}`,
+    };
+  });
+
   return (
-    <div className="livestockDetailModalField">
-      <label className="livestockDetailModalLabel" htmlFor={id}>
-        {t("Waste product")}
-      </label>
-      <select
+    <FormField
+      id={id}
+      label={t("Waste product")}
+      error={error}
+      description={
+        !isLoading && wasteProducts.length === 0 ? (
+          <>
+            {t("No waste products available.")}{" "}
+            <Link to="/dashboard/product/wasteProduct">{t("Create waste products first")}</Link>
+          </>
+        ) : undefined
+      }
+    >
+      <SaleSelect
         id={id}
-        className="livestockDetailModalSelect"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
+        placeholder={t("Select waste product")}
+        options={options}
         disabled={disabled || isLoading}
-      >
-        <option value="">{t("Select waste product")}</option>
-        {wasteProducts.map((product) => {
-          const stock =
-            typeof product.weight === "number" && Number.isFinite(product.weight)
-              ? product.weight
-              : product.quantity;
-          const stockLabel =
-            typeof stock === "number" && Number.isFinite(stock) ? ` (${stock} kg)` : "";
-          return (
-            <option key={product.id} value={product.id}>
-              {`${product.name}${stockLabel}`}
-            </option>
-          );
-        })}
-      </select>
-      {error && (
-        <p className="livestockDetailModalError" role="alert">{error}</p>
-      )}
-      {!isLoading && wasteProducts.length === 0 && (
-        <p className="livestockDetailModalHint">
-          {t("No waste products available.")}{" "}
-          <Link to="/dashboard/product/wasteProduct">{t("Create waste products first")}</Link>
-        </p>
-      )}
-    </div>
+        aria-invalid={Boolean(error)}
+      />
+    </FormField>
   );
 }

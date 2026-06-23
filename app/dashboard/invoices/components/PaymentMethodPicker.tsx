@@ -3,6 +3,7 @@ import {
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group";
 
 type PaymentMethodPickerProps = {
   value: SalePaymentMethod;
@@ -22,35 +23,28 @@ export function PaymentMethodPicker({
   columns = 3,
 }: PaymentMethodPickerProps) {
   return (
-    <div
+    <ToggleGroup
+      type="single"
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue) onChange(nextValue as SalePaymentMethod);
+      }}
       className={cn(
-        "grid gap-0 rounded-lg border border-border bg-muted p-1",
+        "grid w-full gap-1 rounded-lg border border-border bg-muted p-1",
         columns === 2 ? "grid-cols-2" : "grid-cols-3",
         className,
       )}
-      role="radiogroup"
       aria-labelledby={labelId}
     >
-      {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => {
-        const selected = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={cn(
-              "min-h-9 rounded-md px-2 text-xs font-semibold transition-colors sm:min-h-10 sm:text-sm",
-              selected
-                ? "border border-primary/25 bg-background text-primary shadow-sm"
-                : "border border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground",
-            )}
-            onClick={() => onChange(opt.value)}
-          >
-            {t(opt.label)}
-          </button>
-        );
-      })}
-    </div>
+      {SALE_PAYMENT_METHOD_OPTIONS.map((opt) => (
+        <ToggleGroupItem
+          key={opt.value}
+          value={opt.value}
+          className="min-h-9 w-full border border-transparent px-2 text-xs font-semibold data-[state=on]:border-primary/25 data-[state=on]:bg-background data-[state=on]:text-primary data-[state=on]:shadow-sm sm:min-h-10 sm:text-sm"
+        >
+          {t(opt.label)}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

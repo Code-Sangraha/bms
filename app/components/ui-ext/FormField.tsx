@@ -1,6 +1,10 @@
 import * as React from "react";
 
-import { Label } from "@/app/components/ui/label";
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@/app/components/ui/field";
 import { cn } from "@/lib/utils";
 
 type FormFieldProps = {
@@ -37,7 +41,8 @@ export function FormField({
   const errorId = error && id ? `${id}-error` : undefined;
 
   return (
-    <div
+    <Field
+      data-invalid={error ? true : undefined}
       className={cn(
         "flex flex-col gap-1.5",
         fullWidth && "md:col-span-2",
@@ -45,27 +50,27 @@ export function FormField({
       )}
     >
       {label ? (
-        <Label htmlFor={id} className="flex items-center gap-1">
+        <FieldLabel htmlFor={id} className="flex items-center gap-1">
           {label}
           {required ? (
             <span className="text-destructive" aria-hidden="true">
               *
             </span>
           ) : null}
-        </Label>
+        </FieldLabel>
       ) : null}
       {children}
       {description && !error ? (
-        <p id={descriptionId} className="text-xs text-muted-foreground">
+        <FieldDescription id={descriptionId}>
           {description}
-        </p>
+        </FieldDescription>
       ) : null}
       {error ? (
-        <p id={errorId} className="text-xs font-medium text-destructive">
+        <FieldDescription id={errorId} role="alert" className="font-medium">
           {error}
-        </p>
+        </FieldDescription>
       ) : null}
-    </div>
+    </Field>
   );
 }
 

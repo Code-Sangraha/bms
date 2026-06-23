@@ -14,36 +14,31 @@ import {
 import { getProductTypes } from "@/handlers/productType";
 import {
   createLivestockSale,
-  getLivestockSales,
-  LIVESTOCK_SALES_LIST_DEFAULT_LIMIT,
-  type LivestockSale,
   type LivestockSalePayload,
 } from "@/handlers/sale";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
+  paymentMethodLabel,
   type SalePaymentMethod,
 } from "@/lib/salePaymentMethods";
+import { formatSaleAmount } from "@/lib/saleCalculations";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/app/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { FormField } from "@/app/components/ui-ext/FormField";
-import { EmptyState } from "@/app/components/ui-ext/EmptyState";
-import { ErrorState } from "@/app/components/ui-ext/ErrorState";
-import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { PaymentMethodPicker } from "@/app/dashboard/invoices/components/PaymentMethodPicker";
-import { SaleFormSection } from "@/app/dashboard/invoices/components/SaleFormSection";
+import {
+  SaleCartList,
+  SaleFormSection,
+  SaleSummary,
+  type CartLineItem,
+} from "@/app/dashboard/invoices/components/SaleSharedComponents";
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
-import { Plus, UserRound } from "lucide-react";
+import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
+import { Plus } from "lucide-react";
 import "../components/sale-entry.scss";
 
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
@@ -70,7 +65,6 @@ async function fetchLivestockItemsWithLimit(
     const batch = productIds.slice(i, i + concurrency);
     const results = await Promise.all(batch.map((productId) => fetcher(productId)));
     for (const result of results) {
-      // If API rate-limit is hit, keep already fetched items and stop burst.
       if (!result.ok && result.status === 429) {
         return { ok: true, data: merged };
       }
@@ -91,7 +85,6 @@ function resolveLivestockItemId(item: LivestockItem): string | null {
   return fromId ?? fromUnderscore ?? fromLivestockItemId ?? null;
 }
 
-/** Available quantity for dropdown labels: API head count, then legacy combined field. */
 function resolveLivestockQuantityLabel(item: LivestockItem): string {
   const formatN = (n: number) =>
     Number.isInteger(n) || n % 1 === 0 ? String(n) : n.toFixed(2);
@@ -125,8 +118,6 @@ export default function LivestockSalesPage() {
   );
   const [lineIndexToDelete, setLineIndexToDelete] = useState<number | null>(null);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
-  const [salesListPage, setSalesListPage] = useState(1);
-  const [salesListPageSize, setSalesListPageSize] = useState(LIVESTOCK_SALES_LIST_DEFAULT_LIMIT);
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -224,62 +215,6 @@ export default function LivestockSalesPage() {
   const livestockOptionMap = useMemo(
     () => new Map(livestockOptions.map((option) => [option.value, option.label])),
     [livestockOptions]
-  );
-
-  const getLivestockDisplay = (sale: LivestockSale): string => {
-    const id = typeof sale.livestockItemId === "string" ? sale.livestockItemId : "";
-    if (id && livestockOptionMap.has(id)) return livestockOptionMap.get(id) ?? id;
-
-    const firstItem =
-      Array.isArray(sale.items) && sale.items.length > 0 && typeof sale.items[0] === "object"
-        ? (sale.items[0] as Record<string, unknown>)
-        : null;
-    const livestockItemObj =
-      firstItem && typeof firstItem.livestockItem === "object"
-        ? (firstItem.livestockItem as Record<string, unknown>)
-        : null;
-    const itemId =
-      (typeof livestockItemObj?.itemId === "string" && livestockItemObj.itemId) ||
-      (typeof firstItem?.itemId === "string" && firstItem.itemId) ||
-      "";
-    const itemName =
-      (typeof livestockItemObj?.name === "string" && livestockItemObj.name) ||
-      (typeof firstItem?.name === "string" && firstItem.name) ||
-      "";
-
-    if (itemId || itemName) return [itemId, itemName].filter(Boolean).join(" - ");
-    return id || "-";
-  };
-
-  const {
-    data: livestockPage,
-    isLoading: livestockSalesLoading,
-    isError: livestockSalesIsError,
-    error: livestockSalesErrorDetail,
-  } = useQuery({
-    queryKey: ["livestockSales", "list", salesListPage, salesListPageSize],
-    staleTime: 30 * 1000,
-    retry: 0,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    queryFn: async () => {
-      const result = await getLivestockSales({
-        page: salesListPage,
-        limit: salesListPageSize,
-      });
-      if (!result.ok) {
-        if (result.status === 401) navigate("/login");
-        throw new Error(result.error);
-      }
-      return result.data;
-    },
-  });
-
-  const livestockSales = livestockPage?.rows ?? [];
-
-  const livestockTotal = livestockLineItems.reduce(
-    (sum, item) => sum + item.weight * item.amount,
-    0
   );
 
   const clearLivestockLineForm = () => {
@@ -413,28 +348,42 @@ export default function LivestockSalesPage() {
     );
   };
 
+  const livestockTotal = livestockLineItems.reduce(
+    (sum, item) => sum + item.weight * item.amount,
+    0
+  );
+
+  const cartItems: CartLineItem[] = livestockLineItems.map((item, index) => ({
+    id: `${item.livestockItemId}-${index}`,
+    primary: item.livestockItemLabel,
+    detail: `${t("Qty")}: ${item.weight}`,
+    amount: formatSaleAmount(item.amount),
+    editing: editingLineIndex === index,
+  }));
+
+  const paymentDisplay = t(paymentMethodLabel(paymentMethod));
+
+  const summaryRows = [
+    { label: t("Lines"), value: String(livestockLineItems.length) },
+    { label: t("Payment"), value: paymentDisplay },
+  ];
+
   return (
     <SalePageLayout
       sectionLabel={t("Sales & Billing")}
       pageTitle={t("Livestock Sales")}
       subtitle={t("Create and track livestock sales")}
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:items-start">
         <Card className="min-w-0 shadow-sm">
-          <CardHeader className="border-b pb-5">
-            <CardTitle>{t("New livestock sale")}</CardTitle>
-            <CardDescription>
-              {t("Enter customer details, add livestock lines, then submit to record the sale.")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <SaleFormSection
               divided={false}
+              compact
               id="livestock-section-customer"
               title={t("Customer & payment")}
-              icon={<UserRound className="size-4" />}
             >
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <FormField id="livestock-customer-name" label={t("Customer Name")}>
                   <Input
                     id="livestock-customer-name"
@@ -453,11 +402,7 @@ export default function LivestockSalesPage() {
                     autoComplete="tel"
                   />
                 </FormField>
-                <FormField
-                  id="livestock-payment-method"
-                  label={t("Payment method")}
-                  className="sm:col-span-2"
-                >
+                <FormField id="livestock-payment-method" label={t("Payment method")}>
                   <PaymentMethodPicker
                     labelId="livestock-payment-method"
                     value={paymentMethod}
@@ -469,31 +414,26 @@ export default function LivestockSalesPage() {
             </SaleFormSection>
 
             <SaleFormSection
+              compact
               id="livestock-section-lines"
               title={
                 editingLineIndex !== null ? t("Edit livestock line") : t("Add livestock line")
               }
-              description={t("Select an item, enter quantity and amount, then add to the sale.")}
             >
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 <FormField id="livestock-item-select" label={t("Livestock Item ID")}>
-                  <select
+                  <SaleSelect
                     id="livestock-item-select"
-                    className="saleSelect"
                     value={selectedLivestockItemId}
-                    onFocus={() => setLoadLivestockItems(true)}
-                    onClick={() => setLoadLivestockItems(true)}
-                    onChange={(e) => setSelectedLivestockItemId(e.target.value)}
-                  >
-                    <option value="">{t("Select livestock item")}</option>
-                    {livestockOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedLivestockItemId}
+                    onOpenChange={(open) => {
+                      if (open) setLoadLivestockItems(true);
+                    }}
+                    placeholder={t("Select livestock item")}
+                    options={livestockOptions}
+                  />
                 </FormField>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <FormField id="livestock-quantity" label={t("Quantity")}>
                     <Input
                       id="livestock-quantity"
@@ -519,8 +459,8 @@ export default function LivestockSalesPage() {
                   </FormField>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" className="gap-1.5" onClick={handleSaveLivestockLine}>
-                    <Plus className="size-4" aria-hidden />
+                  <Button type="button" variant="outline" onClick={handleSaveLivestockLine}>
+                    <Plus data-icon="inline-start" aria-hidden />
                     {editingLineIndex !== null ? t("Update line") : t("Add Livestock")}
                   </Button>
                   {editingLineIndex !== null ? (
@@ -533,230 +473,62 @@ export default function LivestockSalesPage() {
             </SaleFormSection>
 
             {livestockError ? (
-              <Alert variant="destructive" className="mt-6">
+              <Alert variant="destructive" className="mt-3">
                 <AlertDescription>{livestockError}</AlertDescription>
               </Alert>
             ) : null}
           </CardContent>
         </Card>
 
-        <div className="space-y-4 lg:sticky lg:top-4">
+        <div className="flex flex-col gap-3 lg:sticky lg:top-4">
           <Card className="shadow-sm">
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-              <div>
-                <CardTitle className="text-base">{t("Current sale")}</CardTitle>
-                <CardDescription>{t("Lines in this sale")}</CardDescription>
-              </div>
+            <CardHeader className="flex-row items-center justify-between gap-0 pb-2">
+              <h3 className="text-sm font-semibold">{t("Current sale")}</h3>
               {livestockLineItems.length > 0 ? (
                 <Badge variant="success">{livestockLineItems.length}</Badge>
               ) : null}
             </CardHeader>
-            <CardContent className="p-0 pt-0">
-              <div className="saleTableWrap">
-                <table className="saleTable saleTable--stack">
-                  <thead>
-                    <tr>
-                      <th>{t("Name")}</th>
-                      <th>{t("Contact")}</th>
-                      <th>{t("Livestock Item ID")}</th>
-                      <th>{t("Quantity")}</th>
-                      <th>{t("Amount")}</th>
-                      <th>{t("Actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {livestockLineItems.length === 0 ? (
-                      <tr className="saleTableRow--empty">
-                        <td colSpan={6} className="saleTableEmpty">
-                          <div className="saleEmptyState">
-                            <p className="saleEmptyStateTitle">{t("No lines in this sale yet")}</p>
-                            <p className="saleEmptyStateHint">
-                              {t(
-                                "Choose an item, quantity, and amount above, then use Add Livestock.",
-                              )}
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      livestockLineItems.map((item, index) => (
-                        <tr
-                          key={`${item.livestockItemId}-${index}`}
-                          className={editingLineIndex === index ? "saleTableRow--editing" : undefined}
-                        >
-                          <td data-label={t("Name")}>{item.name}</td>
-                          <td data-label={t("Contact")}>{item.contact}</td>
-                          <td data-label={t("Livestock Item ID")}>{item.livestockItemLabel}</td>
-                          <td data-label={t("Quantity")}>{item.weight}</td>
-                          <td data-label={t("Amount")}>{item.amount}</td>
-                          <td data-label={t("Actions")} className="saleTableCell--action">
-                            <div className="saleLineActions">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="saleTableBtn h-8"
-                                onClick={() => startEditLivestockLine(index)}
-                              >
-                                {t("Edit")}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="saleTableBtn h-8 text-destructive hover:text-destructive"
-                                onClick={() => setLineIndexToDelete(index)}
-                                disabled={editingLineIndex !== null && editingLineIndex !== index}
-                              >
-                                {t("Delete")}
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                  {livestockLineItems.length > 0 ? (
-                    <tfoot>
-                      <tr className="saleTableFootRow">
-                        <td colSpan={4} className="saleTotalLabel">
-                          {t("Total")}
-                        </td>
-                        <td className="saleTotalValue saleTotalValue--emphasis">{livestockTotal}</td>
-                        <td className="saleTableFootSpacer" aria-hidden />
-                      </tr>
-                    </tfoot>
-                  ) : null}
-                </table>
-              </div>
+            <CardContent className="pt-0">
+              <SaleCartList
+                items={cartItems}
+                emptyTitle={t("No lines in this sale yet")}
+                emptyHint={t("Choose an item, quantity, and amount above, then use Add Livestock.")}
+                onEdit={startEditLivestockLine}
+                onDelete={(index) => setLineIndexToDelete(index)}
+                editLabel={t("Edit")}
+                deleteLabel={t("Delete")}
+              />
+              {livestockLineItems.length > 0 ? (
+                <SaleSummary
+                  className="mt-3"
+                  rows={summaryRows}
+                  totalLabel={t("Total due")}
+                  totalValue={formatSaleAmount(livestockTotal)}
+                />
+              ) : null}
             </CardContent>
-            <CardFooter className="border-t bg-muted/20 pt-6">
+            <CardFooter className="border-t bg-muted/20 pt-4">
               <Button
                 type="button"
-                className="h-11 w-full rounded-full text-base font-semibold"
+                size="xl"
+                className="w-full text-base font-semibold"
                 onClick={handleLivestockCheckout}
                 disabled={createLivestockSaleMutation.isPending || livestockLineItems.length === 0}
               >
+                {createLivestockSaleMutation.isPending ? (
+                  <svg className="animate-spin size-4 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : null}
                 {createLivestockSaleMutation.isPending
-                  ? t("Processing…")
+                  ? t("Processing...")
                   : t("Submit Livestock Sale")}
               </Button>
             </CardFooter>
           </Card>
         </div>
       </div>
-
-      <Card className="shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <CardTitle>{t("Live Stock Sale Details")}</CardTitle>
-          <CardDescription>{t("Recent livestock sales from your account.")}</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {livestockSalesLoading && <TableSkeleton rows={5} columns={6} />}
-          {livestockSalesIsError && (
-            <ErrorState
-              title={t("Failed to load livestock sales")}
-              description={
-                livestockSalesErrorDetail instanceof Error
-                  ? livestockSalesErrorDetail.message
-                  : undefined
-              }
-            />
-          )}
-          {!livestockSalesLoading &&
-            !livestockSalesIsError &&
-            livestockSales.length === 0 && (
-              <EmptyState title={t("No livestock sales yet.")} />
-            )}
-          {!livestockSalesLoading &&
-            !livestockSalesIsError &&
-            livestockSales.length > 0 && (
-              <div className="saleTableWrap">
-                <table className="saleTable saleTable--stack">
-                  <thead>
-                    <tr>
-                      <th>{t("Name")}</th>
-                      <th>{t("Contact")}</th>
-                      <th>{t("Livestock Item ID")}</th>
-                      <th>{t("Quantity")}</th>
-                      <th>{t("Amount")}</th>
-                      <th>{t("Date")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {livestockSales.map((sale: LivestockSale, index: number) => (
-                      <tr
-                        key={
-                          sale.id ??
-                          sale.transactionId ??
-                          `${sale.livestockItemId ?? "item"}-${index}`
-                        }
-                      >
-                        <td data-label={t("Name")}>{String(sale.name ?? "-")}</td>
-                        <td data-label={t("Contact")}>{String(sale.contact ?? "-")}</td>
-                        <td data-label={t("Livestock Item ID")}>{getLivestockDisplay(sale)}</td>
-                        <td data-label={t("Quantity")}>
-                          {sale.quantity ?? sale.itemQuantityOrWeight ?? sale.weight ?? "-"}
-                        </td>
-                        <td data-label={t("Amount")}>{sale.amount ?? "-"}</td>
-                        <td data-label={t("Date")}>{String(sale.createdAt ?? "-")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>{t("per page")}</span>
-              <select
-                id="livestock-page-size"
-                className="saleSelect !w-auto min-w-[4.5rem]"
-                value={salesListPageSize}
-                disabled={livestockSalesLoading}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (!Number.isFinite(next) || next <= 0) return;
-                  setSalesListPageSize(next);
-                  setSalesListPage(1);
-                }}
-                aria-label={t("Items per page")}
-              >
-                {[10, 20, 50].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="text-sm text-muted-foreground">
-              {t("Page")} {livestockPage?.page ?? salesListPage}
-              {livestockPage?.hasMore ? ` · ${t("More pages available.")}` : ""}
-            </span>
-            <div className="ml-auto flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={salesListPage <= 1 || livestockSalesLoading}
-                onClick={() => setSalesListPage((p) => Math.max(1, p - 1))}
-              >
-                {t("Previous")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!livestockPage?.hasMore || livestockSalesLoading}
-                onClick={() => setSalesListPage((p) => p + 1)}
-              >
-                {t("Next")}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <ConfirmModal
         isOpen={lineIndexToDelete !== null && linePendingDelete !== null}

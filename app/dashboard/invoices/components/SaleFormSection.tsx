@@ -26,7 +26,7 @@ export function SaleFormSection({
   return (
     <>
       {divided ? <Separator className="my-6" /> : null}
-      <section className={cn("space-y-4", className)} aria-labelledby={id}>
+      <section className={cn("flex flex-col gap-4", className)} aria-labelledby={id}>
         <div className="flex items-start gap-2.5">
           {icon ? (
             <span

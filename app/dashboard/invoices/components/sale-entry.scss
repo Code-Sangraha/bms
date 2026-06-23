@@ -35,14 +35,23 @@
   display: flex;
   align-items: center;
   min-height: 2.25rem;
-  padding: 0 0.875rem;
+  padding: 0 0.75rem;
   border-radius: calc(var(--radius) - 2px);
   border: 1px solid hsl(var(--primary) / 0.2);
   background: hsl(var(--background));
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: hsl(var(--primary));
+}
+
+.saleLineTotal--stat {
+  justify-content: flex-end;
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
 }
 
 .saleTableWrap {
@@ -315,7 +324,7 @@
 }
 
 .salePricingPanel {
-  padding: 1rem;
+  padding: 0.875rem 1rem;
   border-radius: calc(var(--radius));
   background: hsl(var(--muted) / 0.35);
   border: 1px solid hsl(var(--border));
@@ -324,18 +333,147 @@
   gap: 0.875rem;
 }
 
+.salePricingPanel--compact {
+  padding: 0.375rem 0;
+  gap: 0;
+}
+
+.salePricingRow {
+  --sale-pricing-control-h: 2.25rem;
+
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+
+  @media (max-width: 639px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > :first-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .saleLineTotal--stat {
+    justify-content: flex-start;
+  }
+
+  input.salePricingControl {
+    height: var(--sale-pricing-control-h);
+    min-height: var(--sale-pricing-control-h);
+    max-height: var(--sale-pricing-control-h);
+    padding-block: 0;
+  }
+}
+
+.salePricingCell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.salePricingLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: hsl(var(--foreground));
+}
+
+.salePricingControl {
+  height: var(--sale-pricing-control-h, 2.25rem);
+  min-height: var(--sale-pricing-control-h, 2.25rem);
+  max-height: var(--sale-pricing-control-h, 2.25rem);
+  box-sizing: border-box;
+}
+
+.saleLineTotal.salePricingControl {
+  display: flex;
+  align-items: center;
+}
+
+.salePricingModeField {
+  max-width: 20rem;
+}
+
+.saleAddLineSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  label {
+    font-size: 0.8125rem;
+    line-height: 1.2;
+  }
+
+  [class*="group/field"] {
+    gap: 0.25rem;
+  }
+
+  .saleSelect {
+    min-height: 2rem;
+    height: 2rem;
+    font-size: 0.8125rem;
+    padding-right: 2rem;
+  }
+
+  .saleLineTotal--stat {
+    padding: 0 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.saleAddLineFields {
+  display: grid;
+  gap: 0.5rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.saleAddLineActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.saleSegmentPicker--compact {
+  height: var(--sale-pricing-control-h, 2.25rem) !important;
+  min-height: var(--sale-pricing-control-h, 2.25rem) !important;
+  max-height: var(--sale-pricing-control-h, 2.25rem) !important;
+  box-sizing: border-box;
+  padding: 2px !important;
+  gap: 2px !important;
+
+  button {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding-block: 0 !important;
+    padding-inline: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1;
+  }
+}
+
 .saleSummaryPanel {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .saleSummaryRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.8125rem;
+  gap: 0.5rem;
+  font-size: 0.75rem;
 }
 
 .saleSummaryRow dt {
@@ -353,21 +491,166 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
   border-top: 1px solid hsl(var(--border));
 }
 
 .saleSummaryTotal span {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
 }
 
 .saleSummaryTotal strong {
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: hsl(var(--primary));
   letter-spacing: -0.02em;
+}
+
+/* Cart list — compact replacement for in-card <Table> line items */
+
+.saleCartList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.saleCartList--empty {
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+}
+
+.saleCartEmptyTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.saleCartEmptyHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.saleCartRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.4375rem 0.625rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  transition: background 0.12s ease;
+}
+
+.saleCartRow:last-child {
+  border-bottom: none;
+}
+
+.saleCartRow:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.saleCartRow--editing {
+  background: hsl(var(--primary) / 0.06);
+}
+
+.saleCartRowMain {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.saleCartRowPrimary {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saleCartRowBadge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.125rem 0.375rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  white-space: nowrap;
+}
+
+.saleCartRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.saleCartRowDetail {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.saleCartRowAmount {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.saleCartRowAmountTag {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: hsl(var(--warning));
+  color: hsl(var(--warning-foreground, 0 0% 40%));
+}
+
+.saleCartRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.saleCartRowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.saleCartRowBtn:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.saleCartRowBtn--danger:hover {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
 }
