@@ -37,6 +37,7 @@ import {
   livestockMovementLabel,
   processedMovementLabel,
 } from "@/app/dashboard/product/lib/inventoryMovementAdapter";
+import LivestockCompletePartialPaymentModal from "../liveProduct/LivestockCompletePartialPaymentModal";
 
 export type InventoryDetailHistoryVariant = "livestock" | "processed";
 
