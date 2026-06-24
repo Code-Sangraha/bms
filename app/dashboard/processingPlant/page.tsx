@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Truck, Beaker, ArrowRightLeft, Plus, X, ChevronRight } from "lucide-react";
 import Pagination from "@/app/components/Pagination/Pagination";
-import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { paginate, usePagination } from "@/app/hooks/usePagination";
 import {
@@ -37,6 +37,45 @@ import {
 } from "@/handlers/processingPlant";
 import { useToast } from "@/app/providers/ToastProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/app/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import "./processingPlant.scss";
 
 const PROCESSING_PLANTS_QUERY_KEY = ["processingPlants"];
@@ -107,6 +146,7 @@ export default function ProcessingPlantPage() {
   const canTransferProcessedStock = roleName === "Admin" || roleName === "Manager";
   const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createModalStep, setCreateModalStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
   const [userId, setUserId] = useState("");
   const [contact, setContact] = useState("");
@@ -455,6 +495,7 @@ export default function ProcessingPlantPage() {
       setContact("");
       setStatus(true);
       setIsCreateModalOpen(false);
+      setCreateModalStep(1);
       queryClient.invalidateQueries({ queryKey: PROCESSING_PLANTS_QUERY_KEY });
     },
     onError: () => {
@@ -469,12 +510,12 @@ export default function ProcessingPlantPage() {
       showToast(t("Processing plant name is required."));
       return;
     }
-    if (!userId) {
-      showToast(t("Please select user."));
-      return;
-    }
     if (!trimmedContact) {
       showToast(t("Contact is required."));
+      return;
+    }
+    if (!userId) {
+      showToast(t("Please select user."));
       return;
     }
 
@@ -820,135 +861,203 @@ export default function ProcessingPlantPage() {
           <p className="pageSubtitle">{t("Create and manage processing plants")}</p>
         </div>
         {capabilities.canCreateProcessingPlants && (
-        <button
+        <Button
           type="button"
-          className="ppBtnPrimary ppHeaderAction"
+          variant="default"
+          size="lg"
+          className="ppHeaderAction"
           onClick={() => {
             setIsCreateModalOpen(true);
+            setCreateModalStep(1);
           }}
         >
+          <Plus className="h-4 w-4" />
           {t("Add Processing Plant")}
-        </button>
+        </Button>
         )}
       </header>
 
-      <Modal
-        isOpen={isCreateModalOpen && capabilities.canCreateProcessingPlants}
-        title={t("Add Processing Plant")}
-        subtitle={t("Create a new processing plant")}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setName("");
-          setUserId("");
-          setContact("");
-          setStatus(true);
+      <Dialog
+        open={isCreateModalOpen && capabilities.canCreateProcessingPlants}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreateModalOpen(false);
+            setCreateModalStep(1);
+            setName("");
+            setUserId("");
+            setContact("");
+            setStatus(true);
+          }
         }}
-        footer={
-          <>
-            <button
-              type="button"
-              className="ppBtnSecondary"
-              onClick={() => {
-                setIsCreateModalOpen(false);
-                setName("");
-                setUserId("");
-                setContact("");
-                setStatus(true);
-              }}
-            >
-              {t("Cancel")}
-            </button>
-            <button
-              type="button"
-              className="ppBtnPrimary"
-              onClick={handleCreate}
-              disabled={createMutation.isPending || !name.trim() || !userId || !contact.trim()}
-            >
-              {createMutation.isPending ? t("Saving...") : t("Create")}
-            </button>
-          </>
-        }
       >
-        <div className="ppModalFields">
-          <div className="ppField">
-            <label className="ppLabel" htmlFor="pp-modal-plant-name">
-              {t("Name")}
-            </label>
-            <input
-              id="pp-modal-plant-name"
-              className="ppInput"
-              autoComplete="organization"
-              placeholder={t("Enter processing plant name")}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="ppField">
-            <label className="ppLabel" htmlFor="pp-modal-plant-user">
-              {t("User")}
-            </label>
-            <select
-              id="pp-modal-plant-user"
-              className="ppInput"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-            >
-              <option value="">{t("Select user")}</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.fullName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="ppField">
-            <label className="ppLabel" htmlFor="pp-modal-plant-contact">
-              {t("Contact")}
-            </label>
-            <input
-              id="pp-modal-plant-contact"
-              className="ppInput"
-              autoComplete="tel"
-              placeholder={t("Enter contact")}
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-            />
-          </div>
-          <div className="ppField">
-            <label className="ppLabel" htmlFor="pp-modal-plant-status">
-              {t("Status")}
-            </label>
-            <select
-              id="pp-modal-plant-status"
-              className="ppInput"
-              value={status ? "active" : "inactive"}
-              onChange={(e) => setStatus(e.target.value === "active")}
-            >
-              <option value="active">{t("Active")}</option>
-              <option value="inactive">{t("Inactive")}</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{t("Add Processing Plant")}</DialogTitle>
+            <DialogDescription>
+              {createModalStep === 1
+                ? t("Enter the plant details and contact information.")
+                : t("Assign a responsible user and set the plant status.")}
+            </DialogDescription>
+          </DialogHeader>
 
-      <Modal
-        isOpen={editingPendingBatch !== null}
-        title={t("Edit Pending Batch")}
-        subtitle={t("Update quantity and weight while the batch is still pending.")}
-        onClose={closeEditPendingBatchModal}
-        footer={
-          <>
-            <button
-              type="button"
-              className="ppBtnSecondary"
-              onClick={closeEditPendingBatchModal}
-              disabled={editPendingProcessingMutation.isPending}
-            >
+          <div className="grid gap-5 py-2">
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 text-sm">
+              <span
+                className={
+                  createModalStep === 1
+                    ? "font-semibold text-primary"
+                    : "text-muted-foreground"
+                }
+              >
+                1. {t("Details")}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <span
+                className={
+                  createModalStep === 2
+                    ? "font-semibold text-primary"
+                    : "text-muted-foreground"
+                }
+              >
+                2. {t("Assignment")}
+              </span>
+            </div>
+
+            {createModalStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pp-modal-plant-name">{t("Plant Name")}</Label>
+                  <Input
+                    id="pp-modal-plant-name"
+                    autoComplete="organization"
+                    placeholder={t("Enter processing plant name")}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pp-modal-plant-contact">{t("Contact")}</Label>
+                  <Input
+                    id="pp-modal-plant-contact"
+                    autoComplete="tel"
+                    placeholder={t("Enter contact number")}
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {createModalStep === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pp-modal-plant-user">{t("Responsible User")}</Label>
+                  <Select value={userId} onValueChange={setUserId}>
+                    <SelectTrigger id="pp-modal-plant-user">
+                      <SelectValue placeholder={t("Select user")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pp-modal-plant-status">{t("Status")}</Label>
+                  <Select
+                    value={status ? "active" : "inactive"}
+                    onValueChange={(v) => setStatus(v === "active")}
+                  >
+                    <SelectTrigger id="pp-modal-plant-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">{t("Active")}</SelectItem>
+                      <SelectItem value="inactive">{t("Inactive")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            {createModalStep === 1 ? (
+              <Button
+                onClick={() => setCreateModalStep(2)}
+                disabled={!name.trim() || !contact.trim()}
+              >
+                {t("Next")}
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setCreateModalStep(1)}>
+                  {t("Back")}
+                </Button>
+                <Button onClick={handleCreate} disabled={createMutation.isPending || !userId}>
+                  {createMutation.isPending ? t("Saving...") : t("Create")}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingPendingBatch !== null} onOpenChange={(open) => !open && closeEditPendingBatchModal()}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{t("Edit Pending Batch")}</DialogTitle>
+            <DialogDescription>
+              {t("Update quantity and weight while the batch is still pending.")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <span className="text-xs font-medium text-muted-foreground">{t("Batch ID")}</span>
+                <p className="mt-1 font-mono text-sm">{editingPendingBatch?.batchId ?? "-"}</p>
+              </div>
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <span className="text-xs font-medium text-muted-foreground">{t("Livestock Item")}</span>
+                <p className="mt-1 text-sm">
+                  {editingPendingBatch?.livestockItemName ?? editingPendingBatch?.itemId ?? "-"}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-pending-quantity">{t("Quantity")}</Label>
+              <Input
+                id="edit-pending-quantity"
+                type="number"
+                min={1}
+                step="any"
+                value={editPendingQuantity}
+                onChange={(e) => setEditPendingQuantity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-pending-weight">{t("Weight")}</Label>
+              <Input
+                id="edit-pending-weight"
+                type="number"
+                min={1}
+                step="any"
+                value={editPendingWeight}
+                onChange={(e) => setEditPendingWeight(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditPendingBatchModal} disabled={editPendingProcessingMutation.isPending}>
               {t("Cancel")}
-            </button>
-            <button
-              type="button"
-              className="ppBtnPrimary"
+            </Button>
+            <Button
               onClick={() => editPendingProcessingMutation.mutate()}
               disabled={
                 editPendingProcessingMutation.isPending ||
@@ -959,47 +1068,10 @@ export default function ProcessingPlantPage() {
               }
             >
               {editPendingProcessingMutation.isPending ? t("Saving...") : t("Save changes")}
-            </button>
-          </>
-        }
-      >
-        <div className="ppModalFields">
-          <div className="ppReadOnlyGrid">
-            <div className="ppReadOnlyField">
-              <span className="ppLabel">{t("Batch ID")}</span>
-              <span className="ppReadOnlyValue ppTableMono">{editingPendingBatch?.batchId ?? "-"}</span>
-            </div>
-            <div className="ppReadOnlyField">
-              <span className="ppLabel">{t("Livestock Item")}</span>
-              <span className="ppReadOnlyValue">
-                {editingPendingBatch?.livestockItemName ?? editingPendingBatch?.itemId ?? "-"}
-              </span>
-            </div>
-          </div>
-          <label className="ppField">
-            <span className="ppLabel">{t("Quantity")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={1}
-              step="any"
-              value={editPendingQuantity}
-              onChange={(e) => setEditPendingQuantity(e.target.value)}
-            />
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("Weight")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={1}
-              step="any"
-              value={editPendingWeight}
-              onChange={(e) => setEditPendingWeight(e.target.value)}
-            />
-          </label>
-        </div>
-      </Modal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <section className="ppSection" aria-labelledby="pp-section-operations-heading">
         <h2 id="pp-section-operations-heading" className="ppSectionTitle">
@@ -1007,633 +1079,700 @@ export default function ProcessingPlantPage() {
         </h2>
         <p className="ppSectionLead">{t("Send, complete, and move stock through processing.")}</p>
         <div className="ppSectionGrid">
-      <div className="ppCard ppCardWorkflow">
-        <div className="ppCardHead">
-          <span className="ppStepBadge" aria-hidden>
-            1
-          </span>
-          <div className="ppCardHeadText">
-            <h3 className="ppCardTitle" id="pp-card-send-title">
-              {t("Send Livestock To Processing Plant")}
-            </h3>
-            <p className="ppCardDesc">{t("Queue livestock from inventory to a processing plant.")}</p>
-          </div>
-        </div>
-        {!capabilities.canSendToProcessing && (
-          <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only authorized users can send livestock to processing.")}
-          </p>
-        )}
-        <div className="ppFormGrid" role="group" aria-labelledby="pp-card-send-title">
-          <label className="ppField">
-            <span className="ppLabel">{t("Processing Plant")}</span>
-            <select
-              className="ppInput"
-              value={selectedPlantId}
-              onChange={(e) => setSelectedPlantId(e.target.value)}
-            >
-              <option value="">{t("Select processing plant")}</option>
-              {processingPlants.map((plant) => (
-                <option key={plant.id} value={plant.id}>
-                  {plant.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ppField">
-            <span className="ppLabel">{t("Livestock Item")}</span>
-            <select
-              className="ppInput"
-              value={selectedLivestockItemId}
-              onChange={(e) => setSelectedLivestockItemId(e.target.value)}
-            >
-              <option value="">{t("Select livestock item")}</option>
-              {livestockItems.map((item) => {
-                const resolvedId = resolveLivestockItemId(item);
-                if (!resolvedId) return null;
-                const heads = resolveLivestockHeadCount(item);
-                const qtyLabel = heads !== null ? String(heads) : "\u2014";
-                return (
-                  <option key={`${item.productId}-${resolvedId}`} value={resolvedId}>
-                    {`${item.itemId} - ${item.name} (${qtyLabel})`}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-          <label className="ppField ppFieldNarrow">
-            <span className="ppLabel">{t("Quantity")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={1}
-              step="any"
-              value={sendQuantity}
-              onChange={(e) => setSendQuantity(e.target.value)}
-            />
-          </label>
-          <label className="ppField ppFieldNarrow">
-            <span className="ppLabel">{t("Weight")}</span>
-            <input
-              className="ppInput"
-              type="number"
-              min={1}
-              step="any"
-              value={sendWeight}
-              onChange={(e) => setSendWeight(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className="ppBtnPrimary"
-            onClick={() => sendToProcessingMutation.mutate()}
-            disabled={
-              sendToProcessingMutation.isPending ||
-              !capabilities.canSendToProcessing ||
-              !selectedPlantId ||
-              !selectedLivestockItemId ||
-              Number(sendQuantity) <= 0 ||
-              Number(sendWeight) <= 0
-            }
-          >
-            {sendToProcessingMutation.isPending ? t("Sending...") : t("Send")}
-          </button>
-        </div>
-      </div>
-
-      <div className="ppCard ppCardWorkflow">
-        <div className="ppCardHead">
-          <span className="ppStepBadge" aria-hidden>
-            2
-          </span>
-          <div className="ppCardHeadText">
-            <h3 className="ppCardTitle" id="pp-card-complete-title">
-              {t("Complete Processing")}
-            </h3>
-            <p className="ppCardDesc">
-              {t("Record output, waste, and post stock to one or more outlets.")}
-            </p>
-          </div>
-        </div>
-        {!capabilities.canCompleteProcessing && (
-          <p className="ppNotice ppNotice--warning" role="status">
-            {t("Only authorized users can complete processing.")}
-          </p>
-        )}
-        <div className="ppCompleteForm" role="group" aria-labelledby="pp-card-complete-title">
-          <div className="ppCompleteFormTop">
-            <label className="ppField">
-              <span className="ppLabel">{t("Batch")}</span>
-              <select
-                className="ppInput"
-                value={selectedBatchId}
-                onChange={(e) => setSelectedBatchId(e.target.value)}
-              >
-                <option value="">{t("Select batch")}</option>
-                {pendingBatches.map((batch) => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ppField ppFieldNarrow">
-              <span className="ppLabel">{t("Waste Weight")}</span>
-              <input
-                className="ppInput"
-                type="number"
-                min={0}
-                step="any"
-                value={completeWasteWeight}
-                onChange={(e) => setCompleteWasteWeight(e.target.value)}
-              />
-            </label>
-            <label className="ppField">
-              <span className="ppLabel">{t("Waste product")}</span>
-              <select
-                className="ppInput"
-                value={completeWasteProductId}
-                onChange={(e) => setCompleteWasteProductId(e.target.value)}
-              >
-                <option value="">{t("Select waste product")}</option>
-                {wasteProducts.map((product) => {
-                  const stock =
-                    typeof product.weight === "number" && Number.isFinite(product.weight)
-                      ? product.weight
-                      : product.quantity;
-                  const stockLabel =
-                    typeof stock === "number" && Number.isFinite(stock) ? ` (${stock} kg)` : "";
-                  return (
-                    <option key={product.id} value={product.id}>
-                      {`${product.name}${stockLabel}`}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          </div>
-
-          <p className="ppOutputLinesHeading">{t("Output lines")}</p>
-          <div className="ppOutputLines">
-            {completeOutputLines.map((line) => (
-              <div key={line.id} className="ppOutputLineRow">
-                <label className="ppField">
-                  <span className="ppLabel">{t("Outlet")}</span>
-                  <select
-                    className="ppInput"
-                    value={line.outletId}
-                    onChange={(e) => {
-                      const nextOutlet = e.target.value;
-                      setCompleteOutputLines((prev) =>
-                        prev.map((row) =>
-                          row.id === line.id
-                            ? {
-                                ...row,
-                                outletId: nextOutlet,
-                                productId: processedProductsForOutlet(nextOutlet).some(
-                                  (p) => p.id === row.productId
-                                )
-                                  ? row.productId
-                                  : "",
-                              }
-                            : row
-                        )
-                      );
-                    }}
-                  >
-                    <option value="">{t("Select outlet")}</option>
-                    {outlets.map((outlet) => (
-                      <option key={outlet.id} value={outlet.id}>
-                        {outlet.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="ppField">
-                  <span className="ppLabel">{t("Output Product")}</span>
-                  <select
-                    className="ppInput"
-                    value={line.productId}
-                    onChange={(e) =>
-                      setCompleteOutputLines((prev) =>
-                        prev.map((row) =>
-                          row.id === line.id ? { ...row, productId: e.target.value } : row
-                        )
-                      )
-                    }
-                    disabled={!line.outletId}
-                  >
-                    <option value="">{t("Select processed product")}</option>
-                    {processedProductsForOutlet(line.outletId).map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="ppField ppFieldNarrow">
-                  <span className="ppLabel">{t("Weight")}</span>
-                  <input
-                    className="ppInput"
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={line.weight}
-                    onChange={(e) =>
-                      setCompleteOutputLines((prev) =>
-                        prev.map((row) =>
-                          row.id === line.id ? { ...row, weight: e.target.value } : row
-                        )
-                      )
-                    }
-                  />
-                </label>
-                <div className="ppOutputLineActions">
-                  <button
-                    type="button"
-                    className="ppBtnSecondary ppBtnIconish"
-                    onClick={() =>
-                      setCompleteOutputLines((prev) => {
-                        if (prev.length <= 1) {
-                          return [createEmptyCompleteOutputLine()];
-                        }
-                        return prev.filter((row) => row.id !== line.id);
-                      })
-                    }
-                    aria-label={t("Remove line")}
-                    title={t("Remove line")}
-                  >
-                    {t("Remove line")}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="ppCompleteFormFooter">
-            <button
-              type="button"
-              className="ppBtnSecondary"
-              onClick={() =>
-                setCompleteOutputLines((prev) => [...prev, createEmptyCompleteOutputLine()])
-              }
-            >
-              {t("Add output line")}
-            </button>
-            <button
-              type="button"
-              className="ppBtnPrimary"
-              onClick={() => completeProcessingMutation.mutate()}
-              disabled={completeProcessingMutation.isPending || !completeFormCanSubmit}
-            >
-              {completeProcessingMutation.isPending ? t("Saving...") : t("Complete")}
-            </button>
-            {completeWeightValidationMessage && (
-              <p className="ppNotice ppCompleteFormError" role="alert">
-                {completeWeightValidationMessage}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {canTransferProcessedStock && (
-        <div className="ppCard ppCardWorkflow">
-          <div className="ppCardHead">
-            <span className="ppStepBadge" aria-hidden>
-              3
-            </span>
-            <div className="ppCardHeadText">
-              <h3 className="ppCardTitle" id="pp-card-transfer-title">
-                {t("Transfer Processed Stock Between Outlets")}
-              </h3>
-              <p className="ppCardDesc">{t("Move processed inventory from one outlet to another.")}</p>
+      {/* Send Card - Amber */}
+      <Card className="ppCard ppCardWorkflow ppCardSend">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="ppCardIcon ppCardIcon--amber" aria-hidden>
+              <Truck className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <CardTitle id="pp-card-send-title">{t("Send Livestock To Processing Plant")}</CardTitle>
+              <CardDescription>{t("Queue livestock from inventory to a processing plant.")}</CardDescription>
             </div>
           </div>
-          <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
-            <label className="ppField">
-              <span className="ppLabel">{t("From Outlet")}</span>
-              <select
-                className="ppInput"
-                value={transferSourceOutletId}
-                onChange={(e) => {
-                  setTransferSourceOutletId(e.target.value);
-                  setTransferProductId("");
-                  setTransferWeight("");
-                }}
+        </CardHeader>
+        <CardContent>
+          {!capabilities.canSendToProcessing && (
+            <p className="ppNotice ppNotice--warning" role="status">
+              {t("Only authorized users can send livestock to processing.")}
+            </p>
+          )}
+          <div className="ppFormGrid" role="group" aria-labelledby="pp-card-send-title">
+            <div className="ppField">
+              <Label htmlFor="send-plant">{t("Processing Plant")}</Label>
+              <Select value={selectedPlantId} onValueChange={setSelectedPlantId}>
+                <SelectTrigger id="send-plant">
+                  <SelectValue placeholder={t("Select processing plant")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {processingPlants.map((plant) => (
+                    <SelectItem key={plant.id} value={plant.id}>
+                      {plant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="ppField">
+              <Label htmlFor="send-livestock">{t("Livestock Item")}</Label>
+              <Select
+                value={selectedLivestockItemId}
+                onValueChange={setSelectedLivestockItemId}
               >
-                <option value="">{t("Select source outlet")}</option>
-                {outlets.map((outlet) => (
-                  <option key={outlet.id} value={outlet.id}>
-                    {outlet.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ppField">
-              <span className="ppLabel">{t("Processed Product")}</span>
-              <select
-                className="ppInput"
-                value={transferProductId}
-                onChange={(e) => setTransferProductId(e.target.value)}
-              >
-                <option value="">{t("Select processed product")}</option>
-                {sourceProcessedProducts.map((product) => {
-                  const productWeight =
-                    typeof product.weight === "number" ? product.weight : product.quantity;
-                  return (
-                    <option key={product.id} value={product.id}>
-                      {`${product.name} (${productWeight} kg)`}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-            <label className="ppField">
-              <span className="ppLabel">{t("To Outlet")}</span>
-              <select
-                className="ppInput"
-                value={transferDestinationOutletId}
-                onChange={(e) => setTransferDestinationOutletId(e.target.value)}
-              >
-                <option value="">{t("Select destination outlet")}</option>
-                {outlets.map((outlet) => (
-                  <option key={outlet.id} value={outlet.id}>
-                    {outlet.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ppField ppFieldNarrow">
-              <span className="ppLabel">{t("Weight")}</span>
-              <input
-                className="ppInput"
+                <SelectTrigger id="send-livestock">
+                  <SelectValue placeholder={t("Select livestock item")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {livestockItems.map((item) => {
+                    const resolvedId = resolveLivestockItemId(item);
+                    if (!resolvedId) return null;
+                    const heads = resolveLivestockHeadCount(item);
+                    const qtyLabel = heads !== null ? String(heads) : "\u2014";
+                    return (
+                      <SelectItem key={`${item.productId}-${resolvedId}`} value={resolvedId}>
+                        {`${item.itemId} - ${item.name} (${qtyLabel})`}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="ppField ppFieldNarrow">
+              <Label htmlFor="send-quantity">{t("Quantity")}</Label>
+              <Input
+                id="send-quantity"
                 type="number"
                 min={1}
                 step="any"
-                value={transferWeight}
-                onChange={(e) => setTransferWeight(e.target.value)}
+                value={sendQuantity}
+                onChange={(e) => setSendQuantity(e.target.value)}
               />
-            </label>
-            <button
+            </div>
+            <div className="ppField ppFieldNarrow">
+              <Label htmlFor="send-weight">{t("Weight")}</Label>
+              <Input
+                id="send-weight"
+                type="number"
+                min={1}
+                step="any"
+                value={sendWeight}
+                onChange={(e) => setSendWeight(e.target.value)}
+              />
+            </div>
+            <Button
               type="button"
-              className="ppBtnPrimary"
-              onClick={() => transferProcessedMutation.mutate()}
+              variant="default"
+              onClick={() => sendToProcessingMutation.mutate()}
               disabled={
-                transferProcessedMutation.isPending ||
-                !canTransferProcessedStock ||
-                !transferSourceOutletId ||
-                !transferDestinationOutletId ||
-                !transferProductId ||
-                Number(transferWeight) <= 0 ||
-                (selectedTransferProductWeight !== null && selectedTransferProductWeight < Number(transferWeight))
+                sendToProcessingMutation.isPending ||
+                !capabilities.canSendToProcessing ||
+                !selectedPlantId ||
+                !selectedLivestockItemId ||
+                Number(sendQuantity) <= 0 ||
+                Number(sendWeight) <= 0
               }
             >
-              {transferProcessedMutation.isPending ? t("Transferring...") : t("Transfer")}
-            </button>
+              {sendToProcessingMutation.isPending ? t("Sending...") : t("Send")}
+            </Button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* Complete Card - Green */}
+      <Card className="ppCard ppCardWorkflow ppCardComplete">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="ppCardIcon ppCardIcon--green" aria-hidden>
+              <Beaker className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <CardTitle id="pp-card-complete-title">{t("Complete Processing")}</CardTitle>
+              <CardDescription>
+                {t("Record output, waste, and post stock to one or more outlets.")}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!capabilities.canCompleteProcessing && (
+            <p className="ppNotice ppNotice--warning" role="status">
+              {t("Only authorized users can complete processing.")}
+            </p>
+          )}
+          <div className="ppCompleteForm" role="group" aria-labelledby="pp-card-complete-title">
+            <div className="ppCompleteFormTop">
+              <div className="ppField">
+                <Label htmlFor="complete-batch">{t("Batch")}</Label>
+                <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                  <SelectTrigger id="complete-batch">
+                    <SelectValue placeholder={t("Select batch")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pendingBatches.map((batch) => (
+                      <SelectItem key={batch.id} value={batch.id}>
+                        {batch.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="ppField ppFieldNarrow">
+                <Label htmlFor="complete-waste-weight">{t("Waste Weight")}</Label>
+                <Input
+                  id="complete-waste-weight"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={completeWasteWeight}
+                  onChange={(e) => setCompleteWasteWeight(e.target.value)}
+                />
+              </div>
+              <div className="ppField">
+                <Label htmlFor="complete-waste-product">{t("Waste product")}</Label>
+                <Select
+                  value={completeWasteProductId}
+                  onValueChange={setCompleteWasteProductId}
+                >
+                  <SelectTrigger id="complete-waste-product">
+                    <SelectValue placeholder={t("Select waste product")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {wasteProducts.map((product) => {
+                      const stock =
+                        typeof product.weight === "number" && Number.isFinite(product.weight)
+                          ? product.weight
+                          : product.quantity;
+                      const stockLabel =
+                        typeof stock === "number" && Number.isFinite(stock) ? ` (${stock} kg)` : "";
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          {`${product.name}${stockLabel}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="ppOutputLinesHeading">{t("Output lines")}</p>
+            <div className="ppOutputLines">
+              {completeOutputLines.map((line) => (
+                <div key={line.id} className="ppOutputLineRow">
+                  <div className="ppField">
+                    <Label htmlFor={`outlet-${line.id}`}>{t("Outlet")}</Label>
+                    <Select
+                      value={line.outletId}
+                      onValueChange={(nextOutlet) => {
+                        setCompleteOutputLines((prev) =>
+                          prev.map((row) =>
+                            row.id === line.id
+                              ? {
+                                  ...row,
+                                  outletId: nextOutlet,
+                                  productId: processedProductsForOutlet(nextOutlet).some(
+                                    (p) => p.id === row.productId
+                                  )
+                                    ? row.productId
+                                    : "",
+                                }
+                              : row
+                          )
+                        );
+                      }}
+                    >
+                      <SelectTrigger id={`outlet-${line.id}`}>
+                        <SelectValue placeholder={t("Select outlet")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {outlets.map((outlet) => (
+                          <SelectItem key={outlet.id} value={outlet.id}>
+                            {outlet.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="ppField">
+                    <Label htmlFor={`product-${line.id}`}>{t("Output Product")}</Label>
+                    <Select
+                      value={line.productId}
+                      onValueChange={(val) =>
+                        setCompleteOutputLines((prev) =>
+                          prev.map((row) =>
+                            row.id === line.id ? { ...row, productId: val } : row
+                          )
+                        )
+                      }
+                      disabled={!line.outletId}
+                    >
+                      <SelectTrigger id={`product-${line.id}`}>
+                        <SelectValue placeholder={t("Select processed product")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {processedProductsForOutlet(line.outletId).map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="ppField ppFieldNarrow">
+                    <Label htmlFor={`weight-${line.id}`}>{t("Weight")}</Label>
+                    <Input
+                      id={`weight-${line.id}`}
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={line.weight}
+                      onChange={(e) =>
+                        setCompleteOutputLines((prev) =>
+                          prev.map((row) =>
+                            row.id === line.id ? { ...row, weight: e.target.value } : row
+                          )
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="ppOutputLineActions">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCompleteOutputLines((prev) => {
+                          if (prev.length <= 1) {
+                            return [createEmptyCompleteOutputLine()];
+                          }
+                          return prev.filter((row) => row.id !== line.id);
+                        })
+                      }
+                      aria-label={t("Remove line")}
+                      title={t("Remove line")}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="ppCompleteFormFooter">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setCompleteOutputLines((prev) => [...prev, createEmptyCompleteOutputLine()])
+                }
+              >
+                <Plus className="h-4 w-4" />
+                {t("Add output line")}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => completeProcessingMutation.mutate()}
+                disabled={completeProcessingMutation.isPending || !completeFormCanSubmit}
+              >
+                {completeProcessingMutation.isPending ? t("Saving...") : t("Complete")}
+              </Button>
+              {completeWeightValidationMessage && (
+                <p className="ppNotice ppCompleteFormError" role="alert">
+                  {completeWeightValidationMessage}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transfer Card - Sky */}
+      {canTransferProcessedStock && (
+        <Card className="ppCard ppCardWorkflow ppCardTransfer">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="ppCardIcon ppCardIcon--sky" aria-hidden>
+                <ArrowRightLeft className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <CardTitle id="pp-card-transfer-title">
+                  {t("Transfer Processed Stock Between Outlets")}
+                </CardTitle>
+                <CardDescription>{t("Move processed inventory from one outlet to another.")}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="ppFormGrid" role="group" aria-labelledby="pp-card-transfer-title">
+              <div className="ppField">
+                <Label htmlFor="transfer-from">{t("From Outlet")}</Label>
+                <Select
+                  value={transferSourceOutletId}
+                  onValueChange={(val) => {
+                    setTransferSourceOutletId(val);
+                    setTransferProductId("");
+                    setTransferWeight("");
+                  }}
+                >
+                  <SelectTrigger id="transfer-from">
+                    <SelectValue placeholder={t("Select source outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((outlet) => (
+                      <SelectItem key={outlet.id} value={outlet.id}>
+                        {outlet.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="ppField">
+                <Label htmlFor="transfer-product">{t("Processed Product")}</Label>
+                <Select value={transferProductId} onValueChange={setTransferProductId}>
+                  <SelectTrigger id="transfer-product">
+                    <SelectValue placeholder={t("Select processed product")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sourceProcessedProducts.map((product) => {
+                      const productWeight =
+                        typeof product.weight === "number" ? product.weight : product.quantity;
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          {`${product.name} (${productWeight} kg)`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="ppField">
+                <Label htmlFor="transfer-to">{t("To Outlet")}</Label>
+                <Select
+                  value={transferDestinationOutletId}
+                  onValueChange={setTransferDestinationOutletId}
+                >
+                  <SelectTrigger id="transfer-to">
+                    <SelectValue placeholder={t("Select destination outlet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((outlet) => (
+                      <SelectItem key={outlet.id} value={outlet.id}>
+                        {outlet.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="ppField ppFieldNarrow">
+                <Label htmlFor="transfer-weight">{t("Weight")}</Label>
+                <Input
+                  id="transfer-weight"
+                  type="number"
+                  min={1}
+                  step="any"
+                  value={transferWeight}
+                  onChange={(e) => setTransferWeight(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => transferProcessedMutation.mutate()}
+                disabled={
+                  transferProcessedMutation.isPending ||
+                  !canTransferProcessedStock ||
+                  !transferSourceOutletId ||
+                  !transferDestinationOutletId ||
+                  !transferProductId ||
+                  Number(transferWeight) <= 0 ||
+                  (selectedTransferProductWeight !== null && selectedTransferProductWeight < Number(transferWeight))
+                }
+              >
+                {transferProcessedMutation.isPending ? t("Transferring...") : t("Transfer")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
         </div>
       </section>
 
+      {/* Data Tabs Section */}
       <section className="ppSection" aria-labelledby="pp-section-registers-heading">
         <h2 id="pp-section-registers-heading" className="ppSectionTitle">
           {t("Registers and activity")}
         </h2>
         <p className="ppSectionLead">{t("Monitor queues, plants, and recent sends.")}</p>
-        <div className="ppSectionGrid ppSectionGrid--loose">
-      <div className="ppCard">
-        <h3 className="ppCardTitle ppCardTitle--plain">{t("Pending processing")}</h3>
-        <div className="ppTableWrap">
-          <table className="ppTable">
-            <thead>
-              <tr>
-                <th scope="col">{t("Batch ID")}</th>
-                <th scope="col">{t("Processing Plant")}</th>
-                <th scope="col">{t("Livestock Item")}</th>
-                <th scope="col">{t("Quantity")}</th>
-                <th scope="col">{t("Weight")}</th>
-                {capabilities.canEditProcessingBatches && (
-                  <th scope="col">{t("Actions")}</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {pendingProcessing.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={capabilities.canEditProcessingBatches ? 6 : 5}
-                    className="ppTableEmpty"
-                  >
-                    {t("No pending processing batches.")}
-                  </td>
-                </tr>
-              ) : (
-                pendingProcessing.map((entry) => {
-                  const historyMatch = entry.batchId
-                    ? sendHistory.find((historyItem) => historyItem.batchId === entry.batchId)
-                    : undefined;
-                  const quantityValue =
-                    typeof entry.quantity === "number" ? entry.quantity : historyMatch?.quantity;
-                  const weightValue =
-                    typeof entry.weight === "number" ? entry.weight : historyMatch?.weight;
+        <Tabs defaultValue="pending" className="ppTabs">
+          <TabsList className="ppTabsList">
+            <TabsTrigger value="pending">{t("Pending Batches")}</TabsTrigger>
+            <TabsTrigger value="completed">{t("Completed")}</TabsTrigger>
+            <TabsTrigger value="plants">{t("Registered Plants")}</TabsTrigger>
+            <TabsTrigger value="history">{t("Send History")}</TabsTrigger>
+          </TabsList>
 
-                  return (
-                    <tr key={entry.batchId}>
-                      <td className="ppTableMono">{entry.batchId}</td>
-                      <td>{entry.plantName ?? historyMatch?.plantName ?? "-"}</td>
-                      <td>
-                        {entry.livestockItemName ??
-                          entry.itemId ??
-                          historyMatch?.livestockItemLabel ??
-                          "-"}
-                      </td>
-                      <td>{typeof quantityValue === "number" ? quantityValue : "-"}</td>
-                      <td>{typeof weightValue === "number" ? weightValue : "-"}</td>
-                      {capabilities.canEditProcessingBatches && (
-                      <td>
-                        <button
-                          type="button"
-                          className="ppBtnSecondary ppBtnTableAction"
-                          onClick={() => openEditPendingBatchModal(entry)}
-                          disabled={!entry.livestockItemId}
-                        >
-                          {t("Edit")}
-                        </button>
-                      </td>
+          {/* Pending Batches Tab */}
+          <TabsContent value="pending" className="ppTabContent">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Pending processing")}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="ppTableWrap">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Batch ID")}</TableHead>
+                        <TableHead>{t("Processing Plant")}</TableHead>
+                        <TableHead>{t("Livestock Item")}</TableHead>
+                        <TableHead>{t("Quantity")}</TableHead>
+                        <TableHead>{t("Weight")}</TableHead>
+                        {capabilities.canEditProcessingBatches && (
+                          <TableHead>{t("Actions")}</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingProcessing.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={capabilities.canEditProcessingBatches ? 6 : 5}
+                            className="ppTableEmpty"
+                          >
+                            {t("No pending processing batches.")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingProcessing.map((entry) => {
+                          const historyMatch = entry.batchId
+                            ? sendHistory.find((historyItem) => historyItem.batchId === entry.batchId)
+                            : undefined;
+                          const quantityValue =
+                            typeof entry.quantity === "number" ? entry.quantity : historyMatch?.quantity;
+                          const weightValue =
+                            typeof entry.weight === "number" ? entry.weight : historyMatch?.weight;
+
+                          return (
+                            <TableRow key={entry.batchId}>
+                              <TableCell className="ppTableMono">{entry.batchId}</TableCell>
+                              <TableCell>{entry.plantName ?? historyMatch?.plantName ?? "-"}</TableCell>
+                              <TableCell>
+                                {entry.livestockItemName ??
+                                  entry.itemId ??
+                                  historyMatch?.livestockItemLabel ??
+                                  "-"}
+                              </TableCell>
+                              <TableCell>{typeof quantityValue === "number" ? quantityValue : "-"}</TableCell>
+                              <TableCell>{typeof weightValue === "number" ? weightValue : "-"}</TableCell>
+                              {capabilities.canEditProcessingBatches && (
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openEditPendingBatchModal(entry)}
+                                    disabled={!entry.livestockItemId}
+                                  >
+                                    {t("Edit")}
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })
                       )}
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div className="ppCard">
-        <h3 className="ppCardTitle ppCardTitle--plain">{t("Completed processing batches")}</h3>
-        <div className="ppTableWrap">
-          <table className="ppTable">
-            <thead>
-              <tr>
-                <th scope="col">{t("Batch ID")}</th>
-                <th scope="col">{t("Processing Plant")}</th>
-                <th scope="col">{t("Livestock Item")}</th>
-                <th scope="col">{t("Input quantity")}</th>
-                <th scope="col">{t("Input weight")}</th>
-                <th scope="col">{t("Waste weight")}</th>
-                <th scope="col">{t("Status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isCompletedProcessingLoading ? (
-                <tr>
-                  <td colSpan={7} className="ppTableEmpty">
-                    {t("Loading…")}
-                  </td>
-                </tr>
-              ) : isCompletedProcessingError ? (
-                <tr>
-                  <td colSpan={7} className="ppTableEmpty">
-                    {t("Failed to load completed processing batches.")}
-                  </td>
-                </tr>
-              ) : completedProcessing.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="ppTableEmpty">
-                    {t("No completed processing batches yet.")}
-                  </td>
-                </tr>
-              ) : (
-                completedProcessing.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="ppTableMono">{entry.id}</td>
-                    <td>{entry.plantName ?? "-"}</td>
-                    <td>{entry.livestockItemName ?? "-"}</td>
-                    <td>
-                      {typeof entry.inputQuantity === "number" ? entry.inputQuantity : "-"}
-                    </td>
-                    <td>{typeof entry.inputWeight === "number" ? entry.inputWeight : "-"}</td>
-                    <td>{typeof entry.wasteWeight === "number" ? entry.wasteWeight : "-"}</td>
-                    <td>
-                      <span className="ppCompletedBadge">
-                        {t(entry.status ?? "COMPLETED")}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* Completed Processing Tab */}
+          <TabsContent value="completed" className="ppTabContent">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Completed processing batches")}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="ppTableWrap">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Batch ID")}</TableHead>
+                        <TableHead>{t("Processing Plant")}</TableHead>
+                        <TableHead>{t("Livestock Item")}</TableHead>
+                        <TableHead>{t("Input quantity")}</TableHead>
+                        <TableHead>{t("Input weight")}</TableHead>
+                        <TableHead>{t("Waste weight")}</TableHead>
+                        <TableHead>{t("Status")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isCompletedProcessingLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="ppTableEmpty">
+                            {t("Loading…")}
+                          </TableCell>
+                        </TableRow>
+                      ) : isCompletedProcessingError ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="ppTableEmpty">
+                            {t("Failed to load completed processing batches.")}
+                          </TableCell>
+                        </TableRow>
+                      ) : completedProcessing.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="ppTableEmpty">
+                            {t("No completed processing batches yet.")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        completedProcessing.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="ppTableMono">{entry.id}</TableCell>
+                            <TableCell>{entry.plantName ?? "-"}</TableCell>
+                            <TableCell>{entry.livestockItemName ?? "-"}</TableCell>
+                            <TableCell>
+                              {typeof entry.inputQuantity === "number" ? entry.inputQuantity : "-"}
+                            </TableCell>
+                            <TableCell>{typeof entry.inputWeight === "number" ? entry.inputWeight : "-"}</TableCell>
+                            <TableCell>{typeof entry.wasteWeight === "number" ? entry.wasteWeight : "-"}</TableCell>
+                            <TableCell>
+                              <span className="ppCompletedBadge">
+                                {t(entry.status ?? "COMPLETED")}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div className="ppCard">
-        <h3 className="ppCardTitle ppCardTitle--plain">{t("Registered plants")}</h3>
-        <div className="ppTableWrap">
-          <table className="ppTable">
-            <thead>
-              <tr>
-                <th scope="col">{t("Name")}</th>
-                <th scope="col">{t("User ID")}</th>
-                <th scope="col">{t("Contact")}</th>
-                <th scope="col">{t("Status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={4} className="ppTableEmpty">
-                    {t("Loading...")}
-                  </td>
-                </tr>
-              )}
-              {isError && (
-                <tr>
-                  <td colSpan={4} className="ppTableEmpty">
-                    {errorDetail instanceof Error
-                      ? errorDetail.message
-                      : t("Failed to load processing plants")}
-                  </td>
-                </tr>
-              )}
-              {!isLoading && !isError && processingPlants.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="ppTableEmpty">
-                    {t("No processing plants yet.")}
-                  </td>
-                </tr>
-              )}
-              {!isLoading &&
-                !isError &&
-                paginatedProcessingPlants.map((plant: ProcessingPlant) => (
-                  <tr key={plant.id}>
-                    <td>{plant.name}</td>
-                    <td className="ppTableMono">{plant.userId}</td>
-                    <td>{plant.contact}</td>
-                    <td>
-                      <span className={plant.status ? "ppBadge ppBadgeActive" : "ppBadge"}>
-                        {plant.status ? t("Active") : t("Inactive")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        {!isLoading && !isError && processingPlants.length > 0 && (
-          <div className="ppPaginationSlot">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={processingPlants.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              pageSizeOptions={[10, 20, 50]}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
-        )}
-      </div>
+          {/* Registered Plants Tab */}
+          <TabsContent value="plants" className="ppTabContent">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Registered plants")}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="ppTableWrap">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Name")}</TableHead>
+                        <TableHead>{t("User ID")}</TableHead>
+                        <TableHead>{t("Contact")}</TableHead>
+                        <TableHead>{t("Status")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="ppTableEmpty">
+                            {t("Loading...")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {isError && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="ppTableEmpty">
+                            {errorDetail instanceof Error
+                              ? errorDetail.message
+                              : t("Failed to load processing plants")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {!isLoading && !isError && processingPlants.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="ppTableEmpty">
+                            {t("No processing plants yet.")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {!isLoading &&
+                        !isError &&
+                        paginatedProcessingPlants.map((plant: ProcessingPlant) => (
+                          <TableRow key={plant.id}>
+                            <TableCell>{plant.name}</TableCell>
+                            <TableCell className="ppTableMono">{plant.userId}</TableCell>
+                            <TableCell>{plant.contact}</TableCell>
+                            <TableCell>
+                              <span className={plant.status ? "ppBadge ppBadgeActive" : "ppBadge"}>
+                                {plant.status ? t("Active") : t("Inactive")}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {!isLoading && !isError && processingPlants.length > 0 && (
+                  <div className="ppPaginationSlot">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={processingPlants.length}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      pageSizeOptions={[10, 20, 50]}
+                      onPageSizeChange={setPageSize}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div className="ppCard">
-        <h3 className="ppCardTitle ppCardTitle--plain">{t("Send History")}</h3>
-        <div className="ppTableWrap">
-          <table className="ppTable">
-            <thead>
-              <tr>
-                <th scope="col">{t("Processing Plant")}</th>
-                <th scope="col">{t("Livestock Item")}</th>
-                <th scope="col">{t("Quantity")}</th>
-                <th scope="col">{t("Weight")}</th>
-                <th scope="col">{t("Date")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sendHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="ppTableEmpty">
-                    {t("No send history yet.")}
-                  </td>
-                </tr>
-              ) : (
-                sendHistory.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{entry.plantName}</td>
-                    <td>{entry.livestockItemLabel}</td>
-                    <td>{entry.quantity}</td>
-                    <td>{typeof entry.weight === "number" ? entry.weight : "-"}</td>
-                    <td>{new Date(entry.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-        </div>
+          {/* Send History Tab */}
+          <TabsContent value="history" className="ppTabContent">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Send History")}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="ppTableWrap">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Processing Plant")}</TableHead>
+                        <TableHead>{t("Livestock Item")}</TableHead>
+                        <TableHead>{t("Quantity")}</TableHead>
+                        <TableHead>{t("Weight")}</TableHead>
+                        <TableHead>{t("Date")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sendHistory.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="ppTableEmpty">
+                            {t("No send history yet.")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        sendHistory.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell>{entry.plantName}</TableCell>
+                            <TableCell>{entry.livestockItemLabel}</TableCell>
+                            <TableCell>{entry.quantity}</TableCell>
+                            <TableCell>{typeof entry.weight === "number" ? entry.weight : "-"}</TableCell>
+                            <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </section>
     </section>
   );

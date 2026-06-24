@@ -118,6 +118,7 @@ export const SALES_ROUTES = {
   GET_BY_PRODUCT_ID: "/sales/get-by-product-id",
   CREATE: "/sales/create",
   DASHBOARD_SALES: "/sales/dashboardSales",
+  REDEEM: "/sales/redeem",
   LIVESTOCK_CREATE: "/sales/livestock/create",
   LIVESTOCK_GET: "/sales/livestock/get",
 } as const;

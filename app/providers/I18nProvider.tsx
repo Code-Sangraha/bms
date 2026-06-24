@@ -1079,6 +1079,14 @@ const translations: Record<string, string> = {
   "No product sales in this period.": "यो अवधिमा कुनै उत्पादन बिक्री छैन।",
   "No customer sales in this period.": "यो अवधिमा कुनै ग्राहक बिक्री छैन।",
   "No outlet sales in this period.": "यो अवधिमा कुनै आउटलेट बिक्री छैन।",
+  "Earns 1 kg reward per 20 kg purchased.": "२० किलो खरिदमा १ किलो इनाम अर्जित हुन्छ।",
+  "Loyalty accrues when the sale includes a customer name and line weight (kg).":
+    "बिक्रीमा ग्राहकको नाम र लाइन वजन (किलो) भएमा लोयल्टी अर्जित हुन्छ।",
+  "Use the exact same customer name (including capitalization) on every sale at this outlet so loyalty accumulates.":
+    "यो आउटलेटमा हरेक बिक्रीमा उही ग्राहक नाम (अक्षरको ठूलो/सानो सहित) प्रयोग गर्नुहोस् ताकि लोयल्टी जम्मा होस्।",
+  "Earned rewards (approx., from sales totals):": "अर्जित इनाम (अनुमानित, बिक्री जम्माबाट):",
+  "Earned reward preview is based on dashboard data for your logged-in outlet, not necessarily the outlet selected for this sale.":
+    "अर्जित इनाम पूर्वावलोकन तपाईंको लगइन आउटलेटको ड्यासबोर्ड डाटामा आधारित छ, यो बिक्रीका लागि छानिएको आउटलेटमा नहुन सक्छ।",
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);

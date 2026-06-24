@@ -1,39 +1,42 @@
-/* Processing plant settings — dashboard / settings patterns (soft UI, operations workflow) */
+/* Processing plant — redesigned with color-coded workflow cards and tabbed data */
 
 .processingPlantPage {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  color: #111827;
-  font-family: "Geist", system-ui, sans-serif;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 48%, #f8fafc 100%);
-  padding: 4px 0 32px;
+  gap: 32px;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  background: transparent;
+  padding: 8px 0 40px;
   box-sizing: border-box;
-  border-radius: 12px;
 
   @media (max-width: 640px) {
     padding: 4px 0 24px;
+    gap: 24px;
   }
 
   /* —— Breadcrumb —— */
   .ppBreadcrumb {
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.4;
-    color: #9ca3af;
+    color: var(--muted-foreground);
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .ppBreadcrumbMuted {
-    color: #9ca3af;
+    color: var(--muted-foreground);
   }
 
   .ppBreadcrumbSep {
-    color: #9ca3af;
+    color: var(--muted-foreground);
     margin: 0 2px;
   }
 
   .ppBreadcrumbCurrent {
-    color: #6b7280;
+    color: var(--foreground);
     font-weight: 500;
   }
 
@@ -50,25 +53,25 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--muted-foreground);
   }
 
   .ppSectionLead {
     margin: -4px 0 0;
     font-size: 14px;
     line-height: 1.5;
-    color: #64748b;
+    color: var(--muted-foreground);
     max-width: 42rem;
   }
 
   .ppSectionGrid {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .ppSectionGrid--loose {
-    gap: 20px;
+    gap: 0;
   }
 
   /* —— Header —— */
@@ -76,7 +79,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
   }
 
@@ -89,97 +92,87 @@
 
   .pageTitle {
     margin: 0;
-    font-size: 22px;
-    font-weight: 600;
-    color: #111827;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
     line-height: 1.25;
   }
 
   .pageSubtitle {
     margin: 0;
-    font-size: 13px;
-    color: #6b7280;
+    font-size: 14px;
+    color: var(--muted-foreground);
     line-height: 1.4;
+  }
+
+  .ppHeaderAction {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
 
   /* —— Cards —— */
   .ppCard {
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      0 8px 24px -8px rgba(15, 23, 42, 0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
 
-  .ppCardWorkflow {
-    border-left: 3px solid var(--color-primary);
-    padding-left: 21px;
+  .ppCard:hover {
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 32px -8px rgba(15, 23, 42, 0.1);
   }
 
-  .ppCardHead {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-    margin-bottom: 0;
+  /* Color-coded left borders for workflow cards */
+  .ppCardSend {
+    border-left: 4px solid #f59e0b !important;
   }
 
-  .ppCardHeadText {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  .ppCardComplete {
+    border-left: 4px solid var(--brand-500) !important;
   }
 
-  .ppStepBadge {
+  .ppCardTransfer {
+    border-left: 4px solid #0ea5e9 !important;
+  }
+
+  /* Card icon containers */
+  .ppCardIcon {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--brand-600);
+    border-radius: 8px;
+  }
+
+  .ppCardIcon--amber {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+  }
+
+  .ppCardIcon--green {
     background: rgba(2, 149, 90, 0.12);
-    border: 1px solid rgba(2, 149, 90, 0.2);
+    color: var(--brand-600);
   }
 
-  .ppCardTitle {
-    margin: 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    font-size: 16px;
-    font-weight: 600;
-    color: #111827;
-    line-height: 1.3;
+  .ppCardIcon--sky {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
   }
 
-  .ppCardHead .ppCardTitle {
+  .ppCard .ppCardTitle {
     padding-bottom: 0;
     border-bottom: none;
     font-size: 16px;
-  }
-
-  .ppCardTitle--plain {
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   }
 
   .ppCardDesc {
     margin: 0;
     font-size: 13px;
     line-height: 1.45;
-    color: #64748b;
+    color: var(--muted-foreground);
   }
 
   .ppNotice {
@@ -208,11 +201,6 @@
     width: 100%;
   }
 
-  .ppFormGridComplete {
-    grid-template-columns:
-      minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto;
-  }
-
   .ppCompleteForm {
     display: flex;
     flex-direction: column;
@@ -222,16 +210,16 @@
 
   .ppCompleteFormTop {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(0, 1fr);
     gap: 16px;
     align-items: end;
   }
 
   .ppOutputLinesHeading {
-    margin: 0;
-    font-size: 12px;
+    margin: 8px 0 0;
+    font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--foreground);
   }
 
   .ppOutputLines {
@@ -257,12 +245,6 @@
     padding-bottom: 2px;
   }
 
-  .ppBtnIconish {
-    font-size: 12px;
-    padding: 0 12px;
-    white-space: nowrap;
-  }
-
   .ppCompleteFormFooter {
     display: flex;
     flex-wrap: wrap;
@@ -285,204 +267,40 @@
     max-width: 180px;
   }
 
-  .ppLabel {
-    font-size: 12px;
-    font-weight: 500;
-    color: #374151;
-  }
-
-  .ppFormHint {
-    font-size: 12px;
-    line-height: 1.4;
-    color: #64748b;
-    margin: -2px 0 0;
-  }
-
-  .ppReadOnlyGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .ppReadOnlyField {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 8px;
-    background: #f9fafb;
-  }
-
-  .ppReadOnlyValue {
-    overflow-wrap: anywhere;
-    font-size: 13px;
-    color: #111827;
-  }
-
-  .ppInput,
-  .ppSelect {
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    font-size: 13px;
-    color: #111827;
-    background: #ffffff;
+  /* —— Tabs —— */
+  .ppTabs {
     width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
   }
 
-  .ppInput:focus,
-  .ppSelect:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(2, 149, 90, 0.15);
+  .ppTabsList {
+    margin-bottom: 16px;
   }
 
-  .ppInput:disabled {
-    background: #f9fafb;
-    color: #6b7280;
-    cursor: not-allowed;
-  }
-
-  /* —— Buttons (§6.3) —— */
-  .ppBtnPrimary {
-    height: 40px;
-    padding: 0 20px;
-    border: 1px solid var(--color-primary);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    background: var(--color-primary);
-    color: #ffffff;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .ppBtnPrimary:hover:not(:disabled) {
-    background: var(--brand-600);
-    border-color: var(--brand-600);
-    box-shadow: 0 4px 12px -2px rgba(2, 149, 90, 0.35);
-  }
-
-  .ppBtnPrimary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .ppBtnPrimary:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .ppBtnSecondary {
-    height: 40px;
-    padding: 0 18px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    background: #ffffff;
-    color: #374151;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
-  }
-
-  .ppBtnSecondary:hover:not(:disabled) {
-    background: #f9fafb;
-    border-color: rgba(0, 0, 0, 0.12);
-  }
-
-  .ppBtnSecondary:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  .ppBtnSecondary:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .ppBtnTableAction {
-    height: 32px;
-    padding: 0 12px;
-    font-size: 12px;
-  }
-
-  .ppModalFields {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  .ppTabContent {
+    margin-top: 0;
   }
 
   /* —— Tables —— */
   .ppTableWrap {
     margin: 0;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 8px;
+    border-radius: 0;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    background: #fff;
-  }
-
-  .ppCard .ppTableWrap {
-    border-radius: 8px;
-  }
-
-  .ppTable {
-    width: 100%;
-    min-width: 620px;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  .ppTable thead th {
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #6b7280;
-    background: #f9fafb;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  }
-
-  .ppTable tbody td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-    color: #374151;
-    vertical-align: middle;
-  }
-
-  .ppTable tbody tr {
-    transition: background-color 0.2s ease;
-  }
-
-  .ppTable tbody tr:hover td {
-    background-color: rgba(2, 149, 90, 0.04);
-  }
-
-  .ppTable tbody tr:last-child td {
-    border-bottom: none;
+    background: transparent;
   }
 
   .ppTableMono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
       monospace;
     font-size: 12px;
-    color: #4b5563;
+    color: var(--muted-foreground);
   }
 
   .ppTableEmpty {
     text-align: center;
-    color: #6b7280;
-    padding: 24px 16px !important;
+    color: var(--muted-foreground);
+    padding: 32px 16px !important;
     font-size: 13px;
   }
 
@@ -517,20 +335,20 @@
 
   /* —— Pagination block inside card —— */
   .ppPaginationSlot {
-    padding-top: 4px;
+    padding-top: 12px;
     margin-top: 4px;
     border-top: 1px solid rgba(0, 0, 0, 0.06);
   }
 
   .ppPaginationSlot .pagination {
     border-top: none;
-    padding-top: 12px;
+    padding-top: 0;
     margin-top: 0;
   }
 
+  /* —— Responsive —— */
   @media (max-width: 1280px) {
-    .ppFormGrid,
-    .ppFormGridComplete {
+    .ppFormGrid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: stretch;
     }
@@ -551,27 +369,11 @@
     .ppFieldNarrow {
       max-width: none;
     }
-
-    .ppFormGrid > .ppBtnPrimary {
-      width: 100%;
-    }
   }
 
   @media (max-width: 900px) {
-    .ppCard {
-      padding: 20px 16px;
-    }
-
     .ppFormGrid,
-    .ppFormGridComplete {
-      grid-template-columns: 1fr;
-    }
-
     .ppCompleteFormTop {
-      grid-template-columns: 1fr;
-    }
-
-    .ppReadOnlyGrid {
       grid-template-columns: 1fr;
     }
 
@@ -579,74 +381,37 @@
       grid-template-columns: 1fr;
     }
 
-    .ppFormGrid > .ppBtnPrimary {
-      width: 100%;
-    }
-
-    .ppCompleteFormFooter .ppBtnPrimary,
-    .ppCompleteFormFooter .ppBtnSecondary {
-      width: 100%;
-    }
-
     .ppHeader {
       flex-direction: column;
       align-items: stretch;
     }
 
-    .ppBtnPrimary.ppHeaderAction {
+    .ppHeaderAction {
       width: 100%;
-    }
-
-    .ppTable {
-      min-width: 560px;
+      justify-content: center;
     }
   }
 
   @media (max-width: 640px) {
-    gap: 18px;
+    gap: 24px;
 
     .pageTitle {
       font-size: 20px;
     }
 
     .pageSubtitle {
-      font-size: 12px;
+      font-size: 13px;
     }
 
-    .ppCard {
-      padding: 16px;
-      gap: 14px;
-    }
-
-    .ppCardTitle {
-      font-size: 15px;
-    }
-
-    .ppCardWorkflow {
-      padding-left: 17px;
-    }
-
-    .ppTable {
-      min-width: 520px;
-    }
-
-    .ppTable thead th,
-    .ppTable tbody td {
-      padding: 10px 12px;
-      font-size: 12px;
+    .ppCardIcon {
+      width: 32px;
+      height: 32px;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ppCard,
-    .ppBtnPrimary,
-    .ppBtnSecondary,
-    .ppTable tbody tr {
+    .ppCard {
       transition: none;
-    }
-
-    .ppBtnPrimary:hover:not(:disabled) {
-      box-shadow: none;
     }
   }
 }

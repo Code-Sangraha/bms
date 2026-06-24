@@ -609,3 +609,33 @@ export async function getDashboardSales(): Promise<
   if (!result.ok) return result;
   return { ok: true, data: result.data ?? {} };
 }
+
+export type RedeemRewardsRequest = {
+  name: string;
+  contact?: string | null;
+  outletId: string;
+  rewardProductId: string;
+  redeemWeight: number;
+};
+
+export type RedeemRewardsResponse = {
+  success?: boolean;
+  message?: string;
+  timestamp?: string;
+  data?: RedeemRewardsRequest;
+};
+
+export async function redeemRewards(
+  body: RedeemRewardsRequest
+): Promise<
+  | { ok: true; data: RedeemRewardsRequest }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<RedeemRewardsResponse>(
+    SALES_ROUTES.REDEEM,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+  if (!result.ok) return result;
+  const data = result.data?.data ?? body;
+  return { ok: true, data };
+}

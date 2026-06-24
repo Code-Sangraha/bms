@@ -25,6 +25,7 @@ import {
 } from "@/app/dashboard/invoices/components/SaleSharedComponents";
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
+import { LoyaltySaleHints } from "@/app/dashboard/invoices/components/LoyaltySaleHints";
 import { SegmentPicker } from "@/app/dashboard/invoices/components/SegmentPicker";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -41,7 +42,7 @@ import {
 import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
-import { createSale, type SaleItemPayload } from "@/handlers/sale";
+import { createSale, getDashboardSales, type SaleItemPayload } from "@/handlers/sale";
 import {
   allocateCartDiscount,
   cartSubtotal,
@@ -263,6 +264,20 @@ export default function PointOfSalePage() {
       return result.data;
     },
   });
+
+  const { data: dashboardSalesResponse } = useQuery({
+    queryKey: DASHBOARD_SALES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getDashboardSales();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const salesByCustomer = dashboardSalesResponse?.data?.salesByCustomer ?? [];
 
   const applyRegisteredCustomer = (customer: Customer) => {
     setSelectedCustomerId(customer.id);
@@ -779,6 +794,12 @@ export default function PointOfSalePage() {
                   />
                 </FormField>
               </div>
+              <LoyaltySaleHints
+                customerName={customerName}
+                saleOutletId={outletId}
+                jwtOutletId={userOutletId}
+                salesByCustomer={salesByCustomer}
+              />
             </SaleFormSection>
 
             <SaleFormSection
