@@ -2,13 +2,32 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, MoreHorizontal, Plus } from "lucide-react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
-import ConfirmModal from "@/app/components/Modal/ConfirmModal";
-import Modal from "@/app/components/Modal/Modal";
+import { PageHeader } from "@/app/components/ui-ext/PageHeader";
+import { DataTable, type DataTableColumn } from "@/app/components/ui-ext/DataTable";
+import ConfirmDialog from "@/app/components/ui-ext/ConfirmDialog";
+import ResponsiveOverlay from "@/app/components/ui-ext/ResponsiveOverlay";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import {
   clearLivestockItemsCache,
@@ -24,7 +43,6 @@ import {
   updateLivestockItem,
   type LivestockItem,
   type LivestockRestockPayload,
-  type PaymentStatus,
 } from "@/handlers/product";
 import { computeDueAmount, derivePaymentStatus } from "@/lib/billing/paymentStatus";
 import { livestockRestockDetailSchema } from "@/schema/livestockDetailModals";
@@ -35,9 +53,7 @@ import {
   buildLivestockOpeningStockData,
   type LivestockClientStockMode,
 } from "./lib/buildLivestockOpeningStockData";
-import { computeRowMenuPosition, ROW_MENU_HEIGHT_ESTIMATE_PX } from "@/lib/rowMenuPosition";
-import { MdMoreHoriz } from "react-icons/md";
-import "./liveProduct.scss";
+import "./openingClosingStock.scss";
 
 const LIVESTOCK_CATEGORY_QUERY_KEY = ["livestockCategories"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
@@ -64,15 +80,6 @@ const defaultLivestockForm: LivestockFormState = {
 
 type StockAdjustModalState = { item: LivestockItem; mode: "restock" | "deduct" } | null;
 
-type OpenRowMenuState = {
-  rowKey: string;
-  item: LivestockItem;
-  placement: "above" | "below";
-  top: number;
-  bottom: number;
-  right: number;
-};
-
 type LiveProductMainTab = "inventory" | "openingClosing";
 
 function resolveLivestockRowActionKey(item: LivestockItem, index: number): string {
@@ -94,7 +101,6 @@ function priceFieldToString(value: number | null | undefined): string {
   return String(value);
 }
 
-/** Empty → null; valid positive number → value; invalid partial input → null after validation elsewhere. */
 function parsePriceFieldForSubmit(raw: string): number | null {
   const t = raw.trim();
   if (t === "") return null;
@@ -130,26 +136,11 @@ function toNormalizedItem(item: LivestockItem): LivestockItem {
   };
 }
 
-// Auto-assign next numeric itemId on create — disabled for now; users enter Item ID manually.
-// /** Next `itemId` for create: max positive integer string among same-`productId` rows + 1, or `"1"`. Non-numeric legacy `itemId`s are skipped for the max. */
-// function computeNextLivestockItemId(productId: string, items: LivestockItem[]): string {
-//   let max = 0;
-//   for (const item of items) {
-//     if (item.productId !== productId) continue;
-//     const s = typeof item.itemId === "string" ? item.itemId.trim() : "";
-//     if (!/^\d+$/.test(s)) continue;
-//     const n = Number(s);
-//     if (Number.isInteger(n) && n > 0 && n > max) max = n;
-//   }
-//   return String(max + 1);
-// }
-
-/** Table "Quantity" column: only API `quantity` (head count / units), never body weight (kg). */
 function formatLivestockTableQuantity(item: LivestockItem): string {
   if (typeof item.quantity === "number" && Number.isFinite(item.quantity)) {
     return String(item.quantity);
   }
-  return "\u2014";
+  return "—";
 }
 
 function formatLivestockPriceCell(value: number | null | undefined): string {
@@ -159,7 +150,7 @@ function formatLivestockPriceCell(value: number | null | undefined): string {
       maximumFractionDigits: 2,
     });
   }
-  return "\u2014";
+  return "—";
 }
 
 function toIsoDateLocal(d: Date): string {
@@ -169,7 +160,6 @@ function toIsoDateLocal(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Local YYYY-MM-DD from history `createdAt` (same bucketing as opening/closing stock builder). */
 function localCalendarDayFromCreatedAt(iso: string): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) {
@@ -183,7 +173,6 @@ function localCalendarDayFromCreatedAt(iso: string): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Dev: always on. Prod: set `localStorage.setItem('DEBUG_LIVESTOCK_STOCK','1')` then refresh. */
 function shouldLogLivestockOpeningStockDebug(): boolean {
   if (typeof window === "undefined") return false;
   if (import.meta.env.DEV) return true;
@@ -192,114 +181,6 @@ function shouldLogLivestockOpeningStockDebug(): boolean {
   } catch {
     return false;
   }
-}
-
-type RestockSupplierPaymentFieldsProps = {
-  t: (text: string) => string;
-  supplierName: string;
-  supplierContact: string;
-  totalAmount: string;
-  paidAmount: string;
-  remarks: string;
-  onSupplierNameChange: (value: string) => void;
-  onSupplierContactChange: (value: string) => void;
-  onTotalAmountChange: (value: string) => void;
-  onPaidAmountChange: (value: string) => void;
-  onRemarksChange: (value: string) => void;
-};
-
-const RESTOCK_PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
-  ADVANCE: "stockAdjustPaymentBadge stockAdjustPaymentBadgeAdvance",
-  PARTIAL: "stockAdjustPaymentBadge stockAdjustPaymentBadgePartial",
-  FULL: "stockAdjustPaymentBadge stockAdjustPaymentBadgeFull",
-};
-
-function RestockSupplierPaymentFields({
-  t,
-  supplierName,
-  supplierContact,
-  totalAmount,
-  paidAmount,
-  remarks,
-  onSupplierNameChange,
-  onSupplierContactChange,
-  onTotalAmountChange,
-  onPaidAmountChange,
-  onRemarksChange,
-}: RestockSupplierPaymentFieldsProps) {
-  const totalNum = Number(totalAmount) || 0;
-  const paidNum = Number(paidAmount) || 0;
-  const due = computeDueAmount(totalNum, paidNum);
-  const status = derivePaymentStatus(totalNum, paidNum);
-  const statusLabel: Record<PaymentStatus, string> = {
-    ADVANCE: t("Advance"),
-    PARTIAL: t("Partial"),
-    FULL: t("Full"),
-  };
-  return (
-    <div className="stockAdjustSupplierBlock">
-      <h4 className="stockAdjustSupplierTitle">{t("Supplier & Payment")}</h4>
-      <label className="productActionModalLabel">
-        {t("Supplier name")}
-        <input
-          type="text"
-          value={supplierName}
-          onChange={(e) => onSupplierNameChange(e.target.value)}
-          className="productActionModalInput"
-        />
-      </label>
-      <label className="productActionModalLabel">
-        {t("Supplier contact")}
-        <input
-          type="text"
-          value={supplierContact}
-          onChange={(e) => onSupplierContactChange(e.target.value)}
-          className="productActionModalInput"
-        />
-      </label>
-      <label className="productActionModalLabel">
-        {t("Total amount")}
-        <input
-          type="number"
-          min={0}
-          step="0.01"
-          value={totalAmount}
-          onChange={(e) => onTotalAmountChange(e.target.value)}
-          className="productActionModalInput"
-        />
-      </label>
-      <label className="productActionModalLabel">
-        {t("Paid amount")}
-        <input
-          type="number"
-          min={0}
-          step="0.01"
-          value={paidAmount}
-          onChange={(e) => onPaidAmountChange(e.target.value)}
-          className="productActionModalInput"
-        />
-      </label>
-      <label className="productActionModalLabel">
-        {t("Due amount")}
-        <input type="number" value={due} readOnly tabIndex={-1} className="productActionModalInput" />
-      </label>
-      <div className="productActionModalLabel">
-        {t("Payment status")}
-        <div>
-          <span className={RESTOCK_PAYMENT_BADGE_CLASS[status]}>{statusLabel[status]}</span>
-        </div>
-      </div>
-      <label className="productActionModalLabel stockAdjustFieldFull">
-        {t("Remarks")}
-        <textarea
-          rows={1}
-          value={remarks}
-          onChange={(e) => onRemarksChange(e.target.value)}
-          className="productActionModalInput"
-        />
-      </label>
-    </div>
-  );
 }
 
 export default function LiveProductPage() {
@@ -327,10 +208,7 @@ export default function LiveProductPage() {
   const [restockTotalAmount, setRestockTotalAmount] = useState("");
   const [restockPaidAmount, setRestockPaidAmount] = useState("");
   const [restockRemarks, setRestockRemarks] = useState("");
-  const [openRowMenu, setOpenRowMenu] = useState<OpenRowMenuState | null>(null);
   const [itemPendingDelete, setItemPendingDelete] = useState<LivestockItem | null>(null);
-  const rowMenuButtonRef = useRef<HTMLDivElement>(null);
-  const rowMenuPortalRef = useRef<HTMLDivElement>(null);
   const [mainTab, setMainTab] = useState<LiveProductMainTab>("inventory");
 
   const [openingStockFrom, setOpeningStockFrom] = useState(() => toIsoDateLocal(new Date()));
@@ -341,7 +219,6 @@ export default function LiveProductPage() {
     data: livestockCategories = [],
     isLoading: categoryLoading,
     isError: categoryError,
-    error: categoryErrorDetail,
   } = useQuery({
     queryKey: LIVESTOCK_CATEGORY_QUERY_KEY,
     retry: 0,
@@ -372,7 +249,6 @@ export default function LiveProductPage() {
     data: livestockItems = [],
     isLoading: livestockItemsLoading,
     isError: livestockItemsError,
-    error: livestockItemsErrorDetail,
   } = useQuery({
     queryKey: [...LIVESTOCK_ITEMS_QUERY_KEY, liveStockProductIds],
     enabled: liveStockProductIds.length > 0,
@@ -388,8 +264,6 @@ export default function LiveProductPage() {
       for (const result of results) {
         if (!result.ok) {
           if (result.status === 401) navigate("/login");
-          // Some product/category ids may be stale on live; skip those rows
-          // instead of crashing the whole page.
           if (result.status === 400 || result.status === 404) {
             continue;
           }
@@ -644,82 +518,9 @@ export default function LiveProductPage() {
     endIndex,
   } = usePagination(orderedLivestockItems.length, { defaultPageSize: 10 });
 
-  /** Matches CSS that shows the fixed table (desktop) vs card grid (mobile). Both are mounted; ref must attach only to the visible one or getBoundingClientRect is 0 for display:none. */
-  const [isWideViewport, setIsWideViewport] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(min-width: 769px)").matches : true
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 769px)");
-    const onChange = () => setIsWideViewport(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategoryId, searchQuery, setCurrentPage]);
-
-  const closeRowMenu = useCallback(() => {
-    setOpenRowMenu(null);
-  }, []);
-
-  useEffect(() => {
-    if (mainTab !== "inventory") closeRowMenu();
-  }, [mainTab, closeRowMenu]);
-
-  useLayoutEffect(() => {
-    if (!openRowMenu) return;
-    const syncMenuPosition = () => {
-      const wrap = rowMenuButtonRef.current;
-      const btn = wrap?.querySelector<HTMLButtonElement>(".rowMenuTrigger");
-      if (!wrap || !btn) return;
-      const rect = btn.getBoundingClientRect();
-      const menuEl = rowMenuPortalRef.current;
-      const measured = menuEl?.offsetHeight ?? 0;
-      const h = Math.max(measured, ROW_MENU_HEIGHT_ESTIMATE_PX);
-      const menuWidth =
-        menuEl && menuEl.offsetWidth > 0 ? menuEl.offsetWidth : undefined;
-      const pos = computeRowMenuPosition(rect, h, { menuWidth });
-      setOpenRowMenu((prev) =>
-        prev
-          ? {
-              ...prev,
-              placement: pos.placement,
-              top: pos.top,
-              bottom: pos.bottom,
-              right: pos.right,
-            }
-          : null
-      );
-    };
-    syncMenuPosition();
-    const raf = requestAnimationFrame(() => syncMenuPosition());
-    window.addEventListener("scroll", syncMenuPosition, true);
-    window.addEventListener("resize", syncMenuPosition);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", syncMenuPosition, true);
-      window.removeEventListener("resize", syncMenuPosition);
-    };
-  }, [openRowMenu?.rowKey, isWideViewport]);
-
-  useEffect(() => {
-    if (!openRowMenu) return;
-    const handlePointerDownOutside = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (rowMenuButtonRef.current?.contains(target)) return;
-      if (rowMenuPortalRef.current?.contains(target)) return;
-      closeRowMenu();
-    };
-    const scheduleId = window.setTimeout(() => {
-      document.addEventListener("pointerdown", handlePointerDownOutside);
-    }, 0);
-    return () => {
-      window.clearTimeout(scheduleId);
-      document.removeEventListener("pointerdown", handlePointerDownOutside);
-    };
-  }, [openRowMenu, closeRowMenu]);
 
   const paginatedLivestockItems = useMemo(
     () => paginate(orderedLivestockItems, startIndex, endIndex),
@@ -892,7 +693,6 @@ export default function LiveProductPage() {
     setEditLivestockForm(toFormState(item));
     setEditLivestockError(null);
     setRowActionError(null);
-    closeRowMenu();
     setIsEditLivestockModalOpen(true);
   };
 
@@ -952,7 +752,6 @@ export default function LiveProductPage() {
     setRestockTotalAmount("");
     setRestockPaidAmount("");
     setRestockRemarks("");
-    closeRowMenu();
   };
 
   const closeStockAdjustModal = () => {
@@ -1011,7 +810,7 @@ export default function LiveProductPage() {
         remarks: restockRemarks || undefined,
       });
       if (!parsed.success) {
-        const first = parsed.error.errors[0]?.message ?? t("Please fill in all required fields.");
+        const first = parsed.error.issues[0]?.message ?? t("Please fill in all required fields.");
         setStockAdjustError(first);
         return;
       }
@@ -1046,7 +845,6 @@ export default function LiveProductPage() {
     }
     setRowActionError(null);
     setItemPendingDelete(item);
-    closeRowMenu();
   };
 
   const confirmDeleteItem = () => {
@@ -1067,538 +865,299 @@ export default function LiveProductPage() {
     restockLivestockMutation.isPending ||
     deductLivestockMutation.isPending;
 
-  const renderLivestockRowActions = (
-    item: LivestockItem,
-    rowKey: string,
-    surface: "table" | "mobile"
-  ) => {
-    const refActive =
-      openRowMenu?.rowKey === rowKey &&
-      ((surface === "table" && isWideViewport) || (surface === "mobile" && !isWideViewport));
-    return (
-    <div className="productsRowActions">
-      <div
-        className={`rowActionMenu rowActionFloating${openRowMenu?.rowKey === rowKey ? " rowActionMenuOpen" : ""}`}
-        ref={refActive ? rowMenuButtonRef : undefined}
-      >
-        <button
-          type="button"
-          className="rowMenuTrigger"
-          onClick={(e) => {
-            e.stopPropagation();
-            const trigger = e.currentTarget;
-            const rect = trigger.getBoundingClientRect();
-            setOpenRowMenu((prev) => {
-              if (prev?.rowKey === rowKey) return null;
-              const pos = computeRowMenuPosition(rect, ROW_MENU_HEIGHT_ESTIMATE_PX);
-              return {
-                rowKey,
-                item,
-                placement: pos.placement,
-                top: pos.top,
-                bottom: pos.bottom,
-                right: pos.right,
-              };
-            });
-          }}
-          aria-label={t("More options")}
-          aria-expanded={openRowMenu?.rowKey === rowKey}
-          aria-haspopup="menu"
-        >
-          <MdMoreHoriz aria-hidden size={22} />
-        </button>
-      </div>
-    </div>
-    );
-  };
-
-  return (
-    <section className="liveProductPage">
-      <div className="breadcrumb">
-        <span>{t("Product")}</span> {" > "} {t("Live")}
-      </div>
-
-      <div className="liveProductHeader">
-        <div className="liveProductHeaderText">
-          <h1 className="pageTitle">{t("Live Products")}</h1>
-          <p className="pageSubtitle">{t("Products of type Live")}</p>
-        </div>
-        <div className="liveProductHeaderActions">
-          {capabilities.canCreateProducts && (
-          <button
-            type="button"
-            className="addLivestockBtn"
-            onClick={() => {
-              setLivestockError(null);
-              setLivestockForm(defaultLivestockForm);
-              setIsLivestockModalOpen(true);
-            }}
-          >
-            {t("Add Live Stock")}
-          </button>
-          )}
-          <select
-            className="liveProductCategoryFilter"
-            value={selectedCategoryId}
-            onChange={(e) => setSelectedCategoryId(e.target.value)}
-            aria-label={t("Filter by livestock category")}
-          >
-            <option value="all">{t("All Categories")}</option>
-            {livestockCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <div className="liveProductSearch">
-            <span className="searchIcon">🔍</span>
-            <input
-              className="searchInput"
-              placeholder={t("Search")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label={t("Search live products")}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="liveProductTabs"
-        role="tablist"
-        aria-label={t("Live Products views")}
-      >
-        <button
-          type="button"
-          id="live-product-tab-inventory"
-          role="tab"
-          aria-selected={mainTab === "inventory"}
-          aria-controls="live-product-panel-inventory"
-          tabIndex={mainTab === "inventory" ? 0 : -1}
-          className={`liveProductTab${mainTab === "inventory" ? " liveProductTabActive" : ""}`}
-          onClick={() => setMainTab("inventory")}
-        >
-          {t("Inventory")}
-        </button>
-        <button
-          type="button"
-          id="live-product-tab-opening"
-          role="tab"
-          aria-selected={mainTab === "openingClosing"}
-          aria-controls="live-product-panel-opening"
-          tabIndex={mainTab === "openingClosing" ? 0 : -1}
-          className={`liveProductTab${mainTab === "openingClosing" ? " liveProductTabActive" : ""}`}
-          onClick={() => setMainTab("openingClosing")}
-        >
-          {t("Opening & closing")}
-        </button>
-      </div>
-
-      {mainTab === "inventory" && (
-        <div
-          id="live-product-panel-inventory"
-          role="tabpanel"
-          aria-labelledby="live-product-tab-inventory"
-          className="liveProductTabPanel"
-        >
-      {rowActionError && <p className="productsMessage productsError">{rowActionError}</p>}
-
-      <div className="productsTable">
-        <table
-          className="livestockInventoryTable livestockInventoryTableDesktop"
-          aria-label={t("Inventory")}
-        >
-          <colgroup>
-            <col className="livestockInventoryCol livestockInventoryCol--category" />
-            <col className="livestockInventoryCol livestockInventoryCol--name" />
-            <col className="livestockInventoryCol livestockInventoryCol--itemId" />
-            <col className="livestockInventoryCol livestockInventoryCol--quantity" />
-            <col className="livestockInventoryCol livestockInventoryCol--buy" />
-            <col className="livestockInventoryCol livestockInventoryCol--sell" />
-            <col className="livestockInventoryCol livestockInventoryCol--actions" />
-          </colgroup>
-          <thead>
-            <tr className="livestockInventoryTableHeadRow">
-              <th scope="col">{t("Product Category")}</th>
-              <th scope="col">{t("Name")}</th>
-              <th scope="col">{t("Item ID")}</th>
-              <th scope="col">{t("Quantity")}</th>
-              <th scope="col">{t("Buying price")}</th>
-              <th scope="col">{t("Selling price")}</th>
-              <th scope="col">{t("Actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(categoryLoading || livestockItemsLoading) && (
-              <tr className="livestockInventoryTableMessageRow">
-                <td colSpan={7}>
-                  <span className="productsMessage">{t("Loading…")}</span>
-                </td>
-              </tr>
-            )}
-            {categoryError && (
-              <tr className="livestockInventoryTableMessageRow">
-                <td colSpan={7}>
-                  <span className="productsMessage productsError">
-                    {categoryErrorDetail instanceof Error
-                      ? categoryErrorDetail.message
-                      : t("Failed to load livestock categories")}
-                  </span>
-                </td>
-              </tr>
-            )}
-            {livestockItemsError && (
-              <tr className="livestockInventoryTableMessageRow">
-                <td colSpan={7}>
-                  <span className="productsMessage productsError">
-                    {livestockItemsErrorDetail instanceof Error
-                      ? livestockItemsErrorDetail.message
-                      : t("Failed to load live stock items")}
-                  </span>
-                </td>
-              </tr>
-            )}
-            {!categoryLoading &&
-              !categoryError &&
-              !livestockItemsLoading &&
-              !livestockItemsError &&
-              filteredLivestockItems.length === 0 && (
-                <tr className="livestockInventoryTableMessageRow">
-                  <td colSpan={7}>
-                    <span className="productsMessage">{t("No live stock items yet.")}</span>
-                  </td>
-                </tr>
-              )}
-            {!categoryLoading &&
-              !categoryError &&
-              !livestockItemsLoading &&
-              !livestockItemsError &&
-              paginatedLivestockItems.map((item, index) => {
-                const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
-                return (
-                  <tr key={rowKey} className="livestockInventoryTableDataRow">
-                    <td>{getLiveProductName(item.productId)}</td>
-                    <td>{item.name}</td>
-                    <td>{item.itemId}</td>
-                    <td>{formatLivestockTableQuantity(item)}</td>
-                    <td>{formatLivestockPriceCell(item.buyingPrice)}</td>
-                    <td>{formatLivestockPriceCell(item.sellingPrice)}</td>
-                    <td className="livestockInventoryTableCellActions">
-                      {renderLivestockRowActions(item, rowKey, "table")}
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-
-        <div className="livestockInventoryMobile">
-          <div className="productsRow productsRowHeader livestockInventoryRowHeader livestockRowHeader">
-            <span>{t("Product Category")}</span>
-            <span>{t("Name")}</span>
-            <span>{t("Item ID")}</span>
-            <span>{t("Quantity")}</span>
-            <span>{t("Buying price")}</span>
-            <span>{t("Selling price")}</span>
-            <span>{t("Actions")}</span>
-          </div>
-          {(categoryLoading || livestockItemsLoading) && (
-            <div className="productsRow livestockRowWithActions livestockRowMessage">
-              <span className="productsMessage">{t("Loading…")}</span>
-            </div>
-          )}
-          {categoryError && (
-            <div className="productsRow livestockRowWithActions livestockRowMessage">
-              <span className="productsMessage productsError">
-                {categoryErrorDetail instanceof Error
-                  ? categoryErrorDetail.message
-                  : t("Failed to load livestock categories")}
-              </span>
-            </div>
-          )}
-          {livestockItemsError && (
-            <div className="productsRow livestockRowWithActions livestockRowMessage">
-              <span className="productsMessage productsError">
-                {livestockItemsErrorDetail instanceof Error
-                  ? livestockItemsErrorDetail.message
-                  : t("Failed to load live stock items")}
-              </span>
-            </div>
-          )}
-          {!categoryLoading &&
-            !categoryError &&
-            !livestockItemsLoading &&
-            !livestockItemsError &&
-            filteredLivestockItems.length === 0 && (
-              <div className="productsRow livestockRowWithActions livestockRowMessage">
-                <span className="productsMessage">{t("No live stock items yet.")}</span>
-              </div>
-            )}
-          {!categoryLoading &&
-            !categoryError &&
-            !livestockItemsLoading &&
-            !livestockItemsError &&
-            paginatedLivestockItems.map((item, index) => {
-              const rowKey = resolveLivestockRowActionKey(item, startIndex + index);
-              return (
-                <div
-                  key={rowKey}
-                  className="productsRow livestockRowWithActions livestockRowData"
-                >
-                  <span data-label={t("Product Category")}>
-                    {getLiveProductName(item.productId)}
-                  </span>
-                  <span data-label={t("Name")}>{item.name}</span>
-                  <span data-label={t("Item ID")}>{item.itemId}</span>
-                  <span data-label={t("Quantity")}>
-                    {formatLivestockTableQuantity(item)}
-                  </span>
-                  <span data-label={t("Buying price")}>{formatLivestockPriceCell(item.buyingPrice)}</span>
-                  <span data-label={t("Selling price")}>{formatLivestockPriceCell(item.sellingPrice)}</span>
-                  {renderLivestockRowActions(item, rowKey, "mobile")}
-                </div>
-              );
-            })}
-        </div>
-      </div>
-
-      {openRowMenu &&
-        createPortal(
-          <div
-            ref={rowMenuPortalRef}
-            className="rowMenuDropdown rowMenuDropdownPortal"
-            style={
-              openRowMenu.placement === "below"
-                ? {
-                    position: "fixed",
-                    top: openRowMenu.top,
-                    right: openRowMenu.right,
-                    bottom: "auto",
-                    zIndex: 20000,
-                  }
-                : {
-                    position: "fixed",
-                    bottom: openRowMenu.bottom,
-                    right: openRowMenu.right,
-                    top: "auto",
-                    zIndex: 20000,
-                  }
-            }
-            role="menu"
-          >
+  const columns: DataTableColumn<LivestockItem>[] = [
+    {
+      id: "category",
+      header: t("Product Category"),
+      cell: (item) => <span className="text-muted-foreground">{getLiveProductName(item.productId)}</span>,
+    },
+    {
+      id: "name",
+      header: t("Name"),
+      cell: (item) => <span className="font-medium">{item.name}</span>,
+    },
+    {
+      id: "itemId",
+      header: t("Item ID"),
+      cell: (item) => <span className="font-mono text-sm">{item.itemId}</span>,
+    },
+    {
+      id: "quantity",
+      header: t("Quantity"),
+      align: "right",
+      cell: (item) => (
+        <span className="font-mono tabular-nums">{formatLivestockTableQuantity(item)}</span>
+      ),
+    },
+    {
+      id: "buyingPrice",
+      header: t("Buying price"),
+      align: "right",
+      cell: (item) => (
+        <span className="font-mono tabular-nums">{formatLivestockPriceCell(item.buyingPrice)}</span>
+      ),
+    },
+    {
+      id: "sellingPrice",
+      header: t("Selling price"),
+      align: "right",
+      cell: (item) => (
+        <span className="font-mono tabular-nums">{formatLivestockPriceCell(item.sellingPrice)}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: t("Actions"),
+      align: "center",
+      cell: (item) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={t("More options")}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             {capabilities.canEditProducts && (
-            <button
-              type="button"
-              className="rowMenuItem"
-              role="menuitem"
-              disabled={rowActionMutationsPending}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (rowActionMutationsPending) return;
-                closeRowMenu();
-                handleOpenEdit(openRowMenu.item);
-              }}
-            >
-              {t("Edit")}
-            </button>
+              <DropdownMenuItem
+                disabled={rowActionMutationsPending}
+                onClick={() => handleOpenEdit(item)}
+              >
+                {t("Edit")}
+              </DropdownMenuItem>
             )}
-            <button
-              type="button"
-              className="rowMenuItem"
-              role="menuitem"
+            <DropdownMenuItem
               disabled={rowActionMutationsPending}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (rowActionMutationsPending) return;
-                closeRowMenu();
+              onClick={() =>
                 navigate(
-                  `/dashboard/product/liveProduct/${encodeURIComponent(openRowMenu.item.productId)}/item/${encodeURIComponent(openRowMenu.item.itemId)}`,
+                  `/dashboard/product/liveProduct/${encodeURIComponent(item.productId)}/item/${encodeURIComponent(item.itemId)}`,
                   {
                     state: {
-                      itemSnapshot: openRowMenu.item,
+                      itemSnapshot: item,
                     } satisfies LivestockDetailLocationState,
                   }
-                );
-              }}
+                )
+              }
             >
               {t("View")}
-            </button>
+            </DropdownMenuItem>
             {capabilities.canRestockLivestockInventory && (
-            <button
-              type="button"
-              className="rowMenuItem"
-              role="menuitem"
-              disabled={rowActionMutationsPending}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (rowActionMutationsPending) return;
-                closeRowMenu();
-                openStockAdjustModal(openRowMenu.item, "restock");
-              }}
-            >
-              {t("Restock")}
-            </button>
+              <DropdownMenuItem
+                disabled={rowActionMutationsPending}
+                onClick={() => openStockAdjustModal(item, "restock")}
+              >
+                {t("Restock")}
+              </DropdownMenuItem>
             )}
             {capabilities.canDeductLivestockInventory && (
-            <button
-              type="button"
-              className="rowMenuItem"
-              role="menuitem"
-              disabled={rowActionMutationsPending}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (rowActionMutationsPending) return;
-                closeRowMenu();
-                openStockAdjustModal(openRowMenu.item, "deduct");
-              }}
-            >
-              {t("Deduct")}
-            </button>
+              <DropdownMenuItem
+                disabled={rowActionMutationsPending}
+                onClick={() => openStockAdjustModal(item, "deduct")}
+              >
+                {t("Deduct")}
+              </DropdownMenuItem>
             )}
             {capabilities.canDeleteProducts && (
-            <button
-              type="button"
-              className="rowMenuItem rowMenuItemDelete"
-              role="menuitem"
-              disabled={rowActionMutationsPending}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (rowActionMutationsPending) return;
-                closeRowMenu();
-                requestDeleteItem(openRowMenu.item);
-              }}
-            >
-              {t("Delete")}
-            </button>
+              <DropdownMenuItem
+                disabled={rowActionMutationsPending}
+                className="text-destructive focus:text-destructive"
+                onClick={() => requestDeleteItem(item)}
+              >
+                {t("Delete")}
+              </DropdownMenuItem>
             )}
-          </div>,
-          document.body
-        )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
-      {!categoryLoading &&
-        !categoryError &&
-        !livestockItemsLoading &&
-        !livestockItemsError &&
-        orderedLivestockItems.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={orderedLivestockItems.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            pageSizeOptions={[10, 20, 50]}
-            onPageSizeChange={setPageSize}
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={t("Live Products")}
+        subtitle={t("Products of type Live")}
+        breadcrumb={
+          <p className="text-sm text-muted-foreground">
+            {t("Product")} › {t("Live")}
+          </p>
+        }
+        actions={
+          <div className="flex items-end gap-3">
+            {capabilities.canCreateProducts && (
+              <Button onClick={() => {
+                setLivestockError(null);
+                setLivestockForm(defaultLivestockForm);
+                setIsLivestockModalOpen(true);
+              }}>
+                <Plus className="h-4 w-4" />
+                {t("Add Live Stock")}
+              </Button>
+            )}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="category-filter" className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t("Category")}
+              </Label>
+              <Select
+                value={selectedCategoryId}
+                onValueChange={setSelectedCategoryId}
+              >
+                <SelectTrigger id="category-filter" className="w-[180px]">
+                  <SelectValue placeholder={t("All Categories")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("All Categories")}</SelectItem>
+                  {livestockCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t("Search")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label={t("Search live products")}
+                className="w-[220px] pl-9"
+              />
+            </div>
+          </div>
+        }
+      />
+
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as LiveProductMainTab)}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="inventory">{t("Inventory")}</TabsTrigger>
+          <TabsTrigger value="openingClosing">{t("Opening & closing")}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inventory" className="mt-4">
+          {rowActionError && <p className="text-sm text-destructive">{rowActionError}</p>}
+
+          <DataTable
+            columns={columns}
+            rows={paginatedLivestockItems}
+            isLoading={categoryLoading || livestockItemsLoading}
+            isError={categoryError || livestockItemsError}
+            emptyTitle={t("No live stock items yet.")}
+            getRowKey={(item, index) => resolveLivestockRowActionKey(item, startIndex + index)}
+            footer={
+              orderedLivestockItems.length > 0 ? (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={orderedLivestockItems.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  pageSizeOptions={[10, 20, 50]}
+                  onPageSizeChange={setPageSize}
+                />
+              ) : null
+            }
           />
-        )}
-        </div>
-      )}
+        </TabsContent>
 
-      {mainTab === "openingClosing" && (
-        <div
-          id="live-product-panel-opening"
-          role="tabpanel"
-          aria-labelledby="live-product-tab-opening"
-          className="liveProductTabPanel"
-        >
-      <section className="openingClosingStockSection" aria-labelledby="opening-closing-stock-heading">
-        <h2 id="opening-closing-stock-heading" className="pageTitle" style={{ fontSize: "18px", margin: 0 }}>
-          {t("Live stock opening and closing")}
-        </h2>
-        <div className="openingClosingStockDateRow">
-          <div className="openingClosingStockDateField">
-            <label className="openingClosingStockDateLabel" htmlFor="opening-stock-from">
-              {t("Date from")}
-            </label>
-            <input
-              id="opening-stock-from"
-              type="date"
-              className="openingClosingStockDateInput"
-              value={openingStockFrom}
-              onChange={(e) => setOpeningStockFrom(e.target.value)}
-            />
-          </div>
-          <div className="openingClosingStockDateField">
-            <label className="openingClosingStockDateLabel" htmlFor="opening-stock-to">
-              {t("Date to")}
-            </label>
-            <input
-              id="opening-stock-to"
-              type="date"
-              className="openingClosingStockDateInput"
-              value={openingStockTo}
-              onChange={(e) => setOpeningStockTo(e.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            className="openingClosingStockTodayBtn"
-            onClick={() => {
-              const todayLocal = toIsoDateLocal(new Date());
-              setOpeningStockFrom(todayLocal);
-              setOpeningStockTo(todayLocal);
-            }}
-          >
-            {t("Today")}
-          </button>
-          {openingStockRangeInvalid && (
-            <p className="openingClosingStockRangeError" role="alert">
-              {t("End date must be on or after start date.")}
-            </p>
-          )}
-        </div>
-        {!openingStockRangeInvalid && clientStockMode === "movementOnly" && (
-          <div className="openingClosingStockBanner openingClosingStockBannerInfo" role="status">
-            {t(
-              "Past date range: only manual restock and deduct movements are shown. Set \"Date to\" to today to see opening and closing balances. Send-to-processing is not included in this history."
+        <TabsContent value="openingClosing" className="mt-4">
+          <section className="openingClosingStockSection" aria-labelledby="opening-closing-stock-heading">
+            <h2 id="opening-closing-stock-heading" className="text-lg font-semibold">
+              {t("Live stock opening and closing")}
+            </h2>
+            <div className="openingClosingStockDateRow">
+              <div className="openingClosingStockDateField">
+                <Label htmlFor="opening-stock-from" className="openingClosingStockDateLabel">
+                  {t("Date from")}
+                </Label>
+                <Input
+                  id="opening-stock-from"
+                  type="date"
+                  className="openingClosingStockDateInput"
+                  value={openingStockFrom}
+                  onChange={(e) => setOpeningStockFrom(e.target.value)}
+                />
+              </div>
+              <div className="openingClosingStockDateField">
+                <Label htmlFor="opening-stock-to" className="openingClosingStockDateLabel">
+                  {t("Date to")}
+                </Label>
+                <Input
+                  id="opening-stock-to"
+                  type="date"
+                  className="openingClosingStockDateInput"
+                  value={openingStockTo}
+                  onChange={(e) => setOpeningStockTo(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const todayLocal = toIsoDateLocal(new Date());
+                  setOpeningStockFrom(todayLocal);
+                  setOpeningStockTo(todayLocal);
+                }}
+              >
+                {t("Today")}
+              </Button>
+              {openingStockRangeInvalid && (
+                <p className="openingClosingStockRangeError" role="alert">
+                  {t("End date must be on or after start date.")}
+                </p>
+              )}
+            </div>
+            {!openingStockRangeInvalid && clientStockMode === "movementOnly" && (
+              <div className="openingClosingStockBanner openingClosingStockBannerInfo" role="status">
+                {t(
+                  "Past date range: only manual restock and deduct movements are shown. Set \"Date to\" to today to see opening and closing balances. Send-to-processing is not included in this history."
+                )}
+              </div>
             )}
-          </div>
-        )}
-        {!openingStockRangeInvalid && (
-          <div className="openingClosingStockGrid">
-            <OpeningStockTable
-              from={openingStockFrom}
-              to={openingStockTo}
-              openingStockData={clientLivestockOpeningStockData}
-              isPending={openingStockPending}
-              isError={openingStockError}
-              errorMessage={openingStockErrorMessage}
-              footnote={
-                clientStockMode === "reconciled"
-                  ? t(
-                      ""
-                    )
-                  : null
-              }
-            />
-            <ClosingStockTable
-              from={openingStockFrom}
-              to={openingStockTo}
-              openingStockData={clientLivestockOpeningStockData}
-              isPending={openingStockPending}
-              isError={openingStockError}
-              errorMessage={openingStockErrorMessage}
-            />
-          </div>
-        )}
-      </section>
-        </div>
-      )}
+            {!openingStockRangeInvalid && (
+              <div className="openingClosingStockGrid">
+                <OpeningStockTable
+                  from={openingStockFrom}
+                  to={openingStockTo}
+                  openingStockData={clientLivestockOpeningStockData}
+                  isPending={openingStockPending}
+                  isError={openingStockError}
+                  errorMessage={openingStockErrorMessage}
+                  footnote={
+                    clientStockMode === "reconciled"
+                      ? t("")
+                      : null
+                  }
+                />
+                <ClosingStockTable
+                  from={openingStockFrom}
+                  to={openingStockTo}
+                  openingStockData={clientLivestockOpeningStockData}
+                  isPending={openingStockPending}
+                  isError={openingStockError}
+                  errorMessage={openingStockErrorMessage}
+                />
+              </div>
+            )}
+          </section>
+        </TabsContent>
+      </Tabs>
 
-      <Modal
+      <ResponsiveOverlay
         isOpen={isLivestockModalOpen && capabilities.canCreateProducts}
-        modalClassName="modalCompact"
-        title={t("Add Live Stock")}
-        subtitle={t("Create a live stock item and map it to product category")}
         onClose={() => {
           setIsLivestockModalOpen(false);
           setLivestockError(null);
           setLivestockForm(defaultLivestockForm);
         }}
+        title={t("Add Live Stock")}
+        subtitle={t("Create a live stock item and map it to product category")}
         footer={
-          <div className="productActionModalFooter">
-            <button
+          <>
+            <Button
               type="button"
-              className="productActionModalCancel"
+              variant="outline"
               onClick={() => {
                 setIsLivestockModalOpen(false);
                 setLivestockError(null);
@@ -1606,10 +1165,9 @@ export default function LiveProductPage() {
               }}
             >
               {t("Cancel")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="productActionModalSubmit"
               onClick={handleSubmitLivestock}
               disabled={
                 livestockMutation.isPending ||
@@ -1624,107 +1182,110 @@ export default function LiveProductPage() {
               }
             >
               {livestockMutation.isPending ? t("Saving…") : t("Save")}
-            </button>
-          </div>
+            </Button>
+          </>
         }
       >
-        <div className="productActionModalBody productActionModalBody--compactGrid">
-          {livestockError && <p className="productActionModalError">{livestockError}</p>}
-          <label className="productActionModalLabel">
-            {t("Live Stock Product Category")}
-            <select
+        <div className="flex flex-col gap-4">
+          {livestockError && <p className="text-sm text-destructive">{livestockError}</p>}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-productId">{t("Live Stock Product Category")}</Label>
+            <Select
               value={livestockForm.productId}
-              onChange={(e) => setLivestockForm((prev) => ({ ...prev, productId: e.target.value }))}
-              className="productActionModalSelect"
+              onValueChange={(value) => setLivestockForm((prev) => ({ ...prev, productId: value }))}
             >
-              <option value="">{t("Select product category")}</option>
-              {livestockCategories.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="productActionModalLabel">
-            {t("Item ID")}
-            <input
+              <SelectTrigger id="create-productId">
+                <SelectValue placeholder={t("Select product category")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("Select product category")}</SelectItem>
+                {livestockCategories.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-itemId">{t("Item ID")}</Label>
+            <Input
+              id="create-itemId"
               type="text"
               value={livestockForm.itemId}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, itemId: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter item ID")}
               autoComplete="off"
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Name of Livestock Item")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-name">{t("Name of Livestock Item")}</Label>
+            <Input
+              id="create-name"
               type="text"
               value={livestockForm.name}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, name: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter name")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Quantity")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-weight">{t("Quantity")}</Label>
+            <Input
+              id="create-weight"
               type="number"
               min={0}
               step="any"
               value={livestockForm.weight}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, weight: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter quantity")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Buying price")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-buyingPrice">{t("Buying price")}</Label>
+            <Input
+              id="create-buyingPrice"
               type="number"
               min={0}
               step="any"
               value={livestockForm.buyingPrice}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, buyingPrice: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter buying price")}
               required
               aria-required
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Selling price")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="create-sellingPrice">{t("Selling price")}</Label>
+            <Input
+              id="create-sellingPrice"
               type="number"
               min={0}
               step="any"
               value={livestockForm.sellingPrice}
               onChange={(e) => setLivestockForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter selling price")}
               required
               aria-required
             />
-          </label>
+          </div>
         </div>
-      </Modal>
+      </ResponsiveOverlay>
 
-      <Modal
+      <ResponsiveOverlay
         isOpen={isEditLivestockModalOpen && capabilities.canEditProducts}
-        modalClassName="modalCompact"
-        title={t("Update Live Stock Item")}
-        subtitle={t("Update selected live stock item details")}
         onClose={() => {
           setIsEditLivestockModalOpen(false);
           setEditingLivestockId(null);
           setEditLivestockError(null);
           setEditLivestockForm(defaultLivestockForm);
         }}
+        title={t("Update Live Stock Item")}
+        subtitle={t("Update selected live stock item details")}
         footer={
-          <div className="productActionModalFooter">
-            <button
+          <>
+            <Button
               type="button"
-              className="productActionModalCancel"
+              variant="outline"
               onClick={() => {
                 setIsEditLivestockModalOpen(false);
                 setEditingLivestockId(null);
@@ -1733,10 +1294,9 @@ export default function LiveProductPage() {
               }}
             >
               {t("Cancel")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="productActionModalSubmit"
               onClick={handleSubmitEditLivestock}
               disabled={
                 updateLivestockMutation.isPending ||
@@ -1749,110 +1309,118 @@ export default function LiveProductPage() {
               }
             >
               {updateLivestockMutation.isPending ? t("Saving…") : t("Update")}
-            </button>
-          </div>
+            </Button>
+          </>
         }
       >
-        <div className="productActionModalBody productActionModalBody--compactGrid">
-          {editLivestockError && <p className="productActionModalError">{editLivestockError}</p>}
-          <label className="productActionModalLabel">
-            {t("Live Stock Product Category")}
-            <select
+        <div className="flex flex-col gap-4">
+          {editLivestockError && <p className="text-sm text-destructive">{editLivestockError}</p>}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-productId">{t("Live Stock Product Category")}</Label>
+            <Select
               value={editLivestockForm.productId}
-              onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, productId: e.target.value }))}
-              className="productActionModalSelect"
+              onValueChange={(value) => setEditLivestockForm((prev) => ({ ...prev, productId: value }))}
             >
-              <option value="">{t("Select product category")}</option>
-              {livestockCategories.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="productActionModalLabel">
-            {t("Name")}
-            <input
+              <SelectTrigger id="edit-productId">
+                <SelectValue placeholder={t("Select product category")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("Select product category")}</SelectItem>
+                {livestockCategories.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-name">{t("Name")}</Label>
+            <Input
+              id="edit-name"
               type="text"
               value={editLivestockForm.name}
               onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, name: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter name")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Item ID")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-itemId">{t("Item ID")}</Label>
+            <Input
+              id="edit-itemId"
               type="text"
               readOnly
               aria-readonly="true"
               value={editLivestockForm.itemId}
-              className="productActionModalInput"
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Quantity")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-weight">{t("Quantity")}</Label>
+            <Input
+              id="edit-weight"
               type="number"
               min={0}
               step="any"
               value={editLivestockForm.weight}
               onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, weight: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Enter quantity")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Buying price")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-buyingPrice">{t("Buying price")}</Label>
+            <Input
+              id="edit-buyingPrice"
               type="number"
               min={0}
               step="any"
               value={editLivestockForm.buyingPrice}
               onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, buyingPrice: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Optional")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Selling price")}
-            <input
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-sellingPrice">{t("Selling price")}</Label>
+            <Input
+              id="edit-sellingPrice"
               type="number"
               min={0}
               step="any"
               value={editLivestockForm.sellingPrice}
               onChange={(e) => setEditLivestockForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
-              className="productActionModalInput"
               placeholder={t("Optional")}
             />
-          </label>
-          <label className="productActionModalLabel">
-            {t("Status")}
-            <select
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-status">{t("Status")}</Label>
+            <Select
               value={editLivestockForm.status}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 setEditLivestockForm((prev) => ({
                   ...prev,
-                  status: e.target.value === "Inactive" ? "Inactive" : "Active",
+                  status: value === "Inactive" ? "Inactive" : "Active",
                 }))
               }
-              className="productActionModalSelect"
             >
-              <option value="Active">{t("Active")}</option>
-              <option value="Inactive">{t("Inactive")}</option>
-            </select>
-          </label>
+              <SelectTrigger id="edit-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Active">{t("Active")}</SelectItem>
+                <SelectItem value="Inactive">{t("Inactive")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </Modal>
+      </ResponsiveOverlay>
 
-      <Modal
+      <ResponsiveOverlay
         isOpen={
           stockAdjustModal != null &&
           (stockAdjustModal.mode === "restock"
             ? capabilities.canRestockLivestockInventory
             : capabilities.canDeductLivestockInventory)
         }
-        modalClassName="modalCompact"
+        onClose={closeStockAdjustModal}
         title={
           stockAdjustModal?.mode === "deduct"
             ? t("Deduct livestock stock")
@@ -1863,15 +1431,13 @@ export default function LiveProductPage() {
             ? t("Enter quantity to deduct from stock.")
             : t("Enter quantity to add to stock.")
         }
-        onClose={closeStockAdjustModal}
         footer={
-          <div className="productActionModalFooter">
-            <button type="button" className="productActionModalCancel" onClick={closeStockAdjustModal}>
+          <>
+            <Button type="button" variant="outline" onClick={closeStockAdjustModal}>
               {t("Cancel")}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="productActionModalSubmit"
               onClick={handleSubmitStockAdjust}
               disabled={
                 restockLivestockMutation.isPending ||
@@ -1886,101 +1452,162 @@ export default function LiveProductPage() {
                 : stockAdjustModal?.mode === "deduct"
                   ? t("Deduct")
                   : t("Restock")}
-            </button>
-          </div>
+            </Button>
+          </>
         }
       >
-        <div
-          className={`productActionModalBody${
-            stockAdjustModal?.mode === "restock"
-              ? " productActionModalBody--restock"
-              : " productActionModalBody--compactGrid"
-          }`}
-        >
+        <div className="flex flex-col gap-4">
           {stockAdjustModal && (
-            <p className="stockAdjustModalItemSummary">
+            <p className="text-sm">
               <strong>{stockAdjustModal.item.name}</strong>
               {" · "}
               {t("Item ID")}: {stockAdjustModal.item.itemId}
             </p>
           )}
-          {stockAdjustError && <p className="productActionModalError">{stockAdjustError}</p>}
+          {stockAdjustError && <p className="text-sm text-destructive">{stockAdjustError}</p>}
           {stockAdjustModal?.mode === "restock" ? (
             <>
-              <div className="stockAdjustPrimaryFields">
-                <label className="productActionModalLabel">
-                  {t("Quantity")}
-                  <input
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-quantity">{t("Quantity")}</Label>
+                  <Input
+                    id="adjust-quantity"
                     type="number"
                     min={1}
                     step={1}
                     value={adjustAmount}
                     onChange={(e) => setAdjustAmount(e.target.value)}
-                    className="productActionModalInput"
                     placeholder={t("Enter quantity")}
                   />
-                </label>
-                <label className="productActionModalLabel">
-                  {t("Buying price")}
-                  <input
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-buyingPrice">{t("Buying price")}</Label>
+                  <Input
+                    id="adjust-buyingPrice"
                     type="number"
                     min={0}
                     step="any"
                     value={restockBuyingPrice}
                     onChange={(e) => setRestockBuyingPrice(e.target.value)}
-                    className="productActionModalInput"
                     placeholder={t("Enter buying price")}
                     required
                     aria-required
                   />
-                </label>
-                <label className="productActionModalLabel">
-                  {t("Selling price")}
-                  <input
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-sellingPrice">{t("Selling price")}</Label>
+                  <Input
+                    id="adjust-sellingPrice"
                     type="number"
                     min={0}
                     step="any"
                     value={restockSellingPrice}
                     onChange={(e) => setRestockSellingPrice(e.target.value)}
-                    className="productActionModalInput"
                     placeholder={t("Enter selling price")}
                     required
                     aria-required
                   />
-                </label>
+                </div>
               </div>
-              <RestockSupplierPaymentFields
-                t={t}
-                supplierName={restockSupplierName}
-                supplierContact={restockSupplierContact}
-                totalAmount={restockTotalAmount}
-                paidAmount={restockPaidAmount}
-                remarks={restockRemarks}
-                onSupplierNameChange={setRestockSupplierName}
-                onSupplierContactChange={setRestockSupplierContact}
-                onTotalAmountChange={setRestockTotalAmount}
-                onPaidAmountChange={setRestockPaidAmount}
-                onRemarksChange={setRestockRemarks}
-              />
+              <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-medium">{t("Supplier & Payment")}</h4>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-supplierName">{t("Supplier name")}</Label>
+                  <Input
+                    id="adjust-supplierName"
+                    type="text"
+                    value={restockSupplierName}
+                    onChange={(e) => setRestockSupplierName(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-supplierContact">{t("Supplier contact")}</Label>
+                  <Input
+                    id="adjust-supplierContact"
+                    type="text"
+                    value={restockSupplierContact}
+                    onChange={(e) => setRestockSupplierContact(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-totalAmount">{t("Total amount")}</Label>
+                  <Input
+                    id="adjust-totalAmount"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={restockTotalAmount}
+                    onChange={(e) => setRestockTotalAmount(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-paidAmount">{t("Paid amount")}</Label>
+                  <Input
+                    id="adjust-paidAmount"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={restockPaidAmount}
+                    onChange={(e) => setRestockPaidAmount(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>{t("Due amount")}</Label>
+                  <Input
+                    type="number"
+                    value={computeDueAmount(Number(restockTotalAmount) || 0, Number(restockPaidAmount) || 0)}
+                    readOnly
+                    tabIndex={-1}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>{t("Payment status")}</Label>
+                  <div>
+                    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                      derivePaymentStatus(Number(restockTotalAmount) || 0, Number(restockPaidAmount) || 0) === "FULL"
+                        ? "border-transparent bg-primary text-primary-foreground"
+                        : derivePaymentStatus(Number(restockTotalAmount) || 0, Number(restockPaidAmount) || 0) === "PARTIAL"
+                        ? "border-transparent bg-amber-50 text-amber-700"
+                        : "border-transparent bg-sky-50 text-sky-700"
+                    }`}>
+                      {derivePaymentStatus(Number(restockTotalAmount) || 0, Number(restockPaidAmount) || 0) === "FULL"
+                        ? t("Full")
+                        : derivePaymentStatus(Number(restockTotalAmount) || 0, Number(restockPaidAmount) || 0) === "PARTIAL"
+                        ? t("Partial")
+                        : t("Advance")}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="adjust-remarks">{t("Remarks")}</Label>
+                  <textarea
+                    id="adjust-remarks"
+                    rows={1}
+                    value={restockRemarks}
+                    onChange={(e) => setRestockRemarks(e.target.value)}
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  />
+                </div>
+              </div>
             </>
           ) : (
-            <label className="productActionModalLabel">
-              {t("Quantity")}
-              <input
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="adjust-quantity">{t("Quantity")}</Label>
+              <Input
+                id="adjust-quantity"
                 type="number"
                 min={1}
                 step={1}
                 value={adjustAmount}
                 onChange={(e) => setAdjustAmount(e.target.value)}
-                className="productActionModalInput"
                 placeholder={t("Enter quantity")}
               />
-            </label>
+            </div>
           )}
         </div>
-      </Modal>
+      </ResponsiveOverlay>
 
-      <ConfirmModal
+      <ConfirmDialog
         isOpen={itemPendingDelete != null && capabilities.canDeleteProducts}
         title={t("Delete live stock item")}
         message={
@@ -1995,6 +1622,6 @@ export default function LiveProductPage() {
         onClose={closeDeleteConfirmModal}
         onConfirm={confirmDeleteItem}
       />
-    </section>
+    </div>
   );
 }
