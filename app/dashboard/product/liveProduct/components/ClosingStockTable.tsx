@@ -4,7 +4,12 @@ import { useState } from "react";
 import { MdKeyboardArrowDown, MdKeyboardArrowUp } from "react-icons/md";
 import { useI18n } from "@/app/providers/I18nProvider";
 import type { OpeningStockData } from "@/handlers/product";
-import { formatStockDateLabel, qtyWithUnit } from "./openingClosingStockFormat";
+import {
+  formatStockDateLabel,
+  formatStockQty,
+  formatStockQtyOrDash,
+  qtyWithUnit,
+} from "./openingClosingStockFormat";
 
 type ClosingStockTableProps = {
   from: string;
@@ -18,10 +23,6 @@ type ClosingStockTableProps = {
 function formatConsumedCell(quantity: number, unit: string): string {
   const base = qtyWithUnit(quantity, unit);
   return quantity > 0 ? `−${base}` : base;
-}
-
-function dashNum(value: number | null): string {
-  return value === null ? "\u2014" : String(value);
 }
 
 export default function ClosingStockTable({
@@ -100,16 +101,16 @@ export default function ClosingStockTable({
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div className="openingClosingStockDayTotals">
                       <span className="openingClosingStockTotalOpening">
-                        <strong>{t("Opening")}:</strong> {dashNum(dayData.totalOpening)}
+                        <strong>{t("Opening")}:</strong> {formatStockQtyOrDash(dayData.totalOpening)}
                       </span>
                       <span className="openingClosingStockTotalAdded">
-                        <strong>{t("Added")}:</strong> {dayData.totalAdded}
+                        <strong>{t("Added")}:</strong> {formatStockQty(dayData.totalAdded)}
                       </span>
                       <span className="openingClosingStockTotalConsumed">
-                        <strong>{t("Consumed")}:</strong> {dayData.totalConsumed}
+                        <strong>{t("Consumed")}:</strong> {formatStockQty(dayData.totalConsumed)}
                       </span>
                       <span className="openingClosingStockTotalClosing">
-                        <strong>{t("Closing")}:</strong> {dashNum(dayData.totalClosing)}
+                        <strong>{t("Closing")}:</strong> {formatStockQtyOrDash(dayData.totalClosing)}
                       </span>
                     </div>
                     <span className="openingClosingStockChevron" aria-hidden>
@@ -123,16 +124,16 @@ export default function ClosingStockTable({
                 </div>
                 <div className="openingClosingStockDayTotalsMobile">
                   <span className="openingClosingStockTotalOpening">
-                    {t("Opening")}: {dashNum(dayData.totalOpening)}
+                    {t("Opening")}: {formatStockQtyOrDash(dayData.totalOpening)}
                   </span>
                   <span className="openingClosingStockTotalAdded">
-                    {t("Added")}: {dayData.totalAdded}
+                    {t("Added")}: {formatStockQty(dayData.totalAdded)}
                   </span>
                   <span className="openingClosingStockTotalConsumed">
-                    {t("Consumed")}: {dayData.totalConsumed}
+                    {t("Consumed")}: {formatStockQty(dayData.totalConsumed)}
                   </span>
                   <span className="openingClosingStockTotalClosing">
-                    {t("Closing")}: {dashNum(dayData.totalClosing)}
+                    {t("Closing")}: {formatStockQtyOrDash(dayData.totalClosing)}
                   </span>
                 </div>
               </button>
