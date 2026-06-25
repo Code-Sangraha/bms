@@ -20,11 +20,10 @@ import { SaleFormSection } from "@/app/dashboard/invoices/components/SaleSharedC
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
 import { SaleSummary } from "@/app/dashboard/invoices/components/SaleSharedComponents";
-import { LoyaltySaleHints } from "@/app/dashboard/invoices/components/LoyaltySaleHints";
 import { getCustomerTypes } from "@/handlers/customerType";
 import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
 import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
-import { createWasteSale, getDashboardSales, type WasteSaleItemPayload } from "@/handlers/sale";
+import { createWasteSale, type WasteSaleItemPayload } from "@/handlers/sale";
 import { formatSaleAmount } from "@/lib/saleCalculations";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
@@ -90,19 +89,6 @@ export default function WasteSalesPage() {
     },
   });
 
-  const { data: dashboardSalesResponse } = useQuery({
-    queryKey: DASHBOARD_SALES_QUERY_KEY,
-    queryFn: async () => {
-      const result = await getDashboardSales();
-      if (!result.ok) {
-        if (result.status === 401) navigate("/login");
-        throw new Error(result.error);
-      }
-      return result.data;
-    },
-  });
-
-  const salesByCustomer = dashboardSalesResponse?.data?.salesByCustomer ?? [];
 
   useEffect(() => {
     if (!customerTypeId && customerTypes.length > 0) {
@@ -340,12 +326,6 @@ export default function WasteSalesPage() {
                     />
                   </FormField>
                 </div>
-                <LoyaltySaleHints
-                  customerName={customerName}
-                  saleOutletId={saleOutletId}
-                  jwtOutletId={userOutletId}
-                  salesByCustomer={salesByCustomer}
-                />
               </SaleFormSection>
 
               <SaleFormSection
