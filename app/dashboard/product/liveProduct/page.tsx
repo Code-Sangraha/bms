@@ -982,9 +982,9 @@ export default function LiveProductPage() {
           </p>
         }
         actions={
-          <div className="flex items-end gap-3">
+          <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto sm:flex-nowrap">
             {capabilities.canCreateProducts && (
-              <Button onClick={() => {
+              <Button className="shrink-0" onClick={() => {
                 setLivestockError(null);
                 setLivestockForm(defaultLivestockForm);
                 setIsLivestockModalOpen(true);
@@ -993,7 +993,7 @@ export default function LiveProductPage() {
                 {t("Add Live Stock")}
               </Button>
             )}
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-[170px] flex-1 flex-col gap-2 sm:flex-none">
               <Label htmlFor="category-filter" className="text-xs uppercase tracking-wide text-muted-foreground">
                 {t("Category")}
               </Label>
@@ -1001,7 +1001,7 @@ export default function LiveProductPage() {
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
               >
-                <SelectTrigger id="category-filter" className="w-[180px]">
+                <SelectTrigger id="category-filter" className="w-full sm:w-[180px]">
                   <SelectValue placeholder={t("All Categories")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1014,14 +1014,14 @@ export default function LiveProductPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="relative">
+            <div className="relative min-w-0 flex-1 basis-full sm:flex-none sm:basis-auto">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={t("Search")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label={t("Search live products")}
-                className="w-[220px] pl-9"
+                className="w-full min-w-[150px] pl-9 sm:w-[220px]"
               />
             </div>
           </div>

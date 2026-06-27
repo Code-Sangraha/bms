@@ -533,7 +533,7 @@ export default function ProcessedProductPage() {
           </p>
         }
         actions={
-          <div className="flex items-end gap-3">
+          <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto sm:flex-nowrap">
             {!isScoped ? (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="outlet-filter" className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -560,7 +560,7 @@ export default function ProcessedProductPage() {
                 </Select>
               </div>
             ) : null}
-            <div className="relative">
+            <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={t("Search")}
@@ -570,7 +570,7 @@ export default function ProcessedProductPage() {
                   setCurrentPage(1);
                 }}
                 aria-label={t("Search processed products")}
-                className="w-[220px] pl-9"
+                className="w-full min-w-[150px] pl-9 sm:w-[220px]"
               />
             </div>
           </div>
