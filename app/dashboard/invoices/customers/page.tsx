@@ -50,8 +50,14 @@ import {
   updateCustomer as updateCustomerApi,
 } from "@/handlers/customer";
 import { getCustomerTypes } from "@/handlers/customerType";
+import { getSalesByCustomer, type CustomerSalesSummary } from "@/handlers/sale";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { customerSchema, type CustomerFormValues } from "@/schema/customer";
+import {
+  computeEarnedRewardKg,
+  LOYALTY_RULE_SESSION_QUERY_KEY,
+  type SessionLoyaltyRule,
+} from "@/lib/loyalty";
 import "./customers.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
@@ -80,6 +86,36 @@ function formatCreatedAt(iso: string | undefined): string {
   return new Date(ms).toLocaleDateString();
 }
 
+function formatMoney(value: number): string {
+  if (!Number.isFinite(value)) return "Rs.0.00";
+  return `Rs.${value.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatKg(value: number | null | undefined): string {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return `${Number.isInteger(n) ? n : n.toFixed(2)} kg`;
+}
+
+function saleProductName(sale: CustomerSalesSummary["sales"][number]): string {
+  const direct = (sale as { product?: { name?: unknown } }).product?.name;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  const firstItem = Array.isArray(sale.items) ? sale.items[0] : null;
+  const fromItem = firstItem?.product?.name;
+  return typeof fromItem === "string" && fromItem.trim() ? fromItem.trim() : "-";
+}
+
+function saleOutletName(sale: CustomerSalesSummary["sales"][number]): string {
+  const name = sale.outlet?.name;
+  return typeof name === "string" && name.trim() ? name.trim() : "-";
+}
+
+function saleAmount(sale: CustomerSalesSummary["sales"][number]): number {
+  const value = sale.totalAmount ?? sale.amount ?? sale.total;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
 function outletName(outlets: Outlet[], outletId: string): string {
   return outlets.find((o) => o.id === outletId)?.name ?? outletId;
 }
@@ -95,6 +131,7 @@ export default function CustomersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Customer | null>(null);
   const [editingItem, setEditingItem] = useState<Customer | null>(null);
+  const [summaryCustomer, setSummaryCustomer] = useState<Customer | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState<string>("");
 
@@ -114,6 +151,26 @@ export default function CustomersPage() {
     queryKey: customersQueryKey,
     queryFn: async () => {
       const result = await getCustomers(effectiveOutletId);
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const { data: sessionLoyaltyRule = null } = useQuery<SessionLoyaltyRule | null>({
+    queryKey: LOYALTY_RULE_SESSION_QUERY_KEY,
+    queryFn: async () => null,
+    staleTime: Infinity,
+  });
+
+  const customerSalesQuery = useQuery({
+    queryKey: ["customerSalesSummary", summaryCustomer?.id ?? "none", summaryCustomer?.name ?? ""],
+    enabled: summaryCustomer != null,
+    queryFn: async () => {
+      const customerName = summaryCustomer?.name.trim() ?? "";
+      const result = await getSalesByCustomer(customerName);
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -480,8 +537,7 @@ export default function CustomersPage() {
                     {formatCreatedAt(c.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {(canUpdate || canDelete) && (
-                      <DropdownMenu>
+                    <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             type="button"
@@ -493,7 +549,10 @@ export default function CustomersPage() {
                             <MoreHorizontal className="h-4 w-4" aria-hidden />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onSelect={() => setSummaryCustomer(c)}>
+                            {t("View sales summary")}
+                          </DropdownMenuItem>
                           {canUpdate && (
                             <DropdownMenuItem
                               onSelect={() => setEditingItem(c)}
@@ -511,7 +570,6 @@ export default function CustomersPage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -550,6 +608,95 @@ export default function CustomersPage() {
         onConfirm={handleConfirmDelete}
       />
 
+      <Modal
+        isOpen={!!summaryCustomer}
+        title={t("Customer sales summary")}
+        subtitle={summaryCustomer?.name}
+        onClose={() => setSummaryCustomer(null)}
+      >
+        <div id="customer-summary-modal" className="customersSummaryModal">
+          {customerSalesQuery.isLoading ? (
+            <TableSkeleton rows={4} columns={4} />
+          ) : customerSalesQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {customerSalesQuery.error instanceof Error
+                  ? customerSalesQuery.error.message
+                  : t("Failed to load customer sales summary")}
+              </AlertDescription>
+            </Alert>
+          ) : customerSalesQuery.data ? (
+            <>
+              <div className="customersSummaryGrid">
+                <div className="customersSummaryStat">
+                  <span>{t("Total weight bought")}</span>
+                  <strong>{formatKg(customerSalesQuery.data.totalWeightBought)}</strong>
+                </div>
+                <div className="customersSummaryStat">
+                  <span>{t("Total amount spent")}</span>
+                  <strong>{formatMoney(customerSalesQuery.data.totalAmountSpent)}</strong>
+                </div>
+                <div className="customersSummaryStat">
+                  <span>{t("Transactions")}</span>
+                  <strong>{customerSalesQuery.data.totalTransactions}</strong>
+                </div>
+                <div className="customersSummaryStat customersSummaryStat--estimate">
+                  <span>
+                    {sessionLoyaltyRule
+                      ? t("Estimated earned reward (session rule)")
+                      : t("Estimated earned reward (fallback)")}
+                  </span>
+                  <strong>
+                    {formatKg(
+                      computeEarnedRewardKg(
+                        customerSalesQuery.data.totalWeightBought,
+                        sessionLoyaltyRule
+                      )
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                <AlertDescription>
+                  {t("Estimated from session rule; backend balance may differ. The current API does not return redeemed or available reward balance.")}
+                </AlertDescription>
+              </Alert>
+
+              {customerSalesQuery.data.sales.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Transaction")}</TableHead>
+                        <TableHead>{t("Date")}</TableHead>
+                        <TableHead>{t("Product")}</TableHead>
+                        <TableHead>{t("Outlet")}</TableHead>
+                        <TableHead>{t("Weight")}</TableHead>
+                        <TableHead>{t("Amount")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customerSalesQuery.data.sales.map((sale, index) => (
+                        <TableRow key={sale.id || sale.transactionId || index}>
+                          <TableCell>{sale.transactionId || sale.id || "-"}</TableCell>
+                          <TableCell>{formatCreatedAt(sale.createdAt ?? sale.date)}</TableCell>
+                          <TableCell>{saleProductName(sale)}</TableCell>
+                          <TableCell>{saleOutletName(sale)}</TableCell>
+                          <TableCell>{formatKg(sale.weight)}</TableCell>
+                          <TableCell>{formatMoney(saleAmount(sale))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <EmptyState title={t("No sales found for this customer.")} />
+              )}
+            </>
+          ) : null}
+        </div>
+      </Modal>
       <Modal
         isOpen={!!editingItem}
         title={t("Edit Customer")}
@@ -618,3 +765,11 @@ export default function CustomersPage() {
     </section>
   );
 }
+
+
+
+
+
+
+
+

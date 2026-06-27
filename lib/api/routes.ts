@@ -116,8 +116,10 @@ export const ATTENDANCE_ROUTES = {
 export const SALES_ROUTES = {
   GET: "/sales/get",
   GET_BY_PRODUCT_ID: "/sales/get-by-product-id",
+  GET_BY_CUSTOMER: "/sales/get-by-customer",
   CREATE: "/sales/create",
   DASHBOARD_SALES: "/sales/dashboardSales",
+  LOYALTY_RULE_CREATE: "/sales/loyalty-rules/create",
   REDEEM: "/sales/redeem",
   LIVESTOCK_CREATE: "/sales/livestock/create",
   LIVESTOCK_GET: "/sales/livestock/get",
@@ -144,3 +146,6 @@ export const PROCESSING_PLANT_ROUTES = {
   UPDATE: "/processing-plants/update",
   DELETE: "/processing-plants/delete",
 } as const;
+
+
+

@@ -26,6 +26,7 @@ import {
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
 import { SegmentPicker } from "@/app/dashboard/invoices/components/SegmentPicker";
+import { LoyaltySaleHints } from "@/app/dashboard/invoices/components/LoyaltySaleHints";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -55,6 +56,10 @@ import {
 } from "@/lib/salePaymentMethods";
 import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
+import {
+  LOYALTY_RULE_SESSION_QUERY_KEY,
+  type SessionLoyaltyRule,
+} from "@/lib/loyalty";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
 import { findMatchingCustomer } from "./findMatchingCustomer";
 import "../components/sale-entry.scss";
@@ -250,6 +255,12 @@ export default function PointOfSalePage() {
       }
       return result.data;
     },
+  });
+
+  const { data: sessionLoyaltyRule = null } = useQuery<SessionLoyaltyRule | null>({
+    queryKey: LOYALTY_RULE_SESSION_QUERY_KEY,
+    queryFn: async () => null,
+    staleTime: Infinity,
   });
 
   const { data: allCustomers = [] } = useQuery({
@@ -1000,3 +1011,6 @@ export default function PointOfSalePage() {
     </SalePageLayout>
   );
 }
+
+
+

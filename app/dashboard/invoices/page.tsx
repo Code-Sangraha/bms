@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { IoListOutline, IoPeopleOutline, IoPricetagOutline } from "react-icons/io5";
 import { MdRemoveCircleOutline } from "react-icons/md";
-import { LuBeef, LuShoppingCart } from "react-icons/lu";
+import { LuBeef, LuGift, LuShoppingCart } from "react-icons/lu";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -559,6 +559,14 @@ export default function InvoicesAnalyticsPage() {
             <span className="invoicesMobileHub__label">{t("Customer Types")}</span>
           </Link>
         ) : null}
+        {canManageCustomerTypes ? (
+          <Link to={hubTo("/dashboard/invoices/loyalty-rules")} className="invoicesMobileHub__card">
+            <span className="invoicesMobileHub__icon" aria-hidden>
+              <LuGift size={24} />
+            </span>
+            <span className="invoicesMobileHub__label">{t("Loyalty Rules")}</span>
+          </Link>
+        ) : null}
       </div>
 
       <div className="invoicesAnalyticsHeader">
@@ -826,3 +834,4 @@ export default function InvoicesAnalyticsPage() {
     </section>
   );
 }
+

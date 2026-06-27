@@ -19,6 +19,7 @@ function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabil
   if (p.startsWith("/dashboard/invoices/livestock-sales")) return capabilities.canCreateLivestockSales;
   if (p.startsWith("/dashboard/invoices/waste-sales")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/customer-types")) return false;
+  if (p.startsWith("/dashboard/invoices/loyalty-rules")) return false;
   if (p.startsWith("/dashboard/invoices/new")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/transaction")) return capabilities.canViewTransactions;
   if (p.startsWith("/dashboard/invoices")) return capabilities.canViewSalesAnalytics;
@@ -57,3 +58,4 @@ export default function ScopedRoutesGuard({ children }: { children: ReactNode })
 
   return <>{children}</>;
 }
+

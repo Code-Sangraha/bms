@@ -1,30 +1,64 @@
 import type { SalesByCustomerItem } from "@/handlers/sale";
 
-/** Backend hardcodes 1 kg reward per this many kg purchased. */
+/** Fallback only: frontend cannot read the active backend rule yet. */
 export const LOYALTY_KG_PER_REWARD = 20;
+export const DEFAULT_LOYALTY_REWARD_KG = 1;
+export const LOYALTY_RULE_SESSION_QUERY_KEY = ["loyaltyRule", "session"] as const;
 
-export function computeEarnedRewardKg(totalPurchasedKg: number): number {
+export type LoyaltyRuleValues = {
+  minPurchaseKg: number;
+  rewardKg: number;
+};
+
+export type SessionLoyaltyRule = LoyaltyRuleValues & {
+  createdAt?: string;
+  message?: string;
+};
+
+function positiveNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return null;
+}
+
+export function normalizeLoyaltyRule(rule?: Partial<LoyaltyRuleValues> | null): LoyaltyRuleValues {
+  return {
+    minPurchaseKg: positiveNumber(rule?.minPurchaseKg) ?? LOYALTY_KG_PER_REWARD,
+    rewardKg: positiveNumber(rule?.rewardKg) ?? DEFAULT_LOYALTY_REWARD_KG,
+  };
+}
+
+export function computeEarnedRewardKg(
+  totalPurchasedKg: number,
+  rule?: Partial<LoyaltyRuleValues> | null
+): number {
   if (!Number.isFinite(totalPurchasedKg) || totalPurchasedKg <= 0) return 0;
-  return Math.floor(totalPurchasedKg / LOYALTY_KG_PER_REWARD);
+  const normalized = normalizeLoyaltyRule(rule);
+  return Math.floor(totalPurchasedKg / normalized.minPurchaseKg) * normalized.rewardKg;
 }
 
 export function computeAvailableRewardKg(
   totalPurchasedKg: number,
-  redeemedRewardKg: number
+  redeemedRewardKg: number,
+  rule?: Partial<LoyaltyRuleValues> | null
 ): number {
-  const earned = computeEarnedRewardKg(totalPurchasedKg);
+  const earned = computeEarnedRewardKg(totalPurchasedKg, rule);
   const redeemed = Number.isFinite(redeemedRewardKg) ? redeemedRewardKg : 0;
   return Math.max(0, earned - redeemed);
 }
 
-/** Client-side redeem guard for future UI — backend does not validate balance or stock. */
+/** Client-side redeem guard for future UI. Backend should still validate balance and stock. */
 export function canRedeem(
   totalPurchasedKg: number,
   redeemedRewardKg: number,
   redeemWeight: number,
-  productWeight: number
+  productWeight: number,
+  rule?: Partial<LoyaltyRuleValues> | null
 ): boolean {
-  const available = computeAvailableRewardKg(totalPurchasedKg, redeemedRewardKg);
+  const available = computeAvailableRewardKg(totalPurchasedKg, redeemedRewardKg, rule);
   return (
     redeemWeight > 0 &&
     redeemWeight <= available &&
@@ -45,14 +79,15 @@ export type CustomerLoyaltyView = {
 
 export function loyaltyFromSalesByCustomer(
   row: SalesByCustomerItem,
-  redeemedRewardKg = 0
+  redeemedRewardKg = 0,
+  rule?: Partial<LoyaltyRuleValues> | null
 ): Pick<
   CustomerLoyaltyView,
   "totalPurchasedKg" | "totalAmountSpent" | "earnedRewardKg" | "redeemedRewardKg" | "availableRewardKg"
 > {
   const totalPurchasedKg = row.totalWeight ?? 0;
   const totalAmountSpent = row.totalAmount ?? 0;
-  const earnedRewardKg = computeEarnedRewardKg(totalPurchasedKg);
+  const earnedRewardKg = computeEarnedRewardKg(totalPurchasedKg, rule);
   const redeemed = Number.isFinite(redeemedRewardKg) ? redeemedRewardKg : 0;
   return {
     totalPurchasedKg,
@@ -63,7 +98,7 @@ export function loyaltyFromSalesByCustomer(
   };
 }
 
-/** Case-sensitive match — backend loyalty uses exact outletId + name. */
+/** Case-sensitive match because backend loyalty currently uses exact outletId + name. */
 export function findSalesByCustomerRow(
   rows: SalesByCustomerItem[],
   customerName: string

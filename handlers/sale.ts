@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api/client";
 import { fetchSalesByProductId } from "@/lib/api/salesByProduct";
+import { fetchSalesByCustomer } from "@/lib/api/salesByCustomer";
 import { SALES_ROUTES } from "@/lib/api/routes";
 import {
   toApiPaymentMethod,
@@ -198,6 +199,27 @@ export type GetSalesResponse = {
   [key: string]: unknown;
 };
 
+export type LoyaltyRulePayload = {
+  minPurchaseKg: number;
+  rewardKg: number;
+  createdBy: string;
+};
+
+export type LoyaltyRuleResponse = {
+  success?: boolean;
+  message?: string;
+  data?: Partial<LoyaltyRulePayload> & Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type CustomerSalesHistoryItem = SaleTransaction;
+
+export type CustomerSalesSummary = {
+  totalWeightBought: number;
+  totalAmountSpent: number;
+  totalTransactions: number;
+  sales: CustomerSalesHistoryItem[];
+};
 export type CreateSaleResponse = {
   success?: boolean;
   message?: string;
@@ -435,6 +457,82 @@ export async function getSalesByProductId(
   return { ok: true, data };
 }
 
+function normalizeCustomerSalesList(raw: unknown): SaleTransaction[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter((entry) => entry && typeof entry === "object") as SaleTransaction[];
+  }
+  return normalizeTransactionList(raw as GetSalesResponse["data"]);
+}
+
+function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
+  const source = raw && typeof raw === "object" && "data" in raw
+    ? (raw as Record<string, unknown>).data
+    : raw;
+
+  if (Array.isArray(source)) {
+    const sales = normalizeCustomerSalesList(source);
+    return {
+      totalWeightBought: sales.reduce((sum, sale) => sum + (getNumber(sale.weight) ?? 0), 0),
+      totalAmountSpent: sales.reduce(
+        (sum, sale) => sum + (getNumber(sale.totalAmount) ?? getNumber(sale.amount) ?? getNumber(sale.total) ?? 0),
+        0
+      ),
+      totalTransactions: sales.length,
+      sales,
+    };
+  }
+
+  if (!source || typeof source !== "object") {
+    return { totalWeightBought: 0, totalAmountSpent: 0, totalTransactions: 0, sales: [] };
+  }
+
+  const o = source as Record<string, unknown>;
+  const salesRaw = o.sales ?? o.transactions ?? [];
+  const sales = normalizeCustomerSalesList(salesRaw);
+  return {
+    totalWeightBought: getNumber(o.totalWeightBought) ?? getNumber(o.totalPurchasedKg) ?? 0,
+    totalAmountSpent: getNumber(o.totalAmountSpent) ?? 0,
+    totalTransactions: getNumber(o.totalTransactions) ?? sales.length,
+    sales,
+  };
+}
+
+export function parseCustomerSalesSummaryForTest(raw: unknown): CustomerSalesSummary {
+  return normalizeCustomerSalesSummary(raw);
+}
+
+export async function getSalesByCustomer(
+  customer: string
+): Promise<
+  | { ok: true; data: CustomerSalesSummary }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await fetchSalesByCustomer(customer.trim());
+  if (!result.ok) return result;
+  return { ok: true, data: normalizeCustomerSalesSummary(result.data) };
+}
+
+export async function createLoyaltyRule(
+  body: LoyaltyRulePayload
+): Promise<
+  | { ok: true; data: LoyaltyRuleResponse }
+  | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<LoyaltyRuleResponse>(SALES_ROUTES.LOYALTY_RULE_CREATE, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!result.ok) return result;
+  if (result.data?.success === false) {
+    const message =
+      typeof result.data.message === "string" && result.data.message.trim()
+        ? result.data.message.trim()
+        : "Request failed.";
+    return { ok: false, error: message, status: 400 };
+  }
+  return result;
+}
 function toProcessedSaleCreateBody(items: SaleItemPayload[]) {
   return items.map(({ paymentMethod, discountAmount = 0, ...rest }) => ({
     ...rest,
@@ -639,3 +737,8 @@ export async function redeemRewards(
   const data = result.data?.data ?? body;
   return { ok: true, data };
 }
+
+
+
+
+

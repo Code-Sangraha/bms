@@ -14,7 +14,7 @@ import {
   IoStatsChartOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { LuDownload, LuShoppingCart } from "react-icons/lu";
+import { LuDownload, LuGift, LuShoppingCart } from "react-icons/lu";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -123,6 +123,7 @@ export default function MorePage() {
         { href: to("/dashboard/accounts/analytics"), label: t("Attendance"), icon: IoStatsChartOutline },
         { href: to("/dashboard/accounts/clock-in-out"), label: t("Clock In/Out"), icon: IoTimeOutline },
         { href: to("/dashboard/invoices/customer-types"), label: t("Customer Types"), icon: IoPricetagOutline },
+        { href: to("/dashboard/invoices/loyalty-rules"), label: t("Loyalty Rules"), icon: LuGift },
         { href: to("/dashboard/invoices/customers"), label: t("Customers"), icon: IoPeopleOutline },
         {
           href: to("/dashboard/invoices"),
@@ -244,3 +245,4 @@ export default function MorePage() {
     </section>
   );
 }
+

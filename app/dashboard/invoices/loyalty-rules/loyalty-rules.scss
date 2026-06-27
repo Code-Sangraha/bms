@@ -1,0 +1,116 @@
+.loyaltyRulesPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+}
+
+.loyaltyRulesHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.loyaltyRulesGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.loyaltyRulesCardHeader {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.loyaltyRulesIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  flex: 0 0 auto;
+}
+
+.loyaltyRulesCardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.loyaltyRulesCardSubtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.loyaltyRulesForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.loyaltyRulesFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.loyaltyRulesPreview {
+  border: 1px dashed rgba(17, 24, 39, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  font-size: 13px;
+  color: #374151;
+}
+
+.loyaltyRulesSubmit {
+  align-self: flex-start;
+}
+
+.loyaltyRulesSessionRule {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.08);
+  padding: 12px;
+}
+
+.loyaltyRulesSessionValue {
+  font-size: 15px;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.loyaltyRulesSessionMeta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+@media (max-width: 900px) {
+  .loyaltyRulesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .loyaltyRulesFields {
+    grid-template-columns: 1fr;
+  }
+
+  .loyaltyRulesSubmit {
+    width: 100%;
+  }
+}

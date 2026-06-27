@@ -66,6 +66,7 @@ type TranslationKey =
   | "transactions"
   | "customers"
   | "customerTypes"
+  | "loyaltyRules"
   | "product"
   | "products"
   | "processedProductsOutlet"
@@ -144,6 +145,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   transactions: "Transactions",
   customers: "Customers",
   customerTypes: "Customer Types",
+  loyaltyRules: "Loyalty Rules",
   product: "Product",
   products: "Products",
   processedProductsOutlet: "Processed Products",
@@ -359,6 +361,7 @@ const sidebarConfig = {
                   { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
                   { labelKey: "customers", href: "/dashboard/invoices/customers" },
                   { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
+                  { labelKey: "loyaltyRules", href: "/dashboard/invoices/loyalty-rules" },
                 ],
               },
               {
@@ -1396,3 +1399,5 @@ export default function Sidebar() {
     </div>
   );
 }
+
+
