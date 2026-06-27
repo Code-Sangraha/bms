@@ -34,16 +34,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpeg,jpg,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts",
-              expiration: { maxEntries: 10 },
-            },
-          },
-        ],
       },
       // Avoid stale cached dev bundles causing old API URL/CORS behavior.
       // Keep PWA enabled only for production builds.
