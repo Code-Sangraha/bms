@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import horizontalLogo from "@/app/assets/horizontal-logo.png";
 
 import {
   getRefreshTokenFromAuthResponse,
@@ -190,8 +191,12 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 px-4 py-8">
       <Card className="w-full max-w-md shadow-md">
         <CardHeader className="space-y-2 pb-2 text-center">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-sm font-bold tracking-wide">HMP</span>
+          <div className="mx-auto flex aspect-video w-44 items-center justify-center rounded-2xl border border-border bg-background p-2 shadow-sm">
+            <img
+              src={horizontalLogo}
+              alt="Highland Meat Processing"
+              className="h-full w-full rounded-xl object-contain"
+            />
           </div>
           <CardTitle className="text-xl">{t("Sign in")}</CardTitle>
           <CardDescription>

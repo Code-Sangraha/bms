@@ -7,6 +7,7 @@ import { IoBusinessOutline } from "react-icons/io5";
 import { LuDownload } from "react-icons/lu";
 import { TbBuildingFactory2, TbLayoutDashboard } from "react-icons/tb";
 import { X } from "lucide-react";
+import squareLogo from "@/app/assets/square-logo.png";
 
 import {
   Tooltip,
@@ -244,7 +245,6 @@ const STAFF_HUB_ID = "staff_hub";
 const OUTLET_LOGO_HUB_ID = "outlet_logo_hub";
 
 const sidebarConfig = {
-  header: { title: "HMP" },
   sections: [
     {
       items: [
@@ -1009,7 +1009,11 @@ export default function Sidebar() {
       {!isMobile ? (
       <aside className="sidebar" aria-label="Primary">
         <div className="header">
-          <h2 className="title">{sidebarConfig.header.title}</h2>
+          <img
+            src={squareLogo}
+            alt="Highland Meat Processing"
+            className="sidebarLogo"
+          />
         </div>
 
         <nav className="nav">

@@ -79,6 +79,14 @@ $mobile-breakpoint: 768px;
   text-align: center;
 }
 
+.sidebarLogo {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
 .subtitle {
   font-size: 11px;
   text-transform: uppercase;
