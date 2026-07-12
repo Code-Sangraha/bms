@@ -12,9 +12,9 @@ import { FormField } from "@/app/components/ui-ext/FormField";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
-import { createLoyaltyRule } from "@/handlers/sale";
+import { createLoyaltyRule, getLoyaltyRule } from "@/handlers/sale";
 import {
-  LOYALTY_RULE_SESSION_QUERY_KEY,
+  LOYALTY_RULE_QUERY_KEY,
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
 import { validateLoyaltyRule } from "@/schema/loyalty";
@@ -41,8 +41,15 @@ export default function LoyaltyRulesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { data: sessionRule = null } = useQuery<SessionLoyaltyRule | null>({
-    queryKey: LOYALTY_RULE_SESSION_QUERY_KEY,
-    queryFn: async () => null,
+    queryKey: LOYALTY_RULE_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getLoyaltyRule();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
     staleTime: Infinity,
   });
 
@@ -78,19 +85,11 @@ export default function LoyaltyRulesPage() {
         showToast(result.error, "error");
         return;
       }
-      const minPurchaseKg = parsePositiveNumber(minPurchaseKgInput) ?? 0;
-      const rewardKg = parsePositiveNumber(rewardKgInput) ?? 0;
       const message =
         typeof result.data.message === "string" && result.data.message.trim()
           ? result.data.message.trim()
           : t("Loyalty rule created successfully");
-      const nextRule: SessionLoyaltyRule = {
-        minPurchaseKg,
-        rewardKg,
-        createdAt: new Date().toISOString(),
-        message,
-      };
-      queryClient.setQueryData(LOYALTY_RULE_SESSION_QUERY_KEY, nextRule);
+      void queryClient.invalidateQueries({ queryKey: LOYALTY_RULE_QUERY_KEY });
       setFormError(null);
       setSuccessMessage(message);
       showToast(message);
@@ -127,7 +126,7 @@ export default function LoyaltyRulesPage() {
             <div>
               <h2 className="loyaltyRulesCardTitle">{t("Create rule")}</h2>
               <p className="loyaltyRulesCardSubtitle">
-                {t("This creates a backend loyalty rule. Existing active rules cannot be loaded by the current API.")}
+                {t("This creates a backend loyalty rule and loads the current rule from the API.")}
               </p>
             </div>
           </CardHeader>
@@ -197,10 +196,10 @@ export default function LoyaltyRulesPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <h2 className="loyaltyRulesCardTitle">{t("Current session")}</h2>
-            <p className="loyaltyRulesCardSubtitle">
+            <h2 className="loyaltyRulesCardTitle">{t("Current backend rule")}</h2>
+            {/* <p className="loyaltyRulesCardSubtitle">
               {t("The API does not expose existing rules yet, so this panel only shows the latest rule created during this browser session.")}
-            </p>
+            </p> */}
           </CardHeader>
           <CardContent>
             {sessionRule ? (
@@ -215,7 +214,7 @@ export default function LoyaltyRulesPage() {
             ) : (
               <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                 <AlertDescription>
-                  {t("No loyalty rule is known in this session. Sales may fail if the backend has no loyalty rule yet.")}
+                  {t("No loyalty rule is configured in the backend yet.")}
                 </AlertDescription>
               </Alert>
             )}

@@ -40,4 +40,31 @@ describe("customer sales summary normalization", () => {
     expect(summary.totalAmountSpent).toBe(550);
     expect(summary.totalTransactions).toBe(2);
   });
+
+  it("derives customer totals from grouped processed sale items", () => {
+    const summary = parseCustomerSalesSummaryForTest({
+      success: true,
+      data: {
+        sales: [
+          {
+            transactionId: "TXN-NABIN-001",
+            name: "Nabin Rai",
+            contact: "9841",
+            items: [
+              { product: { name: "Buff item" }, weight: 1.5, amount: 1200 },
+              { product: { name: "Another item" }, weight: 2, amount: 1800 },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(summary.totalWeightBought).toBe(3.5);
+    expect(summary.totalAmountSpent).toBe(3000);
+    expect(summary.totalTransactions).toBe(1);
+    expect(summary.sales[0].weight).toBe(3.5);
+    expect(summary.sales[0].totalAmount).toBe(3000);
+  });
 });
+
+

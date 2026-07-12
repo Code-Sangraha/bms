@@ -42,7 +42,7 @@ import {
 import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
-import { createSale, type SaleItemPayload } from "@/handlers/sale";
+import { createSale, getLoyaltyRule, type SaleItemPayload } from "@/handlers/sale";
 import {
   allocateCartDiscount,
   cartSubtotal,
@@ -57,9 +57,10 @@ import {
 import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
 import {
-  LOYALTY_RULE_SESSION_QUERY_KEY,
+  LOYALTY_RULE_QUERY_KEY,
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
+import { recordCustomerPurchaseTotals } from "@/lib/customerPurchaseTotalsStorage";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
 import { findMatchingCustomer } from "./findMatchingCustomer";
 import "../components/sale-entry.scss";
@@ -68,6 +69,13 @@ type LinePricingMode = "weight" | "amount";
 
 type PosCheckoutPayload = {
   saleItems: SaleItemPayload[];
+  customerTotals: {
+    name: string;
+    contact: string;
+    outletId: string;
+    weightBought: number;
+    amountSpent: number;
+  };
   customerCreate: {
     name: string;
     contact: string;
@@ -258,8 +266,15 @@ export default function PointOfSalePage() {
   });
 
   const { data: sessionLoyaltyRule = null } = useQuery<SessionLoyaltyRule | null>({
-    queryKey: LOYALTY_RULE_SESSION_QUERY_KEY,
-    queryFn: async () => null,
+    queryKey: LOYALTY_RULE_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getLoyaltyRule();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
     staleTime: Infinity,
   });
 
@@ -545,7 +560,11 @@ export default function PointOfSalePage() {
       }
 
       if (!payload.customerCreate) {
-        return { saleOk: true as const, customerCreated: false as const };
+        return {
+          saleOk: true as const,
+          customerCreated: false as const,
+          customerTotals: payload.customerTotals,
+        };
       }
 
       const customerResult = await createCustomer(payload.customerCreate);
@@ -554,10 +573,15 @@ export default function PointOfSalePage() {
           saleOk: true as const,
           customerCreated: false as const,
           customerCreateError: customerResult.error,
+          customerTotals: payload.customerTotals,
         };
       }
 
-      return { saleOk: true as const, customerCreated: true as const };
+      return {
+        saleOk: true as const,
+        customerCreated: true as const,
+        customerTotals: payload.customerTotals,
+      };
     },
     onSuccess: (result) => {
       if (!result.saleOk) {
@@ -578,6 +602,9 @@ export default function PointOfSalePage() {
           "error"
         );
       }
+
+      // TEMP: localStorage customer totals until backend get-by-customer is scoped and authoritative.
+      recordCustomerPurchaseTotals(result.customerTotals);
 
       setLineItems([]);
       setCustomerName("");
@@ -661,7 +688,17 @@ export default function PointOfSalePage() {
             customerTypeId: lineItems[0].customerTypeId,
           };
 
-    createSaleMutation.mutate({ saleItems, customerCreate });
+    createSaleMutation.mutate({
+      saleItems,
+      customerCreate,
+      customerTotals: {
+        name: trimmedName,
+        contact: trimmedContact,
+        outletId,
+        weightBought: lineItems.reduce((sum, item) => sum + item.weight, 0),
+        amountSpent: totalDue,
+      },
+    });
     setCheckoutConfirmOpen(false);
   };
 
@@ -791,6 +828,11 @@ export default function PointOfSalePage() {
                   />
                 </FormField>
               </div>
+              <LoyaltySaleHints
+                customerName={customerName}
+                saleOutletId={outletId}
+                sessionRule={sessionLoyaltyRule}
+              />
             </SaleFormSection>
 
             <SaleFormSection

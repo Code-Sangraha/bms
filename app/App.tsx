@@ -13,6 +13,7 @@ import DepartmentsPage from "./dashboard/departments/page";
 import ProcessingPlantPage from "./dashboard/processingPlant/page";
 import ProductTypePage from "./dashboard/product/productType/page";
 import ProductPage from "./dashboard/product/page";
+import SuppliersPage from "./dashboard/product/suppliers/page";
 import LiveProductPage from "./dashboard/product/liveProduct/page";
 import LivestockItemDetailPage from "./dashboard/product/liveProduct/LivestockItemDetailPage";
 import ProcessedProductPage from "./dashboard/product/processedProduct/page";
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="dashboard/departments" element={<DepartmentsPage />} />
               <Route path="dashboard/processingPlant" element={<ProcessingPlantPage />} />
               <Route path="dashboard/product" element={<ProductPage />} />
+              <Route path="dashboard/product/suppliers" element={<SuppliersPage />} />
               <Route path="dashboard/product/productType" element={<ProductTypePage />} />
               <Route path="dashboard/product/livestockCategory" element={<LivestockCategoryPage />} />
               <Route

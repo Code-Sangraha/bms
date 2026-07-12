@@ -66,6 +66,7 @@ type TranslationKey =
   | "outletExpenses"
   | "transactions"
   | "customers"
+  | "suppliers"
   | "customerTypes"
   | "loyaltyRules"
   | "product"
@@ -145,6 +146,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   outletExpenses: "Outlet expenses",
   transactions: "Transactions",
   customers: "Customers",
+  suppliers: "Suppliers",
   customerTypes: "Customer Types",
   loyaltyRules: "Loyalty Rules",
   product: "Product",
@@ -193,6 +195,7 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
       { labelKey: "wasteProducts", href: "/dashboard/product/wasteProduct", capability: "canViewProcessedInventory" },
       { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" },
       { labelKey: "processingPlant", href: "/dashboard/processingPlant", capability: "canSendToProcessing" },
+      { labelKey: "suppliers", href: "/dashboard/product/suppliers" },
     ],
   },
   {
@@ -373,6 +376,7 @@ const sidebarConfig = {
                   { labelKey: "processedProductsOutlet", href: "/dashboard/product", capability: "canViewInventory" as const },
                   { labelKey: "processed", href: "/dashboard/product/processedProduct", capability: "canViewProcessedInventory" as const },
                   { labelKey: "wasteProducts", href: "/dashboard/product/wasteProduct", capability: "canViewProcessedInventory" as const },
+                  { labelKey: "suppliers", href: "/dashboard/product/suppliers" },
                   { labelKey: "pricelist", href: "/dashboard/dualPricing", capability: "canViewDualPricing" as const },
                 ],
               },

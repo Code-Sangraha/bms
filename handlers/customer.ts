@@ -10,7 +10,7 @@ export type Customer = {
   id: string;
   name: string;
   contact: string;
-  outletId: string;
+  outletId?: string;
   customerTypeId: string;
   createdAt?: string;
   updatedAt?: string;
@@ -63,10 +63,10 @@ function parseCustomer(raw: unknown): Customer | null {
   const id = typeof o.id === "string" ? o.id : null;
   const name = typeof o.name === "string" ? o.name : null;
   const contact = typeof o.contact === "string" ? o.contact : null;
-  const outletId = typeof o.outletId === "string" ? o.outletId : null;
+  const outletId = typeof o.outletId === "string" ? o.outletId : undefined;
   const customerTypeId =
     typeof o.customerTypeId === "string" ? o.customerTypeId : null;
-  if (!id || !name || !contact || !outletId || !customerTypeId) return null;
+  if (!id || !name || !contact || !customerTypeId) return null;
 
   const customer: Customer = {
     id,
@@ -91,6 +91,10 @@ function parseCustomer(raw: unknown): Customer | null {
   }
 
   return customer;
+}
+
+export function parseCustomerForTest(raw: unknown): Customer | null {
+  return parseCustomer(raw);
 }
 
 function normalizeCustomerList(data: GetCustomersResponse): Customer[] {

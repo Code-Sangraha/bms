@@ -1,9 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { getSuppliers } from "@/handlers/supplier";
 import Modal from "@/app/components/Modal/Modal";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -52,7 +54,9 @@ export default function LivestockRestockDetailModal({
   livestockItemId,
   onSuccess,
 }: LivestockRestockDetailModalProps) {
-  void item;
+  const rawOutletId = (item as LivestockItem & { outletId?: unknown }).outletId;
+  const restockOutletId = typeof rawOutletId === "string" && rawOutletId.trim() ? rawOutletId.trim() : null;
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const { t } = useI18n();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -62,12 +66,30 @@ export default function LivestockRestockDetailModal({
     register,
     handleSubmit,
     reset,
+    setValue,
     control,
     formState: { errors },
   } = useForm<LivestockRestockDetailFormValues>({
     resolver: zodResolver(livestockRestockDetailSchema),
     defaultValues: DEFAULT_VALUES,
   });
+
+  const suppliersQuery = useQuery({
+    queryKey: ["suppliers", restockOutletId ?? "none"],
+    enabled: isOpen && Boolean(restockOutletId),
+    queryFn: async () => {
+      const result = await getSuppliers(restockOutletId);
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  useEffect(() => {
+    if (!isOpen) setSelectedSupplierId("");
+  }, [isOpen]);
 
   const totalAmountWatch = useWatch({ control, name: "totalAmount" });
   const paidAmountWatch = useWatch({ control, name: "paidAmount" });
@@ -114,6 +136,8 @@ export default function LivestockRestockDetailModal({
       }
       showToast(t("Restock completed successfully."), "success");
       reset(DEFAULT_VALUES);
+      setSelectedSupplierId("");
+      setSelectedSupplierId("");
       onClose();
       void queryClient.invalidateQueries({ queryKey: ["livestockInventoryHistory"] });
       void queryClient.invalidateQueries({ queryKey: ["livestockExpenseHistory"] });
@@ -202,6 +226,35 @@ export default function LivestockRestockDetailModal({
 
         <div className="livestockDetailModalSection">
           <h4 className="livestockDetailModalSectionTitle">{t("Supplier & Payment")}</h4>
+
+          {restockOutletId && (suppliersQuery.data?.length || suppliersQuery.isLoading) ? (
+            <div className="livestockDetailModalField">
+              <label className="livestockDetailModalLabel" htmlFor="livestock-restock-supplier-select">
+                {t("Saved supplier")}
+              </label>
+              <select
+                id="livestock-restock-supplier-select"
+                className="livestockDetailModalSelect"
+                value={selectedSupplierId}
+                disabled={isPending || suppliersQuery.isLoading}
+                onChange={(event) => {
+                  const supplierId = event.target.value;
+                  setSelectedSupplierId(supplierId);
+                  const supplier = suppliersQuery.data?.find((row) => row.id === supplierId);
+                  if (!supplier) return;
+                  setValue("supplierName", supplier.name, { shouldValidate: true });
+                  setValue("supplierContact", supplier.contact ?? undefined);
+                }}
+              >
+                <option value="">{t("Select saved supplier")}</option>
+                {(suppliersQuery.data ?? []).map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}{supplier.contact ? " — " + supplier.contact : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div className="livestockDetailModalField">
             <label className="livestockDetailModalLabel" htmlFor="livestock-restock-supplier">

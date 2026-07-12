@@ -205,10 +205,20 @@ export type LoyaltyRulePayload = {
   createdBy: string;
 };
 
+export type LoyaltyRuleRecord = {
+  id?: string;
+  minPurchaseKg: number;
+  rewardKg: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+};
+
 export type LoyaltyRuleResponse = {
   success?: boolean;
   message?: string;
-  data?: Partial<LoyaltyRulePayload> & Record<string, unknown>;
+  data?: Partial<LoyaltyRuleRecord> & Record<string, unknown> | null;
   [key: string]: unknown;
 };
 
@@ -460,9 +470,63 @@ export async function getSalesByProductId(
 function normalizeCustomerSalesList(raw: unknown): SaleTransaction[] {
   if (raw == null) return [];
   if (Array.isArray(raw)) {
-    return raw.filter((entry) => entry && typeof entry === "object") as SaleTransaction[];
+    return raw
+      .filter((entry) => entry && typeof entry === "object")
+      .map((entry) => normalizeCustomerSaleEntry(entry as SaleTransaction));
   }
-  return normalizeTransactionList(raw as GetSalesResponse["data"]);
+  return normalizeTransactionList(raw as GetSalesResponse["data"]).map(normalizeCustomerSaleEntry);
+}
+
+function sumCustomerSaleItems(
+  sale: SaleTransaction,
+  keys: Array<keyof NonNullable<SaleTransaction["items"]>[number]>
+): number | undefined {
+  if (!Array.isArray(sale.items) || sale.items.length === 0) return undefined;
+
+  let sum = 0;
+  let hasValue = false;
+  for (const item of sale.items) {
+    for (const key of keys) {
+      const value = getNumber(item[key]);
+      if (value == null) continue;
+      sum += value;
+      hasValue = true;
+      break;
+    }
+  }
+
+  return hasValue ? Math.round(sum * 1000) / 1000 : undefined;
+}
+
+function normalizeCustomerSaleEntry(sale: SaleTransaction): SaleTransaction {
+  const weight = getNumber(sale.weight) ?? sumCustomerSaleItems(sale, ["weight"]);
+  const amount =
+    getNumber(sale.totalAmount) ??
+    getNumber(sale.amount) ??
+    getNumber(sale.total) ??
+    sumCustomerSaleItems(sale, ["amount"]);
+
+  return {
+    ...sale,
+    weight,
+    amount,
+    total: getNumber(sale.total) ?? amount,
+    totalAmount: getNumber(sale.totalAmount) ?? amount,
+  };
+}
+
+function customerSaleWeight(sale: SaleTransaction): number {
+  return getNumber(sale.weight) ?? sumCustomerSaleItems(sale, ["weight"]) ?? 0;
+}
+
+function customerSaleAmount(sale: SaleTransaction): number {
+  return (
+    getNumber(sale.totalAmount) ??
+    getNumber(sale.amount) ??
+    getNumber(sale.total) ??
+    sumCustomerSaleItems(sale, ["amount"]) ??
+    0
+  );
 }
 
 function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
@@ -473,11 +537,8 @@ function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
   if (Array.isArray(source)) {
     const sales = normalizeCustomerSalesList(source);
     return {
-      totalWeightBought: sales.reduce((sum, sale) => sum + (getNumber(sale.weight) ?? 0), 0),
-      totalAmountSpent: sales.reduce(
-        (sum, sale) => sum + (getNumber(sale.totalAmount) ?? getNumber(sale.amount) ?? getNumber(sale.total) ?? 0),
-        0
-      ),
+      totalWeightBought: sales.reduce((sum, sale) => sum + customerSaleWeight(sale), 0),
+      totalAmountSpent: sales.reduce((sum, sale) => sum + customerSaleAmount(sale), 0),
       totalTransactions: sales.length,
       sales,
     };
@@ -490,9 +551,11 @@ function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
   const o = source as Record<string, unknown>;
   const salesRaw = o.sales ?? o.transactions ?? [];
   const sales = normalizeCustomerSalesList(salesRaw);
+  const derivedWeight = sales.reduce((sum, sale) => sum + customerSaleWeight(sale), 0);
+  const derivedAmount = sales.reduce((sum, sale) => sum + customerSaleAmount(sale), 0);
   return {
-    totalWeightBought: getNumber(o.totalWeightBought) ?? getNumber(o.totalPurchasedKg) ?? 0,
-    totalAmountSpent: getNumber(o.totalAmountSpent) ?? 0,
+    totalWeightBought: getNumber(o.totalWeightBought) ?? getNumber(o.totalPurchasedKg) ?? derivedWeight,
+    totalAmountSpent: getNumber(o.totalAmountSpent) ?? derivedAmount,
     totalTransactions: getNumber(o.totalTransactions) ?? sales.length,
     sales,
   };
@@ -513,6 +576,40 @@ export async function getSalesByCustomer(
   return { ok: true, data: normalizeCustomerSalesSummary(result.data) };
 }
 
+export async function getLoyaltyRule(): Promise<
+  { ok: true; data: LoyaltyRuleRecord | null } | { ok: false; error: string; status: number }
+> {
+  const result = await apiRequest<LoyaltyRuleResponse>(SALES_ROUTES.LOYALTY_RULE_GET, {
+    method: "GET",
+  });
+  if (!result.ok) return result;
+  if (result.data.success === false) {
+    const message =
+      typeof result.data.message === "string" && result.data.message.trim()
+        ? result.data.message.trim()
+        : "Request failed.";
+    return { ok: false, error: message, status: 400 };
+  }
+  const raw = result.data.data;
+  if (raw == null) return { ok: true, data: null };
+  const minPurchaseKg = getNumber(raw.minPurchaseKg);
+  const rewardKg = getNumber(raw.rewardKg);
+  if (minPurchaseKg == null || minPurchaseKg <= 0 || rewardKg == null || rewardKg <= 0) {
+    return { ok: false, error: "Invalid loyalty rule response.", status: 422 };
+  }
+  return {
+    ok: true,
+    data: {
+      id: typeof raw.id === "string" ? raw.id : undefined,
+      minPurchaseKg,
+      rewardKg,
+      createdAt: typeof raw.createdAt === "string" ? raw.createdAt : undefined,
+      updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
+      createdBy: typeof raw.createdBy === "string" ? raw.createdBy : null,
+      updatedBy: typeof raw.updatedBy === "string" ? raw.updatedBy : null,
+    },
+  };
+}
 export async function createLoyaltyRule(
   body: LoyaltyRulePayload
 ): Promise<
@@ -737,8 +834,4 @@ export async function redeemRewards(
   const data = result.data?.data ?? body;
   return { ok: true, data };
 }
-
-
-
-
 

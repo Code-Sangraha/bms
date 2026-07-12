@@ -25,7 +25,7 @@ export function LoyaltySaleHints({
         <p>{t("Loyalty is calculated by the backend loyalty rule.")}</p>
         {sessionRule ? (
           <p>
-            {t("Current session rule:")} {" "}
+            {t("Current backend rule:")} {" "}
             <strong>
               {t("{{reward}} kg reward per {{purchase}} kg purchased")
                 .replace("{{reward}}", String(sessionRule.rewardKg))
@@ -34,7 +34,7 @@ export function LoyaltySaleHints({
           </p>
         ) : (
           <p className="text-amber-700">
-            {t("No loyalty rule is known in this session. Sales may fail if the backend has no loyalty rule yet.")}
+            {t("No loyalty rule is configured in the backend yet.")}
           </p>
         )}
         <p>

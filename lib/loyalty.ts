@@ -1,9 +1,9 @@
 import type { SalesByCustomerItem } from "@/handlers/sale";
 
-/** Fallback only: frontend cannot read the active backend rule yet. */
+/** Conservative display fallback used only when the backend has no configured rule. */
 export const LOYALTY_KG_PER_REWARD = 20;
 export const DEFAULT_LOYALTY_REWARD_KG = 1;
-export const LOYALTY_RULE_SESSION_QUERY_KEY = ["loyaltyRule", "session"] as const;
+export const LOYALTY_RULE_QUERY_KEY = ["loyaltyRule", "current"] as const;
 
 export type LoyaltyRuleValues = {
   minPurchaseKg: number;

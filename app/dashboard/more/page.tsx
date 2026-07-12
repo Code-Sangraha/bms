@@ -14,7 +14,7 @@ import {
   IoStatsChartOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { LuDownload, LuGift, LuShoppingCart } from "react-icons/lu";
+import { LuDownload, LuGift, LuShoppingCart, LuTruck } from "react-icons/lu";
 import LanguageToggle from "@/app/components/LanguageToggle/LanguageToggle";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
@@ -125,6 +125,7 @@ export default function MorePage() {
         { href: to("/dashboard/invoices/customer-types"), label: t("Customer Types"), icon: IoPricetagOutline },
         { href: to("/dashboard/invoices/loyalty-rules"), label: t("Loyalty Rules"), icon: LuGift },
         { href: to("/dashboard/invoices/customers"), label: t("Customers"), icon: IoPeopleOutline },
+        { href: to("/dashboard/product/suppliers"), label: t("Suppliers"), icon: LuTruck },
         {
           href: to("/dashboard/invoices"),
           label: t("Sales & Billing"),
@@ -139,6 +140,7 @@ export default function MorePage() {
         { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
         { href: to("/dashboard/dualPricing"), label: t("Pricelist"), icon: IoPricetagOutline },
         { href: to("/dashboard/processingPlant"), label: t("Processing Plant"), icon: IoBusinessOutline },
+        { href: to("/dashboard/product/suppliers"), label: t("Suppliers"), icon: LuTruck },
         {
           href: to("/dashboard/invoices"),
           label: t("Sales & Billing"),

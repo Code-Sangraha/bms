@@ -50,14 +50,18 @@ import {
   updateCustomer as updateCustomerApi,
 } from "@/handlers/customer";
 import { getCustomerTypes } from "@/handlers/customerType";
-import { getSalesByCustomer, type CustomerSalesSummary } from "@/handlers/sale";
+import { getLoyaltyRule, getSalesByCustomer, type CustomerSalesSummary } from "@/handlers/sale";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { customerSchema, type CustomerFormValues } from "@/schema/customer";
 import {
   computeEarnedRewardKg,
-  LOYALTY_RULE_SESSION_QUERY_KEY,
+  LOYALTY_RULE_QUERY_KEY,
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
+import {
+  mergeCustomerPurchaseTotals,
+  readCustomerPurchaseTotals,
+} from "@/lib/customerPurchaseTotalsStorage";
 import "./customers.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
@@ -74,7 +78,7 @@ function toFormValues(c: Customer): CustomerFormValues {
   return {
     name: c.name,
     contact: c.contact,
-    outletId: c.outletId,
+    outletId: c.outletId ?? "",
     customerTypeId: c.customerTypeId,
   };
 }
@@ -116,8 +120,8 @@ function saleAmount(sale: CustomerSalesSummary["sales"][number]): number {
   const value = sale.totalAmount ?? sale.amount ?? sale.total;
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
-function outletName(outlets: Outlet[], outletId: string): string {
-  return outlets.find((o) => o.id === outletId)?.name ?? outletId;
+function outletName(outlets: Outlet[], outletId: string | undefined): string {
+  if (!outletId) return "Unassigned";
 }
 
 export default function CustomersPage() {
@@ -160,8 +164,15 @@ export default function CustomersPage() {
   });
 
   const { data: sessionLoyaltyRule = null } = useQuery<SessionLoyaltyRule | null>({
-    queryKey: LOYALTY_RULE_SESSION_QUERY_KEY,
-    queryFn: async () => null,
+    queryKey: LOYALTY_RULE_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getLoyaltyRule();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
     staleTime: Infinity,
   });
 
@@ -178,6 +189,14 @@ export default function CustomersPage() {
       return result.data;
     },
   });
+
+  // TEMP: localStorage customer totals until backend get-by-customer is scoped and authoritative.
+  const customerSalesSummary = useMemo(() => {
+    if (!customerSalesQuery.data) return null;
+    if (!summaryCustomer) return customerSalesQuery.data;
+    const localTotals = readCustomerPurchaseTotals(summaryCustomer);
+    return mergeCustomerPurchaseTotals(customerSalesQuery.data, localTotals);
+  }, [customerSalesQuery.data, summaryCustomer]);
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -625,31 +644,31 @@ export default function CustomersPage() {
                   : t("Failed to load customer sales summary")}
               </AlertDescription>
             </Alert>
-          ) : customerSalesQuery.data ? (
+          ) : customerSalesSummary ? (
             <>
               <div className="customersSummaryGrid">
                 <div className="customersSummaryStat">
                   <span>{t("Total weight bought")}</span>
-                  <strong>{formatKg(customerSalesQuery.data.totalWeightBought)}</strong>
+                  <strong>{formatKg(customerSalesSummary.totalWeightBought)}</strong>
                 </div>
                 <div className="customersSummaryStat">
                   <span>{t("Total amount spent")}</span>
-                  <strong>{formatMoney(customerSalesQuery.data.totalAmountSpent)}</strong>
+                  <strong>{formatMoney(customerSalesSummary.totalAmountSpent)}</strong>
                 </div>
                 <div className="customersSummaryStat">
                   <span>{t("Transactions")}</span>
-                  <strong>{customerSalesQuery.data.totalTransactions}</strong>
+                  <strong>{customerSalesSummary.totalTransactions}</strong>
                 </div>
                 <div className="customersSummaryStat customersSummaryStat--estimate">
                   <span>
                     {sessionLoyaltyRule
-                      ? t("Estimated earned reward (session rule)")
-                      : t("Estimated earned reward (fallback)")}
+                      ? t("Estimated earned reward (configured rule)")
+                      : t("Estimated earned reward")}
                   </span>
                   <strong>
                     {formatKg(
                       computeEarnedRewardKg(
-                        customerSalesQuery.data.totalWeightBought,
+                        customerSalesSummary.totalWeightBought,
                         sessionLoyaltyRule
                       )
                     )}
@@ -659,7 +678,7 @@ export default function CustomersPage() {
 
               <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                 <AlertDescription>
-                  {t("Estimated from session rule; backend balance may differ. The current API does not return redeemed or available reward balance.")}
+                  {t("Estimated from the configured backend rule; backend balance may differ. The current API does not return redeemed or available reward balance.")}
                 </AlertDescription>
               </Alert>
 
