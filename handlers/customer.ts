@@ -1,9 +1,8 @@
 import axios from "axios";
 import type { CustomerFormValues } from "@/schema/customer";
-import { apiRequest, getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { apiRequest, getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { CUSTOMER_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { getAuthToken } from "@/lib/auth/token";
 import type { CustomerType } from "@/handlers/customerType";
 
 export type Customer = {
@@ -49,12 +48,7 @@ type CustomerMutationResponse = {
 };
 
 function errorMessageFromPayload(data: unknown): string {
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    const msg = o.message ?? o.error;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
-  }
-  return "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 function parseCustomer(raw: unknown): Customer | null {
@@ -153,19 +147,8 @@ export async function getCustomerById(
     });
 
   try {
-    let token = getAuthToken();
-    let res = await requestWithToken(token);
-
-    if (res.status === 401) {
-      const newToken = await tryRefresh();
-      if (newToken) {
-        token = newToken;
-        res = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let res = await requestWithToken(getAuthToken());
+    res = await retryAfterUnauthorized(res, requestWithToken);
 
     if (res.status < 200 || res.status >= 300) {
       return {

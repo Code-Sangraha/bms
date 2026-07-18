@@ -36,6 +36,7 @@ import DirectoryPage from "./dashboard/accounts/directory/page";
 import ClockInOutPage from "./dashboard/accounts/clock-in-out/page";
 import AccountsAnalyticsPage from "./dashboard/accounts/analytics/page";
 import MorePage from "./dashboard/more/page";
+import ItemInventoryPage from "./dashboard/itemInventory/page";
 
 export default function App() {
   return (
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="dashboard/invoices/customers" element={<CustomersPage />} />
               <Route path="dashboard/invoices/loyalty-rules" element={<LoyaltyRulesPage />} />
               <Route path="dashboard/analytics" element={<AnalyticsPage />} />
+              <Route path="dashboard/item-inventory" element={<ItemInventoryPage />} />
               <Route path="dashboard/accounts/roles" element={<RolesPage />} />
               <Route path="dashboard/accounts/roles/create" element={<RolesCreatePage />} />
               <Route path="dashboard/accounts/directory" element={<DirectoryPage />} />

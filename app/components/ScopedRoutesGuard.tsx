@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { defaultPathForTier, isPathAllowedForTier } from "@/lib/auth/accessTier";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { usePermissions } from "@/app/providers/AuthProvider";
+import { useMainOutletInventoryAccess } from "@/app/hooks/useMainOutletInventoryAccess";
 import type { RoleCapabilities } from "@/lib/auth/capabilities";
 
 function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabilities): boolean {
@@ -13,9 +14,7 @@ function isPathAllowedByCapabilities(pathname: string, capabilities: RoleCapabil
   if (p.startsWith("/dashboard/outlets")) return capabilities.canViewOutlets;
   if (p.startsWith("/dashboard/outlet")) return capabilities.canViewOutlets;
   if (p.startsWith("/dashboard/dualPricing")) return capabilities.canViewDualPricing;
-  if (p.startsWith("/dashboard/processingPlant")) {
-    return capabilities.canSendToProcessing || capabilities.canCompleteProcessing;
-  }
+  if (p.startsWith("/dashboard/processingPlant")) return capabilities.canSendToProcessing || capabilities.canCompleteProcessing;
   if (p.startsWith("/dashboard/invoices/livestock-sales")) return capabilities.canCreateLivestockSales;
   if (p.startsWith("/dashboard/invoices/waste-sales")) return capabilities.canCreateProcessedSales;
   if (p.startsWith("/dashboard/invoices/customer-types")) return false;
@@ -41,12 +40,29 @@ export default function ScopedRoutesGuard({ children }: { children: ReactNode })
   const navigate = useNavigate();
   const location = useLocation();
   const { accessTier, lockedOutletId } = useOutletAccess();
-  const { capabilities } = usePermissions();
+  const { capabilities, hasJwtPermission, isAuthReady } = usePermissions();
+  const inventoryAccess = useMainOutletInventoryAccess();
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+    const path = location.pathname.replace(/\/$/, "");
+    if (path === "/dashboard/accounts/roles/create") {
+      if (!hasJwtPermission("role:create")) navigate("/dashboard", { replace: true });
+      return;
+    }
+    if (path.startsWith("/dashboard/accounts/roles") && !hasJwtPermission("role:read")) {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    if (path.startsWith("/dashboard/item-inventory")) {
+      if (inventoryAccess.isLoading) return;
+      if (!inventoryAccess.isAllowed) navigate("/dashboard", { replace: true });
+    }
+  }, [hasJwtPermission, inventoryAccess.isAllowed, inventoryAccess.isLoading, isAuthReady, location.pathname, navigate]);
 
   useEffect(() => {
     if (accessTier === "global") return;
-    const path = location.pathname;
-    if (isPathAllowedForTier(path, accessTier)) return;
+    if (isPathAllowedForTier(location.pathname, accessTier)) return;
     navigate(defaultPathForTier(accessTier, lockedOutletId), { replace: true });
   }, [accessTier, lockedOutletId, location.pathname, navigate]);
 
@@ -58,4 +74,3 @@ export default function ScopedRoutesGuard({ children }: { children: ReactNode })
 
   return <>{children}</>;
 }
-

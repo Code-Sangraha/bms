@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getLoyaltyRule } from "./sale";
 import { parseCustomerForTest } from "./customer";
+import { SALES_ROUTES } from "@/lib/api/routes";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -15,6 +16,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("loyalty and customer contract", () => {
+  it("uses the newest loyalty-rule getter alias", () => {
+    expect(SALES_ROUTES.LOYALTY_RULE_GET).toBe("/sales/loyalty-rules");
+  });
+
   it("normalizes one loyalty rule object", async () => {
     vi.stubGlobal(
       "fetch",

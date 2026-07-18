@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -44,6 +44,12 @@ import { FormField } from "@/app/components/ui-ext/FormField";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const authMessage =
+    location.state && typeof location.state === "object" &&
+    "authMessage" in location.state && typeof location.state.authMessage === "string"
+      ? location.state.authMessage
+      : null;
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
@@ -209,6 +215,12 @@ export default function LoginPage() {
             className="flex flex-col gap-4"
             noValidate
           >
+            {authMessage ? (
+              <Alert>
+                <AlertDescription>{t(authMessage)}</AlertDescription>
+              </Alert>
+            ) : null}
+
             {errors.root?.message ? (
               <Alert variant="destructive">
                 <AlertDescription>{errors.root.message}</AlertDescription>

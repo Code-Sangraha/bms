@@ -112,7 +112,7 @@ export default function LoyaltyRulesPage() {
         <div>
           <h1 className="pageTitle">{t("Loyalty Rules")}</h1>
           <p className="pageSubtitle">
-            {t("Create the purchase-to-reward rule used by processed sales.")}
+            {t("Configure purchase-to-reward rules for processed sales.")}
           </p>
         </div>
       </div>
@@ -126,7 +126,7 @@ export default function LoyaltyRulesPage() {
             <div>
               <h2 className="loyaltyRulesCardTitle">{t("Create rule")}</h2>
               <p className="loyaltyRulesCardSubtitle">
-                {t("This creates a backend loyalty rule and loads the current rule from the API.")}
+                {t("This creates a backend loyalty rule and refreshes the newest configured rule.")}
               </p>
             </div>
           </CardHeader>
@@ -196,7 +196,7 @@ export default function LoyaltyRulesPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <h2 className="loyaltyRulesCardTitle">{t("Current backend rule")}</h2>
+            <h2 className="loyaltyRulesCardTitle">{t("Newest configured rule")}</h2>
             {/* <p className="loyaltyRulesCardSubtitle">
               {t("The API does not expose existing rules yet, so this panel only shows the latest rule created during this browser session.")}
             </p> */}
@@ -205,6 +205,9 @@ export default function LoyaltyRulesPage() {
             {sessionRule ? (
               <div className="loyaltyRulesSessionRule">
                 <span className="loyaltyRulesSessionValue">{formatRule(sessionRule)}</span>
+                <span className="loyaltyRulesSessionMeta">
+                  {t("This is the newest configured rule; sales may use a different rule until the backend lookup is ordered.")}
+                </span>
                 {sessionRule.createdAt ? (
                   <span className="loyaltyRulesSessionMeta">
                     {new Date(sessionRule.createdAt).toLocaleString()}

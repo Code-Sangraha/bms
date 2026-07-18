@@ -35,8 +35,8 @@ import { EmptyState } from "@/app/components/ui-ext/EmptyState";
 import { ErrorState } from "@/app/components/ui-ext/ErrorState";
 import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
-import { clearAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { expireAuthSession } from "@/lib/api/client";
+import { shouldSignOutAfterPermissionUpdate } from "@/lib/auth/permissionUpdate";
 import {
   deleteRole as deleteRoleApi,
   getPermissions as getRolePermissions,
@@ -88,7 +88,10 @@ function getDeleteErrorMessage(error: string, t: (text: string) => string) {
 export default function RolesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { roleId, isAuthReady, hasJwtPermission, canDelete } = usePermissions();
+  const canReadRoles = hasJwtPermission("role:read");
+  const canCreateRole = hasJwtPermission("role:create");
+  const canUpdateRole = hasJwtPermission("role:update");
   const { t } = useI18n();
   const { showToast } = useToast();
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -99,6 +102,10 @@ export default function RolesPage() {
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    if (isAuthReady && !canReadRoles) navigate("/dashboard", { replace: true });
+  }, [canReadRoles, isAuthReady, navigate]);
+
   const {
     data: roles = [],
     isLoading: rolesLoading,
@@ -106,6 +113,7 @@ export default function RolesPage() {
     error: rolesErrorDetail,
   } = useQuery({
     queryKey: ROLES_QUERY_KEY,
+    enabled: isAuthReady && canReadRoles,
     queryFn: async () => {
       const result = await getRoles();
       if (!result.ok) {
@@ -179,7 +187,7 @@ export default function RolesPage() {
     error: permissionsErrorDetail,
   } = useQuery({
     queryKey: ROLE_PERMISSIONS_QUERY_KEY,
-    enabled: permissionRole != null,
+    enabled: permissionRole != null && canReadRoles,
     queryFn: async () => {
       const result = await getRolePermissions();
       if (!result.ok) {
@@ -202,17 +210,24 @@ export default function RolesPage() {
     },
     onSuccess: (result) => {
       if (result.ok) {
+        const updatedRoleId = result.data.data?.roleId ?? permissionRole?.id ?? null;
+        const updatedPermissionIds =
+          result.data.data?.permissionIds ?? selectedPermissionIds;
         setPermissionError(null);
-        setPermissionRole(null);
-        showToast(
-          t("Permissions updated. Please sign in again to refresh access."),
-          "info"
+        queryClient.setQueryData<Role[]>(ROLES_QUERY_KEY, (current) =>
+          current?.map((role) =>
+            role.id === updatedRoleId
+              ? { ...role, permissionIds: updatedPermissionIds }
+              : role
+          )
         );
-        window.setTimeout(() => {
-          clearAuthToken();
-          clearStoredUser();
-          navigate("/login", { replace: true });
-        }, 1200);
+        if (shouldSignOutAfterPermissionUpdate(updatedRoleId, roleId)) {
+          showToast(t("Your access or account has changed. Sign in again."), "info");
+          expireAuthSession();
+          return;
+        }
+        setPermissionRole(null);
+        showToast(t("Permissions updated."), "success");
       } else {
         if (result.status === 401) navigate("/login");
         else setPermissionError(result.error);
@@ -222,7 +237,6 @@ export default function RolesPage() {
       setPermissionError(t("Something went wrong. Please try again."));
     },
   });
-
   const onEditSubmit = (data: CreateRoleFormValues) => {
     if (editingRole) {
       updateMutation.mutate({ id: editingRole.id, values: data });
@@ -295,6 +309,8 @@ export default function RolesPage() {
       }));
   }, [allPermissions]);
 
+  if (!isAuthReady || !canReadRoles) return null;
+
   return (
     <section className="rolesPage">
       <div className="breadcrumb">
@@ -308,7 +324,7 @@ export default function RolesPage() {
             {t("Manage roles and permissions for your team")}
           </p>
         </div>
-        {canCreate && (
+        {canCreateRole && (
           <Button asChild>
             <Link to="/dashboard/accounts/roles/create">
               <Plus className="h-4 w-4" aria-hidden />
@@ -348,7 +364,7 @@ export default function RolesPage() {
         <EmptyState
           title={t("No roles yet. Create one to get started.")}
           action={
-            canCreate ? (
+            canCreateRole ? (
               <Button asChild>
                 <Link to="/dashboard/accounts/roles/create">
                   <Plus className="h-4 w-4" aria-hidden />
@@ -379,7 +395,7 @@ export default function RolesPage() {
                 <TableRow key={role.id}>
                   <TableCell className="font-medium">{role.name}</TableCell>
                   <TableCell>
-                    {(canUpdate || canDelete) && (
+                    {(canUpdateRole || canDelete) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -392,7 +408,7 @@ export default function RolesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {canUpdate && (
+                          {canUpdateRole && (
                             <>
                               <DropdownMenuItem onSelect={() => setEditingRole(role)}>
                                 {t("Edit")}
@@ -539,7 +555,7 @@ export default function RolesPage() {
           }}
         >
           <p className="rolesPermissionsHint">
-            {t("Updating permissions will require a fresh sign in.")}
+            {t("You will be signed out only when updating your current role.")}
           </p>
 
           {permissionError && (

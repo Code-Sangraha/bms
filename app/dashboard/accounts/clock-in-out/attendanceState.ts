@@ -1,60 +1,19 @@
 import type { AttendanceRecord } from "@/handlers/attendance";
+import { getNepalDateKey } from "@/lib/nepalTime";
 
 export type AttendanceStatus = "not_clocked_in" | "clocked_in" | "clocked_out" | "final_clocked_out" | "loading";
 
 export type LocalAttendanceSnapshot = Pick<
   AttendanceRecord,
-  | "id"
-  | "employeeId"
-  | "userId"
-  | "clockIn"
-  | "clockOut"
-  | "hoursWorked"
-  | "isClockedIn"
-  | "status"
-  | "createdAt"
-  | "updatedAt"
-> & {
-  isFinalClockedOut?: boolean;
-};
+  "id" | "employeeId" | "userId" | "clockIn" | "clockOut" | "hoursWorked" | "isClockedIn" | "status" | "createdAt" | "updatedAt"
+> & { isFinalClockedOut?: boolean };
 
-const LOCAL_ATTENDANCE_PREFIX = "bms_attendance_today";
-const NEPAL_OFFSET_MS = (5 * 60 + 45) * 60 * 1000;
-const NEPAL_AUTO_CLOCK_OUT_HOUR = 23;
-
-export function startOfLocalDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-export function toLocalDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-export function isSameLocalCalendarDay(a: Date, b: Date): boolean {
-  return startOfLocalDay(a).getTime() === startOfLocalDay(b).getTime();
-}
-
-export function nepalAutoClockOutDeadline(now = new Date()): Date {
-  const nepalNow = new Date(now.getTime() + NEPAL_OFFSET_MS);
-  const y = nepalNow.getUTCFullYear();
-  const m = nepalNow.getUTCMonth();
-  const d = nepalNow.getUTCDate();
-  return new Date(Date.UTC(y, m, d, NEPAL_AUTO_CLOCK_OUT_HOUR, 0, 0, 0) - NEPAL_OFFSET_MS);
-}
-
-export function msUntilNepalAutoClockOut(now = new Date()): number {
-  return nepalAutoClockOutDeadline(now).getTime() - now.getTime();
-}
+const ACTIVE_ATTENDANCE_PREFIX = "bms_attendance_active";
 
 export function isClockInToday(clockInIso: string, now = new Date()): boolean {
   const clockIn = new Date(clockInIso);
   if (Number.isNaN(clockIn.getTime())) return false;
-  return isSameLocalCalendarDay(clockIn, now);
+  return getNepalDateKey(clockIn) === getNepalDateKey(now);
 }
 
 function normalizeId(value: unknown): string {
@@ -69,12 +28,10 @@ function rowBelongsToCurrentIdentity(
 ): boolean {
   const uid = normalizeId(userId);
   const eid = normalizeId(employeeId);
-  const rowUserId = normalizeId(row.userId);
-  const rowEmployeeId = normalizeId(row.employeeId);
-  return (!!uid && rowUserId === uid) || (!!eid && rowEmployeeId === eid);
+  return (!!uid && normalizeId(row.userId) === uid) || (!!eid && normalizeId(row.employeeId) === eid);
 }
 
-function isOpenAttendance(row: AttendanceRecord | LocalAttendanceSnapshot): boolean {
+export function isOpenAttendance(row: AttendanceRecord | LocalAttendanceSnapshot): boolean {
   if (typeof row.isClockedIn === "boolean") return row.isClockedIn;
   return row.clockOut == null || row.clockOut === "";
 }
@@ -86,12 +43,7 @@ function timestampValue(value: string | null | undefined): number {
 }
 
 function rowSortTime(row: AttendanceRecord | LocalAttendanceSnapshot): number {
-  return Math.max(
-    timestampValue(row.updatedAt),
-    timestampValue(row.clockOut),
-    timestampValue(row.clockIn),
-    timestampValue(row.createdAt)
-  );
+  return Math.max(timestampValue(row.updatedAt), timestampValue(row.clockOut), timestampValue(row.clockIn), timestampValue(row.createdAt));
 }
 
 export function findTodayAttendanceForIdentity(
@@ -99,17 +51,11 @@ export function findTodayAttendanceForIdentity(
   identity: { userId?: string | null; employeeId?: string | null },
   now = new Date()
 ): AttendanceRecord | undefined {
-  const matches = rows.filter(
-    (r) =>
-      r.clockIn &&
-      isClockInToday(r.clockIn, now) &&
-      rowBelongsToCurrentIdentity(r, identity.userId, identity.employeeId)
-  );
+  const matches = rows.filter((row) => row.clockIn && isClockInToday(row.clockIn, now) && rowBelongsToCurrentIdentity(row, identity.userId, identity.employeeId));
   if (matches.length === 0) return undefined;
-
   const openRows = matches.filter(isOpenAttendance);
   const candidates = openRows.length > 0 ? openRows : matches;
-  return candidates.reduce((latest, row) => (rowSortTime(row) > rowSortTime(latest) ? row : latest));
+  return candidates.reduce((latest, row) => rowSortTime(row) > rowSortTime(latest) ? row : latest);
 }
 
 export function getAttendanceStatus(
@@ -121,66 +67,73 @@ export function getAttendanceStatus(
   return record.clockOut == null || record.clockOut === "" ? "clocked_in" : "clocked_out";
 }
 
-export function localAttendanceStorageKey(userId: string, date = new Date()): string {
-  return `${LOCAL_ATTENDANCE_PREFIX}:${userId}:${toLocalDateKey(date)}`;
+export function activeAttendanceStorageKey(userId: string): string {
+  return `${ACTIVE_ATTENDANCE_PREFIX}:${normalizeId(userId)}`;
 }
 
-export function saveLocalAttendanceSnapshot(
-  storage: Pick<Storage, "setItem">,
+export function saveActiveAttendanceSnapshot(
+  storage: Pick<Storage, "setItem" | "removeItem">,
   userId: string | null | undefined,
-  record: AttendanceRecord | LocalAttendanceSnapshot | null | undefined,
-  now = new Date()
+  record: AttendanceRecord | LocalAttendanceSnapshot | null | undefined
 ): void {
   const uid = normalizeId(userId);
-  if (!uid || !record?.id || !record.clockIn) return;
+  if (!uid) return;
+  if (!record?.id || !record.clockIn || !isOpenAttendance(record)) {
+    storage.removeItem(activeAttendanceStorageKey(uid));
+    return;
+  }
   const snapshot: LocalAttendanceSnapshot = {
     id: record.id,
     employeeId: record.employeeId ?? null,
     userId: record.userId ?? null,
     clockIn: record.clockIn,
-    clockOut: record.clockOut ?? null,
+    clockOut: null,
     hoursWorked: record.hoursWorked ?? null,
-    isClockedIn: record.isClockedIn,
-    isFinalClockedOut: "isFinalClockedOut" in record ? record.isFinalClockedOut : undefined,
+    isClockedIn: true,
     status: record.status,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };
-  storage.setItem(localAttendanceStorageKey(uid, now), JSON.stringify(snapshot));
+  storage.setItem(activeAttendanceStorageKey(uid), JSON.stringify(snapshot));
 }
 
-export function readLocalAttendanceSnapshot(
+export function readActiveAttendanceSnapshot(
   storage: Pick<Storage, "getItem">,
-  userId: string | null | undefined,
-  now = new Date()
+  userId: string | null | undefined
 ): LocalAttendanceSnapshot | null {
   const uid = normalizeId(userId);
   if (!uid) return null;
-  const raw = storage.getItem(localAttendanceStorageKey(uid, now));
+  const raw = storage.getItem(activeAttendanceStorageKey(uid));
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<LocalAttendanceSnapshot>;
-    if (
-      typeof parsed.id !== "string" ||
-      typeof parsed.clockIn !== "string" ||
-      !isClockInToday(parsed.clockIn, now)
-    ) {
-      return null;
-    }
-    return {
+    if (typeof parsed.id !== "string" || typeof parsed.clockIn !== "string") return null;
+    const snapshot: LocalAttendanceSnapshot = {
       id: parsed.id,
       employeeId: parsed.employeeId ?? null,
-      userId: parsed.userId ?? null,
+      userId: parsed.userId ?? uid,
       clockIn: parsed.clockIn,
-      clockOut: parsed.clockOut ?? null,
+      clockOut: null,
       hoursWorked: typeof parsed.hoursWorked === "number" ? parsed.hoursWorked : null,
-      isClockedIn: typeof parsed.isClockedIn === "boolean" ? parsed.isClockedIn : undefined,
-      isFinalClockedOut: typeof parsed.isFinalClockedOut === "boolean" ? parsed.isFinalClockedOut : undefined,
+      isClockedIn: true,
       status: typeof parsed.status === "boolean" ? parsed.status : true,
       createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : undefined,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
     };
+    return Number.isNaN(new Date(snapshot.clockIn).getTime()) ? null : snapshot;
   } catch {
     return null;
   }
+}
+
+export function isStaleAttendanceSessionError(message: string): boolean {
+  const normalized = message.trim();
+  return normalized === "Already clocked out" || normalized === "Attendance not found";
+}
+export function clearActiveAttendanceSnapshot(
+  storage: Pick<Storage, "removeItem">,
+  userId: string | null | undefined
+): void {
+  const uid = normalizeId(userId);
+  if (uid) storage.removeItem(activeAttendanceStorageKey(uid));
 }

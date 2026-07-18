@@ -119,13 +119,22 @@ export const SALES_ROUTES = {
   GET_BY_CUSTOMER: "/sales/get-by-customer",
   CREATE: "/sales/create",
   DASHBOARD_SALES: "/sales/dashboardSales",
-  LOYALTY_RULE_GET: "/sales/loyalty-rules/get",
+  LOYALTY_RULE_GET: "/sales/loyalty-rules",
   LOYALTY_RULE_CREATE: "/sales/loyalty-rules/create",
   REDEEM: "/sales/redeem",
   LIVESTOCK_CREATE: "/sales/livestock/create",
   LIVESTOCK_GET: "/sales/livestock/get",
 } as const;
 
+export const ITEM_INVENTORY_ROUTES = {
+  CATEGORIES: "/item-inventory/categories",
+  UNITS: "/item-inventory/units",
+  ITEMS: "/item-inventory/items",
+  RESTOCK: "/item-inventory/items/restock",
+  DEDUCT: "/item-inventory/items/deduct",
+  HISTORY: "/item-inventory/history",
+  OPENING_CLOSING: "/item-inventory/opening-closing",
+} as const;
 export const SUPPLIER_ROUTES = {
   GET: "/suppliers/get",
   GET_BY_ID: "/suppliers/get-by-id",

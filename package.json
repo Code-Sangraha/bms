@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "start": "npx serve@latest dist",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run --exclude .kilo/**"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.5",

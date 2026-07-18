@@ -47,6 +47,7 @@ import {
   type HighlandStoredContext,
 } from "@/lib/outletScope";
 import { twoLetterLabelFromPlantName } from "@/lib/processingPlantButtonLabel";
+import { useMainOutletInventoryAccess } from "@/app/hooks/useMainOutletInventoryAccess";
 
 /** Menu link; permission "create" means link is shown only when user can create. */
 type TranslationKey =
@@ -57,6 +58,7 @@ type TranslationKey =
   | "departments"
   | "processingPlant"
   | "roles"
+  | "itemInventory"
   | "salesBilling"
   | "analytics"
   | "salesDashboard"
@@ -137,6 +139,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   departments: "Departments",
   processingPlant: "Processing Plant",
   roles: "Roles",
+  itemInventory: "Item Inventory",
   salesBilling: "Sales & Billing",
   analytics: "Analytics",
   salesDashboard: "Sales Dashboard",
@@ -265,6 +268,7 @@ const sidebarConfig = {
               { labelKey: "departments", href: "/dashboard/departments" },
               // { labelKey: "processingPlant", href: "/dashboard/processingPlant" },
               { labelKey: "roles", href: "/dashboard/accounts/roles" },
+              { labelKey: "itemInventory", href: "/dashboard/item-inventory" },
               {
                 labelKey: "salesDashboard",
                 href: "/dashboard/analytics",
@@ -562,7 +566,8 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
-  const { canCreate, capabilities } = usePermissions();
+  const { canCreate, capabilities, hasJwtPermission } = usePermissions();
+  const inventoryAccess = useMainOutletInventoryAccess();
   const { userOutletId, userOutletName } = useAuth();
   const { accessTier, lockedOutletId } = useOutletAccess();
   const sessionAccessTier = getAccessTierFromSessionClaims();
@@ -576,11 +581,26 @@ export default function Sidebar() {
 
   const sectionRailItems = useMemo(() => {
     if (accessTier === "driver" || accessTier === "outlet_staff") return [];
-    if (accessTier === "outlet_manager") {
-      return sidebarConfig.sections[0].items.filter((i) => i.id === "highland");
-    }
-    return sidebarConfig.sections[0].items;
-  }, [accessTier]);
+    const source = accessTier === "outlet_manager"
+      ? sidebarConfig.sections[0].items.filter((item) => item.id === "highland")
+      : sidebarConfig.sections[0].items;
+    const canReadRoles = hasJwtPermission("role:read");
+    return source.map((rail) => {
+      const menu = rail.menu as RailMenu;
+      if (isGroupedRailMenu(menu)) return rail;
+      return {
+        ...rail,
+        menu: {
+          ...menu,
+          items: menu.items.filter((entry) => {
+            if (entry.labelKey === "roles") return canReadRoles;
+            if (entry.labelKey === "itemInventory") return inventoryAccess.isAllowed;
+            return true;
+          }),
+        },
+      } as SidebarRailItem;
+    });
+  }, [accessTier, hasJwtPermission, inventoryAccess.isAllowed]);
 
   const allItems = useMemo(
     () => [...sectionRailItems, ...sidebarConfig.footer.flatMap((section) => section.items)],

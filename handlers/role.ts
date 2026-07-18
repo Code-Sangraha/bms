@@ -1,48 +1,68 @@
 import type { CreateRoleFormValues } from "@/schema/role";
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, getApiErrorMessage } from "@/lib/api/client";
 import { ROLE_ROUTES } from "@/lib/api/routes";
-
-export type Role = {
-  id: string;
-  name: string;
-  createdBy?: string | null;
-  updatedBy?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  deletedAt?: string | null;
-  permissions?: RolePermission[];
-  permissionIds?: string[];
-  [key: string]: unknown;
-};
+import type { ApiResponse } from "@/lib/api/types";
 
 export type RolePermission = {
   id: string;
   name: string;
-  [key: string]: unknown;
 };
 
-export type GetRolePermissionsResponse = {
-  data?: RolePermission[];
-  permissions?: RolePermission[];
-  [key: string]: unknown;
+export type Role = {
+  id: string;
+  name: string;
+  permissions: RolePermission[];
+  permissionIds: string[];
 };
 
-export type GetRolesResponse = {
-  data?: Role[];
-  roles?: Role[];
-  [key: string]: unknown;
+type RoleListResponse = Partial<ApiResponse<unknown>> & {
+  roles?: unknown;
 };
+
+type PermissionListResponse = Partial<ApiResponse<unknown>> & {
+  permissions?: unknown;
+};
+
+function normalizePermission(raw: unknown): RolePermission | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  if (typeof row.id !== "string" || typeof row.name !== "string") return null;
+  return { id: row.id, name: row.name };
+}
+
+export function normalizeRole(raw: unknown): Role | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  if (typeof row.id !== "string" || typeof row.name !== "string") return null;
+  const permissions = Array.isArray(row.permissions)
+    ? row.permissions
+        .map(normalizePermission)
+        .filter((permission): permission is RolePermission => permission !== null)
+    : [];
+  const embeddedIds = Array.isArray(row.permissionIds)
+    ? row.permissionIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const permissionIds = [...new Set(embeddedIds.length > 0 ? embeddedIds : permissions.map((p) => p.id))];
+  return { id: row.id, name: row.name, permissions, permissionIds };
+}
+
+function responseFailure(data: { success?: boolean; message?: string; error?: unknown }) {
+  if (data.success !== false) return null;
+  return { ok: false as const, error: getApiErrorMessage(data), status: 400 };
+}
 
 export async function getRoles(): Promise<
   | { ok: true; data: Role[] }
   | { ok: false; error: string; status: number }
 > {
-  const result = await apiRequest<GetRolesResponse>(ROLE_ROUTES.GET, {
-    method: "GET",
-  });
+  const result = await apiRequest<RoleListResponse>(ROLE_ROUTES.GET, { method: "GET" });
   if (!result.ok) return result;
-  const list = result.data?.data ?? result.data?.roles ?? [];
-  const data: Role[] = Array.isArray(list) ? list : [];
+  const failure = responseFailure(result.data);
+  if (failure) return failure;
+  const list = result.data.data ?? result.data.roles ?? [];
+  const data = Array.isArray(list)
+    ? list.map(normalizeRole).filter((role): role is Role => role !== null)
+    : [];
   return { ok: true, data };
 }
 
@@ -50,65 +70,56 @@ export async function getPermissions(): Promise<
   | { ok: true; data: RolePermission[] }
   | { ok: false; error: string; status: number }
 > {
-  const result = await apiRequest<GetRolePermissionsResponse>(ROLE_ROUTES.PERMISSIONS, {
+  const result = await apiRequest<PermissionListResponse>(ROLE_ROUTES.PERMISSIONS, {
     method: "GET",
   });
   if (!result.ok) return result;
-  const list = result.data?.data ?? result.data?.permissions ?? [];
-  const data: RolePermission[] = Array.isArray(list) ? list : [];
+  const failure = responseFailure(result.data);
+  if (failure) return failure;
+  const list = result.data.data ?? result.data.permissions ?? [];
+  const data = Array.isArray(list)
+    ? list
+        .map(normalizePermission)
+        .filter((permission): permission is RolePermission => permission !== null)
+    : [];
   return { ok: true, data };
 }
 
-export type CreateRolePayload = {
-  name: string;
-};
-
-export type CreateRoleResponse = {
-  success?: boolean;
-  message?: string;
-  [key: string]: unknown;
-};
+async function roleMutation<T extends { success?: boolean; message?: string; error?: unknown }>(
+  route: string,
+  options: RequestInit
+) {
+  const result = await apiRequest<T>(route, options);
+  if (!result.ok) return result;
+  const failure = responseFailure(result.data);
+  return failure ?? result;
+}
+export type CreateRolePayload = { name: string };
+export type CreateRoleResponse = Partial<ApiResponse<unknown>>;
 
 export async function createRole(payload: CreateRoleFormValues) {
-  const body: CreateRolePayload = {
-    name: payload.name.trim(),
-  };
-  return apiRequest<CreateRoleResponse>(ROLE_ROUTES.CREATE, {
+  const body: CreateRolePayload = { name: payload.name.trim() };
+  return roleMutation<CreateRoleResponse>(ROLE_ROUTES.CREATE, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export type UpdateRolePayload = {
-  id: string;
-  name: string;
-};
-
-export type UpdateRoleResponse = {
-  success?: boolean;
-  message?: string;
-  [key: string]: unknown;
-};
+export type UpdateRolePayload = { id: string; name: string };
+export type UpdateRoleResponse = Partial<ApiResponse<unknown>>;
 
 export async function updateRole(id: string, payload: CreateRoleFormValues) {
-  const body: UpdateRolePayload = {
-    id,
-    name: payload.name.trim(),
-  };
-  return apiRequest<UpdateRoleResponse>(ROLE_ROUTES.UPDATE, {
+  const body: UpdateRolePayload = { id, name: payload.name.trim() };
+  return roleMutation<UpdateRoleResponse>(ROLE_ROUTES.UPDATE, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export type DeleteRoleResponse = {
-  success?: boolean;
-  message?: string;
-  [key: string]: unknown;
-};
+export type DeleteRoleResponse = Partial<ApiResponse<unknown>>;
 
 export async function deleteRole(id: string) {
-  return apiRequest<DeleteRoleResponse>(ROLE_ROUTES.DELETE, {
+  return roleMutation<DeleteRoleResponse>(ROLE_ROUTES.DELETE, {
     method: "DELETE",
     body: JSON.stringify({ id }),
   });
@@ -119,18 +130,19 @@ export type UpdateRolePermissionsPayload = {
   permissionIds: string[];
 };
 
-export type UpdateRolePermissionsResponse = {
-  success?: boolean;
-  message?: string;
-  [key: string]: unknown;
+export type UpdateRolePermissionsData = {
+  roleId: string;
+  permissionIds: string[];
 };
 
+export type UpdateRolePermissionsResponse = Partial<ApiResponse<UpdateRolePermissionsData>>;
+
 export async function updateRolePermissions(payload: UpdateRolePermissionsPayload) {
-  return apiRequest<UpdateRolePermissionsResponse>(ROLE_ROUTES.UPDATE_PERMISSIONS, {
+  return roleMutation<UpdateRolePermissionsResponse>(ROLE_ROUTES.UPDATE_PERMISSIONS, {
     method: "POST",
     body: JSON.stringify({
       roleId: payload.roleId,
-      permissionIds: payload.permissionIds,
+      permissionIds: [...new Set(payload.permissionIds)],
     }),
   });
 }

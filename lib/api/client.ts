@@ -1,8 +1,13 @@
 import { AUTH_ROUTES } from "@/lib/api/routes";
-import { notifyAuthContextUpdated } from "@/lib/auth/authEvents";
+import {
+  AUTH_SESSION_CHANGED_MESSAGE,
+  notifyAuthContextUpdated,
+  notifyAuthSessionExpired,
+} from "@/lib/auth/authEvents";
 import { syncStoredOutletFromAccessToken } from "@/lib/auth/role";
 import { clearAuthToken, getAuthToken, getRefreshToken, setAuthToken, setRefreshToken } from "@/lib/auth/token";
 import { clearStoredUser } from "@/lib/auth/user";
+import type { ApiValidationError } from "@/lib/api/types";
 
 export const getBaseUrl = (): string => {
   const configuredBaseUrl = (import.meta.env.VITE_API_URL ?? "").trim();
@@ -13,8 +18,42 @@ export const getBaseUrl = (): string => {
 
 export type ApiError = {
   message?: string;
-  error?: string;
+  error?: string | ApiValidationError[];
 };
+
+export function getApiErrorMessage(data: unknown, fallback = "Request failed."): string {
+  if (!data || typeof data !== "object") return fallback;
+  const payload = data as ApiError;
+  if (Array.isArray(payload.error)) {
+    const messages = payload.error
+      .map((entry) => {
+        const message = typeof entry?.message === "string" ? entry.message.trim() : "";
+        const path = typeof entry?.path === "string" ? entry.path.trim() : "";
+        if (!message) return "";
+        return path ? `${path}: ${message}` : message;
+      })
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join("\n");
+  }
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message.trim();
+  }
+  if (typeof payload.error === "string" && payload.error.trim()) {
+    return payload.error.trim();
+  }
+  return fallback;
+}
+
+export function isTokenVersionInvalid(data: unknown): boolean {
+  return getApiErrorMessage(data, "") === "Token expired";
+}
+
+export function expireAuthSession(message = AUTH_SESSION_CHANGED_MESSAGE): void {
+  clearAuthToken();
+  clearStoredUser();
+  notifyAuthContextUpdated();
+  notifyAuthSessionExpired(message);
+}
 
 async function doRequest<T>(
   url: string,
@@ -56,6 +95,26 @@ export async function tryRefresh(): Promise<string | null> {
   return accessToken;
 }
 
+export async function retryAfterUnauthorized<
+  TResponse extends { status: number; data: unknown },
+>(
+  response: TResponse,
+  retry: (token: string) => Promise<TResponse>
+): Promise<TResponse> {
+  if (response.status !== 401) return response;
+  if (isTokenVersionInvalid(response.data)) {
+    expireAuthSession();
+    return response;
+  }
+  const token = await tryRefresh();
+  if (!token) {
+    expireAuthSession();
+    return response;
+  }
+  const retried = await retry(token);
+  if (retried.status === 401) expireAuthSession();
+  return retried;
+}
 export async function apiRequest<T>(
   route: string,
   options: RequestInit = {},
@@ -80,21 +139,24 @@ export async function apiRequest<T>(
 
     if (!res.ok) {
       if (res.status === 401 && route !== AUTH_ROUTES.REFRESH) {
-        if (!isRetry) {
+        if (isTokenVersionInvalid(data)) {
+          expireAuthSession();
+        } else if (!isRetry) {
           const newToken = await tryRefresh();
           if (newToken) return apiRequest<T>(route, options, true);
-          clearAuthToken();
-          clearStoredUser();
+          expireAuthSession();
+        } else {
+          // A retried request must never enter another refresh loop.
+          expireAuthSession();
         }
-        // 401 after a successful refresh+retry: keep the session. The token is valid but this
-        // route rejected the caller (e.g. Staff on an admin-only URL, or a stale in-flight
-        // request from a previous user finishing after login).
       } else if (res.status === 401) {
-        clearAuthToken();
-        clearStoredUser();
+        expireAuthSession();
       }
-      const msg = (data as ApiError).message ?? (data as ApiError).error;
-      return { ok: false, error: typeof msg === "string" ? msg : "Request failed.", status: res.status };
+      return {
+        ok: false,
+        error: getApiErrorMessage(data),
+        status: res.status,
+      };
     }
 
     return { data: data as T, ok: true };

@@ -19,14 +19,15 @@ const defaultValues: CreateRoleFormValues = {
 export default function CreateRolePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { canCreate } = usePermissions();
+  const { isAuthReady, hasJwtPermission } = usePermissions();
+  const canCreateRole = hasJwtPermission("role:create");
   const { t } = useI18n();
 
   useEffect(() => {
-    if (canCreate === false) {
+    if (isAuthReady && !canCreateRole) {
       navigate("/dashboard/accounts/roles", { replace: true });
     }
-  }, [canCreate, navigate]);
+  }, [canCreateRole, isAuthReady, navigate]);
   const {
     register,
     handleSubmit,
@@ -63,7 +64,7 @@ export default function CreateRolePage() {
 
   const loading = isSubmitting || createMutation.isPending;
 
-  if (canCreate === false) {
+  if (!isAuthReady || !canCreateRole) {
     return null;
   }
 

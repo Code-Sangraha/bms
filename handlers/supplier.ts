@@ -1,9 +1,8 @@
 import axios from "axios";
 import type { SupplierFormValues } from "@/schema/supplier";
-import { apiRequest, getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { apiRequest, getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { SUPPLIER_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { getAuthToken } from "@/lib/auth/token";
 
 export type Supplier = {
   id: string;
@@ -30,10 +29,7 @@ export type SupplierResponse = {
 };
 
 function errorMessageFromPayload(data: unknown): string {
-  if (!data || typeof data !== "object") return "Request failed.";
-  const row = data as Record<string, unknown>;
-  const message = row.message ?? row.error;
-  return typeof message === "string" && message.trim() ? message.trim() : "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 function stringOrNull(value: unknown): string | null {
@@ -102,18 +98,9 @@ export async function getSupplierById(
     });
 
   try {
-    let token = getAuthToken();
-    let response = await requestWithToken(token);
-    if (response.status === 401) {
-      const nextToken = await tryRefresh();
-      if (nextToken) {
-        token = nextToken;
-        response = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let response = await requestWithToken(getAuthToken());
+    response = await retryAfterUnauthorized(response, requestWithToken);
+
     if (response.status < 200 || response.status >= 300) {
       return { ok: false, error: errorMessageFromPayload(response.data), status: response.status };
     }

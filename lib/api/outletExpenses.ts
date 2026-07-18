@@ -1,8 +1,7 @@
 import axios from "axios";
-import { getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { OUTLET_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { getAuthToken } from "@/lib/auth/token";
 
 export type OutletExpensePaymentStatus = "ADVANCE" | "PARTIAL" | "FULL";
 
@@ -24,6 +23,7 @@ export type OutletExpenseEntry = {
   paymentStatus: OutletExpensePaymentStatus;
   remarks: string | null;
   createdBy: string | null;
+  createdAt: string;
 };
 
 type OutletExpensesApiResponse = {
@@ -128,6 +128,7 @@ function parseEntry(raw: unknown, index: number): OutletExpenseEntry | null {
     paymentStatus,
     remarks,
     createdBy,
+    createdAt: typeof o.createdAt === "string" ? o.createdAt : "",
   };
 }
 
@@ -151,16 +152,11 @@ function buildRequestBody(filters: OutletExpenseFilters): Record<string, string>
 }
 
 function errorMessageFromPayload(data: unknown): string {
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    const msg = o.message ?? o.error;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
-  }
-  return "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 function isSuccessStatus(status: number): boolean {
-  return status === 200 || status === 201;
+  return status >= 200 && status < 300;
 }
 
 /**
@@ -188,19 +184,8 @@ export async function getOutletExpenses(
     });
 
   try {
-    let token = getAuthToken();
-    let res = await requestWithToken(token);
-
-    if (res.status === 401) {
-      const newToken = await tryRefresh();
-      if (newToken) {
-        token = newToken;
-        res = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let res = await requestWithToken(getAuthToken());
+    res = await retryAfterUnauthorized(res, requestWithToken);
 
     if (!isSuccessStatus(res.status)) {
       return {

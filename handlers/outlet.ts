@@ -25,7 +25,10 @@ export type Outlet = {
 
 /** Main outlet by display name (case-insensitive). Matches processing-plant / Highland defaults. */
 export function getMainOutlet(outlets: Outlet[]): Outlet | null {
-  return outlets.find((o) => o.name.trim().toLowerCase() === "main outlet") ?? null;
+  return outlets.find((o) => {
+    const name = o.name.trim().toLowerCase();
+    return name === "main" || name === "main outlet";
+  }) ?? null;
 }
 
 export function getMainOutletId(outlets: Outlet[]): string | null {

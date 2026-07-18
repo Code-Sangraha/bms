@@ -22,6 +22,7 @@ import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { canRecordExpensePayment } from "@/lib/billing/expensePaymentUi";
+import { formatNepalDateTime } from "@/lib/nepalTime";
 import ExpenseRecordPaymentButton from "@/app/dashboard/shared/ExpenseRecordPaymentButton";
 import LivestockCompletePartialPaymentModal from "@/app/dashboard/product/liveProduct/LivestockCompletePartialPaymentModal";
 import {
@@ -50,7 +51,7 @@ function formatPriceCell(n: number | null | undefined): string {
 
 export default function OutletExpensesPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { userOutletId } = useAuth();
   const { capabilities } = usePermissions();
   const { accessTier } = useOutletAccess();
@@ -146,6 +147,7 @@ export default function OutletExpensesPage() {
   const renderRows = (rows: OutletExpenseEntry[]) =>
     rows.map((row) => (
       <tr key={row.id}>
+        <td className="whitespace-nowrap">{row.createdAt ? formatNepalDateTime(row.createdAt, locale === "ne" ? "ne-NP" : "en-NP") : "—"}</td>
         <td>{row.outlet.name}</td>
         <td>{row.livestockItem.name}</td>
         <td>{row.supplierName}</td>
@@ -243,7 +245,7 @@ export default function OutletExpensesPage() {
         )}
       </div>
 
-      {isLoading && <TableSkeleton rows={6} columns={10} />}
+      {isLoading && <TableSkeleton rows={6} columns={11} />}
       {isError && (
         <ErrorState
           title={t("Failed to load expense history")}
@@ -272,6 +274,7 @@ export default function OutletExpensesPage() {
               <table className="outletExpensesTable">
                 <thead>
                   <tr>
+                    <th>{t("Date and time")}</th>
                     <th>{t("Outlet")}</th>
                     <th>{t("Livestock item")}</th>
                     <th>{t("Supplier")}</th>

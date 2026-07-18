@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
-import { useLocation, Outlet } from "react-router-dom";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import ToastProvider from "@/app/providers/ToastProvider";
 import { OutletAccessProvider } from "@/app/providers/OutletAccessProvider";
@@ -8,13 +9,29 @@ import { TooltipProvider } from "@/app/components/ui/tooltip";
 import ScopedRoutesGuard from "./ScopedRoutesGuard";
 import PageBackBar from "./PageBackBar";
 import Sidebar from "./Sidebar/Sidebar";
+import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/auth/authEvents";
 import "./Sidebar/Sidebar.scss";
 import "./mobile-shell.scss";
 
 export default function LayoutWrapper() {
   const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const mainScrollRef = useRef<HTMLElement>(null);
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
+const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  useEffect(() => {
+    const handleSessionExpired = (event: Event) => {
+      const message =
+        event instanceof CustomEvent && typeof event.detail === "string"
+          ? event.detail
+          : "Your session has expired. Sign in again.";
+      queryClient.clear();
+      navigate("/login", { replace: true, state: { authMessage: message } });
+    };
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [navigate, queryClient]);
 
   useLayoutEffect(() => {
     if (isAuthRoute) {

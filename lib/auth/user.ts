@@ -66,6 +66,13 @@ export function getStoredEmployeeId(): string | null {
   return typeof id === "string" && id.trim() !== "" ? id.trim() : null;
 }
 
+/** Role id from the login response. It is intentionally stored because refreshed JWTs omit it. */
+export function getStoredRoleId(): string | null {
+  const user = getStoredUser();
+  const id = user?.roleId;
+  return typeof id === "string" && id.trim() !== "" ? id.trim() : null;
+}
+
 /** Outlet display name from last login, if returned by API. */
 export function getStoredOutletName(): string | null {
   const user = getStoredUser();

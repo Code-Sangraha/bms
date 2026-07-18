@@ -1,14 +1,7 @@
 import axios from "axios";
-import { apiRequest, getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { apiRequest, getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { ATTENDANCE_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
-
-/** Clock-in/out identity; backend prefers userId when both are provided. */
-export type ClockPayload = {
-  userId?: string;
-  employeeId?: string;
-};
+import { getAuthToken } from "@/lib/auth/token";
 
 export type AttendanceEmployee = {
   employeeId: string;
@@ -105,12 +98,7 @@ type ApiResult<T extends { success?: boolean; message?: string }> =
   | { ok: false; error: string; status: number };
 
 function errorMessageFromPayload(data: unknown): string {
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    const msg = o.message ?? o.error;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
-  }
-  return "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 /** Treat HTTP 200 + `success: false` as an error (some endpoints return this shape). */
@@ -177,19 +165,8 @@ export async function getAttendanceAnalytics(
     });
 
   try {
-    let token = getAuthToken();
-    let res = await requestWithToken(token);
-
-    if (res.status === 401) {
-      const newToken = await tryRefresh();
-      if (newToken) {
-        token = newToken;
-        res = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let res = await requestWithToken(getAuthToken());
+    res = await retryAfterUnauthorized(res, requestWithToken);
 
     if (res.status < 200 || res.status >= 300) {
       return {
@@ -228,18 +205,10 @@ export async function getTodayAttendanceStatus(): Promise<ApiResult<TodayAttenda
   });
 }
 
-/** Sends optional userId/employeeId; JWT still authenticates the request. */
-export async function clockIn(payload: ClockPayload = {}): Promise<ApiResult<ClockInResponse>> {
-  return attendanceRequest<ClockInResponse>(ATTENDANCE_ROUTES.CLOCK_IN, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function clockIn(): Promise<ApiResult<ClockInResponse>> {
+  return attendanceRequest<ClockInResponse>(ATTENDANCE_ROUTES.CLOCK_IN, { method: "POST" });
 }
 
-/** Sends optional userId/employeeId; JWT still authenticates the request. */
-export async function clockOut(payload: ClockPayload = {}): Promise<ApiResult<ClockOutResponse>> {
-  return attendanceRequest<ClockOutResponse>(ATTENDANCE_ROUTES.CLOCK_OUT, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function clockOut(): Promise<ApiResult<ClockOutResponse>> {
+  return attendanceRequest<ClockOutResponse>(ATTENDANCE_ROUTES.CLOCK_OUT, { method: "POST" });
 }

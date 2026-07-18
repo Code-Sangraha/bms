@@ -23,12 +23,15 @@ import {
   getStoredEmployeeId,
   getStoredOutletId,
   getStoredOutletName,
+  getStoredRoleId,
   getStoredUser,
   setStoredUser,
 } from "@/lib/auth/user";
 
 type AuthContextValue = {
   roleName: RoleName | null;
+  roleId: string | null;
+  isAuthReady: boolean;
   /** JWT `userId` (trimmed); stable for memo deps when token hydrates after employees load. */
   authUserId: string | null;
   /** When set (e.g. Manager/Staff), user is restricted to this outlet. */
@@ -48,6 +51,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [roleName, setRoleName] = useState<RoleName | null>(null);
+  const [roleId, setRoleId] = useState<string | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [userOutletId, setUserOutletId] = useState<string | null>(null);
   const [userOutletName, setUserOutletName] = useState<string | null>(null);
@@ -67,9 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setRoleName(normalizeRoleName(role) ?? (getStoredEmployeeId() ? "Staff" : null));
+    setRoleId(getStoredRoleId());
     setUserOutletId(resolvedOutletId);
     setUserOutletName(getStoredOutletName());
     setJwtPermissionNames(getJwtPermissionNamesFromToken());
+    setIsAuthReady(true);
   }, []);
 
   useEffect(() => {
@@ -100,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       roleName,
+      roleId,
+      isAuthReady,
       authUserId,
       userOutletId,
       userOutletName,
@@ -111,6 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       roleName,
+      roleId,
+      isAuthReady,
       authUserId,
       userOutletId,
       userOutletName,
@@ -132,6 +143,8 @@ export function useAuth(): AuthContextValue {
   if (ctx == null) {
     return {
       roleName: null,
+      roleId: null,
+      isAuthReady: false,
       authUserId: null,
       userOutletId: null,
       userOutletName: null,
@@ -152,12 +165,23 @@ export function usePermissions(): Permissions & {
   canUpdate: boolean;
   canDelete: boolean;
   roleName: RoleName | null;
+  roleId: string | null;
+  isAuthReady: boolean;
   userOutletName: string | null;
   jwtPermissionNames: string[];
   hasJwtPermission: (name: string) => boolean;
   capabilities: RoleCapabilities;
 } {
-  const { permissions, roleName, userOutletName, jwtPermissionNames, hasJwtPermission, capabilities } = useAuth();
+const {
+    permissions,
+    roleName,
+    roleId,
+    isAuthReady,
+    userOutletName,
+    jwtPermissionNames,
+    hasJwtPermission,
+    capabilities,
+  } = useAuth();
   return {
     ...permissions,
     canCreate: permissions.create,
@@ -165,6 +189,8 @@ export function usePermissions(): Permissions & {
     canUpdate: permissions.update,
     canDelete: permissions.delete,
     roleName,
+    roleId,
+    isAuthReady,
     userOutletName,
     jwtPermissionNames,
     hasJwtPermission,

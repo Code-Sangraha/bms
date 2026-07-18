@@ -1,8 +1,7 @@
 import axios from "axios";
-import { getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { SALES_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { getAuthToken } from "@/lib/auth/token";
 
 export type SalesByCustomerApiResponse = {
   success?: boolean;
@@ -15,19 +14,7 @@ export type SalesByCustomerApiResponse = {
 };
 
 function errorMessageFromPayload(data: unknown): string {
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    const msg = o.message ?? o.error;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
-    if (Array.isArray(o.error) && o.error.length > 0) {
-      const first = o.error[0];
-      if (first && typeof first === "object" && "message" in first) {
-        const m = (first as { message?: string }).message;
-        if (typeof m === "string" && m.trim()) return m.trim();
-      }
-    }
-  }
-  return "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 /**
@@ -61,19 +48,8 @@ export async function fetchSalesByCustomer(
     });
 
   try {
-    let token = getAuthToken();
-    let res = await requestWithToken(token);
-
-    if (res.status === 401) {
-      const newToken = await tryRefresh();
-      if (newToken) {
-        token = newToken;
-        res = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let res = await requestWithToken(getAuthToken());
+    res = await retryAfterUnauthorized(res, requestWithToken);
 
     if (res.status < 200 || res.status >= 300) {
       return { ok: false, error: errorMessageFromPayload(res.data), status: res.status };

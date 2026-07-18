@@ -1,8 +1,7 @@
 import axios from "axios";
-import { getBaseUrl, tryRefresh } from "@/lib/api/client";
+import { getApiErrorMessage, getBaseUrl, retryAfterUnauthorized } from "@/lib/api/client";
 import { PRODUCT_ROUTES } from "@/lib/api/routes";
-import { clearAuthToken, getAuthToken } from "@/lib/auth/token";
-import { clearStoredUser } from "@/lib/auth/user";
+import { getAuthToken } from "@/lib/auth/token";
 
 /** Backend `ProcessedInventoryHistory`: RESTOCK, DEDUCT, SALE. */
 export type ProcessedInventoryHistoryType = "RESTOCK" | "DEDUCT" | "SALE";
@@ -185,12 +184,7 @@ function matchesFilters(
 }
 
 function errorMessageFromPayload(data: unknown): string {
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    const msg = o.message ?? o.error;
-    if (typeof msg === "string" && msg.trim()) return msg.trim();
-  }
-  return "Request failed.";
+  return getApiErrorMessage(data);
 }
 
 /** Prefer weight (kg), then quantity — absolute value for movement magnitude. */
@@ -269,19 +263,8 @@ export async function getProcessedInventoryHistory(
     });
 
   try {
-    let token = getAuthToken();
-    let res = await requestWithToken(token);
-
-    if (res.status === 401) {
-      const newToken = await tryRefresh();
-      if (newToken) {
-        token = newToken;
-        res = await requestWithToken(token);
-      } else {
-        clearAuthToken();
-        clearStoredUser();
-      }
-    }
+    let res = await requestWithToken(getAuthToken());
+    res = await retryAfterUnauthorized(res, requestWithToken);
 
     if (res.status === 404 || res.status === 405) {
       return { ok: true, data: [] };
