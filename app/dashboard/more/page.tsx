@@ -125,6 +125,7 @@ export default function MorePage() {
         { href: to("/dashboard/invoices/customer-types"), label: t("Customer Types"), icon: IoPricetagOutline },
         { href: to("/dashboard/invoices/loyalty-rules"), label: t("Loyalty Rules"), icon: LuGift },
         { href: to("/dashboard/invoices/customers"), label: t("Customers"), icon: IoPeopleOutline },
+        { href: to("/dashboard/invoices/creditors"), label: t("Creditors"), icon: IoPeopleOutline },
         { href: to("/dashboard/product/suppliers"), label: t("Suppliers"), icon: LuTruck },
         {
           href: to("/dashboard/invoices"),
@@ -140,6 +141,8 @@ export default function MorePage() {
         { href: to("/dashboard/outlet"), label: t("Outlets"), icon: IoBusinessOutline },
         { href: to("/dashboard/dualPricing"), label: t("Pricelist"), icon: IoPricetagOutline },
         { href: to("/dashboard/processingPlant"), label: t("Processing Plant"), icon: IoBusinessOutline },
+        { href: to("/dashboard/invoices/customers"), label: t("Customers"), icon: IoPeopleOutline },
+        { href: to("/dashboard/invoices/creditors"), label: t("Creditors"), icon: IoPeopleOutline },
         { href: to("/dashboard/product/suppliers"), label: t("Suppliers"), icon: LuTruck },
         {
           href: to("/dashboard/invoices"),

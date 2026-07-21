@@ -28,6 +28,8 @@ import OutletExpensesPage from "./dashboard/outlets/expenses/page";
 import TransactionPage from "./dashboard/invoices/transaction/page";
 import CustomerTypesPage from "./dashboard/invoices/customer-types/page";
 import CustomersPage from "./dashboard/invoices/customers/page";
+import CreditorsPage from "./dashboard/invoices/creditors/page";
+import CreditorDetailPage from "./dashboard/invoices/creditors/CreditorDetailPage";
 import LoyaltyRulesPage from "./dashboard/invoices/loyalty-rules/page";
 import AnalyticsPage from "./dashboard/analytics/page";
 import RolesPage from "./dashboard/accounts/roles/page";
@@ -78,6 +80,8 @@ export default function App() {
               <Route path="dashboard/invoices/transaction" element={<TransactionPage />} />
               <Route path="dashboard/invoices/customer-types" element={<CustomerTypesPage />} />
               <Route path="dashboard/invoices/customers" element={<CustomersPage />} />
+              <Route path="dashboard/invoices/creditors" element={<CreditorsPage />} />
+              <Route path="dashboard/invoices/creditors/:creditorId" element={<CreditorDetailPage />} />
               <Route path="dashboard/invoices/loyalty-rules" element={<LoyaltyRulesPage />} />
               <Route path="dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="dashboard/item-inventory" element={<ItemInventoryPage />} />

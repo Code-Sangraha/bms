@@ -638,6 +638,38 @@ function toProcessedSaleCreateBody(items: SaleItemPayload[]) {
   }));
 }
 
+/**
+ * Best-effort extraction of a transaction id from a sale-create response.
+ * `CreateSaleResponse` is loosely typed (`[key]: unknown`), so probe common
+ * field names at the top level and inside a `data` object. Returns null when
+ * no id can be found — callers must not post pay-later without one.
+ */
+export function extractTransactionId(response: CreateSaleResponse | undefined | null): string | null {
+  if (!response || typeof response !== "object") return null;
+  const top = response as Record<string, unknown>;
+  const candidates: unknown[] = [
+    top.transactionId,
+    top.id,
+    top.sourceTransactionId,
+    top.saleId,
+  ];
+  const dataField = top.data;
+  if (dataField && typeof dataField === "object") {
+    const inner = dataField as Record<string, unknown>;
+    candidates.push(
+      inner.transactionId,
+      inner.id,
+      inner.sourceTransactionId,
+      inner.saleId
+    );
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    if (typeof candidate === "number" && Number.isFinite(candidate)) return String(candidate);
+  }
+  return null;
+}
+
 export async function createSale(items: SaleItemPayload[]) {
   return apiRequest<CreateSaleResponse>(SALES_ROUTES.CREATE, {
     method: "POST",

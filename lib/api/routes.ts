@@ -158,6 +158,22 @@ export const CUSTOMER_ROUTES = {
   DELETE: "/customers/delete",
 } as const;
 
+/**
+ * Creditors REST endpoints. Base URL ends with `/v1`, so `/creditors` → `/v1/creditors`.
+ * Path-param routes are built at call site (e.g. `/creditors/${id}`).
+ */
+export const CREDITOR_ROUTES = {
+  /** GET `/creditors` (+ optional `?search=`). POST `/creditors` to create. */
+  ROOT: "/creditors",
+  /** GET `/creditors/:creditorId` — detail with balance, orders, payments. */
+  DETAIL: (creditorId: string) => `/creditors/${encodeURIComponent(creditorId)}`,
+  /** POST `/creditors/pay-later` — record a sale on credit. */
+  PAY_LATER: "/creditors/pay-later",
+  /** POST `/creditors/:creditorId/payments` — settle pending balance. */
+  PAYMENTS: (creditorId: string) =>
+    `/creditors/${encodeURIComponent(creditorId)}/payments`,
+} as const;
+
 export const PROCESSING_PLANT_ROUTES = {
   GET: "/processing-plants/get",
   CREATE: "/processing-plants/create",

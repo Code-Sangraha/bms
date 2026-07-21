@@ -23,14 +23,18 @@ import { SaleSummary } from "@/app/dashboard/invoices/components/SaleSharedCompo
 import { getCustomerTypes } from "@/handlers/customerType";
 import { getWasteProducts, WASTE_PRODUCTS_QUERY_KEY } from "@/handlers/product";
 import { getProcessedStockWeight } from "@/app/dashboard/product/processedProduct/lib/processedStockWeight";
-import { createWasteSale, type WasteSaleItemPayload } from "@/handlers/sale";
+import { createWasteSale, extractTransactionId, type WasteSaleItemPayload } from "@/handlers/sale";
+import { createCreditorPayLater, type Creditor } from "@/handlers/creditor";
 import { formatSaleAmount } from "@/lib/saleCalculations";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
+  isPayLaterSelection,
   paymentMethodLabel,
-  type SalePaymentMethod,
+  resolveSalePaymentMethod,
+  type SalePaymentSelection,
 } from "@/lib/salePaymentMethods";
 import { validateWasteSaleCreate } from "@/schema/sale";
+import CreditorPicker from "@/app/dashboard/invoices/components/CreditorPicker";
 import "../components/sale-entry.scss";
 
 const SALES_QUERY_KEY = ["sales"];
@@ -59,9 +63,10 @@ export default function WasteSalesPage() {
   const [wasteProductId, setWasteProductId] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentSelection>(
     DEFAULT_SALE_PAYMENT_METHOD
   );
+  const [payLaterCreditor, setPayLaterCreditor] = useState<Creditor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
 
@@ -124,14 +129,19 @@ export default function WasteSalesPage() {
     parsedAmount != null ? formatSaleAmount(parsedAmount) : "-";
   const stockDisplay = formatWasteWeight(selectedWasteStock);
   const selectedProductName = selectedWasteProduct?.name ?? t("Not selected");
-  const paymentDisplay = t(paymentMethodLabel(paymentMethod));
+  const paymentDisplay = isPayLaterSelection(paymentMethod)
+    ? `${t("Pay Later")}${payLaterCreditor?.name ? ` — ${payLaterCreditor.name}` : ""}`
+    : t(paymentMethodLabel(paymentMethod));
 
   const clearError = () => {
     if (error) setError(null);
   };
 
   const checkoutConfirmMessage = useMemo(() => {
-    const paymentLabel = t(paymentMethodLabel(paymentMethod));
+    const isPayLater = isPayLaterSelection(paymentMethod);
+    const paymentLabel = isPayLater
+      ? `${t("Pay Later")}${payLaterCreditor?.name ? ` — ${payLaterCreditor.name}` : ""}`
+      : t(paymentMethodLabel(paymentMethod));
     return [
       t("Total due: Rs.{{amount}}").replace(
         "{{amount}}",
@@ -140,7 +150,7 @@ export default function WasteSalesPage() {
       t("Payment: {{method}}").replace("{{method}}", paymentLabel),
       t("Complete this waste sale and add it to transactions?"),
     ].join("\n");
-  }, [parsedAmount, paymentMethod, t]);
+  }, [parsedAmount, paymentMethod, payLaterCreditor, t]);
 
   const createWasteSaleMutation = useMutation({
     mutationFn: async () => {
@@ -148,6 +158,9 @@ export default function WasteSalesPage() {
       const trimmedContact = customerContact.trim();
       const weight = Number(weightInput);
       const amount = Number(amountInput);
+      const effectivePaymentMethod = resolveSalePaymentMethod(paymentMethod);
+      const isPayLater =
+        isPayLaterSelection(paymentMethod) && Boolean(payLaterCreditor?.id);
 
       const payload = {
         name: trimmedName,
@@ -157,14 +170,14 @@ export default function WasteSalesPage() {
         outletId: saleOutletId.trim(),
         weight,
         amount,
-        paymentMethod: paymentMethod as SalePaymentMethod,
+        paymentMethod: effectivePaymentMethod,
         wasteSales: true as const,
         discountAmount: 0,
       };
 
       const validation = validateWasteSaleCreate(payload);
       if (!validation.ok) {
-        return { saleOk: false as const, error: validation.error, status: 400 };
+        return { saleOk: false as const, error: validation.error, status: 400, payLaterError: null as string | null };
       }
 
       const saleResult = await createWasteSale(validation.data as WasteSaleItemPayload);
@@ -173,10 +186,43 @@ export default function WasteSalesPage() {
           saleOk: false as const,
           error: saleResult.error,
           status: saleResult.status,
+          payLaterError: null as string | null,
         };
       }
 
-      return { saleOk: true as const };
+      let payLaterError: string | null = null;
+      if (isPayLater && payLaterCreditor && selectedWasteProduct) {
+        const sourceTransactionId = extractTransactionId(saleResult.data);
+        if (!sourceTransactionId) {
+          payLaterError = t(
+            "Sale created, but pay-later could not be linked: no transaction id was returned."
+          );
+        } else {
+          const payLaterResult = await createCreditorPayLater({
+            creditorId: payLaterCreditor.id,
+            sourceType: "WASTE",
+            sourceTransactionId,
+            items: [
+              {
+                wasteProductId: wasteProductId.trim(),
+                name: selectedWasteProduct.name,
+                weight,
+                amount,
+              },
+            ],
+            totalAmount: amount,
+          });
+          if (!payLaterResult.ok) {
+            payLaterError = payLaterResult.error;
+          }
+        }
+      }
+
+      return {
+        saleOk: true as const,
+        payLaterError,
+        creditorId: isPayLater ? payLaterCreditor?.id ?? null : null,
+      };
     },
     onSuccess: (result) => {
       if (!result.saleOk) {
@@ -188,6 +234,10 @@ export default function WasteSalesPage() {
         return;
       }
 
+      if (result.payLaterError) {
+        showToast(result.payLaterError, "error");
+      }
+
       setCustomerName("");
       setCustomerContact("");
       setCustomerTypeId(customerTypes[0]?.id ?? "");
@@ -195,11 +245,18 @@ export default function WasteSalesPage() {
       setWeightInput("");
       setAmountInput("");
       setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
+      setPayLaterCreditor(null);
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      if (result.creditorId) {
+        void queryClient.invalidateQueries({ queryKey: ["creditors"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["creditor", result.creditorId],
+        });
+      }
       navigate("/dashboard/invoices/transaction");
     },
     onError: () => {
@@ -234,6 +291,10 @@ export default function WasteSalesPage() {
       setError(t("Sale weight cannot exceed waste product stock."));
       return;
     }
+    if (isPayLaterSelection(paymentMethod) && !payLaterCreditor?.id) {
+      setError(t("Select a creditor for Pay Later."));
+      return;
+    }
 
     const validation = validateWasteSaleCreate({
       name: customerName.trim(),
@@ -243,7 +304,7 @@ export default function WasteSalesPage() {
       outletId: saleOutletId.trim(),
       weight,
       amount,
-      paymentMethod: paymentMethod as SalePaymentMethod,
+      paymentMethod: resolveSalePaymentMethod(paymentMethod),
       wasteSales: true,
       discountAmount: 0,
     });
@@ -391,8 +452,19 @@ export default function WasteSalesPage() {
                       clearError();
                     }}
                     t={t}
+                    allowPayLater
                   />
                 </FormField>
+                {isPayLaterSelection(paymentMethod) ? (
+                  <FormField id="waste-creditor" label={t("Creditor")} required>
+                    <CreditorPicker
+                      id="waste-creditor"
+                      value={payLaterCreditor?.id ?? ""}
+                      onChange={setPayLaterCreditor}
+                      t={t}
+                    />
+                  </FormField>
+                ) : null}
               </SaleFormSection>
 
               {error ? (

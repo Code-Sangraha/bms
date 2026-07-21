@@ -12,6 +12,38 @@ export type ApiPaymentMethod = "CASH" | "ONLINE" | "CHEQUE";
 
 export const DEFAULT_SALE_PAYMENT_METHOD: SalePaymentMethod = "cash";
 
+/**
+ * UI-only sentinel for "Pay Later" in sale payment pickers. It is NEVER sent to
+ * the sales API — when a sale is paid on credit, the underlying sale is created
+ * with a real method (typically CASH) and a separate `/v1/creditors/pay-later`
+ * call records the debt. Kept out of `SalePaymentMethod` so backend payloads
+ * cannot accidentally carry it.
+ */
+export const PAY_LATER_UI_VALUE = "payLater" as const;
+
+export type SalePaymentSelection = SalePaymentMethod | typeof PAY_LATER_UI_VALUE;
+
+export function isPayLaterSelection(value: unknown): value is typeof PAY_LATER_UI_VALUE {
+  return value === PAY_LATER_UI_VALUE;
+}
+
+/**
+ * Resolves a `SalePaymentSelection` to a real `SalePaymentMethod` for the sales
+ * API. Pay-later defaults to the CASH sentinel (per product decision); callers
+ * may override by passing `fallback`.
+ */
+export function resolveSalePaymentMethod(
+  value: SalePaymentSelection | string,
+  fallback: SalePaymentMethod = "cash",
+): SalePaymentMethod {
+  if (isPayLaterSelection(value)) return fallback;
+  const normalized = String(value).trim().toLowerCase() as SalePaymentMethod;
+  if (normalized === "cash" || normalized === "online" || normalized === "cheque") {
+    return normalized;
+  }
+  return fallback;
+}
+
 const UI_TO_API: Record<SalePaymentMethod, ApiPaymentMethod> = {
   cash: "CASH",
   online: "ONLINE",

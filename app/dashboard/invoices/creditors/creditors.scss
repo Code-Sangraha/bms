@@ -1,0 +1,48 @@
+.creditorsPage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #111827;
+  flex: 1;
+  min-height: 0;
+}
+
+.creditorsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.creditorsHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.creditorsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.creditorsPendingCell {
+  font-weight: 600;
+}
+
+.creditorsPendingCell--due {
+  color: #b45309;
+}
+
+.creditorsPendingCell--clear {
+  color: #047857;
+}
+
+@media (max-width: 900px) {
+  .creditorsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

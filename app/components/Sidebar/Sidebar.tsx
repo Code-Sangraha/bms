@@ -68,6 +68,7 @@ type TranslationKey =
   | "outletExpenses"
   | "transactions"
   | "customers"
+  | "creditors"
   | "suppliers"
   | "customerTypes"
   | "loyaltyRules"
@@ -149,6 +150,7 @@ const sidebarLabelMap: Record<TranslationKey, string> = {
   outletExpenses: "Outlet expenses",
   transactions: "Transactions",
   customers: "Customers",
+  creditors: "Creditors",
   suppliers: "Suppliers",
   customerTypes: "Customer Types",
   loyaltyRules: "Loyalty Rules",
@@ -187,6 +189,7 @@ const highlandPlantMenuSections: MenuSectionBlock[] = [
       { labelKey: "livestockSales", href: "/dashboard/invoices/livestock-sales", capability: "canCreateLivestockSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
       { labelKey: "customers", href: "/dashboard/invoices/customers" },
+      { labelKey: "creditors", href: "/dashboard/invoices/creditors" },
     ],
   },
   {
@@ -223,6 +226,7 @@ const outletStaffDrawerSections: MenuSectionBlock[] = [
       { labelKey: "wasteSales", href: "/dashboard/invoices/waste-sales", capability: "canCreateProcessedSales" },
       { labelKey: "transactions", href: "/dashboard/invoices/transaction", capability: "canViewTransactions" },
       { labelKey: "customers", href: "/dashboard/invoices/customers", capability: "canViewTransactions" },
+      { labelKey: "creditors", href: "/dashboard/invoices/creditors", capability: "canViewTransactions" },
     ],
   },
   {
@@ -367,6 +371,7 @@ const sidebarConfig = {
                   },
                   { labelKey: "transactions", href: "/dashboard/invoices/transaction" },
                   { labelKey: "customers", href: "/dashboard/invoices/customers" },
+                  { labelKey: "creditors", href: "/dashboard/invoices/creditors" },
                   { labelKey: "customerTypes", href: "/dashboard/invoices/customer-types" },
                   { labelKey: "loyaltyRules", href: "/dashboard/invoices/loyalty-rules" },
                 ],

@@ -42,7 +42,8 @@ import {
 import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
-import { createSale, getLoyaltyRule, type SaleItemPayload } from "@/handlers/sale";
+import { createSale, getLoyaltyRule, extractTransactionId, type SaleItemPayload } from "@/handlers/sale";
+import { createCreditorPayLater, type Creditor } from "@/handlers/creditor";
 import {
   allocateCartDiscount,
   cartSubtotal,
@@ -51,8 +52,10 @@ import {
 } from "@/lib/saleCalculations";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
+  isPayLaterSelection,
   paymentMethodLabel,
-  type SalePaymentMethod,
+  resolveSalePaymentMethod,
+  type SalePaymentSelection,
 } from "@/lib/salePaymentMethods";
 import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
@@ -61,6 +64,7 @@ import {
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
 import { recordCustomerPurchaseTotals } from "@/lib/customerPurchaseTotalsStorage";
+import CreditorPicker from "../components/CreditorPicker";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
 import { findMatchingCustomer } from "./findMatchingCustomer";
 import "../components/sale-entry.scss";
@@ -82,6 +86,17 @@ type PosCheckoutPayload = {
     outletId: string;
     customerTypeId: string;
   } | null;
+  payLater: {
+    creditorId: string;
+    items: Array<{
+      productId: string;
+      name: string;
+      weight: number;
+      unitPrice: number;
+      amount: number;
+    }>;
+    totalAmount: number;
+  } | null;
 };
 
 const PRODUCTS_QUERY_KEY = ["products"];
@@ -90,6 +105,7 @@ const OUTLETS_QUERY_KEY = ["outlets"];
 const DUAL_PRICING_QUERY_KEY = ["dualPricing"];
 const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
 const CUSTOMERS_QUERY_KEY = ["customers"];
+const CREDITORS_QUERY_KEY = ["creditors"];
 const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 
@@ -178,9 +194,10 @@ export default function PointOfSalePage() {
   const [error, setError] = useState<string | null>(null);
   const [errorShowPricelistLink, setErrorShowPricelistLink] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentSelection>(
     DEFAULT_SALE_PAYMENT_METHOD
   );
+  const [payLaterCreditor, setPayLaterCreditor] = useState<Creditor | null>(null);
 
   const { data: products = [] } = useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
@@ -511,6 +528,7 @@ export default function PointOfSalePage() {
     const trimmedName = customerName.trim();
     const trimmedContact = customerContact.trim();
     const discounts = allocateCartDiscount(lineItems, parsedCartDiscount);
+    const effectivePaymentMethod = resolveSalePaymentMethod(paymentMethod);
     const saleItems: SaleItemPayload[] = lineItems.map((item, index) => {
       const sub = lineSubtotal(item);
       const lineDiscount = discounts[index] ?? 0;
@@ -523,7 +541,7 @@ export default function PointOfSalePage() {
         weight: item.weight,
         amount: sub,
         discountAmount: lineDiscount,
-        paymentMethod,
+        paymentMethod: effectivePaymentMethod,
       };
     });
     const validation = validateProcessedSaleCreate(saleItems);
@@ -532,7 +550,10 @@ export default function PointOfSalePage() {
   };
 
   const checkoutConfirmMessage = useMemo(() => {
-    const paymentLabel = paymentMethodLabel(paymentMethod);
+    const isPayLater = isPayLaterSelection(paymentMethod);
+    const paymentLabel = isPayLater
+      ? `${t("Pay Later")}${payLaterCreditor?.name ? ` — ${payLaterCreditor.name}` : ""}`
+      : paymentMethodLabel(paymentMethod);
     const discountLine =
       parsedCartDiscount > 0
         ? t("Discount: Rs.{{amount}}").replace("{{amount}}", formatSaleAmount(parsedCartDiscount))
@@ -546,7 +567,7 @@ export default function PointOfSalePage() {
     ]
       .filter(Boolean)
       .join("\n");
-  }, [subtotal, parsedCartDiscount, totalDue, paymentMethod, t]);
+  }, [subtotal, parsedCartDiscount, totalDue, paymentMethod, payLaterCreditor, t]);
 
   const createSaleMutation = useMutation({
     mutationFn: async (payload: PosCheckoutPayload) => {
@@ -559,11 +580,33 @@ export default function PointOfSalePage() {
         };
       }
 
+      let payLaterError: string | null = null;
+      if (payload.payLater) {
+        const sourceTransactionId = extractTransactionId(saleResult.data);
+        if (!sourceTransactionId) {
+          payLaterError = t(
+            "Sale created, but pay-later could not be linked: no transaction id was returned."
+          );
+        } else {
+          const payLaterResult = await createCreditorPayLater({
+            creditorId: payload.payLater.creditorId,
+            sourceType: "POS",
+            sourceTransactionId,
+            items: payload.payLater.items,
+            totalAmount: payload.payLater.totalAmount,
+          });
+          if (!payLaterResult.ok) {
+            payLaterError = payLaterResult.error;
+          }
+        }
+      }
+
       if (!payload.customerCreate) {
         return {
           saleOk: true as const,
           customerCreated: false as const,
           customerTotals: payload.customerTotals,
+          payLaterError,
         };
       }
 
@@ -574,6 +617,7 @@ export default function PointOfSalePage() {
           customerCreated: false as const,
           customerCreateError: customerResult.error,
           customerTotals: payload.customerTotals,
+          payLaterError,
         };
       }
 
@@ -581,6 +625,7 @@ export default function PointOfSalePage() {
         saleOk: true as const,
         customerCreated: true as const,
         customerTotals: payload.customerTotals,
+        payLaterError,
       };
     },
     onSuccess: (result) => {
@@ -603,6 +648,15 @@ export default function PointOfSalePage() {
         );
       }
 
+      if (result.payLaterError) {
+        showToast(result.payLaterError, "error");
+      } else if (payLaterCreditor) {
+        showToast(
+          t("Sale recorded on credit for {{name}}.").replace("{{name}}", payLaterCreditor.name),
+          "success"
+        );
+      }
+
       // TEMP: localStorage customer totals until backend get-by-customer is scoped and authoritative.
       recordCustomerPurchaseTotals(result.customerTotals);
 
@@ -611,12 +665,19 @@ export default function PointOfSalePage() {
       setCustomerContact("");
       setSelectedCustomerId("");
       setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
+      setPayLaterCreditor(null);
       setCartDiscountInput("0");
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
       if (result.customerCreated) {
         void queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
+      }
+      if (payLaterCreditor) {
+        void queryClient.invalidateQueries({ queryKey: CREDITORS_QUERY_KEY });
+        void queryClient.invalidateQueries({
+          queryKey: ["creditor", payLaterCreditor.id],
+        });
       }
       navigate("/dashboard/invoices/transaction");
     },
@@ -688,6 +749,26 @@ export default function PointOfSalePage() {
             customerTypeId: lineItems[0].customerTypeId,
           };
 
+    const isPayLater = isPayLaterSelection(paymentMethod) && Boolean(payLaterCreditor?.id);
+    const payLater =
+      isPayLater && payLaterCreditor
+        ? {
+            creditorId: payLaterCreditor.id,
+            items: lineItems.map((item, index) => {
+              const sub = lineSubtotal(item);
+              const lineDiscount = discounts[index] ?? 0;
+              return {
+                productId: item.productId,
+                name: item.productName,
+                weight: item.weight,
+                unitPrice: item.unitPrice,
+                amount: Math.max(0, Math.round((sub - lineDiscount) * 100) / 100),
+              };
+            }),
+            totalAmount: totalDue,
+          }
+        : null;
+
     createSaleMutation.mutate({
       saleItems,
       customerCreate,
@@ -698,6 +779,7 @@ export default function PointOfSalePage() {
         weightBought: lineItems.reduce((sum, item) => sum + item.weight, 0),
         amountSpent: totalDue,
       },
+      payLater,
     });
     setCheckoutConfirmOpen(false);
   };
@@ -715,6 +797,11 @@ export default function PointOfSalePage() {
     }
     if (!customerContact.trim()) {
       setError(t("Enter customer contact."));
+      setErrorShowPricelistLink(false);
+      return;
+    }
+    if (isPayLaterSelection(paymentMethod) && !payLaterCreditor?.id) {
+      setError(t("Select a creditor for Pay Later."));
       setErrorShowPricelistLink(false);
       return;
     }
@@ -764,7 +851,9 @@ export default function PointOfSalePage() {
     };
   });
 
-  const paymentDisplay = t(paymentMethodLabel(paymentMethod));
+  const paymentDisplay = isPayLaterSelection(paymentMethod)
+    ? `${t("Pay Later")}${payLaterCreditor?.name ? ` — ${payLaterCreditor.name}` : ""}`
+    : t(paymentMethodLabel(paymentMethod));
 
   const summaryRows = [
     { label: t("Lines"), value: String(lineItems.length) },
@@ -825,9 +914,20 @@ export default function PointOfSalePage() {
                     value={paymentMethod}
                     onChange={setPaymentMethod}
                     t={t}
+                    allowPayLater
                   />
                 </FormField>
               </div>
+              {isPayLaterSelection(paymentMethod) ? (
+                <FormField id="pos-creditor" label={t("Creditor")} required>
+                  <CreditorPicker
+                    id="pos-creditor"
+                    value={payLaterCreditor?.id ?? ""}
+                    onChange={setPayLaterCreditor}
+                    t={t}
+                  />
+                </FormField>
+              ) : null}
               <LoyaltySaleHints
                 customerName={customerName}
                 saleOutletId={outletId}

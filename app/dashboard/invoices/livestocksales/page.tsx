@@ -14,12 +14,16 @@ import {
 import { getProductTypes } from "@/handlers/productType";
 import {
   createLivestockSale,
+  extractTransactionId,
   type LivestockSalePayload,
 } from "@/handlers/sale";
+import { createCreditorPayLater, type Creditor } from "@/handlers/creditor";
 import {
   DEFAULT_SALE_PAYMENT_METHOD,
+  isPayLaterSelection,
   paymentMethodLabel,
-  type SalePaymentMethod,
+  resolveSalePaymentMethod,
+  type SalePaymentSelection,
 } from "@/lib/salePaymentMethods";
 import { formatSaleAmount } from "@/lib/saleCalculations";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
@@ -30,6 +34,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/app/components/ui/c
 import { Input } from "@/app/components/ui/input";
 import { FormField } from "@/app/components/ui-ext/FormField";
 import { PaymentMethodPicker } from "@/app/dashboard/invoices/components/PaymentMethodPicker";
+import CreditorPicker from "@/app/dashboard/invoices/components/CreditorPicker";
 import {
   SaleCartList,
   SaleFormSection,
@@ -113,9 +118,10 @@ export default function LivestockSalesPage() {
   const [livestockLineItems, setLivestockLineItems] = useState<LivestockLineItem[]>([]);
   const [livestockError, setLivestockError] = useState<string | null>(null);
   const [loadLivestockItems, setLoadLivestockItems] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>(
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentSelection>(
     DEFAULT_SALE_PAYMENT_METHOD
   );
+  const [payLaterCreditor, setPayLaterCreditor] = useState<Creditor | null>(null);
   const [lineIndexToDelete, setLineIndexToDelete] = useState<number | null>(null);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
 
@@ -303,24 +309,86 @@ export default function LivestockSalesPage() {
   };
 
   const createLivestockSaleMutation = useMutation({
-    mutationFn: (items: LivestockSalePayload[]) => createLivestockSale(items),
-    onSuccess: (result) => {
-      if (result.ok) {
-        setLivestockLineItems([]);
-        setCustomerName("");
-        setCustomerContact("");
-        clearLivestockLineForm();
-        setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
-        setLivestockError(null);
-        queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
-        showToast(t("Livestock sale created successfully."), "success");
-      } else {
+    mutationFn: async (payload: {
+      items: LivestockSalePayload[];
+      payLater: {
+        creditorId: string;
+        items: Array<{
+          livestockItemId: string;
+          name: string;
+          quantity: number;
+          amount: number;
+        }>;
+        totalAmount: number;
+      } | null;
+    }) => {
+      const saleResult = await createLivestockSale(payload.items);
+      if (!saleResult.ok) {
+        return {
+          saleOk: false as const,
+          error: saleResult.error,
+          status: saleResult.status,
+          payLaterError: null as string | null,
+        };
+      }
+
+      let payLaterError: string | null = null;
+      if (payload.payLater) {
+        const sourceTransactionId = extractTransactionId(saleResult.data);
+        if (!sourceTransactionId) {
+          payLaterError = t(
+            "Sale created, but pay-later could not be linked: no transaction id was returned."
+          );
+        } else {
+          const payLaterResult = await createCreditorPayLater({
+            creditorId: payload.payLater.creditorId,
+            sourceType: "LIVESTOCK",
+            sourceTransactionId,
+            items: payload.payLater.items,
+            totalAmount: payload.payLater.totalAmount,
+          });
+          if (!payLaterResult.ok) {
+            payLaterError = payLaterResult.error;
+          }
+        }
+      }
+      return {
+        saleOk: true as const,
+        payLaterError,
+      };
+    },
+    onSuccess: (result, variables) => {
+      if (!result.saleOk) {
         if (result.status === 401) navigate("/login");
         else {
           setLivestockError(result.error);
           showToast(result.error, "error");
         }
+        return;
+      }
+
+      if (result.payLaterError) {
+        showToast(result.payLaterError, "error");
+      } else if (variables.payLater) {
+        showToast(t("Livestock sale created successfully."), "success");
+      } else {
+        showToast(t("Livestock sale created successfully."), "success");
+      }
+
+      setLivestockLineItems([]);
+      setCustomerName("");
+      setCustomerContact("");
+      clearLivestockLineForm();
+      setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
+      setPayLaterCreditor(null);
+      setLivestockError(null);
+      queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
+      if (variables.payLater) {
+        queryClient.invalidateQueries({ queryKey: ["creditors"] });
+        queryClient.invalidateQueries({
+          queryKey: ["creditor", variables.payLater.creditorId],
+        });
       }
     },
     onError: () => {
@@ -335,17 +403,39 @@ export default function LivestockSalesPage() {
       setLivestockError(t("Add at least one livestock item."));
       return;
     }
+    if (isPayLaterSelection(paymentMethod) && !payLaterCreditor?.id) {
+      setLivestockError(t("Select a creditor for Pay Later."));
+      return;
+    }
     setLivestockError(null);
-    createLivestockSaleMutation.mutate(
-      livestockLineItems.map((item) => ({
+
+    const effectivePaymentMethod = resolveSalePaymentMethod(paymentMethod);
+    const isPayLater = isPayLaterSelection(paymentMethod) && Boolean(payLaterCreditor?.id);
+    const payLater =
+      isPayLater && payLaterCreditor
+        ? {
+            creditorId: payLaterCreditor.id,
+            items: livestockLineItems.map((item) => ({
+              livestockItemId: item.livestockItemId,
+              name: item.livestockItemLabel,
+              quantity: item.weight,
+              amount: item.weight * item.amount,
+            })),
+            totalAmount: livestockTotal,
+          }
+        : null;
+
+    createLivestockSaleMutation.mutate({
+      items: livestockLineItems.map((item) => ({
         name: item.name,
         contact: item.contact,
         livestockItemId: item.livestockItemId,
         itemQuantityOrWeight: item.weight,
         amount: item.amount,
-        paymentMethod,
-      }))
-    );
+        paymentMethod: effectivePaymentMethod,
+      })),
+      payLater,
+    });
   };
 
   const livestockTotal = livestockLineItems.reduce(
@@ -361,7 +451,9 @@ export default function LivestockSalesPage() {
     editing: editingLineIndex === index,
   }));
 
-  const paymentDisplay = t(paymentMethodLabel(paymentMethod));
+  const paymentDisplay = isPayLaterSelection(paymentMethod)
+    ? `${t("Pay Later")}${payLaterCreditor?.name ? ` — ${payLaterCreditor.name}` : ""}`
+    : t(paymentMethodLabel(paymentMethod));
 
   const summaryRows = [
     { label: t("Lines"), value: String(livestockLineItems.length) },
@@ -408,9 +500,20 @@ export default function LivestockSalesPage() {
                     value={paymentMethod}
                     onChange={setPaymentMethod}
                     t={t}
+                    allowPayLater
                   />
                 </FormField>
               </div>
+              {isPayLaterSelection(paymentMethod) ? (
+                <FormField id="livestock-creditor" label={t("Creditor")} required>
+                  <CreditorPicker
+                    id="livestock-creditor"
+                    value={payLaterCreditor?.id ?? ""}
+                    onChange={setPayLaterCreditor}
+                    t={t}
+                  />
+                </FormField>
+              ) : null}
             </SaleFormSection>
 
             <SaleFormSection
