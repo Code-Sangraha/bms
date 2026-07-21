@@ -7,7 +7,6 @@ import { filterCustomersForTypeahead, formatCustomerSuggestionLabel } from "./fi
 
 type PosCustomerNameComboboxProps = {
   customers: Customer[];
-  outletId: string;
   value: string;
   onChange: (value: string) => void;
   onSelectCustomer: (customer: Customer) => void;
@@ -17,7 +16,6 @@ type PosCustomerNameComboboxProps = {
 
 export default function PosCustomerNameCombobox({
   customers,
-  outletId,
   value,
   onChange,
   onSelectCustomer,
@@ -31,11 +29,8 @@ export default function PosCustomerNameCombobox({
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const suggestions = useMemo(
-    () =>
-      filterCustomersForTypeahead(customers, value, {
-        outletId: outletId.trim() || undefined,
-      }),
-    [customers, value, outletId]
+    () => filterCustomersForTypeahead(customers, value),
+    [customers, value]
   );
 
   const showList = open && value.trim().length > 0;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Gift, Loader2, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -52,6 +52,12 @@ export default function LoyaltyRulesPage() {
     },
     staleTime: Infinity,
   });
+
+  useEffect(() => {
+    if (!sessionRule) return;
+    setMinPurchaseKgInput(String(sessionRule.minPurchaseKg));
+    setRewardKgInput(String(sessionRule.rewardKg));
+  }, [sessionRule]);
 
   const previewRule = useMemo(() => {
     const minPurchaseKg = parsePositiveNumber(minPurchaseKgInput);

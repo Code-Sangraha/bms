@@ -45,6 +45,8 @@ const paymentSchema = z.object({
   discountAmount: z.number().min(0, "Discount cannot be negative"),
   paymentMethod: z.enum(["cash", "online", "cheque"]),
   reference: z.string().max(300, "Reference is too long").optional(),
+}).superRefine((value, ctx) => {
+  if ((value.paymentMethod === "online" || value.paymentMethod === "cheque") && !value.reference?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reference"], message: "A reference is required for online or cheque payments" });
 });
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
@@ -170,6 +172,11 @@ export default function CreditorDetailPage() {
   });
 
   const onPaySubmit = (values: PaymentFormValues) => {
+    const pending = detail?.pendingAmount ?? 0;
+    if (values.amount + values.discountAmount > pending) {
+      payForm.setError("root", { message: t("Payment and discount cannot exceed the pending balance.") });
+      return;
+    }
     payMutation.mutate(values);
   };
 
@@ -438,3 +445,5 @@ export default function CreditorDetailPage() {
     </section>
   );
 }
+
+

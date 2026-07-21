@@ -27,8 +27,8 @@ export type PayLaterPayload = {
   creditorId: string;
   sourceType: PayLaterSourceType;
   sourceTransactionId: string;
-  items: PayLaterItem[];
-  totalAmount: number;
+  items?: PayLaterItem[];
+  totalAmount?: number;
 };
 
 export type CreditorPaymentMethod = SalePaymentMethod;
@@ -323,3 +323,6 @@ export async function createCreditorPayLater(
   }
   return result;
 }
+
+
+

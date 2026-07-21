@@ -26,7 +26,6 @@ import {
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
 import { SegmentPicker } from "@/app/dashboard/invoices/components/SegmentPicker";
-import { LoyaltySaleHints } from "@/app/dashboard/invoices/components/LoyaltySaleHints";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useOutletAccess } from "@/app/providers/OutletAccessProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
@@ -42,7 +41,7 @@ import {
 import { getMainOutletId, getOutlets, type Outlet } from "@/handlers/outlet";
 import { getProducts, type Product } from "@/handlers/product";
 import { getProductTypes } from "@/handlers/productType";
-import { createSale, getLoyaltyRule, extractTransactionId, type SaleItemPayload } from "@/handlers/sale";
+import { createSale, extractTransactionId, type SaleItemPayload } from "@/handlers/sale";
 import { createCreditorPayLater, type Creditor } from "@/handlers/creditor";
 import {
   allocateCartDiscount,
@@ -59,10 +58,6 @@ import {
 } from "@/lib/salePaymentMethods";
 import { validateProcessedSaleCreate } from "@/schema/sale";
 import { readOutletScopeFromSearch } from "@/lib/outletScope";
-import {
-  LOYALTY_RULE_QUERY_KEY,
-  type SessionLoyaltyRule,
-} from "@/lib/loyalty";
 import { recordCustomerPurchaseTotals } from "@/lib/customerPurchaseTotalsStorage";
 import CreditorPicker from "../components/CreditorPicker";
 import PosCustomerNameCombobox from "./PosCustomerNameCombobox";
@@ -280,19 +275,6 @@ export default function PointOfSalePage() {
       }
       return result.data;
     },
-  });
-
-  const { data: sessionLoyaltyRule = null } = useQuery<SessionLoyaltyRule | null>({
-    queryKey: LOYALTY_RULE_QUERY_KEY,
-    queryFn: async () => {
-      const result = await getLoyaltyRule();
-      if (!result.ok) {
-        if (result.status === 401) navigate("/login");
-        throw new Error(result.error);
-      }
-      return result.data;
-    },
-    staleTime: Infinity,
   });
 
   const { data: allCustomers = [] } = useQuery({
@@ -880,7 +862,6 @@ export default function PointOfSalePage() {
                 <FormField id="pos-customer-name" label={t("Customer Details")}>
                   <PosCustomerNameCombobox
                     customers={allCustomers}
-                    outletId={outletId}
                     value={customerName}
                     onChange={handleCustomerNameChange}
                     onSelectCustomer={applyRegisteredCustomer}
@@ -928,11 +909,6 @@ export default function PointOfSalePage() {
                   />
                 </FormField>
               ) : null}
-              <LoyaltySaleHints
-                customerName={customerName}
-                saleOutletId={outletId}
-                sessionRule={sessionLoyaltyRule}
-              />
             </SaleFormSection>
 
             <SaleFormSection
