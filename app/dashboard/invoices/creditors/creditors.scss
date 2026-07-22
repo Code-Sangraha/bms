@@ -46,3 +46,9 @@
     align-items: flex-start;
   }
 }
+
+.creditorsSummaryGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.creditorsSummaryGrid > div { display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; border: 1px solid rgba(17, 24, 39, .08); border-radius: 10px; background: #fff; }
+.creditorsSummaryGrid span { color: #6b7280; font-size: 12px; }
+.creditorsSummaryGrid strong { color: #111827; font-size: 18px; }
+@media (max-width: 700px) { .creditorsSummaryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

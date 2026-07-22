@@ -393,6 +393,7 @@ export default function LivestockSalesPage() {
         } else {
           const payLaterResult = await createCreditorPayLater({
             creditorId: payload.payLater.creditorId,
+             outletId: products.find((product) => product.id === payload.items[0]?.livestockItemId)?.outletId ?? "",
             sourceType: "LIVESTOCK",
             sourceTransactionId,
             items: payload.payLater.items,
@@ -452,6 +453,7 @@ export default function LivestockSalesPage() {
       setLivestockError(null);
       queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
+      queryClient.invalidateQueries({ queryKey: ["loyalty"] });
       if (result.customerCreated) {
         queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
       }

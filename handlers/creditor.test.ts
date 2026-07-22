@@ -117,6 +117,7 @@ describe("creditor contract", () => {
 
     const result = await createCreditorPayLater({
       creditorId: "cred-uuid",
+      outletId: "outlet-1",
       sourceType: "POS",
       sourceTransactionId: "TXN-154",
       items: [
@@ -129,6 +130,7 @@ describe("creditor contract", () => {
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toEqual({
       creditorId: "cred-uuid",
+      outletId: "outlet-1",
       sourceType: "POS",
       sourceTransactionId: "TXN-154",
       items: [
@@ -148,6 +150,7 @@ describe("creditor contract", () => {
       amount: 4700,
       discountAmount: 75,
       paymentMethod: "cash",
+      outletId: "outlet-1",
       reference: "   ",
     });
 
@@ -166,6 +169,7 @@ describe("creditor contract", () => {
     await payCreditor("cred-1", {
       amount: 1000,
       paymentMethod: "online",
+      outletId: "outlet-1",
       reference: "Received by cashier",
     });
 
@@ -183,7 +187,8 @@ describe("creditor contract", () => {
       pendingAmount: "3000",
       orders: [
         {
-          sourceType: "POS",
+          outletId: "outlet-1",
+      sourceType: "POS",
           sourceTransactionId: "TXN-1",
           totalAmount: 1000,
           outlet: { id: "o1", name: "Outlet 1" },

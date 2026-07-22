@@ -121,7 +121,10 @@ export const SALES_ROUTES = {
   CREATE: "/sales/create",
   DASHBOARD_SALES: "/sales/dashboardSales",
   LOYALTY_RULE_GET: "/sales/loyalty-rules",
+  LOYALTY_RULE_GET_ALIAS: "/sales/loyalty-rules/get",
   LOYALTY_RULE_CREATE: "/sales/loyalty-rules/create",
+  LOYALTY_ELIGIBILITY: "/sales/loyalty/eligibility",
+  LOYALTY_ANALYTICS: "/sales/loyalty/analytics",
   REDEEM: "/sales/redeem",
   LIVESTOCK_CREATE: "/sales/livestock/create",
   LIVESTOCK_GET: "/sales/livestock/get",
@@ -173,6 +176,9 @@ export const CREDITOR_ROUTES = {
   /** POST `/creditors/:creditorId/payments` — settle pending balance. */
   PAYMENTS: (creditorId: string) =>
     `/creditors/${encodeURIComponent(creditorId)}/payments`,
+  DASHBOARD: "/creditors/dashboard",
+  CREDIT: "/creditors/credit",
+  PAID: "/creditors/paid",
 } as const;
 
 export const PROCESSING_PLANT_ROUTES = {

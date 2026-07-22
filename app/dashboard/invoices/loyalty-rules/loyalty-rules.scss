@@ -114,3 +114,10 @@
     width: 100%;
   }
 }
+
+.loyaltyAnalyticsGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.loyaltyAnalyticsGrid > div { display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; border: 1px solid rgba(16, 185, 129, .18); border-radius: 10px; background: rgba(16, 185, 129, .05); }
+.loyaltyAnalyticsGrid span { color: #64748b; font-size: 12px; }
+.loyaltyAnalyticsGrid strong { color: #0f172a; font-size: 18px; }
+@media (max-width: 700px) { .loyaltyAnalyticsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.loyaltyRulesNativeSelect { width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; padding: 0 12px; color: #111827; }

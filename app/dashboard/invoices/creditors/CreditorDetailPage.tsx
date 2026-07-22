@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ArrowLeft, Wallet } from "lucide-react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import Modal from "@/app/components/Modal/Modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -104,6 +105,7 @@ export default function CreditorDetailPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const { showToast } = useToast();
+  const { scopedOutletId } = useOutletScope();
   const queryClient = useQueryClient();
   const { creditorId: creditorIdParam } = useParams<{ creditorId: string }>();
   const creditorId = creditorIdParam ? decodeURIComponent(creditorIdParam) : "";
@@ -150,6 +152,7 @@ export default function CreditorDetailPage() {
         amount: values.amount,
         discountAmount: values.discountAmount,
         paymentMethod: values.paymentMethod as SalePaymentMethod,
+        outletId: scopedOutletId ?? "",
         reference: values.reference,
       }),
     onSuccess: (result) => {
@@ -158,6 +161,7 @@ export default function CreditorDetailPage() {
         payForm.reset({ amount: 0, discountAmount: 0, paymentMethod: "cash", reference: "" });
         void queryClient.invalidateQueries({ queryKey });
         void queryClient.invalidateQueries({ queryKey: ["creditors"] });
+        void queryClient.invalidateQueries({ queryKey: ["loyalty"] });
         showToast(t("Payment recorded successfully."), "success");
       } else {
         if (result.status === 401) navigate("/login");
@@ -445,5 +449,3 @@ export default function CreditorDetailPage() {
     </section>
   );
 }
-
-

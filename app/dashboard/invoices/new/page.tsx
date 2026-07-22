@@ -572,6 +572,7 @@ export default function PointOfSalePage() {
         } else {
           const payLaterResult = await createCreditorPayLater({
             creditorId: payload.payLater.creditorId,
+             outletId,
             sourceType: "POS",
             sourceTransactionId,
             items: payload.payLater.items,
@@ -652,6 +653,7 @@ export default function PointOfSalePage() {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["loyalty"] });
       if (result.customerCreated) {
         void queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
       }
@@ -1129,6 +1131,3 @@ export default function PointOfSalePage() {
     </SalePageLayout>
   );
 }
-
-
-

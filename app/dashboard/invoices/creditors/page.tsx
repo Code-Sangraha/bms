@@ -9,6 +9,7 @@ import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { usePermissions } from "@/app/providers/AuthProvider";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
+import { useOutletScope } from "@/app/providers/OutletScopeProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import Modal from "@/app/components/Modal/Modal";
 import { Button } from "@/app/components/ui/button";
@@ -33,7 +34,7 @@ import { EmptyState } from "@/app/components/ui-ext/EmptyState";
 import { ErrorState } from "@/app/components/ui-ext/ErrorState";
 import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
-import { createCreditor, getCreditors, type Creditor } from "@/handlers/creditor";
+import { createCreditor, getCreditorDashboard, getCreditors, type Creditor } from "@/handlers/creditor";
 import { creditorSchema, type CreditorFormValues } from "@/schema/creditor";
 import "./creditors.scss";
 
@@ -66,6 +67,7 @@ export default function CreditorsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { canCreate } = usePermissions();
+  const { scopedOutletId } = useOutletScope();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -86,6 +88,14 @@ export default function CreditorsPage() {
     },
   });
 
+  const { data: dashboard } = useQuery({
+    queryKey: ["creditors", "dashboard", scopedOutletId ?? "all"],
+    queryFn: async () => {
+      const result = await getCreditorDashboard(scopedOutletId ?? undefined);
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
   const addForm = useForm<CreditorFormValues>({
     resolver: zodResolver(creditorSchema),
     defaultValues: defaultFormValues,
@@ -167,6 +177,14 @@ export default function CreditorsPage() {
         )}
       </div>
 
+      {dashboard ? (
+        <div className="creditorsSummaryGrid">
+          <div><span>{t("Total credit")}</span><strong>{formatMoney(dashboard.summary.totalCreditAmount)}</strong></div>
+          <div><span>{t("Paid")}</span><strong>{formatMoney(dashboard.summary.totalPaidAmount)}</strong></div>
+          <div><span>{t("Pending")}</span><strong>{formatMoney(dashboard.summary.totalPendingAmount)}</strong></div>
+          <div><span>{t("Pending creditors")}</span><strong>{dashboard.summary.creditorsWithPendingCredit}</strong></div>
+        </div>
+      ) : null}
       <div className="creditorsToolbar">
         <div className="relative w-full sm:max-w-sm">
           <Search

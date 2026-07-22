@@ -199,16 +199,22 @@ export type GetSalesResponse = {
   [key: string]: unknown;
 };
 
+export type LoyaltyRewardOption = { id?: string; productId: string; rewardKg: number; product?: { id: string; name: string; weight: number | null; outletId: string } };
 export type LoyaltyRulePayload = {
+  outletId?: string;
   minPurchaseKg: number;
-  rewardKg: number;
-  createdBy: string;
+  rewardType: "PROCESSED_QUANTITY" | "CASH";
+  rewardOptions?: LoyaltyRewardOption[];
+  rewardValue?: number;
 };
 
 export type LoyaltyRuleRecord = {
   id?: string;
   minPurchaseKg: number;
-  rewardKg: number;
+  rewardKg?: number;
+  rewardType?: "PROCESSED_QUANTITY" | "CASH";
+  rewardOptions?: LoyaltyRewardOption[];
+  rewardValue?: number;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string | null;
@@ -226,12 +232,12 @@ export type CustomerSalesHistoryItem = SaleTransaction;
 
 export type CustomerSalesSummary = {
   totalWeightBought: number;
+  totalPurchasedMeatKg: number;
   totalAmountSpent: number;
   totalTransactions: number;
+  loyaltyPoints: number;
+  loyaltyReward: { type: "CASH" | "PROCESSED_QUANTITY"; valuePerPoint: number; earnedValue: number; unit: "NPR" | "kg" } | null;
   sales: CustomerSalesHistoryItem[];
-  earnedRewardKg: number;
-  redeemedRewardKg: number;
-  availableRewardKg: number;
 };
 export type CreateSaleResponse = {
   success?: boolean;
@@ -533,40 +539,20 @@ function customerSaleAmount(sale: SaleTransaction): number {
 }
 
 function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
-  const source = raw && typeof raw === "object" && "data" in raw
-    ? (raw as Record<string, unknown>).data
-    : raw;
-
-  if (Array.isArray(source)) {
-    const sales = normalizeCustomerSalesList(source);
-    return {
-      totalWeightBought: sales.reduce((sum, sale) => sum + customerSaleWeight(sale), 0),
-      totalAmountSpent: sales.reduce((sum, sale) => sum + customerSaleAmount(sale), 0),
-      totalTransactions: sales.length,
-      sales,
-      earnedRewardKg: 0,
-      redeemedRewardKg: 0,
-      availableRewardKg: 0,
-    };
-  }
-
-  if (!source || typeof source !== "object") {
-    return { totalWeightBought: 0, totalAmountSpent: 0, totalTransactions: 0, sales: [], earnedRewardKg: 0, redeemedRewardKg: 0, availableRewardKg: 0 };
-  }
-
-  const o = source as Record<string, unknown>;
-  const salesRaw = o.sales ?? o.transactions ?? [];
-  const sales = normalizeCustomerSalesList(salesRaw);
+  const source = raw && typeof raw === "object" && "data" in raw ? (raw as Record<string, unknown>).data : raw;
+  const sales = normalizeCustomerSalesList(Array.isArray(source) ? source : source && typeof source === "object" ? ((source as Record<string, unknown>).sales ?? (source as Record<string, unknown>).transactions ?? []) : []);
   const derivedWeight = sales.reduce((sum, sale) => sum + customerSaleWeight(sale), 0);
   const derivedAmount = sales.reduce((sum, sale) => sum + customerSaleAmount(sale), 0);
+  if (!source || typeof source !== "object" || Array.isArray(source)) return { totalWeightBought: derivedWeight, totalPurchasedMeatKg: 0, totalAmountSpent: derivedAmount, totalTransactions: sales.length, loyaltyPoints: 0, loyaltyReward: null, sales };
+  const o = source as Record<string, unknown>;
   return {
-    totalWeightBought: getNumber(o.totalWeightBought) ?? getNumber(o.totalPurchasedKg) ?? derivedWeight,
+    totalWeightBought: getNumber(o.totalWeightBought) ?? derivedWeight,
+    totalPurchasedMeatKg: getNumber(o.totalPurchasedMeatKg) ?? 0,
     totalAmountSpent: getNumber(o.totalAmountSpent) ?? derivedAmount,
     totalTransactions: getNumber(o.totalTransactions) ?? sales.length,
+    loyaltyPoints: getNumber(o.loyaltyPoints) ?? 0,
+    loyaltyReward: o.loyaltyReward && typeof o.loyaltyReward === "object" ? o.loyaltyReward as CustomerSalesSummary["loyaltyReward"] : null,
     sales,
-    earnedRewardKg: getNumber(o.earnedRewardKg) ?? 0,
-    redeemedRewardKg: getNumber(o.redeemedRewardKg) ?? 0,
-    availableRewardKg: getNumber(o.availableRewardKg) ?? 0,
   };
 }
 
@@ -603,22 +589,33 @@ export async function getLoyaltyRule(): Promise<
   if (raw == null) return { ok: true, data: null };
   const minPurchaseKg = getNumber(raw.minPurchaseKg);
   const rewardKg = getNumber(raw.rewardKg);
-  if (minPurchaseKg == null || minPurchaseKg <= 0 || rewardKg == null || rewardKg <= 0) {
-    return { ok: false, error: "Invalid loyalty rule response.", status: 422 };
-  }
-  return {
-    ok: true,
-    data: {
-      id: typeof raw.id === "string" ? raw.id : undefined,
-      minPurchaseKg,
-      rewardKg,
-      createdAt: typeof raw.createdAt === "string" ? raw.createdAt : undefined,
-      updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
-      createdBy: typeof raw.createdBy === "string" ? raw.createdBy : null,
-      updatedBy: typeof raw.updatedBy === "string" ? raw.updatedBy : null,
-    },
-  };
+  const rewardValue = getNumber(raw.rewardValue);
+  const rewardType = raw.rewardType === "CASH" ? "CASH" : "PROCESSED_QUANTITY";
+  if (minPurchaseKg == null || minPurchaseKg <= 0) return { ok: false, error: "Invalid loyalty rule response.", status: 422 };
+  return { ok: true, data: { id: typeof raw.id === "string" ? raw.id : undefined, minPurchaseKg, rewardKg, rewardType, rewardOptions: Array.isArray(raw.rewardOptions) ? raw.rewardOptions as LoyaltyRewardOption[] : undefined, rewardValue, createdAt: typeof raw.createdAt === "string" ? raw.createdAt : undefined, updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined, createdBy: typeof raw.createdBy === "string" ? raw.createdBy : null, updatedBy: typeof raw.updatedBy === "string" ? raw.updatedBy : null } };
 }
+export type LoyaltyEligibility = { eligible: boolean; earnedPoints: number; redeemedPoints: number; pendingPoints: number; totalPurchasedKg: number; minimumPurchaseKg: number | null; rewardType: "CASH" | "PROCESSED_QUANTITY" | null; rewardOptions: LoyaltyRewardOption[] };
+export type LoyaltyAnalytics = { totalCustomers: number; customersWithPendingRewards: number; customersWhoRedeemed: number; totalPointsIssued: number; totalPointsPending: number; totalPointsRedeemed: number; totalRewardKgProvided: number; totalLoyaltyDiscount: number; customers: Array<{ customerId: string; name: string; contact: string | null; earnedPoints: number; redeemedPoints: number; pendingPoints: number }> };
+
+export async function getLoyaltyEligibility(name: string, contact?: string, outletId?: string): Promise<{ ok: true; data: LoyaltyEligibility } | { ok: false; error: string; status: number }> {
+  const q = new URLSearchParams({ name: name.trim() });
+  if (contact?.trim()) q.set("contact", contact.trim());
+  if (outletId?.trim()) q.set("outletId", outletId.trim());
+  const result = await apiRequest<{ success?: boolean; message?: string; data?: LoyaltyEligibility }>(`${SALES_ROUTES.LOYALTY_ELIGIBILITY}?${q}`, { method: "GET" });
+  if (!result.ok) return result;
+  if (result.data.success === false || !result.data.data) return { ok: false, error: result.data.message ?? "Invalid loyalty eligibility response.", status: 422 };
+  return { ok: true, data: result.data.data };
+}
+
+export async function getLoyaltyAnalytics(outletId?: string): Promise<{ ok: true; data: LoyaltyAnalytics } | { ok: false; error: string; status: number }> {
+  const route = outletId?.trim() ? `${SALES_ROUTES.LOYALTY_ANALYTICS}?outletId=${encodeURIComponent(outletId.trim())}` : SALES_ROUTES.LOYALTY_ANALYTICS;
+  const result = await apiRequest<{ success?: boolean; message?: string; data?: LoyaltyAnalytics }>(route, { method: "GET" });
+  if (!result.ok) return result;
+  if (result.data.success === false || !result.data.data) return { ok: false, error: result.data.message ?? "Invalid loyalty analytics response.", status: 422 };
+  return { ok: true, data: result.data.data };
+}
+
+
 export async function createLoyaltyRule(
   body: LoyaltyRulePayload
 ): Promise<
@@ -851,20 +848,22 @@ export type RedeemRewardsRequest = {
   contact?: string | null;
   outletId: string;
   rewardProductId: string;
-  redeemWeight: number;
+  loyaltyPoints?: number;
 };
+
+export type RedeemRewardsResult = { redemption: { id: string; rewardWeight: number; loyaltyPoints: number; discountAmount: number; product: { id: string; name: string }; [key: string]: unknown }; loyaltyDiscount: number; earnedPoints: number; redeemedPoints: number; pendingPoints: number };
 
 export type RedeemRewardsResponse = {
   success?: boolean;
   message?: string;
   timestamp?: string;
-  data?: RedeemRewardsRequest;
+  data?: RedeemRewardsResult;
 };
 
 export async function redeemRewards(
   body: RedeemRewardsRequest
 ): Promise<
-  | { ok: true; data: RedeemRewardsRequest }
+  | { ok: true; data: RedeemRewardsResult }
   | { ok: false; error: string; status: number }
 > {
   const result = await apiRequest<RedeemRewardsResponse>(
@@ -872,10 +871,8 @@ export async function redeemRewards(
     { method: "POST", body: JSON.stringify(body) }
   );
   if (!result.ok) return result;
-  const data = result.data?.data ?? body;
+  if (result.data?.success === false) return { ok: false, error: result.data.message ?? "Redemption failed.", status: 400 };
+  const data = result.data?.data;
+  if (!data) return { ok: false, error: "Invalid redemption response.", status: 422 };
   return { ok: true, data };
 }
-
-
-
-

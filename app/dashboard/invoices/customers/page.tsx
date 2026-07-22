@@ -50,11 +50,10 @@ import {
   updateCustomer as updateCustomerApi,
 } from "@/handlers/customer";
 import { getCustomerTypes } from "@/handlers/customerType";
-import { getLoyaltyRule, getSalesByCustomer, type CustomerSalesSummary } from "@/handlers/sale";
+import { getLoyaltyEligibility, getLoyaltyRule, getSalesByCustomer, redeemRewards, type CustomerSalesSummary } from "@/handlers/sale";
 import { getOutlets, type Outlet } from "@/handlers/outlet";
 import { customerSchema, type CustomerFormValues } from "@/schema/customer";
 import {
-  computeEarnedRewardKg,
   LOYALTY_RULE_QUERY_KEY,
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
@@ -118,6 +117,7 @@ function saleAmount(sale: CustomerSalesSummary["sales"][number]): number {
 }
 function outletName(outlets: Outlet[], outletId: string | undefined): string {
   if (!outletId) return "Unassigned";
+  return outlets.find((outlet) => outlet.id === outletId)?.name ?? outletId;
 }
 
 export default function CustomersPage() {
@@ -132,6 +132,8 @@ export default function CustomersPage() {
   const [itemToDelete, setItemToDelete] = useState<Customer | null>(null);
   const [editingItem, setEditingItem] = useState<Customer | null>(null);
   const [summaryCustomer, setSummaryCustomer] = useState<Customer | null>(null);
+  const [rewardProductId, setRewardProductId] = useState("");
+  const [redeemPoints, setRedeemPoints] = useState("1");
   const [searchQuery, setSearchQuery] = useState("");
   const [outletFilter, setOutletFilter] = useState<string>("");
 
@@ -187,6 +189,27 @@ export default function CustomersPage() {
   });
 
   const customerSalesSummary = customerSalesQuery.data ?? null;
+  const loyaltyEligibilityQuery = useQuery({
+    queryKey: ["loyalty", "eligibility", summaryCustomer?.name ?? "", summaryCustomer?.contact ?? "", summaryCustomer?.outletId ?? ""],
+    enabled: summaryCustomer != null,
+    queryFn: async () => {
+      const result = await getLoyaltyEligibility(summaryCustomer?.name ?? "", summaryCustomer?.contact, summaryCustomer?.outletId);
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  const redeemMutation = useMutation({
+    mutationFn: () => redeemRewards({ name: summaryCustomer?.name ?? "", contact: summaryCustomer?.contact, outletId: summaryCustomer?.outletId ?? "", rewardProductId, loyaltyPoints: Number(redeemPoints) }),
+    onSuccess: (result) => {
+      if (!result.ok) return;
+      setRewardProductId("");
+      setRedeemPoints("1");
+      void queryClient.invalidateQueries({ queryKey: ["loyalty"] });
+      void queryClient.invalidateQueries({ queryKey: ["customerSalesSummary"] });
+    },
+  });
+
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -656,20 +679,34 @@ export default function CustomersPage() {
                       : t("Estimated earned reward")}
                   </span>
                   <strong>
-                    {formatKg(
-                      customerSalesSummary.earnedRewardKg
-                    )}
+                    {customerSalesSummary.loyaltyReward?.unit === "NPR" ? formatMoney(customerSalesSummary.loyaltyReward.earnedValue) : formatKg(customerSalesSummary.loyaltyReward?.earnedValue ?? 0)}
                   </strong>
                 </div>
               </div>
 
+              {loyaltyEligibilityQuery.data ? (
+                <div className="customersRedemptionPanel">
+                  <div><span>{t("Redeemable points")}</span><strong>{loyaltyEligibilityQuery.data.pendingPoints}</strong></div>
+                  {loyaltyEligibilityQuery.data.rewardType === "PROCESSED_QUANTITY" && loyaltyEligibilityQuery.data.eligible ? (
+                    <div className="customersRedemptionControls">
+                      <Select value={rewardProductId} onValueChange={setRewardProductId}>
+                        <SelectTrigger><SelectValue placeholder={t("Select reward product")} /></SelectTrigger>
+                        <SelectContent>{loyaltyEligibilityQuery.data.rewardOptions.map((option) => <SelectItem key={option.productId} value={option.productId}>{option.product?.name ?? option.productId} � {option.rewardKg} kg</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input type="number" min={1} step={1} max={loyaltyEligibilityQuery.data.pendingPoints} value={redeemPoints} onChange={(event) => setRedeemPoints(event.target.value)} aria-label={t("Loyalty points")} />
+                      <Button type="button" disabled={!rewardProductId || redeemMutation.isPending || !Number.isInteger(Number(redeemPoints)) || Number(redeemPoints) < 1} onClick={() => redeemMutation.mutate()}>{redeemMutation.isPending ? t("Redeeming...") : t("Redeem")}</Button>
+                    </div>
+                  ) : null}
+                  {redeemMutation.data && !redeemMutation.data.ok ? <Alert variant="destructive"><AlertDescription>{redeemMutation.data.error}</AlertDescription></Alert> : null}
+                </div>
+              ) : null}
               <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                 <AlertDescription>
                   {t("Reward balance is provided by the backend CustomerLoyalty record.")}
                 </AlertDescription>
               </Alert>
 
-              {customerSalesQuery.data.sales.length > 0 ? (
+              {customerSalesSummary.sales.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border bg-card">
                   <Table>
                     <TableHeader>
@@ -683,7 +720,7 @@ export default function CustomersPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {customerSalesQuery.data.sales.map((sale, index) => (
+                      {customerSalesSummary.sales.map((sale, index) => (
                         <TableRow key={sale.id || sale.transactionId || index}>
                           <TableCell>{sale.transactionId || sale.id || "-"}</TableCell>
                           <TableCell>{formatCreatedAt(sale.createdAt ?? sale.date)}</TableCell>
@@ -771,14 +808,3 @@ export default function CustomersPage() {
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

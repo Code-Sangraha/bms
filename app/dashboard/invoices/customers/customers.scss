@@ -289,3 +289,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+.customersRedemptionPanel { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid rgba(16, 185, 129, .22); border-radius: 10px; background: rgba(16, 185, 129, .06); }
+.customersRedemptionPanel > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.customersRedemptionControls { display: grid; grid-template-columns: minmax(180px, 1fr) 90px auto; gap: 8px; }
+@media (max-width: 560px) { .customersRedemptionControls { grid-template-columns: 1fr; } }

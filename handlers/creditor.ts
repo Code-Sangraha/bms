@@ -13,6 +13,7 @@ export type Creditor = {
   /** Present when the list endpoint includes balance (defensive parse). */
   pendingAmount?: number;
   totalAmount?: number;
+  note?: string;
 };
 
 export type PayLaterSourceType = "POS" | "LIVESTOCK" | "WASTE";
@@ -25,10 +26,12 @@ export type PayLaterItem =
 
 export type PayLaterPayload = {
   creditorId: string;
+  outletId: string;
   sourceType: PayLaterSourceType;
   sourceTransactionId: string;
   items?: PayLaterItem[];
   totalAmount?: number;
+  note?: string;
 };
 
 export type CreditorPaymentMethod = SalePaymentMethod;
@@ -40,6 +43,15 @@ export type CreditorPayment = {
   paymentMethod?: string;
   reference?: string;
   createdAt?: string;
+};
+
+export type CreditorSettlement = {
+  payment: CreditorPayment;
+  creditorId: string;
+  totalCreditAmount: number;
+  totalSettledAmount: number;
+  remainingBalance: number;
+  settlementStatus: "PAID" | "PARTIALLY_PAID";
 };
 
 export type CreditorOrderItem = Record<string, unknown>;
@@ -65,6 +77,7 @@ export type PayCreditorPayload = {
   amount: number;
   discountAmount?: number;
   paymentMethod: CreditorPaymentMethod;
+  outletId: string;
   reference?: string;
 };
 
@@ -283,13 +296,14 @@ export async function payCreditor(
   creditorId: string,
   payload: PayCreditorPayload
 ): Promise<
-  | { ok: true; data: CreditorMutationResponse }
+  | { ok: true; data: CreditorSettlement }
   | { ok: false; error: string; status: number }
 > {
   const body = {
     amount: payload.amount,
     discountAmount: payload.discountAmount ?? 0,
     paymentMethod: toApiPaymentMethod(payload.paymentMethod),
+    outletId: payload.outletId,
     reference: payload.reference?.trim() || undefined,
   };
   const result = await apiRequest<CreditorMutationResponse>(
@@ -303,7 +317,17 @@ export async function payCreditor(
   if (result.data && typeof result.data === "object" && result.data.success === false) {
     return { ok: false, error: errorMessageFromPayload(result.data), status: 400 };
   }
-  return result;
+  const raw = result.data?.data;
+  if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid creditor payment response.", status: 422 };
+  const o = raw as Record<string, unknown>;
+  const payment = parseCreditorPayment(o.payment);
+  const responseCreditorId = stringOrNull(o.creditorId);
+  const totalCreditAmount = getNumber(o.totalCreditAmount);
+  const totalSettledAmount = getNumber(o.totalSettledAmount);
+  const remainingBalance = getNumber(o.remainingBalance);
+  const settlementStatus = o.settlementStatus;
+  if (!payment || !responseCreditorId || totalCreditAmount == null || totalSettledAmount == null || remainingBalance == null || (settlementStatus !== "PAID" && settlementStatus !== "PARTIALLY_PAID")) return { ok: false, error: "Invalid creditor payment response.", status: 422 };
+  return { ok: true, data: { payment, creditorId: responseCreditorId, totalCreditAmount, totalSettledAmount, remainingBalance, settlementStatus } };
 }
 
 /** POST /v1/creditors/pay-later — record a sale on credit. */
@@ -324,5 +348,23 @@ export async function createCreditorPayLater(
   return result;
 }
 
+
+
+
+export type CreditorScope = { type: "OUTLET"; outletId: string } | { type: "ALL_OUTLETS" };
+export type CreditorSummary = { totalCreditAmount: number; totalPaidAmount: number; totalPendingAmount: number; creditTransactions: number; pendingTransactions: number; paidTransactions: number; fullyPaidTransactions: number; creditorsWithPendingCredit: number; creditorsWhoPaid: number };
+export type CreditorTransaction = { id: string; creditor: Creditor; outlet: { id: string; name: string }; sourceType: PayLaterSourceType; sourceTransactionId: string | null; items: unknown; totalAmount: number; paidAmount: number; pendingAmount: number; status: "PENDING" | "PARTIALLY_PAID" | "PAID"; createdAt: string; updatedAt: string; payments: Array<{ allocationId: string; amount: number; paymentId: string; paymentMethod: "CASH" | "ONLINE" | "CHEQUE"; reference: string | null; receivedAtOutlet: { id: string; name: string }; paidAt: string }> };
+export type CreditorReport = { scope: CreditorScope; summary: CreditorSummary; transactions: CreditorTransaction[] };
+export type CreditorDashboard = Omit<CreditorReport, "transactions"> & { byOutlet: Array<{ outletId: string; outletName: string; creditTransactions: number; paidTransactions: number; totalCreditAmount: number; totalPaidAmount: number; totalPendingAmount: number }>; creditors: CreditorTransaction[]; creditorsPaid: CreditorTransaction[] };
+async function getCreditorReport<T>(route: string, outletId?: string): Promise<{ ok: true; data: T } | { ok: false; error: string; status: number }> {
+  const path = outletId?.trim() ? `${route}?outletId=${encodeURIComponent(outletId.trim())}` : route;
+  const result = await apiRequest<CreditorMutationResponse>(path, { method: "GET" });
+  if (!result.ok) return result;
+  if (result.data?.success === false) return { ok: false, error: errorMessageFromPayload(result.data), status: 400 };
+  return { ok: true, data: (result.data?.data ?? result.data) as T };
+}
+export const getCreditorDashboard = (outletId?: string) => getCreditorReport<CreditorDashboard>(CREDITOR_ROUTES.DASHBOARD, outletId);
+export const getOutstandingCreditorOrders = (outletId?: string) => getCreditorReport<CreditorReport>(CREDITOR_ROUTES.CREDIT, outletId);
+export const getPaidCreditorOrders = (outletId?: string) => getCreditorReport<CreditorReport>(CREDITOR_ROUTES.PAID, outletId);
 
 

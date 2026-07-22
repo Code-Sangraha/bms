@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const loyaltyRuleSchema = z.object({
   minPurchaseKg: z.number().positive("Minimum purchase must be greater than 0"),
-  rewardKg: z.number().positive("Reward kg must be greater than 0"),
+  outletId: z.string().trim().min(1).optional(),
+  rewardType: z.enum(["PROCESSED_QUANTITY", "CASH"]),
+  rewardOptions: z.array(z.object({ productId: z.string().trim().min(1), rewardKg: z.number().positive() })).optional(),
+  rewardValue: z.number().positive().optional(),
 });
 
 export type LoyaltyRuleFormValues = z.infer<typeof loyaltyRuleSchema>;
@@ -20,7 +23,7 @@ export const redeemRewardsSchema = z.object({
   contact: z.string().trim().optional().nullable(),
   outletId: z.string().trim().min(1, "Outlet is required"),
   rewardProductId: z.string().trim().min(1, "Reward product is required"),
-  redeemWeight: z.number().positive("Redeem weight must be greater than 0"),
+  loyaltyPoints: z.number().int("Loyalty points must be a whole number").positive("Loyalty points must be greater than 0").default(1),
 });
 
 export type RedeemRewardsInput = z.infer<typeof redeemRewardsSchema>;
@@ -33,4 +36,3 @@ export function validateRedeemRewards(body: unknown):
   const first = result.error.issues[0];
   return { ok: false, error: first?.message ?? "Invalid redeem data." };
 }
-

@@ -245,6 +245,7 @@ export default function WasteSalesPage() {
         } else {
           const payLaterResult = await createCreditorPayLater({
             creditorId: payLaterCreditor.id,
+             outletId: saleOutletId,
             sourceType: "WASTE",
             sourceTransactionId,
             items: [
@@ -303,6 +304,7 @@ export default function WasteSalesPage() {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["loyalty"] });
       void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       if (result.customerCreated) {

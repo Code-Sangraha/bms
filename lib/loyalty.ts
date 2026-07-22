@@ -7,7 +7,7 @@ export const LOYALTY_RULE_QUERY_KEY = ["loyaltyRule", "current"] as const;
 
 export type LoyaltyRuleValues = {
   minPurchaseKg: number;
-  rewardKg: number;
+  rewardKg?: number;
 };
 
 export type SessionLoyaltyRule = LoyaltyRuleValues & {
@@ -37,7 +37,7 @@ export function computeEarnedRewardKg(
 ): number {
   if (!Number.isFinite(totalPurchasedKg) || totalPurchasedKg <= 0) return 0;
   const normalized = normalizeLoyaltyRule(rule);
-  return Math.floor(totalPurchasedKg / normalized.minPurchaseKg) * normalized.rewardKg;
+  return Math.floor(totalPurchasedKg / normalized.minPurchaseKg) * (normalized.rewardKg ?? DEFAULT_LOYALTY_REWARD_KG);
 }
 
 export function computeAvailableRewardKg(
