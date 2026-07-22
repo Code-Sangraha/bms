@@ -117,7 +117,7 @@ describe("creditor contract", () => {
 
     const result = await createCreditorPayLater({
       creditorId: "cred-uuid",
-      outletId: "outlet-1",
+      outletId: "11111111-1111-4111-8111-111111111111",
       sourceType: "POS",
       sourceTransactionId: "TXN-154",
       items: [
@@ -130,7 +130,7 @@ describe("creditor contract", () => {
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toEqual({
       creditorId: "cred-uuid",
-      outletId: "outlet-1",
+      outletId: "11111111-1111-4111-8111-111111111111",
       sourceType: "POS",
       sourceTransactionId: "TXN-154",
       items: [

@@ -358,6 +358,7 @@ export default function LivestockSalesPage() {
       items: LivestockSalePayload[];
       payLater: {
         creditorId: string;
+        outletId: string;
         items: Array<{
           livestockItemId: string;
           name: string;
@@ -393,7 +394,7 @@ export default function LivestockSalesPage() {
         } else {
           const payLaterResult = await createCreditorPayLater({
             creditorId: payload.payLater.creditorId,
-             outletId: products.find((product) => product.id === payload.items[0]?.livestockItemId)?.outletId ?? "",
+            outletId: payload.payLater.outletId,
             sourceType: "LIVESTOCK",
             sourceTransactionId,
             items: payload.payLater.items,
@@ -480,6 +481,19 @@ export default function LivestockSalesPage() {
       setLivestockError(t("Select a creditor for Pay Later."));
       return;
     }
+    const selectedLivestockItems = livestockLineItems.map((line) =>
+      livestockItems.find((item) => resolveLivestockItemId(item) === line.livestockItemId)
+    );
+    if (selectedLivestockItems.some((item) => !item?.outletId)) {
+      setLivestockError(t("Unable to determine the livestock outlet."));
+      return;
+    }
+    const outletIds = new Set(selectedLivestockItems.map((item) => item!.outletId));
+    if (outletIds.size !== 1) {
+      setLivestockError(t("All livestock items in one sale must belong to the same outlet."));
+      return;
+    }
+    const outletId = Array.from(outletIds)[0];
     setLivestockError(null);
 
     const effectivePaymentMethod = resolveSalePaymentMethod(paymentMethod);
@@ -488,6 +502,7 @@ export default function LivestockSalesPage() {
       isPayLater && payLaterCreditor
         ? {
             creditorId: payLaterCreditor.id,
+            outletId,
             items: livestockLineItems.map((item) => ({
               livestockItemId: item.livestockItemId,
               name: item.livestockItemLabel,
@@ -499,12 +514,6 @@ export default function LivestockSalesPage() {
         : null;
 
     const firstLine = livestockLineItems[0];
-    const livestockItem = firstLine
-      ? livestockItems.find((item) => resolveLivestockItemId(item) === firstLine.livestockItemId)
-      : null;
-    const outletId = livestockItem
-      ? products.find((product) => product.id === livestockItem.productId)?.outletId ?? ""
-      : "";
     const existingCustomer = firstLine && outletId
       ? Boolean(selectedCustomerId) ||
         findMatchingCustomer(allCustomers, {

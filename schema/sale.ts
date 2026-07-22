@@ -14,7 +14,7 @@ export const processedSaleLineSchema = z.object({
   contact: z.string().trim().min(1, "Customer contact is required"),
   customerTypeId: z.string().min(1, "Customer type is required"),
   productId: z.string().min(1, "Product is required"),
-  outletId: z.string().min(1, "Outlet is required"),
+  outletId: z.string().uuid("Outlet must be a valid UUID"),
   weight: z.number().positive("Weight must be greater than 0"),
   /** Omitted when the backend should derive price from weight × customer-type rate. */
   amount: z.number().positive("Line amount must be greater than 0").optional(),
@@ -44,7 +44,7 @@ export const wasteSaleLineSchema = z.object({
   contact: z.string().trim().min(1, "Customer contact is required"),
   customerTypeId: z.string().min(1, "Customer type is required"),
   productId: z.string().trim().min(1, "Waste product is required"),
-  outletId: z.string().trim().min(1, "Outlet is required"),
+  outletId: z.string().trim().uuid("Outlet must be a valid UUID"),
   weight: z.number().positive("Weight must be greater than 0"),
   amount: z.number().positive("Line amount must be greater than 0"),
   discountAmount: z.number().min(0, "Discount cannot be negative").default(0),

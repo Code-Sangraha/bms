@@ -77,7 +77,7 @@ export type PayCreditorPayload = {
   amount: number;
   discountAmount?: number;
   paymentMethod: CreditorPaymentMethod;
-  outletId: string;
+  outletId?: string;
   reference?: string;
 };
 
@@ -303,7 +303,7 @@ export async function payCreditor(
     amount: payload.amount,
     discountAmount: payload.discountAmount ?? 0,
     paymentMethod: toApiPaymentMethod(payload.paymentMethod),
-    outletId: payload.outletId,
+    ...(payload.outletId?.trim() ? { outletId: payload.outletId.trim() } : {}),
     reference: payload.reference?.trim() || undefined,
   };
   const result = await apiRequest<CreditorMutationResponse>(
@@ -337,9 +337,13 @@ export async function createCreditorPayLater(
   | { ok: true; data: CreditorMutationResponse }
   | { ok: false; error: string; status: number }
 > {
+  const outletId = payload.outletId.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(outletId)) {
+    return { ok: false, error: "Outlet must be a valid UUID.", status: 400 };
+  }
   const result = await apiRequest<CreditorMutationResponse>(CREDITOR_ROUTES.PAY_LATER, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, outletId }),
   });
   if (!result.ok) return result;
   if (result.data && typeof result.data === "object" && result.data.success === false) {
@@ -366,5 +370,3 @@ async function getCreditorReport<T>(route: string, outletId?: string): Promise<{
 export const getCreditorDashboard = (outletId?: string) => getCreditorReport<CreditorDashboard>(CREDITOR_ROUTES.DASHBOARD, outletId);
 export const getOutstandingCreditorOrders = (outletId?: string) => getCreditorReport<CreditorReport>(CREDITOR_ROUTES.CREDIT, outletId);
 export const getPaidCreditorOrders = (outletId?: string) => getCreditorReport<CreditorReport>(CREDITOR_ROUTES.PAID, outletId);
-
-

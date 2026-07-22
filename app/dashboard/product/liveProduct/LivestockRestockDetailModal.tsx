@@ -113,6 +113,7 @@ export default function LivestockRestockDetailModal({
         livestockItemId,
         quantity: qty,
         supplierName: values.supplierName.trim(),
+        supplierId: selectedSupplierId || undefined,
         totalAmount: total,
         paidAmount: paid,
         dueAmount: computeDueAmount(total, paid),
@@ -239,6 +240,7 @@ export default function LivestockRestockDetailModal({
                 disabled={isPending || suppliersQuery.isLoading}
                 onChange={(event) => {
                   const supplierId = event.target.value;
+                  if (supplierId === "__new__") { navigate("/dashboard/product/suppliers"); return; }
                   setSelectedSupplierId(supplierId);
                   const supplier = suppliersQuery.data?.find((row) => row.id === supplierId);
                   if (!supplier) return;
@@ -247,6 +249,7 @@ export default function LivestockRestockDetailModal({
                 }}
               >
                 <option value="">{t("Select saved supplier")}</option>
+                <option value="__new__">{t("Add new supplier")}</option>
                 {(suppliersQuery.data ?? []).map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}{supplier.contact ? " — " + supplier.contact : ""}
@@ -378,3 +381,5 @@ export default function LivestockRestockDetailModal({
     </Modal>
   );
 }
+
+

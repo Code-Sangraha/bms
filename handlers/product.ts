@@ -467,6 +467,7 @@ export type CreateLivestockItemPayload = {
 export type LivestockItem = {
   id?: string;
   productId: string;
+  outletId: string;
   name: string;
   itemId: string;
   /** Stock / legacy scalar used by restock and older APIs (may mirror quantity or weight). */
@@ -1066,6 +1067,7 @@ export type LivestockRestockPayload = {
   buyingPrice?: number;
   sellingPrice?: number;
   supplierName: string;
+  supplierId?: string;
   supplierContact?: string;
   totalAmount: number;
   paidAmount: number;
@@ -1094,6 +1096,7 @@ export async function restockLivestockItem(payload: LivestockRestockPayload) {
     livestockItemId: payload.livestockItemId,
     quantity: payload.quantity,
     supplierName: payload.supplierName,
+    ...(payload.supplierId?.trim() ? { supplierId: payload.supplierId.trim() } : {}),
     totalAmount: payload.totalAmount,
     paidAmount: payload.paidAmount,
     paymentStatus: payload.paymentStatus,
@@ -1867,3 +1870,5 @@ export async function getProcessedProductWasteHistory(
     .filter((x): x is LivestockWasteHistoryEntry => x !== null);
   return { ok: true, data };
 }
+
+

@@ -238,35 +238,7 @@ export default function LoyaltyRulesPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <h2 className="loyaltyRulesCardTitle">{t("Newest configured rule")}</h2>
-            {/* <p className="loyaltyRulesCardSubtitle">
-              {t("The API does not expose existing rules yet, so this panel only shows the latest rule created during this browser session.")}
-            </p> */}
-          </CardHeader>
-          <CardContent>
-            {sessionRule ? (
-              <div className="loyaltyRulesSessionRule">
-                <span className="loyaltyRulesSessionValue">{formatRule(sessionRule)}</span>
-                <span className="loyaltyRulesSessionMeta">
-                  {t("This is the newest configured rule; sales may use a different rule until the backend lookup is ordered.")}
-                </span>
-                {sessionRule.createdAt ? (
-                  <span className="loyaltyRulesSessionMeta">
-                    {new Date(sessionRule.createdAt).toLocaleString()}
-                  </span>
-                ) : null}
-              </div>
-            ) : (
-              <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-                <AlertDescription>
-                  {t("No loyalty rule is configured in the backend yet.")}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+    
       </div>
     </section>
   );

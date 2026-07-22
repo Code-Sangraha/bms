@@ -10,9 +10,11 @@ import { ArrowLeft, Wallet } from "lucide-react";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import { useOutletScope } from "@/app/providers/OutletScopeProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 import Modal from "@/app/components/Modal/Modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/app/components/ui/card";
@@ -35,6 +37,7 @@ import {
   type CreditorOrder,
   type CreditorPayment,
 } from "@/handlers/creditor";
+import { getOutlets } from "@/handlers/outlet";
 import {
   paymentMethodLabel,
   type SalePaymentMethod,
@@ -60,7 +63,7 @@ function formatMoney(value: number | undefined | null): string {
 }
 
 function formatDate(iso: string | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
   return new Date(ms).toLocaleDateString();
@@ -84,7 +87,7 @@ function orderItemsCount(order: CreditorOrder): number {
 }
 
 function orderItemSummary(order: CreditorOrder): string {
-  if (!Array.isArray(order.items) || order.items.length === 0) return "—";
+  if (!Array.isArray(order.items) || order.items.length === 0) return "-";
   return order.items
     .map((item) => {
       const name = typeof item.name === "string" ? item.name : "";
@@ -96,7 +99,7 @@ function orderItemSummary(order: CreditorOrder): string {
             : "";
       const amount =
         typeof item.amount === "number" ? formatMoney(item.amount) : "";
-      return [name, qty, amount].filter(Boolean).join(" · ");
+      return [name, qty, amount].filter(Boolean).join(" | ");
     })
     .join(", ");
 }
@@ -106,12 +109,26 @@ export default function CreditorDetailPage() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { scopedOutletId } = useOutletScope();
+  const { userOutletId } = useAuth();
   const queryClient = useQueryClient();
   const { creditorId: creditorIdParam } = useParams<{ creditorId: string }>();
   const creditorId = creditorIdParam ? decodeURIComponent(creditorIdParam) : "";
   const [payOpen, setPayOpen] = useState(false);
+  const [selectedPaymentOutletId, setSelectedPaymentOutletId] = useState("");
 
   const queryKey = useMemo(() => ["creditor", creditorId] as const, [creditorId]);
+  const fixedPaymentOutletId = scopedOutletId ?? userOutletId;
+  const paymentOutletId = fixedPaymentOutletId ?? selectedPaymentOutletId;
+  const { data: paymentOutlets = [] } = useQuery({
+    queryKey: ["outlets"],
+    enabled: payOpen && !fixedPaymentOutletId,
+    queryFn: async () => {
+      const result = await getOutlets();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
 
   const {
     data: detail,
@@ -152,7 +169,7 @@ export default function CreditorDetailPage() {
         amount: values.amount,
         discountAmount: values.discountAmount,
         paymentMethod: values.paymentMethod as SalePaymentMethod,
-        outletId: scopedOutletId ?? "",
+        ...(paymentOutletId ? { outletId: paymentOutletId } : {}),
         reference: values.reference,
       }),
     onSuccess: (result) => {
@@ -176,6 +193,10 @@ export default function CreditorDetailPage() {
   });
 
   const onPaySubmit = (values: PaymentFormValues) => {
+    if (!paymentOutletId) {
+      payForm.setError("root", { message: t("Please select the receiving outlet.") });
+      return;
+    }
     const pending = detail?.pendingAmount ?? 0;
     if (values.amount + values.discountAmount > pending) {
       payForm.setError("root", { message: t("Payment and discount cannot exceed the pending balance.") });
@@ -191,13 +212,14 @@ export default function CreditorDetailPage() {
       paymentMethod: "cash",
       reference: "",
     });
+    setSelectedPaymentOutletId("");
     setPayOpen(true);
   };
 
   return (
     <section className="creditorsPage">
       <div className="breadcrumb">
-        <Link to="/dashboard/invoices/creditors">{t("Creditors")}</Link> {"›"}{" "}
+        <Link to="/dashboard/invoices/creditors">{t("Creditors")}</Link> {">"}{" "}
         <span>{detail?.name ?? t("Details")}</span>
       </div>
 
@@ -212,7 +234,7 @@ export default function CreditorDetailPage() {
           </Link>
           <h1 className="pageTitle">{detail?.name ?? t("Creditor details")}</h1>
           <p className="pageSubtitle">
-            {detail ? `${detail.phone}${detail.address ? ` · ${detail.address}` : ""}` : ""}
+            {detail ? `${detail.phone}${detail.address ? ` | ${detail.address}` : ""}` : ""}
           </p>
         </div>
         {detail && detail.pendingAmount > 0 ? (
@@ -289,14 +311,14 @@ export default function CreditorDetailPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={sourceTypeBadgeVariant(order.sourceType)}>
-                            {order.sourceType ?? "—"}
+                            {order.sourceType ?? "-"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {order.sourceTransactionId ?? "—"}
+                          {order.sourceTransactionId ?? "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {order.outlet?.name ?? "—"}
+                          {order.outlet?.name ?? "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground" title={orderItemSummary(order)}>
                           {orderItemsCount(order)}
@@ -338,15 +360,15 @@ export default function CreditorDetailPage() {
                           {formatMoney(payment.amount)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {payment.discountAmount ? formatMoney(payment.discountAmount) : "—"}
+                          {payment.discountAmount ? formatMoney(payment.discountAmount) : "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {payment.paymentMethod
                             ? t(paymentMethodLabel(payment.paymentMethod))
-                            : "—"}
+                            : "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {payment.reference || "—"}
+                          {payment.reference || "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -371,9 +393,9 @@ export default function CreditorDetailPage() {
             <Button
               type="submit"
               form="creditor-pay-form"
-              disabled={payMutation.isPending}
+              disabled={payMutation.isPending || !paymentOutletId}
             >
-              {payMutation.isPending ? t("Saving…") : t("Record Payment")}
+              {payMutation.isPending ? t("Saving...") : t("Record Payment")}
             </Button>
           </>
         }
@@ -394,7 +416,14 @@ export default function CreditorDetailPage() {
               <strong>{formatMoney(detail?.pendingAmount)}</strong>
             </div>
           </div>
-          <FormField
+          {!fixedPaymentOutletId ? (
+            <FormField id="creditor-pay-outlet" label={t("Receiving outlet")} required>
+              <Select value={selectedPaymentOutletId} onValueChange={setSelectedPaymentOutletId}>
+                <SelectTrigger id="creditor-pay-outlet"><SelectValue placeholder={t("Select receiving outlet")} /></SelectTrigger>
+                <SelectContent>{paymentOutlets.map((outlet) => <SelectItem key={outlet.id} value={outlet.id}>{outlet.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </FormField>
+          ) : null}          <FormField
             id="creditor-pay-amount"
             label={t("Amount")}
             required
