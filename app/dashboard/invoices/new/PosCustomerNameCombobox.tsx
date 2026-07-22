@@ -6,6 +6,7 @@ import type { Customer } from "@/handlers/customer";
 import { filterCustomersForTypeahead, formatCustomerSuggestionLabel } from "./filterCustomersForTypeahead";
 
 type PosCustomerNameComboboxProps = {
+  id?: string;
   customers: Customer[];
   value: string;
   onChange: (value: string) => void;
@@ -15,6 +16,7 @@ type PosCustomerNameComboboxProps = {
 };
 
 export default function PosCustomerNameCombobox({
+  id = "pos-customer-name",
   customers,
   value,
   onChange,
@@ -91,7 +93,7 @@ export default function PosCustomerNameCombobox({
     <div className="saleCustomerCombobox" ref={rootRef}>
       <Input
         ref={inputRef}
-        id="pos-customer-name"
+        id={id}
         type="text"
         role="combobox"
         aria-expanded={showList}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/app/providers/I18nProvider";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -44,12 +44,18 @@ import {
 import { SalePageLayout } from "@/app/dashboard/invoices/components/SalePageLayout";
 import { SaleSelect } from "@/app/dashboard/invoices/components/SaleSelect";
 import { Plus } from "lucide-react";
+import { getCustomerTypes } from "@/handlers/customerType";
+import { createCustomer, getCustomers, type Customer } from "@/handlers/customer";
+import PosCustomerNameCombobox from "@/app/dashboard/invoices/new/PosCustomerNameCombobox";
+import { findMatchingCustomer } from "@/app/dashboard/invoices/new/findMatchingCustomer";
 import "../components/sale-entry.scss";
 
 const LIVE_PRODUCT_TYPE_NAMES = ["live stock", "live"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const PRODUCT_TYPES_QUERY_KEY = ["productTypes"];
 const LIVESTOCK_ITEMS_QUERY_KEY = ["livestockItemsByProduct"];
+const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
+const CUSTOMERS_QUERY_KEY = ["customers"];
 
 type LivestockLineItem = {
   name: string;
@@ -112,6 +118,8 @@ export default function LivestockSalesPage() {
   const { showToast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerTypeId, setCustomerTypeId] = useState("");
   const [selectedLivestockItemId, setSelectedLivestockItemId] = useState("");
   const [livestockWeight, setLivestockWeight] = useState("");
   const [livestockAmount, setLivestockAmount] = useState<number>(0);
@@ -151,6 +159,43 @@ export default function LivestockSalesPage() {
       return result.data;
     },
   });
+
+  const { data: customerTypes = [] } = useQuery({
+    queryKey: CUSTOMER_TYPES_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCustomerTypes();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: CUSTOMERS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCustomers();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  useEffect(() => {
+    if (!customerTypeId && customerTypes.length > 0) {
+      setCustomerTypeId(customerTypes[0].id);
+    }
+  }, [customerTypeId, customerTypes]);
+
+  const applyRegisteredCustomer = (customer: Customer) => {
+    setSelectedCustomerId(customer.id);
+    setCustomerName(customer.name);
+    setCustomerContact(customer.contact);
+    if (customer.customerTypeId) setCustomerTypeId(customer.customerTypeId);
+  };
 
   const liveTypeIds = useMemo(() => {
     const ids = new Set<string>();
@@ -321,6 +366,12 @@ export default function LivestockSalesPage() {
         }>;
         totalAmount: number;
       } | null;
+      customerCreate: {
+        name: string;
+        contact: string;
+        outletId: string;
+        customerTypeId: string;
+      } | null;
     }) => {
       const saleResult = await createLivestockSale(payload.items);
       if (!saleResult.ok) {
@@ -352,9 +403,18 @@ export default function LivestockSalesPage() {
           }
         }
       }
+      let customerCreateError: string | null = null;
+      let customerCreated = false;
+      if (payload.customerCreate) {
+        const customerResult = await createCustomer(payload.customerCreate);
+        if (customerResult.ok) customerCreated = true;
+        else customerCreateError = customerResult.error;
+      }
       return {
         saleOk: true as const,
         payLaterError,
+        customerCreateError,
+        customerCreated,
       };
     },
     onSuccess: (result, variables) => {
@@ -374,16 +434,27 @@ export default function LivestockSalesPage() {
       } else {
         showToast(t("Livestock sale created successfully."), "success");
       }
+      if (result.customerCreateError) {
+        showToast(
+          `${t("Sale created, but customer could not be saved.")} ${result.customerCreateError}`,
+          "error"
+        );
+      }
 
       setLivestockLineItems([]);
       setCustomerName("");
       setCustomerContact("");
+      setSelectedCustomerId("");
+      setCustomerTypeId(customerTypes[0]?.id ?? "");
       clearLivestockLineForm();
       setPaymentMethod(DEFAULT_SALE_PAYMENT_METHOD);
       setPayLaterCreditor(null);
       setLivestockError(null);
       queryClient.invalidateQueries({ queryKey: ["livestockSales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardSales"] });
+      if (result.customerCreated) {
+        queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
+      }
       if (variables.payLater) {
         queryClient.invalidateQueries({ queryKey: ["creditors"] });
         queryClient.invalidateQueries({
@@ -425,6 +496,31 @@ export default function LivestockSalesPage() {
           }
         : null;
 
+    const firstLine = livestockLineItems[0];
+    const livestockItem = firstLine
+      ? livestockItems.find((item) => resolveLivestockItemId(item) === firstLine.livestockItemId)
+      : null;
+    const outletId = livestockItem
+      ? products.find((product) => product.id === livestockItem.productId)?.outletId ?? ""
+      : "";
+    const existingCustomer = firstLine && outletId
+      ? Boolean(selectedCustomerId) ||
+        findMatchingCustomer(allCustomers, {
+          name: firstLine.name,
+          contact: firstLine.contact,
+          outletId,
+        }) != null
+      : true;
+    const customerCreate =
+      firstLine && outletId && customerTypeId && !existingCustomer
+        ? {
+            name: firstLine.name,
+            contact: firstLine.contact,
+            outletId,
+            customerTypeId,
+          }
+        : null;
+
     createLivestockSaleMutation.mutate({
       items: livestockLineItems.map((item) => ({
         name: item.name,
@@ -435,6 +531,7 @@ export default function LivestockSalesPage() {
         paymentMethod: effectivePaymentMethod,
       })),
       payLater,
+      customerCreate,
     });
   };
 
@@ -477,12 +574,17 @@ export default function LivestockSalesPage() {
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormField id="livestock-customer-name" label={t("Customer Name")}>
-                  <Input
+                  <PosCustomerNameCombobox
                     id="livestock-customer-name"
-                    placeholder={t("Enter customer name")}
+                    customers={allCustomers}
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    autoComplete="name"
+                    onChange={(value) => {
+                      setSelectedCustomerId("");
+                      setCustomerTypeId(customerTypes[0]?.id ?? "");
+                      setCustomerName(value);
+                    }}
+                    onSelectCustomer={applyRegisteredCustomer}
+                    t={t}
                   />
                 </FormField>
                 <FormField id="livestock-customer-contact" label={t("Contact")}>
@@ -490,7 +592,11 @@ export default function LivestockSalesPage() {
                     id="livestock-customer-contact"
                     placeholder={t("Phone or email")}
                     value={customerContact}
-                    onChange={(e) => setCustomerContact(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCustomerId("");
+                      setCustomerTypeId(customerTypes[0]?.id ?? "");
+                      setCustomerContact(e.target.value);
+                    }}
                     autoComplete="tel"
                   />
                 </FormField>

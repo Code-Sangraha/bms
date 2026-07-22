@@ -58,10 +58,6 @@ import {
   LOYALTY_RULE_QUERY_KEY,
   type SessionLoyaltyRule,
 } from "@/lib/loyalty";
-import {
-  mergeCustomerPurchaseTotals,
-  readCustomerPurchaseTotals,
-} from "@/lib/customerPurchaseTotalsStorage";
 import "./customers.scss";
 
 const OUTLETS_QUERY_KEY = ["outlets"];
@@ -190,13 +186,7 @@ export default function CustomersPage() {
     },
   });
 
-  // TEMP: localStorage customer totals until backend get-by-customer is scoped and authoritative.
-  const customerSalesSummary = useMemo(() => {
-    if (!customerSalesQuery.data) return null;
-    if (!summaryCustomer) return customerSalesQuery.data;
-    const localTotals = readCustomerPurchaseTotals(summaryCustomer);
-    return mergeCustomerPurchaseTotals(customerSalesQuery.data, localTotals);
-  }, [customerSalesQuery.data, summaryCustomer]);
+  const customerSalesSummary = customerSalesQuery.data ?? null;
 
   const { data: outlets = [] } = useQuery({
     queryKey: OUTLETS_QUERY_KEY,
@@ -667,10 +657,7 @@ export default function CustomersPage() {
                   </span>
                   <strong>
                     {formatKg(
-                      computeEarnedRewardKg(
-                        customerSalesSummary.totalWeightBought,
-                        sessionLoyaltyRule
-                      )
+                      customerSalesSummary.earnedRewardKg
                     )}
                   </strong>
                 </div>
@@ -678,7 +665,7 @@ export default function CustomersPage() {
 
               <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                 <AlertDescription>
-                  {t("Estimated from the configured backend rule; backend balance may differ. The current API does not return redeemed or available reward balance.")}
+                  {t("Reward balance is provided by the backend CustomerLoyalty record.")}
                 </AlertDescription>
               </Alert>
 
@@ -784,6 +771,9 @@ export default function CustomersPage() {
     </section>
   );
 }
+
+
+
 
 
 

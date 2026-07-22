@@ -229,6 +229,9 @@ export type CustomerSalesSummary = {
   totalAmountSpent: number;
   totalTransactions: number;
   sales: CustomerSalesHistoryItem[];
+  earnedRewardKg: number;
+  redeemedRewardKg: number;
+  availableRewardKg: number;
 };
 export type CreateSaleResponse = {
   success?: boolean;
@@ -541,11 +544,14 @@ function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
       totalAmountSpent: sales.reduce((sum, sale) => sum + customerSaleAmount(sale), 0),
       totalTransactions: sales.length,
       sales,
+      earnedRewardKg: 0,
+      redeemedRewardKg: 0,
+      availableRewardKg: 0,
     };
   }
 
   if (!source || typeof source !== "object") {
-    return { totalWeightBought: 0, totalAmountSpent: 0, totalTransactions: 0, sales: [] };
+    return { totalWeightBought: 0, totalAmountSpent: 0, totalTransactions: 0, sales: [], earnedRewardKg: 0, redeemedRewardKg: 0, availableRewardKg: 0 };
   }
 
   const o = source as Record<string, unknown>;
@@ -558,6 +564,9 @@ function normalizeCustomerSalesSummary(raw: unknown): CustomerSalesSummary {
     totalAmountSpent: getNumber(o.totalAmountSpent) ?? derivedAmount,
     totalTransactions: getNumber(o.totalTransactions) ?? sales.length,
     sales,
+    earnedRewardKg: getNumber(o.earnedRewardKg) ?? 0,
+    redeemedRewardKg: getNumber(o.redeemedRewardKg) ?? 0,
+    availableRewardKg: getNumber(o.availableRewardKg) ?? 0,
   };
 }
 
@@ -866,4 +875,7 @@ export async function redeemRewards(
   const data = result.data?.data ?? body;
   return { ok: true, data };
 }
+
+
+
 

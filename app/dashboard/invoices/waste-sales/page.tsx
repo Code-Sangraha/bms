@@ -35,12 +35,16 @@ import {
 } from "@/lib/salePaymentMethods";
 import { validateWasteSaleCreate } from "@/schema/sale";
 import CreditorPicker from "@/app/dashboard/invoices/components/CreditorPicker";
+import PosCustomerNameCombobox from "@/app/dashboard/invoices/new/PosCustomerNameCombobox";
+import { findMatchingCustomer } from "@/app/dashboard/invoices/new/findMatchingCustomer";
+import { createCustomer, getCustomers, type Customer } from "@/handlers/customer";
 import "../components/sale-entry.scss";
 
 const SALES_QUERY_KEY = ["sales"];
 const DASHBOARD_SALES_QUERY_KEY = ["dashboardSales"];
 const PRODUCTS_QUERY_KEY = ["products"];
 const CUSTOMER_TYPES_QUERY_KEY = ["customerTypes"];
+const CUSTOMERS_QUERY_KEY = ["customers"];
 const WEIGHT_FORMATTER = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
 
 function formatWasteWeight(value: number | null): string {
@@ -60,6 +64,7 @@ export default function WasteSalesPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [customerTypeId, setCustomerTypeId] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [wasteProductId, setWasteProductId] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
@@ -86,6 +91,18 @@ export default function WasteSalesPage() {
     queryKey: CUSTOMER_TYPES_QUERY_KEY,
     queryFn: async () => {
       const result = await getCustomerTypes();
+      if (!result.ok) {
+        if (result.status === 401) navigate("/login");
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: CUSTOMERS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await getCustomers();
       if (!result.ok) {
         if (result.status === 401) navigate("/login");
         throw new Error(result.error);
@@ -135,6 +152,14 @@ export default function WasteSalesPage() {
 
   const clearError = () => {
     if (error) setError(null);
+  };
+
+  const applyRegisteredCustomer = (customer: Customer) => {
+    setSelectedCustomerId(customer.id);
+    setCustomerName(customer.name);
+    setCustomerContact(customer.contact);
+    if (customer.customerTypeId) setCustomerTypeId(customer.customerTypeId);
+    clearError();
   };
 
   const checkoutConfirmMessage = useMemo(() => {
@@ -190,6 +215,26 @@ export default function WasteSalesPage() {
         };
       }
 
+      let customerCreateError: string | null = null;
+      let customerCreated = false;
+      const existingCustomer =
+        Boolean(selectedCustomerId) ||
+        findMatchingCustomer(allCustomers, {
+          name: trimmedName,
+          contact: trimmedContact,
+          outletId: saleOutletId,
+        }) != null;
+      if (!existingCustomer) {
+        const customerResult = await createCustomer({
+          name: trimmedName,
+          contact: trimmedContact,
+          outletId: saleOutletId,
+          customerTypeId: customerTypeId.trim(),
+        });
+        if (customerResult.ok) customerCreated = true;
+        else customerCreateError = customerResult.error;
+      }
+
       let payLaterError: string | null = null;
       if (isPayLater && payLaterCreditor && selectedWasteProduct) {
         const sourceTransactionId = extractTransactionId(saleResult.data);
@@ -221,6 +266,8 @@ export default function WasteSalesPage() {
       return {
         saleOk: true as const,
         payLaterError,
+        customerCreateError,
+        customerCreated,
         creditorId: isPayLater ? payLaterCreditor?.id ?? null : null,
       };
     },
@@ -237,10 +284,17 @@ export default function WasteSalesPage() {
       if (result.payLaterError) {
         showToast(result.payLaterError, "error");
       }
+      if (result.customerCreateError) {
+        showToast(
+          `${t("Sale created, but customer could not be saved.")} ${result.customerCreateError}`,
+          "error"
+        );
+      }
 
       setCustomerName("");
       setCustomerContact("");
       setCustomerTypeId(customerTypes[0]?.id ?? "");
+      setSelectedCustomerId("");
       setWasteProductId("");
       setWeightInput("");
       setAmountInput("");
@@ -251,6 +305,9 @@ export default function WasteSalesPage() {
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_SALES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: WASTE_PRODUCTS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      if (result.customerCreated) {
+        void queryClient.invalidateQueries({ queryKey: CUSTOMERS_QUERY_KEY });
+      }
       if (result.creditorId) {
         void queryClient.invalidateQueries({ queryKey: ["creditors"] });
         void queryClient.invalidateQueries({
@@ -348,15 +405,17 @@ export default function WasteSalesPage() {
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField id="waste-customer-name" label={t("Name")}>
-                    <Input
+                    <PosCustomerNameCombobox
                       id="waste-customer-name"
-                      placeholder={t("Customer name")}
+                      customers={allCustomers}
                       value={customerName}
-                      onChange={(e) => {
-                        setCustomerName(e.target.value);
+                      onChange={(value) => {
+                        setSelectedCustomerId("");
+                        setCustomerName(value);
                         clearError();
                       }}
-                      autoComplete="name"
+                      onSelectCustomer={applyRegisteredCustomer}
+                      t={t}
                     />
                   </FormField>
                   <FormField id="waste-customer-contact" label={t("Contact")}>
@@ -365,6 +424,7 @@ export default function WasteSalesPage() {
                       placeholder={t("Phone or email")}
                       value={customerContact}
                       onChange={(e) => {
+                        setSelectedCustomerId("");
                         setCustomerContact(e.target.value);
                         clearError();
                       }}

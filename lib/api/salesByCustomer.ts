@@ -18,8 +18,8 @@ function errorMessageFromPayload(data: unknown): string {
 }
 
 /**
- * GET /v1/sales/get-by-customer with JSON body `{ customer }`.
- * Backend currently reads `req.body` for this GET route, so this uses axios.
+ * GET /v1/sales/get-by-customer?customer=... .
+
  */
 export async function fetchSalesByCustomer(
   customer: string
@@ -32,7 +32,7 @@ export async function fetchSalesByCustomer(
   }
 
   const url = `${base}${SALES_ROUTES.GET_BY_CUSTOMER}`;
-  const body = { customer };
+  const urlWithQuery = `${url}?customer=${encodeURIComponent(customer)}`;
 
   const requestWithToken = (token: string | null) =>
     axios.request<SalesByCustomerApiResponse>({
@@ -65,3 +65,4 @@ export async function fetchSalesByCustomer(
     return { ok: false, error: "Something went wrong. Please try again.", status: 0 };
   }
 }
+
