@@ -21,6 +21,7 @@ import {
 } from "@/schema/livestockDetailModals";
 import { computeDueAmount, derivePaymentStatus } from "@/lib/billing/paymentStatus";
 import "./livestockDetailShell.scss";
+import SupplierPicker from "./SupplierPicker";
 
 type LivestockRestockDetailModalProps = {
   isOpen: boolean;
@@ -151,6 +152,10 @@ export default function LivestockRestockDetailModal({
   });
 
   const onSubmit = (data: LivestockRestockDetailFormValues) => {
+    if (!selectedSupplierId) {
+      showToast(t("Select or create a supplier."), "error");
+      return;
+    }
     mutation.mutate(data);
   };
 
@@ -227,8 +232,18 @@ export default function LivestockRestockDetailModal({
 
         <div className="livestockDetailModalSection">
           <h4 className="livestockDetailModalSectionTitle">{t("Supplier & Payment")}</h4>
+          <SupplierPicker
+            outletId={restockOutletId}
+            selectedSupplierId={selectedSupplierId}
+            disabled={isPending}
+            onSelect={(supplier) => {
+              setSelectedSupplierId(supplier.id);
+              setValue("supplierName", supplier.name, { shouldValidate: true });
+              setValue("supplierContact", supplier.contact ?? undefined);
+            }}
+          />
 
-          {restockOutletId && (suppliersQuery.data?.length || suppliersQuery.isLoading) ? (
+          {false && restockOutletId && (suppliersQuery.data?.length || suppliersQuery.isLoading) ? (
             <div className="livestockDetailModalField">
               <label className="livestockDetailModalLabel" htmlFor="livestock-restock-supplier-select">
                 {t("Saved supplier")}
@@ -268,6 +283,7 @@ export default function LivestockRestockDetailModal({
               type="text"
               className="livestockDetailModalInput"
               disabled={isPending}
+              readOnly
               {...register("supplierName")}
             />
             {errors.supplierName?.message && (
@@ -286,6 +302,7 @@ export default function LivestockRestockDetailModal({
               type="text"
               className="livestockDetailModalInput"
               disabled={isPending}
+              readOnly
               {...register("supplierContact")}
             />
           </div>

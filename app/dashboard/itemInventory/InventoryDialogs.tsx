@@ -70,12 +70,16 @@ export function ItemEditor({
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [unitId, setUnitId] = useState("");
+  const [secondaryUnitId, setSecondaryUnitId] = useState("");
+  const [conversionRate, setConversionRate] = useState("");
+  const [secondarySellingPrice, setSecondarySellingPrice] = useState("");
   const [quantity, setQuantity] = useState("0");
   const [buyingPrice, setBuyingPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [threshold, setThreshold] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [purchase, setPurchase] = useState({ supplierId: "", supplierName: "", supplierContact: "", totalAmount: "", paidAmount: "", dueAmount: "", paymentStatus: "FULL", remarks: "" });
+  const startingQuantity = finiteNumber(quantity);
 
   const activeCategories = useMemo(
     () => categories.filter((row) => row.status || row.id === item?.category.id),
@@ -91,6 +95,9 @@ export function ItemEditor({
     setName(item?.name ?? "");
     setCategoryId(item?.category.id ?? activeCategories[0]?.id ?? "");
     setUnitId(item?.unit.id ?? activeUnits[0]?.id ?? "");
+    setSecondaryUnitId(item?.secondaryUnit?.id ?? "");
+    setConversionRate(item?.conversionRate != null ? String(item.conversionRate) : "");
+    setSecondarySellingPrice(item?.secondarySellingPrice != null ? String(item.secondarySellingPrice) : "");
     setQuantity(item ? "0" : "0");
     setBuyingPrice(item ? String(item.buyingPrice) : "");
     setSellingPrice(item ? String(item.sellingPrice) : "");
@@ -106,6 +113,8 @@ export function ItemEditor({
     const selling = finiteNumber(sellingPrice);
     const lowStockAlertQuantity = finiteNumber(threshold);
     const startingQuantity = finiteNumber(quantity);
+    const conversion = finiteNumber(conversionRate);
+    const secondaryPrice = finiteNumber(secondarySellingPrice);
     if (!name.trim() || !categoryId || !unitId) {
       setError(t("Name, category, and unit are required."));
       return;
@@ -120,6 +129,15 @@ export function ItemEditor({
     }
     if (!item && (startingQuantity == null || startingQuantity < 0)) {
       setError(t("Starting quantity must be a valid non-negative number."));
+      return;
+    }
+    const hasSecondary = Boolean(secondaryUnitId || conversionRate.trim() || secondarySellingPrice.trim());
+    if (hasSecondary && (!secondaryUnitId || conversion == null || conversion <= 0 || secondaryPrice == null || secondaryPrice < 0)) {
+      setError(t("Secondary unit, positive conversion rate, and secondary selling price must be provided together."));
+      return;
+    }
+    if (secondaryUnitId && secondaryUnitId === unitId) {
+      setError(t("Primary and secondary units must be different."));
       return;
     }
     const purchaseResult = !item
@@ -138,6 +156,7 @@ export function ItemEditor({
           buyingPrice: buying,
           sellingPrice: selling,
           lowStockAlertQuantity,
+          ...(hasSecondary ? { secondaryUnitId, conversionRate: conversion as number, secondarySellingPrice: secondaryPrice as number } : {}),
         }
       : {
           name: name.trim(),
@@ -147,6 +166,7 @@ export function ItemEditor({
           buyingPrice: buying,
           sellingPrice: selling,
           lowStockAlertQuantity,
+          ...(hasSecondary ? { secondaryUnitId, conversionRate: conversion as number, secondarySellingPrice: secondaryPrice as number } : {}),
           ...(purchaseResult?.ok ? purchaseResult.data : {}),
         };
     const failure = await onSubmit(payload);
@@ -190,6 +210,18 @@ export function ItemEditor({
               <option value="">{t("Select unit")}</option>
               {activeUnits.map((row) => <option key={row.id} value={row.id}>{row.name} ({row.symbol})</option>)}
             </select>
+          </Field>
+          <Field label={t("Secondary unit (optional)")} hint={t("Enable sales in a second measuring unit.")}>
+            <select className={selectClass} value={secondaryUnitId} onChange={(event) => setSecondaryUnitId(event.target.value)}>
+              <option value="">{t("No secondary unit")}</option>
+              {activeUnits.filter((row) => row.id !== unitId).map((row) => <option key={row.id} value={row.id}>{row.name} ({row.symbol})</option>)}
+            </select>
+          </Field>
+          <Field label={t("Conversion rate")} hint={t("Number of secondary units in one primary unit.")}>
+            <Input type="number" min="0" step="any" value={conversionRate} onChange={(event) => setConversionRate(event.target.value)} disabled={!secondaryUnitId} />
+          </Field>
+          <Field label={t("Secondary selling price (NPR)")}>
+            <Input type="number" min="0" step="0.01" value={secondarySellingPrice} onChange={(event) => setSecondarySellingPrice(event.target.value)} disabled={!secondaryUnitId} />
           </Field>
           {!item ? (
             <Field label={t("Starting quantity")}>

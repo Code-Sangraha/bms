@@ -462,6 +462,9 @@ export type CreateLivestockItemPayload = {
   buyingPrice: number;
   sellingPrice: number;
   status: boolean;
+  supplierId?: string;
+  supplierName?: string;
+  supplierContact?: string;
 };
 
 export type LivestockItem = {
@@ -895,6 +898,9 @@ export async function createLivestockItem(payload: CreateLivestockItemPayload) {
     buyingPrice: payload.buyingPrice,
     sellingPrice: payload.sellingPrice,
     status: payload.status,
+    ...(payload.supplierId ? { supplierId: payload.supplierId } : {}),
+    ...(payload.supplierName ? { supplierName: payload.supplierName } : {}),
+    ...(payload.supplierContact ? { supplierContact: payload.supplierContact } : {}),
   };
   return apiRequest<CreateLivestockItemResponse>(PRODUCT_ROUTES.LIVESTOCK_CREATE_ITEM, {
     method: "POST",

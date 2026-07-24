@@ -30,6 +30,7 @@ import {
   type ItemCategory,
 } from "@/handlers/itemInventory";
 import { inventoryQueryKeys, invalidateInventoryCaches } from "./inventoryQueries";
+import { useInventoryScope } from "./InventoryScope";
 
 type EditorState =
   | { kind: "category"; row: ItemCategory | null }
@@ -87,27 +88,28 @@ function SetupEditor({
   );
 }
 
-function SectionHeader({ title, description, search, setSearch, addLabel, onAdd }: { title: string; description: string; search: string; setSearch: (value: string) => void; addLabel: string; onAdd: () => void }) {
+function SectionHeader({ title, description, search, setSearch, addLabel, onAdd }: { title: string; description: string; search: string; setSearch: (value: string) => void; addLabel: string; onAdd?: () => void }) {
   const { t } = useI18n();
-  return <div className="space-y-3 border-b p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">{title}</h2><p className="text-xs text-muted-foreground">{description}</p></div><Button size="sm" onClick={onAdd}><Plus className="h-4 w-4" />{addLabel}</Button></div><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder={t("Search")} /></div></div>;
+  return <div className="space-y-3 border-b p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">{title}</h2><p className="text-xs text-muted-foreground">{description}</p></div>{onAdd ? <Button size="sm" onClick={onAdd}><Plus className="h-4 w-4" />{addLabel}</Button> : null}</div><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder={t("Search")} /></div></div>;
 }
 
 export default function SetupTab() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { outletId, permissions } = useInventoryScope();
   const [categorySearch, setCategorySearch] = useState("");
   const [unitSearch, setUnitSearch] = useState("");
   const [editor, setEditor] = useState<EditorState>(null);
   const [deleting, setDeleting] = useState<DeleteState>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const categoriesQuery = useQuery({
-    queryKey: inventoryQueryKeys.categories,
-    queryFn: async () => { const result = await getItemCategories(); if (!result.ok) throw new Error(result.error); return result.data; },
+    queryKey: inventoryQueryKeys.categories(outletId),
+    queryFn: async () => { const result = await getItemCategories(outletId); if (!result.ok) throw new Error(result.error); return result.data; },
   });
   const unitsQuery = useQuery({
-    queryKey: inventoryQueryKeys.units,
-    queryFn: async () => { const result = await getInventoryUnits(); if (!result.ok) throw new Error(result.error); return result.data; },
+    queryKey: inventoryQueryKeys.units(outletId),
+    queryFn: async () => { const result = await getInventoryUnits(outletId); if (!result.ok) throw new Error(result.error); return result.data; },
   });
   const categories = categoriesQuery.data ?? [];
   const units = unitsQuery.data ?? [];
@@ -116,33 +118,33 @@ export default function SetupTab() {
 
   const editorMutation = useMutation({
     mutationFn: ({ state, name, symbol }: { state: Exclude<EditorState, null>; name: string; symbol: string }) => {
-      if (state.kind === "category") return state.row ? updateItemCategory({ id: state.row.id, name, status: state.row.status }) : createItemCategory({ name });
-      return state.row ? updateInventoryUnit({ id: state.row.id, name, symbol, status: state.row.status }) : createInventoryUnit({ name, symbol });
+      if (state.kind === "category") return state.row ? updateItemCategory(outletId, { id: state.row.id, name, status: state.row.status }) : createItemCategory(outletId, { name });
+      return state.row ? updateInventoryUnit(outletId, { id: state.row.id, name, symbol, status: state.row.status }) : createInventoryUnit(outletId, { name, symbol });
     },
     onSuccess: async (result) => {
       if (!result.ok) return;
-      await invalidateInventoryCaches(queryClient, ["categories", "units", "items"]);
+      await invalidateInventoryCaches(queryClient, outletId, ["categories", "units", "items"]);
       setEditor(null);
       showToast(t("Setup saved."), "success");
     },
   });
   const statusMutation = useMutation({
     mutationFn: (state: Exclude<DeleteState, null>) => state.kind === "category"
-      ? updateItemCategory({ id: state.row.id, name: state.row.name, status: !state.row.status })
-      : updateInventoryUnit({ id: state.row.id, name: state.row.name, symbol: state.row.symbol, status: !state.row.status }),
+      ? updateItemCategory(outletId, { id: state.row.id, name: state.row.name, status: !state.row.status })
+      : updateInventoryUnit(outletId, { id: state.row.id, name: state.row.name, symbol: state.row.symbol, status: !state.row.status }),
     onSuccess: async (result) => {
-      if (result.ok) await invalidateInventoryCaches(queryClient, ["categories", "units", "items"]);
+      if (result.ok) await invalidateInventoryCaches(queryClient, outletId, ["categories", "units", "items"]);
       else showToast(result.error, "error");
     },
   });
   const deleteMutation = useMutation({
-    mutationFn: (state: Exclude<DeleteState, null>) => state.kind === "category" ? deleteItemCategory(state.row.id) : deleteInventoryUnit(state.row.id),
+    mutationFn: (state: Exclude<DeleteState, null>) => state.kind === "category" ? deleteItemCategory(outletId, state.row.id) : deleteInventoryUnit(outletId, state.row.id),
     onSuccess: async (result) => {
       if (!result.ok) {
         setDeleteError(result.error);
         return;
       }
-      await invalidateInventoryCaches(queryClient, ["categories", "units", "items"]);
+      await invalidateInventoryCaches(queryClient, outletId, ["categories", "units", "items"]);
       setDeleting(null);
       setDeleteError(null);
       showToast(t("Setup entry deleted."), "success");
@@ -163,8 +165,8 @@ export default function SetupTab() {
     <div className="space-y-4">
       {(categoriesQuery.isError || unitsQuery.isError) ? <ErrorState title={t("Failed to load inventory setup")} description={(categoriesQuery.error ?? unitsQuery.error) instanceof Error ? String((categoriesQuery.error ?? unitsQuery.error)?.message) : undefined} /> : null}
       <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="overflow-hidden"><SectionHeader title={t("Categories")} description={t("Organize items and control which categories are available.")} search={categorySearch} setSearch={setCategorySearch} addLabel={t("Add category")} onAdd={() => setEditor({ kind: "category", row: null })} />{!categoriesQuery.isLoading && filteredCategories.length === 0 ? <div className="p-4"><EmptyState title={t("No categories found.")} /></div> : filteredCategories.map(renderCategory)}</Card>
-        <Card className="overflow-hidden"><SectionHeader title={t("Units")} description={t("Define the names and symbols used for stock quantities.")} search={unitSearch} setSearch={setUnitSearch} addLabel={t("Add unit")} onAdd={() => setEditor({ kind: "unit", row: null })} />{!unitsQuery.isLoading && filteredUnits.length === 0 ? <div className="p-4"><EmptyState title={t("No units found.")} /></div> : filteredUnits.map(renderUnit)}</Card>
+        <Card className="overflow-hidden"><SectionHeader title={t("Categories")} description={t("Organize items and control which categories are available.")} search={categorySearch} setSearch={setCategorySearch} addLabel={t("Add category")} onAdd={permissions.create ? () => setEditor({ kind: "category", row: null }) : undefined} />{!categoriesQuery.isLoading && filteredCategories.length === 0 ? <div className="p-4"><EmptyState title={t("No categories found.")} /></div> : filteredCategories.map(renderCategory)}</Card>
+        <Card className="overflow-hidden"><SectionHeader title={t("Units")} description={t("Define the names and symbols used for stock quantities.")} search={unitSearch} setSearch={setUnitSearch} addLabel={t("Add unit")} onAdd={permissions.create ? () => setEditor({ kind: "unit", row: null }) : undefined} />{!unitsQuery.isLoading && filteredUnits.length === 0 ? <div className="p-4"><EmptyState title={t("No units found.")} /></div> : filteredUnits.map(renderUnit)}</Card>
       </div>
       <SetupEditor state={editor} pending={editorMutation.isPending} onClose={() => setEditor(null)} onSubmit={submitEditor} />
       <ConfirmModal isOpen={deleting != null} title={t(deleting?.kind === "unit" ? "Delete unit" : "Delete category")} message={deleting ? `${t("Delete")} “${deleting.row.name}”? ${deleteError ?? ""}` : ""} confirmLabel={t("Delete")} cancelLabel={t("Cancel")} variant="danger" loading={deleteMutation.isPending} onClose={() => { setDeleting(null); setDeleteError(null); }} onConfirm={() => deleting && deleteMutation.mutate(deleting)} />

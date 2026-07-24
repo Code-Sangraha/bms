@@ -15,7 +15,46 @@ export type Supplier = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  summary?: SupplierSummary;
 };
+
+export type SupplierPaymentStatus = "ADVANCE" | "PARTIAL" | "FULL";
+export type SupplierPurchaseType = "LIVESTOCK_ADD" | "LIVESTOCK_RESTOCK" | "ITEM_ADD" | "ITEM_RESTOCK";
+export type SupplierSummary = {
+  totalTransactions: number;
+  fullyPaidTransactions: number;
+  partialTransactions: number;
+  advanceTransactions: number;
+  totalPurchasedAmount: number;
+  totalPaidAmount: number;
+  totalDueAmount: number;
+};
+export type SupplierPurchase = {
+  id: string;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentStatus: SupplierPaymentStatus;
+  purchaseType: SupplierPurchaseType | null;
+  createdAt: string;
+  remarks?: string | null;
+  inventoryItem?: { id: string; name: string } | null;
+  livestockItem?: { id: string; name: string; itemId?: string | null } | null;
+  outlet?: { id: string; name: string } | null;
+};
+export type SupplierDetails = Supplier & {
+  outlet?: { id: string; name: string } | null;
+  summary: SupplierSummary;
+  purchases: SupplierPurchase[];
+};
+export type SupplierPurchaseFilters = {
+  outletId?: string;
+  paymentStatus?: SupplierPaymentStatus;
+  purchaseType?: SupplierPurchaseType;
+  from?: string;
+  to?: string;
+};
+export type RecordSupplierPaymentPayload = { amount: number };
 
 export type CreateSupplierPayload = SupplierFormValues & { createdBy?: string };
 export type UpdateSupplierPayload = SupplierFormValues & { id: string; updatedBy?: string };
@@ -23,7 +62,7 @@ export type UpdateSupplierPayload = SupplierFormValues & { id: string; updatedBy
 export type SupplierResponse = {
   success?: boolean;
   message?: string;
-  data?: Supplier | Supplier[] | null;
+  data?: unknown;
   suppliers?: Supplier[];
   [key: string]: unknown;
 };
@@ -34,6 +73,83 @@ function errorMessageFromPayload(data: unknown): string {
 
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : value == null ? null : String(value);
+}
+
+const emptySummary: SupplierSummary = {
+  totalTransactions: 0, fullyPaidTransactions: 0, partialTransactions: 0,
+  advanceTransactions: 0, totalPurchasedAmount: 0, totalPaidAmount: 0, totalDueAmount: 0,
+};
+type SupplierMutationResult =
+  | { ok: true; data: SupplierResponse }
+  | { ok: false; error: string; status: number };
+function finite(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+function normalizeSummary(value: unknown): SupplierSummary {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(Object.keys(emptySummary).map((key) => [key, finite(row[key])])) as SupplierSummary;
+}
+export function normalizeSupplierPurchase(value: unknown): SupplierPurchase | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== "string") return null;
+  return {
+    id: row.id,
+    totalAmount: finite(row.totalAmount),
+    paidAmount: finite(row.paidAmount),
+    dueAmount: finite(row.dueAmount),
+    paymentStatus: (row.paymentStatus as SupplierPaymentStatus) ?? "PARTIAL",
+    purchaseType: (row.purchaseType as SupplierPurchaseType) ?? null,
+    createdAt: typeof row.createdAt === "string" ? row.createdAt : "",
+    remarks: stringOrNull(row.remarks),
+    inventoryItem: row.inventoryItem as SupplierPurchase["inventoryItem"],
+    livestockItem: row.livestockItem as SupplierPurchase["livestockItem"],
+    outlet: row.outlet as SupplierPurchase["outlet"],
+  };
+}
+
+function queryRoute(route: string, values: Record<string, string | undefined>): string {
+  const query = new URLSearchParams();
+  Object.entries(values).forEach(([key, value]) => { if (value) query.set(key, value); });
+  const text = query.toString();
+  return text ? `${route}?${text}` : route;
+}
+
+export async function getSupplierDetails(id: string, outletId?: string) {
+  const result = await apiRequest<SupplierResponse>(queryRoute(SUPPLIER_ROUTES.DETAILS(id), { outletId }), { method: "GET" });
+  if (!result.ok) return result;
+  const failure = failedResponse(result.data);
+  if (failure) return failure;
+  const raw = result.data.data;
+  const supplier = normalizeSupplier(raw);
+  if (!supplier || !raw || typeof raw !== "object") return { ok: false as const, error: "Supplier not found", status: 404 };
+  const row = raw as Record<string, unknown>;
+  return { ok: true as const, data: {
+    ...supplier,
+    outlet: row.outlet as SupplierDetails["outlet"],
+    summary: normalizeSummary(row.summary),
+    purchases: Array.isArray(row.purchases) ? row.purchases.map(normalizeSupplierPurchase).filter((x): x is SupplierPurchase => x !== null) : [],
+  }};
+}
+
+export async function getSupplierPurchases(id: string, filters: SupplierPurchaseFilters = {}) {
+  const result = await apiRequest<SupplierResponse>(queryRoute(SUPPLIER_ROUTES.PURCHASES(id), filters), { method: "GET" });
+  if (!result.ok) return result;
+  const failure = failedResponse(result.data);
+  if (failure) return failure;
+  const row = result.data.data && typeof result.data.data === "object" ? result.data.data as unknown as Record<string, unknown> : {};
+  return { ok: true as const, data: {
+    summary: normalizeSummary(row.summary),
+    purchases: Array.isArray(row.purchases) ? row.purchases.map(normalizeSupplierPurchase).filter((x): x is SupplierPurchase => x !== null) : [],
+  }};
+}
+
+export async function recordSupplierPayment(id: string, expenseId: string, payload: RecordSupplierPaymentPayload) {
+  return apiRequest<SupplierResponse>(SUPPLIER_ROUTES.PAYMENT(id, expenseId), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function normalizeSupplier(raw: unknown): Supplier | null {
@@ -51,6 +167,7 @@ export function normalizeSupplier(raw: unknown): Supplier | null {
     createdAt: typeof row.createdAt === "string" ? row.createdAt : "",
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : "",
     deletedAt: stringOrNull(row.deletedAt),
+    summary: row.summary && typeof row.summary === "object" ? normalizeSummary(row.summary) : undefined,
   };
 }
 
@@ -78,7 +195,9 @@ export async function getSuppliers(
   return { ok: true, data: list.map(normalizeSupplier).filter((x): x is Supplier => x !== null) };
 }
 
-export async function getActiveSuppliers(outletId?: string | null) {
+export async function getActiveSuppliers(outletId?: string | null): Promise<
+  { ok: true; data: Supplier[] } | { ok: false; error: string; status: number }
+> {
   const result = await getSuppliers(outletId);
   return result.ok ? { ok: true, data: result.data.filter((supplier) => supplier.status) } : result;
 }
@@ -118,7 +237,7 @@ export async function getSupplierById(
   }
 }
 
-export async function createSupplier(payload: CreateSupplierPayload) {
+export async function createSupplier(payload: CreateSupplierPayload): Promise<SupplierMutationResult> {
   const body: CreateSupplierPayload = {
     name: payload.name.trim(),
     contact: payload.contact.trim(),
@@ -129,11 +248,11 @@ export async function createSupplier(payload: CreateSupplierPayload) {
     method: "POST",
     body: JSON.stringify(body),
   });
-  if (!result.ok || result.data.success !== false) return result;
-  return failedResponse(result.data);
+  if (!result.ok) return result;
+  return failedResponse(result.data) ?? result;
 }
 
-export async function updateSupplier(payload: UpdateSupplierPayload) {
+export async function updateSupplier(payload: UpdateSupplierPayload): Promise<SupplierMutationResult> {
   const body: UpdateSupplierPayload = {
     id: payload.id,
     name: payload.name.trim(),
@@ -145,15 +264,15 @@ export async function updateSupplier(payload: UpdateSupplierPayload) {
     method: "POST",
     body: JSON.stringify(body),
   });
-  if (!result.ok || result.data.success !== false) return result;
-  return failedResponse(result.data);
+  if (!result.ok) return result;
+  return failedResponse(result.data) ?? result;
 }
 
-export async function deleteSupplier(id: string) {
+export async function deleteSupplier(id: string): Promise<SupplierMutationResult> {
   const result = await apiRequest<SupplierResponse>(SUPPLIER_ROUTES.DELETE, {
     method: "DELETE",
     body: JSON.stringify({ id }),
   });
-  if (!result.ok || result.data.success !== false) return result;
-  return failedResponse(result.data);
+  if (!result.ok) return result;
+  return failedResponse(result.data) ?? result;
 }

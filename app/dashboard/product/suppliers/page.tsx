@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal, Plus, Search } from "lucide-react";
 import ConfirmModal from "@/app/components/Modal/ConfirmModal";
 import Modal from "@/app/components/Modal/Modal";
@@ -34,6 +34,11 @@ import { supplierSchema, type SupplierFormValues } from "@/schema/supplier";
 const SUPPLIERS_QUERY_ROOT = ["suppliers"] as const;
 const OUTLETS_QUERY_KEY = ["outlets"] as const;
 const DEFAULT_VALUES: SupplierFormValues = { name: "", contact: "", outletId: "" };
+const npr = new Intl.NumberFormat("en-NP", {
+  style: "currency",
+  currency: "NPR",
+  maximumFractionDigits: 2,
+});
 
 function formatDate(value: string): string {
   if (!value) return "—";
@@ -52,6 +57,7 @@ function responseMessage(result: { data?: { message?: string } }): string {
 
 export default function SuppliersPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -227,7 +233,7 @@ export default function SuppliersPage() {
         ) : null}
       </div>
 
-      {suppliersQuery.isLoading ? <TableSkeleton columns={6} /> : null}
+      {suppliersQuery.isLoading ? <TableSkeleton columns={10} /> : null}
       {suppliersQuery.isError ? (
         <ErrorState
           description={suppliersQuery.error instanceof Error ? suppliersQuery.error.message : t("Failed to load suppliers")}
@@ -248,6 +254,10 @@ export default function SuppliersPage() {
                 <TableHead>{t("Name")}</TableHead>
                 <TableHead>{t("Contact")}</TableHead>
                 <TableHead>{t("Outlet")}</TableHead>
+                <TableHead className="text-right">{t("Transactions")}</TableHead>
+                <TableHead className="text-right">{t("Purchased")}</TableHead>
+                <TableHead className="text-right">{t("Paid")}</TableHead>
+                <TableHead className="text-right">{t("Due")}</TableHead>
                 <TableHead>{t("Status")}</TableHead>
                 <TableHead>{t("Created")}</TableHead>
                 <TableHead className="w-20" />
@@ -256,9 +266,13 @@ export default function SuppliersPage() {
             <TableBody>
               {filteredSuppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
-                  <TableCell className="font-medium">{supplier.name}</TableCell>
+                  <TableCell className="font-medium"><Link className="text-primary hover:underline" to={`/dashboard/product/suppliers/${encodeURIComponent(supplier.id)}${location.search}`}>{supplier.name}</Link></TableCell>
                   <TableCell className="text-muted-foreground">{supplier.contact || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{outletName(outlets, supplier.outletId)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{supplier.summary?.totalTransactions ?? 0}</TableCell>
+                  <TableCell className="text-right tabular-nums">{npr.format(supplier.summary?.totalPurchasedAmount ?? 0)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-emerald-700">{npr.format(supplier.summary?.totalPaidAmount ?? 0)}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${(supplier.summary?.totalDueAmount ?? 0) > 0 ? "font-medium text-destructive" : ""}`}>{npr.format(supplier.summary?.totalDueAmount ?? 0)}</TableCell>
                   <TableCell>{supplier.status ? t("Active") : t("Inactive")}</TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(supplier.createdAt)}</TableCell>
                   <TableCell className="text-right">

@@ -132,6 +132,7 @@ export const SALES_ROUTES = {
 } as const;
 
 export const ITEM_INVENTORY_ROUTES = {
+  OUTLETS: "/item-inventory/outlets",
   CATEGORIES: "/item-inventory/categories",
   UNITS: "/item-inventory/units",
   ITEMS: "/item-inventory/items",
@@ -146,6 +147,10 @@ export const SUPPLIER_ROUTES = {
   CREATE: "/suppliers/create",
   UPDATE: "/suppliers/update",
   DELETE: "/suppliers/delete",
+  DETAILS: (id: string) => `/suppliers/${encodeURIComponent(id)}`,
+  PURCHASES: (id: string) => `/suppliers/${encodeURIComponent(id)}/purchases`,
+  PAYMENT: (id: string, expenseId: string) =>
+    `/suppliers/${encodeURIComponent(id)}/purchases/${encodeURIComponent(expenseId)}/payments`,
 } as const;
 
 export const CUSTOMER_TYPE_ROUTES = {

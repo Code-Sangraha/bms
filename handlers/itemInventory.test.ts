@@ -21,28 +21,29 @@ describe("item inventory handlers", () => {
   it("sends the complete create-item payload", async () => {
     mockedApiRequest.mockResolvedValueOnce({ ok: true, data: { success: true, data: null } });
     const payload = { name: "Rice", categoryId: "cat-1", unitId: "unit-1", quantity: 12, buyingPrice: 80, sellingPrice: 95, lowStockAlertQuantity: 3 };
-    await createInventoryItem(payload);
-    expect(mockedApiRequest).toHaveBeenCalledWith(ITEM_INVENTORY_ROUTES.ITEMS, { method: "POST", body: JSON.stringify(payload) });
+    await createInventoryItem("outlet-1", payload);
+    expect(mockedApiRequest).toHaveBeenCalledWith(`${ITEM_INVENTORY_ROUTES.ITEMS}?outletId=outlet-1`, { method: "POST", body: JSON.stringify(payload) });
   });
 
   it("keeps a successful null item response", async () => {
     mockedApiRequest.mockResolvedValueOnce({ ok: true, data: { success: true, data: null } });
-    await expect(getInventoryItem("missing")).resolves.toEqual({ ok: true, data: null });
+    await expect(getInventoryItem("outlet-1", "missing")).resolves.toEqual({ ok: true, data: null });
   });
 
   it("sends current category and unit fields with status changes", async () => {
     mockedApiRequest.mockResolvedValue({ ok: true, data: { success: true, data: null } });
-    await updateItemCategory({ id: "cat-1", name: " Food ", status: false });
-    await updateInventoryUnit({ id: "unit-1", name: " Kilogram ", symbol: " kg ", status: false });
-    expect(mockedApiRequest).toHaveBeenNthCalledWith(1, ITEM_INVENTORY_ROUTES.CATEGORIES, { method: "PUT", body: JSON.stringify({ id: "cat-1", name: "Food", status: false }) });
-    expect(mockedApiRequest).toHaveBeenNthCalledWith(2, ITEM_INVENTORY_ROUTES.UNITS, { method: "PUT", body: JSON.stringify({ id: "unit-1", name: "Kilogram", symbol: "kg", status: false }) });
+    await updateItemCategory("outlet-1", { id: "cat-1", name: " Food ", status: false });
+    await updateInventoryUnit("outlet-1", { id: "unit-1", name: " Kilogram ", symbol: " kg ", status: false });
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(1, `${ITEM_INVENTORY_ROUTES.CATEGORIES}?outletId=outlet-1`, { method: "PUT", body: JSON.stringify({ id: "cat-1", name: "Food", status: false }) });
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(2, `${ITEM_INVENTORY_ROUTES.UNITS}?outletId=outlet-1`, { method: "PUT", body: JSON.stringify({ id: "unit-1", name: "Kilogram", symbol: "kg", status: false }) });
   });
 
   it("only sends supported server-side history parameters", async () => {
     mockedApiRequest.mockResolvedValueOnce({ ok: true, data: { success: true, data: [] } });
-    await getInventoryHistory({ itemId: "item-1", from: "2026-07-01T00:00:00.000Z", to: "2026-07-20T00:00:00.000Z" });
+    await getInventoryHistory("outlet-1", { itemId: "item-1", from: "2026-07-01T00:00:00.000Z", to: "2026-07-20T00:00:00.000Z" });
     const route = vi.mocked(mockedApiRequest).mock.calls[0][0];
     expect(route).toContain("itemId=item-1");
+    expect(route).toContain("outletId=outlet-1");
     expect(route).toContain("from=");
     expect(route).toContain("to=");
     expect(route).not.toContain("page=");

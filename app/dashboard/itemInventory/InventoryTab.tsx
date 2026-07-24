@@ -22,7 +22,6 @@ import { ErrorState } from "@/app/components/ui-ext/ErrorState";
 import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { useAuth } from "@/app/providers/AuthProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import {
   createInventoryItem,
@@ -42,6 +41,7 @@ import { getActiveSuppliers, type Supplier } from "@/handlers/supplier";
 import { ItemEditor, StockEditor } from "./InventoryDialogs";
 import { filterAndSortInventoryItems, getStockState, type InventorySort, type InventoryStatusFilter, type InventoryStockFilter } from "./inventoryFilters";
 import { inventoryQueryKeys, invalidateInventoryCaches } from "./inventoryQueries";
+import { useInventoryScope, type InventoryPermissions } from "./InventoryScope";
 
 const selectClass = "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring";
 const npr = new Intl.NumberFormat("en-NP", { style: "currency", currency: "NPR", maximumFractionDigits: 2 });
@@ -58,10 +58,12 @@ function ItemActions({
   onEdit,
   onStock,
   onDelete,
+  permissions,
 }: {
   onEdit: () => void;
   onStock: (mode: "restock" | "deduct") => void;
   onDelete: () => void;
+  permissions: InventoryPermissions;
 }) {
   const { t } = useI18n();
   return (
@@ -70,10 +72,10 @@ function ItemActions({
         <Button variant="ghost" size="icon" aria-label={t("More options")}><MoreHorizontal className="h-4 w-4" /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={onEdit}>{t("Edit item")}</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onStock("restock")}>{t("Restock")}</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onStock("deduct")}>{t("Deduct")}</DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>{t("Delete")}</DropdownMenuItem>
+        {permissions.update ? <DropdownMenuItem onSelect={onEdit}>{t("Edit item")}</DropdownMenuItem> : null}
+        {permissions.restock ? <DropdownMenuItem onSelect={() => onStock("restock")}>{t("Restock")}</DropdownMenuItem> : null}
+        {permissions.update ? <DropdownMenuItem onSelect={() => onStock("deduct")}>{t("Deduct")}</DropdownMenuItem> : null}
+        {permissions.delete ? <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>{t("Delete")}</DropdownMenuItem> : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -83,7 +85,7 @@ export default function InventoryTab() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const { userOutletId } = useAuth();
+  const { outletId, permissions } = useInventoryScope();
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [status, setStatus] = useState<InventoryStatusFilter>("all");
@@ -96,35 +98,35 @@ export default function InventoryTab() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const itemsQuery = useQuery({
-    queryKey: inventoryQueryKeys.items,
+    queryKey: inventoryQueryKeys.items(outletId),
     queryFn: async () => {
-      const result = await getInventoryItems();
+      const result = await getInventoryItems(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
   const categoriesQuery = useQuery({
-    queryKey: inventoryQueryKeys.categories,
+    queryKey: inventoryQueryKeys.categories(outletId),
     queryFn: async () => {
-      const result = await getItemCategories();
+      const result = await getItemCategories(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
   const suppliersQuery = useQuery({
-    queryKey: ["suppliers", userOutletId ?? "none"],
-    enabled: Boolean(userOutletId),
+    queryKey: ["suppliers", outletId],
+    enabled: Boolean(outletId),
     queryFn: async () => {
-      const result = await getActiveSuppliers(userOutletId);
+      const result = await getActiveSuppliers(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
 
   const unitsQuery = useQuery({
-    queryKey: inventoryQueryKeys.units,
+    queryKey: inventoryQueryKeys.units(outletId),
     queryFn: async () => {
-      const result = await getInventoryUnits();
+      const result = await getInventoryUnits(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
@@ -146,10 +148,10 @@ export default function InventoryTab() {
 
   const itemMutation = useMutation({
     mutationFn: (payload: CreateItemPayload | UpdateItemPayload) =>
-      "id" in payload ? updateInventoryItem(payload) : createInventoryItem(payload),
+      "id" in payload ? updateInventoryItem(outletId, payload) : createInventoryItem(outletId, payload),
     onSuccess: async (result) => {
       if (!result.ok) return;
-      await invalidateInventoryCaches(queryClient, ["items", "movements", "openingClosing"]);
+      await invalidateInventoryCaches(queryClient, outletId, ["items", "movements", "openingClosing"]);
       await queryClient.invalidateQueries({ queryKey: ["outletExpenses"] });
       setItemEditorOpen(false);
       setEditingItem(null);
@@ -158,10 +160,10 @@ export default function InventoryTab() {
   });
   const stockMutation = useMutation({
     mutationFn: ({ mode, payload }: { mode: "restock" | "deduct"; payload: StockChangePayload }) =>
-      mode === "restock" ? restockInventoryItem(payload) : deductInventoryItem(payload),
+      mode === "restock" ? restockInventoryItem(outletId, payload) : deductInventoryItem(outletId, payload),
     onSuccess: async (result) => {
       if (!result.ok) return;
-      await invalidateInventoryCaches(queryClient, ["items", "movements", "openingClosing"]);
+      await invalidateInventoryCaches(queryClient, outletId, ["items", "movements", "openingClosing"]);
       if (stockEditor?.mode === "restock") await queryClient.invalidateQueries({ queryKey: ["outletExpenses"] });
       setStockEditor(null);
       showToast(t("Stock updated."), "success");
@@ -169,14 +171,14 @@ export default function InventoryTab() {
   });
   const statusMutation = useMutation({
     mutationFn: ({ item, checked }: { item: InventoryItem; checked: boolean }) =>
-      updateInventoryItem({ id: item.id, status: checked }),
+      updateInventoryItem(outletId, { id: item.id, status: checked }),
     onSuccess: async (result) => {
-      if (result.ok) await invalidateInventoryCaches(queryClient, ["items"]);
+      if (result.ok) await invalidateInventoryCaches(queryClient, outletId, ["items"]);
       else showToast(result.error, "error");
     },
   });
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteInventoryItem(id),
+    mutationFn: (id: string) => deleteInventoryItem(outletId, id),
     onSuccess: async (result) => {
       if (!result.ok) {
         setDeleteError(result.error);
@@ -184,7 +186,7 @@ export default function InventoryTab() {
       }
       setDeleteItem(null);
       setDeleteError(null);
-      await invalidateInventoryCaches(queryClient, ["items", "movements", "openingClosing"]);
+      await invalidateInventoryCaches(queryClient, outletId, ["items", "movements", "openingClosing"]);
       showToast(t("Inventory item deleted."), "success");
     },
   });
@@ -231,7 +233,7 @@ export default function InventoryTab() {
             <option value="name-asc">{t("Name A–Z")}</option><option value="name-desc">{t("Name Z–A")}</option><option value="quantity-asc">{t("Quantity: low first")}</option><option value="quantity-desc">{t("Quantity: high first")}</option>
           </select>
         </div>
-        <Button onClick={openNew}><PackagePlus className="h-4 w-4" />{t("Add item")}</Button>
+        {permissions.create ? <Button onClick={openNew}><PackagePlus className="h-4 w-4" />{t("Add item")}</Button> : null}
       </div>
 
       {itemsQuery.isLoading ? <TableSkeleton rows={8} columns={7} /> : null}
@@ -248,19 +250,20 @@ export default function InventoryTab() {
                   <TableCell><div className="font-medium">{item.name}</div><div className="text-xs text-muted-foreground">{item.category.name} · {t("Alert at")} {item.lowStockAlertQuantity} {item.unit.symbol}</div></TableCell>
                   <TableCell className="font-medium tabular-nums">{item.quantity} {item.unit.symbol}</TableCell>
                   <TableCell className="tabular-nums">{npr.format(item.buyingPrice)}</TableCell>
-                  <TableCell className="tabular-nums">{npr.format(item.sellingPrice)}</TableCell>
+                  <TableCell className="tabular-nums">{npr.format(item.sellingPrice)}{item.secondaryUnit && item.secondarySellingPrice != null ? <div className="text-xs text-muted-foreground">{npr.format(item.secondarySellingPrice)} / {item.secondaryUnit.symbol}<br />1 {item.unit.symbol} = {item.conversionRate} {item.secondaryUnit.symbol}</div> : null}</TableCell>
                   <TableCell><StockBadge item={item} /></TableCell>
-                  <TableCell><Switch checked={item.status} onCheckedChange={(checked) => statusMutation.mutate({ item, checked })} aria-label={`${t("Active")}: ${item.name}`} /></TableCell>
-                  <TableCell><ItemActions onEdit={() => openEdit(item)} onStock={(mode) => setStockEditor({ item, mode })} onDelete={() => { setDeleteItem(item); setDeleteError(null); }} /></TableCell>
+                  <TableCell><Switch disabled={!permissions.update} checked={item.status} onCheckedChange={(checked) => statusMutation.mutate({ item, checked })} aria-label={`${t("Active")}: ${item.name}`} /></TableCell>
+                  <TableCell>{permissions.update || permissions.restock || permissions.delete ? <ItemActions permissions={permissions} onEdit={() => openEdit(item)} onStock={(mode) => setStockEditor({ item, mode })} onDelete={() => { setDeleteItem(item); setDeleteError(null); }} /> : null}</TableCell>
                 </TableRow>
               ))}</TableBody>
             </Table>
           </div>
           <div className="space-y-3 md:hidden">{pageItems.map((item) => (
             <Card key={item.id} className="p-4">
-              <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{item.name}</h3><p className="text-xs text-muted-foreground">{item.category.name}</p></div><ItemActions onEdit={() => openEdit(item)} onStock={(mode) => setStockEditor({ item, mode })} onDelete={() => { setDeleteItem(item); setDeleteError(null); }} /></div>
+              <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{item.name}</h3><p className="text-xs text-muted-foreground">{item.category.name}</p></div>{permissions.update || permissions.restock || permissions.delete ? <ItemActions permissions={permissions} onEdit={() => openEdit(item)} onStock={(mode) => setStockEditor({ item, mode })} onDelete={() => { setDeleteItem(item); setDeleteError(null); }} /> : null}</div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><span className="block text-xs text-muted-foreground">{t("Quantity")}</span><strong>{item.quantity} {item.unit.symbol}</strong></div><div><span className="block text-xs text-muted-foreground">{t("Threshold")}</span>{item.lowStockAlertQuantity} {item.unit.symbol}</div><div><span className="block text-xs text-muted-foreground">{t("Buying price")}</span>{npr.format(item.buyingPrice)}</div><div><span className="block text-xs text-muted-foreground">{t("Selling price")}</span>{npr.format(item.sellingPrice)}</div></div>
-              <div className="mt-4 flex items-center justify-between"><StockBadge item={item} /><label className="flex items-center gap-2 text-xs"><Switch checked={item.status} onCheckedChange={(checked) => statusMutation.mutate({ item, checked })} />{t("Active")}</label></div>
+              {item.secondaryUnit && item.secondarySellingPrice != null ? <p className="mt-2 text-xs text-muted-foreground">{npr.format(item.secondarySellingPrice)} / {item.secondaryUnit.symbol} · 1 {item.unit.symbol} = {item.conversionRate} {item.secondaryUnit.symbol}</p> : null}
+              <div className="mt-4 flex items-center justify-between"><StockBadge item={item} /><label className="flex items-center gap-2 text-xs"><Switch disabled={!permissions.update} checked={item.status} onCheckedChange={(checked) => statusMutation.mutate({ item, checked })} />{t("Active")}</label></div>
             </Card>
           ))}</div>
           <Pagination currentPage={pagination.currentPage} totalPages={pagination.totalPages} totalItems={filtered.length} pageSize={pagination.pageSize} onPageChange={pagination.setCurrentPage} onPageSizeChange={pagination.setPageSize} pageSizeOptions={[10, 20, 50]} />

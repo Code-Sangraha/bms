@@ -41,8 +41,8 @@ describe("inventory client-side behavior", () => {
 
   it("invalidates only the requested inventory caches", async () => {
     const invalidateQueries = vi.fn().mockResolvedValue(undefined);
-    await invalidateInventoryCaches({ invalidateQueries } as unknown as QueryClient, ["items", "movements"]);
-    expect(invalidateQueries).toHaveBeenNthCalledWith(1, { queryKey: inventoryQueryKeys.items });
-    expect(invalidateQueries).toHaveBeenNthCalledWith(2, { queryKey: inventoryQueryKeys.movements });
+    await invalidateInventoryCaches({ invalidateQueries } as unknown as QueryClient, "outlet-1", ["items", "movements"]);
+    expect(invalidateQueries).toHaveBeenNthCalledWith(1, { queryKey: inventoryQueryKeys.items("outlet-1") });
+    expect(invalidateQueries).toHaveBeenNthCalledWith(2, { queryKey: inventoryQueryKeys.movements("outlet-1") });
   });
 });

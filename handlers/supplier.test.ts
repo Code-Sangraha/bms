@@ -9,6 +9,9 @@ import {
   getActiveSuppliers,
   updateSupplier,
   normalizeSupplier,
+  getSupplierDetails,
+  getSupplierPurchases,
+  recordSupplierPayment,
 } from "./supplier";
 import { supplierSchema } from "@/schema/supplier";
 
@@ -138,5 +141,33 @@ describe("supplier contract", () => {
   });
   it("requires all supplier form fields", () => {
     expect(supplierSchema.safeParse({ name: "", contact: "", outletId: "" }).success).toBe(false);
+  });
+
+  it("loads scoped supplier details from the REST route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ success: true, data: {
+      id: "supplier-1", name: "ABC", status: true, summary: { totalDueAmount: 500 }, purchases: [],
+    }}));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await getSupplierDetails("supplier-1", "outlet-1");
+    expect(result.ok).toBe(true);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/suppliers/supplier-1?outletId=outlet-1");
+  });
+
+  it("encodes supplier purchase filters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ success: true, data: { summary: {}, purchases: [] } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await getSupplierPurchases("supplier-1", { outletId: "outlet-1", paymentStatus: "PARTIAL", purchaseType: "ITEM_RESTOCK", from: "2026-07-01", to: "2026-07-31" });
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain("paymentStatus=PARTIAL");
+    expect(url).toContain("purchaseType=ITEM_RESTOCK");
+    expect(url).toContain("outletId=outlet-1");
+  });
+
+  it("records a supplier purchase payment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ success: true, data: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    await recordSupplierPayment("supplier-1", "expense-1", { amount: 500 });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/suppliers/supplier-1/purchases/expense-1/payments");
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({ amount: 500 });
   });
 });

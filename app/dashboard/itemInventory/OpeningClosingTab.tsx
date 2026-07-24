@@ -12,27 +12,29 @@ import { getInventoryItems, getOpeningClosing } from "@/handlers/itemInventory";
 import { getNepalDateKey } from "@/lib/nepalTime";
 import { getNetMovement } from "./inventoryFilters";
 import { inventoryQueryKeys } from "./inventoryQueries";
+import { useInventoryScope } from "./InventoryScope";
 import { useState } from "react";
 
 const selectClass = "h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring";
 
 export default function OpeningClosingTab() {
   const { t } = useI18n();
+  const { outletId } = useInventoryScope();
   const [date, setDate] = useState(() => getNepalDateKey());
   const [itemId, setItemId] = useState("all");
   const itemsQuery = useQuery({
-    queryKey: inventoryQueryKeys.items,
+    queryKey: inventoryQueryKeys.items(outletId),
     queryFn: async () => {
-      const result = await getInventoryItems();
+      const result = await getInventoryItems(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
   const rowsQuery = useQuery({
-    queryKey: [...inventoryQueryKeys.openingClosing, date, itemId],
+    queryKey: [...inventoryQueryKeys.openingClosing(outletId), date, itemId],
     enabled: Boolean(date),
     queryFn: async () => {
-      const result = await getOpeningClosing({
+      const result = await getOpeningClosing(outletId, {
         date,
         itemId: itemId === "all" ? undefined : itemId,
       });

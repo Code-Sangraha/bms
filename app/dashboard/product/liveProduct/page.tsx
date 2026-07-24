@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, MoreHorizontal, Plus } from "lucide-react";
 import { useI18n } from "@/app/providers/I18nProvider";
-import { usePermissions } from "@/app/providers/AuthProvider";
+import { useAuth, usePermissions } from "@/app/providers/AuthProvider";
 import Pagination from "@/app/components/Pagination/Pagination";
 import { PageHeader } from "@/app/components/ui-ext/PageHeader";
 import { DataTable, type DataTableColumn } from "@/app/components/ui-ext/DataTable";
@@ -49,6 +49,7 @@ import { livestockRestockDetailSchema } from "@/schema/livestockDetailModals";
 import type { LivestockDetailLocationState } from "@/app/dashboard/product/lib/inventoryDetailTypes";
 import OpeningStockTable from "./components/OpeningStockTable";
 import ClosingStockTable from "./components/ClosingStockTable";
+import SupplierPicker from "./SupplierPicker";
 import {
   buildLivestockOpeningStockData,
   type LivestockClientStockMode,
@@ -66,6 +67,9 @@ type LivestockFormState = {
   buyingPrice: string;
   sellingPrice: string;
   status: "Active" | "Inactive";
+  supplierId: string;
+  supplierName: string;
+  supplierContact: string;
 };
 
 const defaultLivestockForm: LivestockFormState = {
@@ -76,6 +80,9 @@ const defaultLivestockForm: LivestockFormState = {
   buyingPrice: "",
   sellingPrice: "",
   status: "Active",
+  supplierId: "",
+  supplierName: "",
+  supplierContact: "",
 };
 
 type StockAdjustModalState = { item: LivestockItem; mode: "restock" | "deduct" } | null;
@@ -125,6 +132,9 @@ function toFormState(item: LivestockItem): LivestockFormState {
     buyingPrice: priceFieldToString(item.buyingPrice),
     sellingPrice: priceFieldToString(item.sellingPrice),
     status: item.status ? "Active" : "Inactive",
+    supplierId: "",
+    supplierName: "",
+    supplierContact: "",
   };
 }
 
@@ -188,6 +198,7 @@ export default function LiveProductPage() {
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { capabilities } = usePermissions();
+  const { userOutletId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("all");
   const [isLivestockModalOpen, setIsLivestockModalOpen] = useState(false);
@@ -203,6 +214,7 @@ export default function LiveProductPage() {
   const [stockAdjustError, setStockAdjustError] = useState<string | null>(null);
   const [restockSupplierName, setRestockSupplierName] = useState("");
   const [restockSupplierContact, setRestockSupplierContact] = useState("");
+  const [restockSupplierId, setRestockSupplierId] = useState("");
   const [restockBuyingPrice, setRestockBuyingPrice] = useState("");
   const [restockSellingPrice, setRestockSellingPrice] = useState("");
   const [restockTotalAmount, setRestockTotalAmount] = useState("");
@@ -674,10 +686,17 @@ export default function LiveProductPage() {
       buyingPrice,
       sellingPrice,
       status: true,
+      supplierId: form.supplierId || undefined,
+      supplierName: form.supplierName.trim() || undefined,
+      supplierContact: form.supplierContact.trim() || undefined,
     };
   };
 
   const handleSubmitLivestock = () => {
+    if (!livestockForm.supplierId) {
+      setLivestockError(t("Select or create a supplier."));
+      return;
+    }
     const payload = validateLivestockForm(livestockForm, setLivestockError);
     if (!payload) return;
     livestockMutation.mutate(payload);
@@ -743,6 +762,8 @@ export default function LiveProductPage() {
     setAdjustAmount("");
     setRestockSupplierName("");
     setRestockSupplierContact("");
+    setRestockSupplierId("");
+    setRestockSupplierId("");
     setRestockBuyingPrice(
       mode === "restock" ? priceFieldToString(item.buyingPrice) : ""
     );
@@ -781,6 +802,10 @@ export default function LiveProductPage() {
     }
     setStockAdjustError(null);
     if (stockAdjustModal.mode === "restock") {
+      if (!restockSupplierId) {
+        setStockAdjustError(t("Select or create a supplier."));
+        return;
+      }
       if (restockBuyingPrice.trim() === "") {
         setStockAdjustError(t("Buying price is required."));
         return;
@@ -820,6 +845,7 @@ export default function LiveProductPage() {
         livestockItemId: id,
         quantity: amount,
         supplierName: parsed.data.supplierName,
+        supplierId: restockSupplierId || undefined,
         totalAmount: total,
         paidAmount: paid,
         dueAmount: computeDueAmount(total, paid),
@@ -1178,7 +1204,8 @@ export default function LiveProductPage() {
                 !livestockForm.buyingPrice.trim() ||
                 !livestockForm.sellingPrice.trim() ||
                 hasInvalidOptionalPriceField(livestockForm.buyingPrice) ||
-                hasInvalidOptionalPriceField(livestockForm.sellingPrice)
+                hasInvalidOptionalPriceField(livestockForm.sellingPrice) ||
+                !livestockForm.supplierId
               }
             >
               {livestockMutation.isPending ? t("Saving…") : t("Save")}
@@ -1240,6 +1267,17 @@ export default function LiveProductPage() {
               placeholder={t("Enter quantity")}
             />
           </div>
+          <SupplierPicker
+            outletId={userOutletId}
+            selectedSupplierId={livestockForm.supplierId}
+            disabled={livestockMutation.isPending}
+            onSelect={(supplier) => setLivestockForm((previous) => ({
+              ...previous,
+              supplierId: supplier.id,
+              supplierName: supplier.name,
+              supplierContact: supplier.contact ?? "",
+            }))}
+          />
           <div className="flex flex-col gap-2">
             <Label htmlFor="create-buyingPrice">{t("Buying price")}</Label>
             <Input
@@ -1511,13 +1549,23 @@ export default function LiveProductPage() {
               </div>
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
                 <h4 className="font-medium">{t("Supplier & Payment")}</h4>
+                <SupplierPicker
+                  outletId={stockAdjustModal ? resolveLivestockOutletId(stockAdjustModal.item) || userOutletId : userOutletId}
+                  selectedSupplierId={restockSupplierId}
+                  disabled={restockLivestockMutation.isPending}
+                  onSelect={(supplier) => {
+                    setRestockSupplierId(supplier.id);
+                    setRestockSupplierName(supplier.name);
+                    setRestockSupplierContact(supplier.contact ?? "");
+                  }}
+                />
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="adjust-supplierName">{t("Supplier name")}</Label>
                   <Input
                     id="adjust-supplierName"
                     type="text"
                     value={restockSupplierName}
-                    onChange={(e) => setRestockSupplierName(e.target.value)}
+                    readOnly
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -1526,7 +1574,7 @@ export default function LiveProductPage() {
                     id="adjust-supplierContact"
                     type="text"
                     value={restockSupplierContact}
-                    onChange={(e) => setRestockSupplierContact(e.target.value)}
+                    readOnly
                   />
                 </div>
                 <div className="flex flex-col gap-2">

@@ -18,6 +18,7 @@ import { getInventoryHistory, getInventoryItems, type InventoryMovement } from "
 import { formatNepalDateTime, getLastNepalCalendarDays, inclusiveNepalRangeToIso } from "@/lib/nepalTime";
 import { filterAndSortMovements, type MovementSort } from "./inventoryFilters";
 import { inventoryQueryKeys } from "./inventoryQueries";
+import { useInventoryScope } from "./InventoryScope";
 
 const selectClass = "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring";
 const npr = new Intl.NumberFormat("en-NP", { style: "currency", currency: "NPR", maximumFractionDigits: 2 });
@@ -37,6 +38,7 @@ function MovementBadge({ type }: { type: string }) {
 
 export default function MovementsTab() {
   const { t, locale } = useI18n();
+  const { outletId } = useInventoryScope();
   const initial = useMemo(() => getLastNepalCalendarDays(30), []);
   const [fromDate, setFromDate] = useState(initial.from);
   const [toDate, setToDate] = useState(initial.to);
@@ -47,19 +49,19 @@ export default function MovementsTab() {
   const range = useMemo(() => inclusiveNepalRangeToIso(fromDate, toDate), [fromDate, toDate]);
 
   const itemsQuery = useQuery({
-    queryKey: inventoryQueryKeys.items,
+    queryKey: inventoryQueryKeys.items(outletId),
     queryFn: async () => {
-      const result = await getInventoryItems();
+      const result = await getInventoryItems(outletId);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
   });
   const movementsQuery = useQuery({
-    queryKey: [...inventoryQueryKeys.movements, itemId, range?.from, range?.to],
+    queryKey: [...inventoryQueryKeys.movements(outletId), itemId, range?.from, range?.to],
     enabled: range != null,
     queryFn: async () => {
       if (!range) return [];
-      const result = await getInventoryHistory({
+      const result = await getInventoryHistory(outletId, {
         itemId: itemId === "all" ? undefined : itemId,
         from: range.from,
         to: range.to,
