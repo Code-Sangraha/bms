@@ -140,6 +140,7 @@ export const ITEM_INVENTORY_ROUTES = {
   DEDUCT: "/item-inventory/items/deduct",
   HISTORY: "/item-inventory/history",
   OPENING_CLOSING: "/item-inventory/opening-closing",
+  SALES: "/item-inventory/sales",
 } as const;
 export const SUPPLIER_ROUTES = {
   GET: "/suppliers/get",

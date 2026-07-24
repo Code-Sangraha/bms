@@ -129,6 +129,48 @@ export type InventoryOutlet = {
   itemCount: number;
   lowStockItemCount: number;
 };
+export type ItemSaleUnitType = "PRIMARY" | "SECONDARY";
+export type ItemSalePaymentType = "PAID" | "CREDIT";
+export type ItemSalePaymentMethod = "CASH" | "ONLINE" | "CHEQUE";
+export type ItemSaleLinePayload = {
+  itemId: string;
+  unitType: ItemSaleUnitType;
+  quantity: number;
+  unitPrice?: number;
+  amount?: number;
+};
+export type CreateItemSalePayload = {
+  customerName?: string;
+  customerContact?: string;
+  paymentType?: ItemSalePaymentType;
+  paymentMethod?: ItemSalePaymentMethod;
+  creditorId?: string;
+  note?: string;
+  items: ItemSaleLinePayload[];
+};
+export type ItemSaleLine = ItemSaleLinePayload & {
+  id: string;
+  quantityInPrimary: number;
+  unitPrice: number;
+  amount: number;
+  conversionRate?: number | null;
+  item: Pick<InventoryItem, "id" | "name" | "quantity" | "unit" | "secondaryUnit">;
+};
+export type ItemSale = {
+  id: string;
+  transactionId: string;
+  outletId?: string;
+  customerName?: string | null;
+  customerContact?: string | null;
+  paymentType: ItemSalePaymentType;
+  paymentMethod?: ItemSalePaymentMethod | null;
+  creditorId?: string | null;
+  creditor?: { id: string; name: string } | null;
+  totalAmount: number;
+  note?: string | null;
+  createdAt: string;
+  lines: ItemSaleLine[];
+};
 
 function objectRow(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? value as Record<string, unknown> : null;
@@ -434,4 +476,78 @@ export async function getOpeningClosing(
   const route = withQuery(ITEM_INVENTORY_ROUTES.OPENING_CLOSING, { outletId, ...params });
   const result = await requestData<OpeningClosingRow[]>(route);
   return result.ok ? { ok: true, data: normalizedList(result.data, normalizeOpeningClosingRow) } : result;
+}
+
+function normalizeItemSale(value: unknown): ItemSale | null {
+  const row = objectRow(value);
+  const id = textValue(row?.id);
+  const transactionId = textValue(row?.transactionId);
+  const paymentType = textValue(row?.paymentType);
+  const totalAmount = numberValue(row?.totalAmount);
+  const createdAt = textValue(row?.createdAt);
+  if (!row || !id || !transactionId || (paymentType !== "PAID" && paymentType !== "CREDIT") || totalAmount == null || !createdAt) return null;
+  const lines: ItemSaleLine[] = Array.isArray(row.lines)
+    ? row.lines.map<ItemSaleLine | null>((value) => {
+        const line = objectRow(value);
+        const itemRow = objectRow(line?.item);
+        const itemUnit = normalizeInventoryUnit(itemRow?.unit);
+        const itemSecondaryUnit = itemRow?.secondaryUnit == null ? null : normalizeInventoryUnit(itemRow.secondaryUnit);
+        const itemRecord = itemRow && textValue(itemRow.id) && textValue(itemRow.name) && numberValue(itemRow.quantity) != null && itemUnit
+          ? {
+              id: textValue(itemRow.id)!,
+              name: textValue(itemRow.name)!,
+              quantity: numberValue(itemRow.quantity)!,
+              unit: { id: itemUnit.id, name: itemUnit.name, symbol: itemUnit.symbol },
+              secondaryUnit: itemSecondaryUnit ? { id: itemSecondaryUnit.id, name: itemSecondaryUnit.name, symbol: itemSecondaryUnit.symbol } : null,
+            }
+          : null;
+        const lineId = textValue(line?.id);
+        const itemId = textValue(line?.itemId);
+        const unitType = textValue(line?.unitType);
+        const quantity = numberValue(line?.quantity);
+        const quantityInPrimary = numberValue(line?.quantityInPrimary);
+        const unitPrice = numberValue(line?.unitPrice);
+        const amount = numberValue(line?.amount);
+        if (!line || !itemRecord || !lineId || !itemId || (unitType !== "PRIMARY" && unitType !== "SECONDARY") || quantity == null || quantityInPrimary == null || unitPrice == null || amount == null) return null;
+        return { id: lineId, itemId, item: itemRecord, unitType, quantity, quantityInPrimary, unitPrice, amount, conversionRate: numberValue(line.conversionRate) };
+      }).filter((line): line is ItemSaleLine => line !== null)
+    : [];
+  const creditor = objectRow(row.creditor);
+  return {
+    id,
+    transactionId,
+    outletId: textValue(row.outletId) ?? undefined,
+    customerName: textValue(row.customerName),
+    customerContact: textValue(row.customerContact),
+    paymentType,
+    paymentMethod: textValue(row.paymentMethod) as ItemSalePaymentMethod | null,
+    creditorId: textValue(row.creditorId),
+    creditor: creditor && textValue(creditor.id) && textValue(creditor.name) ? { id: textValue(creditor.id)!, name: textValue(creditor.name)! } : null,
+    totalAmount,
+    note: textValue(row.note),
+    createdAt,
+    lines,
+  };
+}
+
+export async function createItemSale(payload: CreateItemSalePayload): Promise<Result<ItemSale>> {
+  const result = await requestData<ItemSale>(ITEM_INVENTORY_ROUTES.SALES, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!result.ok) return result;
+  const sale = normalizeItemSale(result.data);
+  return sale ? { ok: true, data: sale } : { ok: false, error: "Invalid item sale response.", status: 422 };
+}
+
+export async function getItemSales(): Promise<Result<ItemSale[]>> {
+  const result = await requestData<ItemSale[]>(ITEM_INVENTORY_ROUTES.SALES);
+  return result.ok ? { ok: true, data: normalizedList(result.data, normalizeItemSale) } : result;
+}
+
+export async function getItemSale(id: string): Promise<Result<ItemSale | null>> {
+  const result = await requestData<ItemSale | null>(`${ITEM_INVENTORY_ROUTES.SALES}/${encodeURIComponent(id)}`);
+  if (!result.ok || result.data == null) return result;
+  const sale = normalizeItemSale(result.data);
+  return sale ? { ok: true, data: sale } : { ok: false, error: "Invalid item sale response.", status: 422 };
 }

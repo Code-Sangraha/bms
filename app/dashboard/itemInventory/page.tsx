@@ -10,6 +10,7 @@ import InventoryTab from "./InventoryTab";
 import MovementsTab from "./MovementsTab";
 import OpeningClosingTab from "./OpeningClosingTab";
 import SetupTab from "./SetupTab";
+import SalesTab from "./SalesTab";
 import { InventoryScopeProvider, useInventoryScope } from "./InventoryScope";
 
 function ItemInventoryContent() {
@@ -47,12 +48,14 @@ function ItemInventoryContent() {
             <TabsTrigger value="inventory">{t("Inventory")}</TabsTrigger>
             <TabsTrigger value="movements">{t("Movements")}</TabsTrigger>
             <TabsTrigger value="opening-closing">{t("Opening & Closing")}</TabsTrigger>
+            <TabsTrigger value="sales">{t("Sales")}</TabsTrigger>
             {scope.permissions.create || scope.permissions.update || scope.permissions.delete ? <TabsTrigger value="setup">{t("Setup")}</TabsTrigger> : null}
           </TabsList>
         </div>
         <TabsContent value="inventory" className="mt-4"><InventoryTab /></TabsContent>
         <TabsContent value="movements" className="mt-4"><MovementsTab /></TabsContent>
         <TabsContent value="opening-closing" className="mt-4"><OpeningClosingTab /></TabsContent>
+        <TabsContent value="sales" className="mt-4"><SalesTab /></TabsContent>
         {scope.permissions.create || scope.permissions.update || scope.permissions.delete ? <TabsContent value="setup" className="mt-4"><SetupTab /></TabsContent> : null}
       </Tabs>
       )}
