@@ -15,8 +15,7 @@ export function resolveMainOutletAdminAccess(input: {
   userOutletName: string | null;
   outlets: Outlet[];
 }): boolean {
-  if (input.roleName !== "Admin") return false;
-  if (isMainOutletName(input.userOutletName)) return true;
+  if (input.roleName !== "Admin" || !input.userOutletId) return false;
   const mainOutletId = getMainOutletId(input.outlets);
   return Boolean(input.userOutletId && mainOutletId && input.userOutletId === mainOutletId);
 }
@@ -24,7 +23,6 @@ export function resolveMainOutletAdminAccess(input: {
 export function useMainOutletInventoryAccess() {
   const { isAuthReady, roleName, userOutletId, userOutletName } = useAuth();
   const isAdmin = roleName === "Admin";
-  const knownFromLogin = isAdmin && isMainOutletName(userOutletName);
   const outletsQuery = useQuery({
     queryKey: ["outlets"],
     queryFn: async () => {
@@ -32,9 +30,9 @@ export function useMainOutletInventoryAccess() {
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    enabled: isAuthReady && isAdmin && !knownFromLogin,
+    enabled: isAuthReady && isAdmin,
   });
-  const isLoading = !isAuthReady || (isAdmin && !knownFromLogin && outletsQuery.isLoading);
+  const isLoading = !isAuthReady || (isAdmin && outletsQuery.isLoading);
   const isAllowed = !isLoading && resolveMainOutletAdminAccess({
     roleName,
     userOutletId,

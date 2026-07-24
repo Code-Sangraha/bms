@@ -101,6 +101,51 @@ export async function login(payload: LoginPayload) {
   });
 }
 
+export type AuthAccessResponse = {
+  userId: string;
+  accountType: "user" | "employee";
+  role: { id: string; name: string; isAdmin: boolean };
+  permissions: string[];
+  outletId: string | null;
+  accessScope: "global" | "outlet";
+};
+
+type AuthAccessApiResponse = {
+  success: boolean;
+  message: string;
+  data: AuthAccessResponse;
+};
+
+export async function getAuthAccess() {
+  const result = await apiRequest<AuthAccessApiResponse>(AUTH_ROUTES.ACCESS, {
+    method: "GET",
+  });
+  if (!result.ok) return result;
+
+  const access = result.data.data;
+  if (
+    !access ||
+    typeof access.userId !== "string" ||
+    (access.accountType !== "user" && access.accountType !== "employee") ||
+    !access.role ||
+    typeof access.role.id !== "string" ||
+    typeof access.role.name !== "string" ||
+    typeof access.role.isAdmin !== "boolean" ||
+    !Array.isArray(access.permissions) ||
+    !access.permissions.every((permission) => typeof permission === "string") ||
+    (access.outletId !== null && typeof access.outletId !== "string") ||
+    (access.accessScope !== "global" && access.accessScope !== "outlet")
+  ) {
+    return {
+      ok: false as const,
+      error: "Invalid access response",
+      status: 502,
+    };
+  }
+
+  return { ok: true as const, data: access };
+}
+
 export async function logout() {
   return apiRequest<{ success?: boolean; message?: string }>(AUTH_ROUTES.LOGOUT, {
     method: "POST",

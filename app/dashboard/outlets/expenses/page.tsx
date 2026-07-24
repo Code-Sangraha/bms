@@ -149,8 +149,8 @@ export default function OutletExpensesPage() {
       <tr key={row.id}>
         <td className="whitespace-nowrap">{row.createdAt ? formatNepalDateTime(row.createdAt, locale === "ne" ? "ne-NP" : "en-NP") : "—"}</td>
         <td>{row.outlet.name}</td>
-        <td>{row.livestockItem.name}</td>
-        <td>{row.supplierName}</td>
+        <td>{row.inventoryItem?.name ?? row.livestockItem?.name ?? "—"}</td>
+        <td>{row.supplierName ?? "—"}</td>
         <td>{row.supplierContact ?? "\u2014"}</td>
         <td className="outletExpensesAmountCell">{formatPriceCell(row.totalAmount)}</td>
         <td className="outletExpensesAmountCell">{formatPriceCell(row.paidAmount)}</td>
@@ -164,7 +164,7 @@ export default function OutletExpensesPage() {
         </td>
         <td>{row.remarks ?? "\u2014"}</td>
         <td className="outletExpensesActionsCell">
-          {canRecordPayment && canRecordExpensePayment(row.paymentStatus) ? (
+          {canRecordPayment && row.livestockItem && row.supplierName && canRecordExpensePayment(row.paymentStatus) ? (
             <ExpenseRecordPaymentButton onClick={() => setExpenseToPay(row)} />
           ) : (
             "\u2014"
@@ -183,7 +183,7 @@ export default function OutletExpensesPage() {
         <div className="outletHeaderText">
           <h1 className="pageTitle">{t("Outlet expenses")}</h1>
           <p className="pageSubtitle">
-            {t("Livestock restock expenses by outlet and supplier.")}
+            {t("Inventory and livestock purchase expenses by outlet and supplier.")}
           </p>
         </div>
         <Button asChild variant="outline">
@@ -276,7 +276,7 @@ export default function OutletExpensesPage() {
                   <tr>
                     <th>{t("Date and time")}</th>
                     <th>{t("Outlet")}</th>
-                    <th>{t("Livestock item")}</th>
+                    <th>{t("Inventory item")}</th>
                     <th>{t("Supplier")}</th>
                     <th>{t("Supplier contact")}</th>
                     <th>{t("Total")}</th>
@@ -305,7 +305,7 @@ export default function OutletExpensesPage() {
 
       <LivestockCompletePartialPaymentModal
         isOpen={Boolean(expenseToPay)}
-        expense={expenseToPay}
+        expense={expenseToPay?.livestockItem && expenseToPay.supplierName ? { id: expenseToPay.id, supplierName: expenseToPay.supplierName, totalAmount: expenseToPay.totalAmount, paidAmount: expenseToPay.paidAmount, dueAmount: expenseToPay.dueAmount, paymentStatus: expenseToPay.paymentStatus } : null}
         onClose={() => setExpenseToPay(null)}
         onSuccess={() => setExpenseToPay(null)}
       />

@@ -27,16 +27,18 @@ const OutletAccessContext = createContext<OutletAccessContextValue | null>(null)
 export function OutletAccessProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { roleName, userOutletId, userOutletName } = useAuth();
+  const { roleName, userOutletId, userOutletName, accessScope, isAdmin } = useAuth();
   const sessionAccessTier = getAccessTierFromSessionClaims();
   const sessionOutletId = getOutletIdFromToken() ?? getStoredOutletId();
 
   const value = useMemo<OutletAccessContextValue>(() => {
     const effectiveOutletId = userOutletId ?? sessionOutletId;
     const accessTier =
-      roleName == null
-        ? sessionAccessTier
-        : deriveAccessTier({ roleName, userOutletId: effectiveOutletId });
+      isAdmin || accessScope === "global"
+        ? "global"
+        : roleName == null
+          ? sessionAccessTier
+          : deriveAccessTier({ roleName, userOutletId: effectiveOutletId });
     let lockedOutletId: string | null = null;
     if (accessTier === "outlet_staff") {
       lockedOutletId = effectiveOutletId;
@@ -45,7 +47,7 @@ export function OutletAccessProvider({ children }: { children: ReactNode }) {
       lockedOutletId = null;
     }
     return { accessTier, lockedOutletId };
-  }, [roleName, userOutletId, sessionOutletId, sessionAccessTier]);
+  }, [roleName, userOutletId, userOutletName, accessScope, isAdmin, sessionOutletId, sessionAccessTier]);
 
   const { accessTier, lockedOutletId } = value;
 

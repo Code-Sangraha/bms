@@ -16,6 +16,8 @@ import type {
   StockChangePayload,
   UpdateItemPayload,
 } from "@/handlers/itemInventory";
+import type { Supplier } from "@/handlers/supplier";
+import { buildInventoryPurchasePayload } from "@/lib/billing/inventoryPurchase";
 
 const selectClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring";
@@ -43,12 +45,12 @@ function finiteNumber(value: string): number | null {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
-
-type ItemEditorProps = {
+type ItemEditorProps = {
   open: boolean;
   item: InventoryItem | null;
   categories: ItemCategory[];
   units: InventoryUnit[];
+  suppliers: Supplier[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (payload: CreateItemPayload | UpdateItemPayload) => Promise<string | null>;
@@ -59,6 +61,7 @@ export function ItemEditor({
   item,
   categories,
   units,
+  suppliers,
   pending,
   onClose,
   onSubmit,
@@ -72,6 +75,7 @@ export function ItemEditor({
   const [sellingPrice, setSellingPrice] = useState("");
   const [threshold, setThreshold] = useState("0");
   const [error, setError] = useState<string | null>(null);
+  const [purchase, setPurchase] = useState({ supplierId: "", supplierName: "", supplierContact: "", totalAmount: "", paidAmount: "", dueAmount: "", paymentStatus: "FULL", remarks: "" });
 
   const activeCategories = useMemo(
     () => categories.filter((row) => row.status || row.id === item?.category.id),
@@ -92,6 +96,7 @@ export function ItemEditor({
     setSellingPrice(item ? String(item.sellingPrice) : "");
     setThreshold(item ? String(item.lowStockAlertQuantity) : "0");
     setError(null);
+    setPurchase({ supplierId: "", supplierName: "", supplierContact: "", totalAmount: "", paidAmount: "", dueAmount: "", paymentStatus: "FULL", remarks: "" });
   }, [activeCategories, activeUnits, item, open]);
 
   const submit = async (event: FormEvent) => {
@@ -117,6 +122,13 @@ export function ItemEditor({
       setError(t("Starting quantity must be a valid non-negative number."));
       return;
     }
+    const purchaseResult = !item
+      ? buildInventoryPurchasePayload(purchase, { quantity: startingQuantity as number, buyingPrice: buying })
+      : null;
+    if (purchaseResult && !purchaseResult.ok) {
+      setError(t(purchaseResult.error));
+      return;
+    }
     const payload = item
       ? {
           id: item.id,
@@ -135,6 +147,7 @@ export function ItemEditor({
           buyingPrice: buying,
           sellingPrice: selling,
           lowStockAlertQuantity,
+          ...(purchaseResult?.ok ? purchaseResult.data : {}),
         };
     const failure = await onSubmit(payload);
     if (failure) setError(failure);
@@ -193,6 +206,8 @@ export function ItemEditor({
             <Input type="number" min="0" step="any" value={threshold} onChange={(event) => setThreshold(event.target.value)} />
           </Field>
         </div>
+        {!item ? <div className="grid gap-4 sm:grid-cols-2"><Field label={t("Supplier")}><select className={selectClass} value={purchase.supplierId} onChange={(e) => { const supplierId = e.target.value; const supplier = suppliers.find((row) => row.id === supplierId); setPurchase({ ...purchase, supplierId, supplierName: supplier?.name ?? "", supplierContact: supplier?.contact ?? "" }); }}><option value="">{t("No supplier")}</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.contact ? ` (${supplier.contact})` : ""}</option>)}</select></Field><Field label={t("Supplier name")}><Input value={purchase.supplierName} readOnly /></Field><Field label={t("Supplier contact")}><Input value={purchase.supplierContact} readOnly /></Field><Field label={t("Total amount")} hint={t("Defaults to quantity × buying price.")}><Input type="number" min="0" step="0.01" value={purchase.totalAmount || (startingQuantity != null && buyingPrice ? String(startingQuantity * (finiteNumber(buyingPrice) ?? 0)) : "")} onChange={(e) => setPurchase({ ...purchase, totalAmount: e.target.value })} /></Field><Field label={t("Paid amount")}><Input type="number" min="0" step="0.01" value={purchase.paidAmount} onChange={(e) => setPurchase({ ...purchase, paidAmount: e.target.value })} /></Field><Field label={t("Due amount")}><Input type="number" min="0" step="0.01" value={purchase.dueAmount} onChange={(e) => setPurchase({ ...purchase, dueAmount: e.target.value })} /></Field><Field label={t("Payment status")}><select className={selectClass} value={purchase.paymentStatus} onChange={(e) => setPurchase({ ...purchase, paymentStatus: e.target.value })}><option value="ADVANCE">Advance</option><option value="PARTIAL">Partial</option><option value="FULL">Full</option></select></Field></div> : null}
+        {!item ? <Field label={t("Remarks")}><Textarea value={purchase.remarks} onChange={(e) => setPurchase({ ...purchase, remarks: e.target.value })} maxLength={500} rows={2} /></Field> : null}
       </form>
     </Modal>
   );
@@ -202,18 +217,20 @@ type StockEditorProps = {
   open: boolean;
   mode: "restock" | "deduct";
   item: InventoryItem | null;
+  suppliers: Supplier[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (payload: StockChangePayload) => Promise<string | null>;
 };
 
-export function StockEditor({ open, mode, item, pending, onClose, onSubmit }: StockEditorProps) {
+export function StockEditor({ open, mode, item, suppliers, pending, onClose, onSubmit }: StockEditorProps) {
   const { t } = useI18n();
   const [quantity, setQuantity] = useState("");
   const [buyingPrice, setBuyingPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [purchase, setPurchase] = useState({ supplierId: "", supplierName: "", supplierContact: "", totalAmount: "", paidAmount: "", dueAmount: "", paymentStatus: "FULL", remarks: "" });
   const numericQuantity = finiteNumber(quantity);
   const projected = item && numericQuantity != null
     ? item.quantity + (mode === "restock" ? numericQuantity : -numericQuantity)
@@ -226,6 +243,7 @@ export function StockEditor({ open, mode, item, pending, onClose, onSubmit }: St
     setSellingPrice("");
     setNote("");
     setError(null);
+    setPurchase({ supplierId: "", supplierName: "", supplierContact: "", totalAmount: "", paidAmount: "", dueAmount: "", paymentStatus: "FULL", remarks: "" });
   }, [mode, open]);
 
   const submit = async (event: FormEvent) => {
@@ -255,6 +273,7 @@ export function StockEditor({ open, mode, item, pending, onClose, onSubmit }: St
     if (buyingPrice.trim()) payload.buyingPrice = buying as number;
     if (sellingPrice.trim()) payload.sellingPrice = selling as number;
     if (note.trim()) payload.note = note.trim();
+    if (mode === "restock") { const result = buildInventoryPurchasePayload(purchase, { quantity: amount, buyingPrice: buying ?? item.buyingPrice }); if (!result.ok) { setError(t(result.error)); return; } Object.assign(payload, result.data); }
     const failure = await onSubmit(payload);
     if (failure) setError(failure);
   };
@@ -292,6 +311,7 @@ export function StockEditor({ open, mode, item, pending, onClose, onSubmit }: St
           </Field>
         </div>
         <p className="text-xs text-amber-700">{t("Any supplied price replaces the current item price.")}</p>
+        {mode === "restock" ? <div className="grid gap-4 sm:grid-cols-2 rounded-lg border border-dashed p-3"><Field label={t("Supplier")}><select className={selectClass} value={purchase.supplierId} onChange={(e) => { const supplierId = e.target.value; const supplier = suppliers.find((row) => row.id === supplierId); setPurchase({ ...purchase, supplierId, supplierName: supplier?.name ?? "", supplierContact: supplier?.contact ?? "" }); }}><option value="">{t("No supplier")}</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.contact ? ` (${supplier.contact})` : ""}</option>)}</select></Field><Field label={t("Supplier name")}><Input value={purchase.supplierName} readOnly /></Field><Field label={t("Supplier contact")}><Input value={purchase.supplierContact} readOnly /></Field><Field label={t("Total amount")} hint={t("Defaults to quantity × buying price.")}><Input type="number" min="0" step="0.01" value={purchase.totalAmount || (numericQuantity != null ? String(numericQuantity * (finiteNumber(buyingPrice) ?? item?.buyingPrice ?? 0)) : "")} onChange={(e) => setPurchase({ ...purchase, totalAmount: e.target.value })} /></Field><Field label={t("Paid amount")}><Input type="number" min="0" step="0.01" value={purchase.paidAmount} onChange={(e) => setPurchase({ ...purchase, paidAmount: e.target.value })} /></Field><Field label={t("Due amount")}><Input type="number" min="0" step="0.01" value={purchase.dueAmount} onChange={(e) => setPurchase({ ...purchase, dueAmount: e.target.value })} /></Field><Field label={t("Payment status")}><select className={selectClass} value={purchase.paymentStatus} onChange={(e) => setPurchase({ ...purchase, paymentStatus: e.target.value })}><option value="ADVANCE">Advance</option><option value="PARTIAL">Partial</option><option value="FULL">Full</option></select></Field></div> : null}
         <Field label={t("Note")} hint={`${note.length}/500`}>
           <Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={3} />
         </Field>

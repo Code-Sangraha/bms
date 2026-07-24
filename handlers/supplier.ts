@@ -78,6 +78,11 @@ export async function getSuppliers(
   return { ok: true, data: list.map(normalizeSupplier).filter((x): x is Supplier => x !== null) };
 }
 
+export async function getActiveSuppliers(outletId?: string | null) {
+  const result = await getSuppliers(outletId);
+  return result.ok ? { ok: true, data: result.data.filter((supplier) => supplier.status) } : result;
+}
+
 export async function getSupplierById(
   id: string
 ): Promise<{ ok: true; data: Supplier } | { ok: false; error: string; status: number }> {

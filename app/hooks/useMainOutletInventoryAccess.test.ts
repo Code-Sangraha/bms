@@ -10,8 +10,8 @@ describe("main outlet inventory access", () => {
   it("allows an admin whose outlet id matches the main outlet", () => {
     expect(resolveMainOutletAdminAccess({ roleName: "Admin", userOutletId: "main-1", userOutletName: null, outlets })).toBe(true);
   });
-  it("accepts the backend fallback main name convention", () => {
-    expect(resolveMainOutletAdminAccess({ roleName: "Admin", userOutletId: null, userOutletName: "main", outlets: [] })).toBe(true);
+  it("requires explicit assignment even when the outlet name is main", () => {
+    expect(resolveMainOutletAdminAccess({ roleName: "Admin", userOutletId: null, userOutletName: "main", outlets: [] })).toBe(false);
   });
   it("rejects non-admin and branch accounts", () => {
     expect(resolveMainOutletAdminAccess({ roleName: "Manager", userOutletId: "main-1", userOutletName: "Main Outlet", outlets })).toBe(false);

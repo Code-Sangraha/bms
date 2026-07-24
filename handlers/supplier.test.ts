@@ -6,6 +6,7 @@ import {
   deleteSupplier,
   getSupplierById,
   getSuppliers,
+  getActiveSuppliers,
   updateSupplier,
   normalizeSupplier,
 } from "./supplier";
@@ -52,6 +53,12 @@ describe("supplier contract", () => {
 
     expect(result).toEqual({ ok: true, data: [] });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/suppliers/get?outletId=outlet%201");
+  });
+
+  it("filters inactive suppliers only for inventory selection", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ success: true, data: [{ id: "active", name: "Active", status: true }, { id: "inactive", name: "Inactive", status: false }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getActiveSuppliers("outlet-1")).resolves.toMatchObject({ ok: true, data: [{ id: "active" }] });
   });
 
   it("trims create payload fields", async () => {

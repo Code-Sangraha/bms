@@ -22,6 +22,7 @@ import { ErrorState } from "@/app/components/ui-ext/ErrorState";
 import { TableSkeleton } from "@/app/components/ui-ext/LoadingState";
 import { usePagination, paginate } from "@/app/hooks/usePagination";
 import { useI18n } from "@/app/providers/I18nProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useToast } from "@/app/providers/ToastProvider";
 import {
   createInventoryItem,
@@ -37,6 +38,7 @@ import {
   type StockChangePayload,
   type UpdateItemPayload,
 } from "@/handlers/itemInventory";
+import { getActiveSuppliers, type Supplier } from "@/handlers/supplier";
 import { ItemEditor, StockEditor } from "./InventoryDialogs";
 import { filterAndSortInventoryItems, getStockState, type InventorySort, type InventoryStatusFilter, type InventoryStockFilter } from "./inventoryFilters";
 import { inventoryQueryKeys, invalidateInventoryCaches } from "./inventoryQueries";
@@ -81,6 +83,7 @@ export default function InventoryTab() {
   const { t } = useI18n();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { userOutletId } = useAuth();
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [status, setStatus] = useState<InventoryStatusFilter>("all");
@@ -108,6 +111,16 @@ export default function InventoryTab() {
       return result.data;
     },
   });
+  const suppliersQuery = useQuery({
+    queryKey: ["suppliers", userOutletId ?? "none"],
+    enabled: Boolean(userOutletId),
+    queryFn: async () => {
+      const result = await getActiveSuppliers(userOutletId);
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
   const unitsQuery = useQuery({
     queryKey: inventoryQueryKeys.units,
     queryFn: async () => {
@@ -120,6 +133,7 @@ export default function InventoryTab() {
   const items = itemsQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];
   const units = unitsQuery.data ?? [];
+  const suppliers: Supplier[] = suppliersQuery.data ?? [];
   const filtered = useMemo(
     () => filterAndSortInventoryItems(items, { search, categoryId, status, stock, sort }),
     [categoryId, items, search, sort, status, stock]
@@ -136,6 +150,7 @@ export default function InventoryTab() {
     onSuccess: async (result) => {
       if (!result.ok) return;
       await invalidateInventoryCaches(queryClient, ["items", "movements", "openingClosing"]);
+      await queryClient.invalidateQueries({ queryKey: ["outletExpenses"] });
       setItemEditorOpen(false);
       setEditingItem(null);
       showToast(t("Inventory item saved."), "success");
@@ -147,6 +162,7 @@ export default function InventoryTab() {
     onSuccess: async (result) => {
       if (!result.ok) return;
       await invalidateInventoryCaches(queryClient, ["items", "movements", "openingClosing"]);
+      if (stockEditor?.mode === "restock") await queryClient.invalidateQueries({ queryKey: ["outletExpenses"] });
       setStockEditor(null);
       showToast(t("Stock updated."), "success");
     },
@@ -251,8 +267,8 @@ export default function InventoryTab() {
         </>
       ) : null}
 
-      <ItemEditor open={itemEditorOpen} item={editingItem} categories={categories} units={units} pending={itemMutation.isPending} onClose={() => { setItemEditorOpen(false); setEditingItem(null); }} onSubmit={submitItem} />
-      <StockEditor open={stockEditor != null} item={stockEditor?.item ?? null} mode={stockEditor?.mode ?? "restock"} pending={stockMutation.isPending} onClose={() => setStockEditor(null)} onSubmit={submitStock} />
+      <ItemEditor open={itemEditorOpen} item={editingItem} categories={categories} units={units} suppliers={suppliers} pending={itemMutation.isPending} onClose={() => { setItemEditorOpen(false); setEditingItem(null); }} onSubmit={submitItem} />
+      <StockEditor open={stockEditor != null} item={stockEditor?.item ?? null} mode={stockEditor?.mode ?? "restock"} suppliers={suppliers} pending={stockMutation.isPending} onClose={() => setStockEditor(null)} onSubmit={submitStock} />
       <ConfirmModal isOpen={deleteItem != null} title={t("Delete item")} message={deleteItem ? `${t("Delete")} “${deleteItem.name}”? ${deleteError ?? ""}` : ""} confirmLabel={t("Delete")} cancelLabel={t("Cancel")} variant="danger" loading={deleteMutation.isPending} onClose={() => setDeleteItem(null)} onConfirm={() => deleteItem && deleteMutation.mutate(deleteItem.id)} />
     </div>
   );

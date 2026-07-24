@@ -124,13 +124,9 @@ export async function apiRequest<T>(
 
   const url = `${baseUrl}${route}`;
   const token = getAuthToken();
-  const method = (options.method ?? "GET").toUpperCase();
-  const hasBody = options.body != null && options.body !== "";
   const headers: HeadersInit = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(hasBody || method === "POST" || method === "PUT" || method === "PATCH"
-      ? { "Content-Type": "application/json" }
-      : {}),
+    "Content-Type": "application/json",
     ...options.headers,
   };
 

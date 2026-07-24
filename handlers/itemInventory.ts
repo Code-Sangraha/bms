@@ -71,6 +71,14 @@ export type CreateItemPayload = {
   buyingPrice: number;
   sellingPrice: number;
   lowStockAlertQuantity: number;
+  supplierId?: string;
+  supplierName?: string;
+  supplierContact?: string;
+  totalAmount?: number;
+  paidAmount?: number;
+  dueAmount?: number;
+  paymentStatus?: "ADVANCE" | "PARTIAL" | "FULL";
+  remarks?: string;
 };
 
 export type UpdateItemPayload = {
@@ -90,6 +98,14 @@ export type StockChangePayload = {
   buyingPrice?: number;
   sellingPrice?: number;
   note?: string;
+  supplierId?: string;
+  supplierName?: string;
+  supplierContact?: string;
+  totalAmount?: number;
+  paidAmount?: number;
+  dueAmount?: number;
+  paymentStatus?: "ADVANCE" | "PARTIAL" | "FULL";
+  remarks?: string;
 };
 
 export type UpdateCategoryPayload = { id: string; name: string; status?: boolean };
@@ -356,7 +372,7 @@ export function restockInventoryItem(payload: StockChangePayload) {
   });
 }
 
-export function deductInventoryItem(payload: StockChangePayload) {
+export function deductInventoryItem(payload: Pick<StockChangePayload, "id" | "quantity" | "note">) {
   return requestData<InventoryItem>(ITEM_INVENTORY_ROUTES.DEDUCT, {
     method: "POST",
     body: JSON.stringify(payload),

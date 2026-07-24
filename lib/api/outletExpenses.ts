@@ -4,6 +4,7 @@ import { OUTLET_ROUTES } from "@/lib/api/routes";
 import { getAuthToken } from "@/lib/auth/token";
 
 export type OutletExpensePaymentStatus = "ADVANCE" | "PARTIAL" | "FULL";
+export type OutletExpenseSource = "ITEM_PURCHASE" | "LIVESTOCK_PURCHASE" | "OTHER";
 
 export type OutletExpenseFilters = {
   outletId?: string;
@@ -13,9 +14,14 @@ export type OutletExpenseEntry = {
   id: string;
   outletId: string;
   outlet: { id: string; name: string };
-  livestockItemId: string;
-  livestockItem: { id: string; name: string };
-  supplierName: string;
+  livestockItemId: string | null;
+  quantity: number;
+  source: OutletExpenseSource;
+  livestockItem: { id: string; name: string } | null;
+  inventoryItemId: string | null;
+  inventoryItem: { id: string; name: string } | null;
+  supplierId: string | null;
+  supplierName: string | null;
   supplierContact: string | null;
   totalAmount: number;
   paidAmount: number;
@@ -76,6 +82,9 @@ function parseEntry(raw: unknown, index: number): OutletExpenseEntry | null {
   const outletId = typeof o.outletId === "string" ? o.outletId : null;
   const livestockItemId =
     typeof o.livestockItemId === "string" ? o.livestockItemId : null;
+  const inventoryItemId = typeof o.inventoryItemId === "string" ? o.inventoryItemId : null;
+  const quantity = parseNum(o.quantity) ?? 0;
+  const source: OutletExpenseSource = inventoryItemId ? "ITEM_PURCHASE" : livestockItemId ? "LIVESTOCK_PURCHASE" : "OTHER";
   const supplierName =
     typeof o.supplierName === "string" ? o.supplierName.trim() : null;
   const totalAmount = parseNum(o.totalAmount);
@@ -85,8 +94,7 @@ function parseEntry(raw: unknown, index: number): OutletExpenseEntry | null {
 
   if (
     !outletId ||
-    !livestockItemId ||
-    !supplierName ||
+
     totalAmount == null ||
     paidAmount == null ||
     dueAmount == null ||
@@ -97,11 +105,8 @@ function parseEntry(raw: unknown, index: number): OutletExpenseEntry | null {
 
   const outlet =
     parseNestedEntity(o.outlet, "outletId") ?? { id: outletId, name: "—" };
-  const livestockItem =
-    parseNestedEntity(o.livestockItem, "livestockItemId") ?? {
-      id: livestockItemId,
-      name: "—",
-    };
+  const livestockItem = livestockItemId ? parseNestedEntity(o.livestockItem, "livestockItemId") ?? { id: livestockItemId, name: "—" } : null;
+  const inventoryItem = inventoryItemId ? parseNestedEntity(o.inventoryItem, "inventoryItemId") ?? { id: inventoryItemId, name: "—" } : null;
 
   const supplierContact =
     typeof o.supplierContact === "string" && o.supplierContact.trim()
@@ -120,6 +125,11 @@ function parseEntry(raw: unknown, index: number): OutletExpenseEntry | null {
     outlet,
     livestockItemId,
     livestockItem,
+    inventoryItemId,
+    inventoryItem,
+    quantity,
+    source,
+    supplierId: typeof o.supplierId === "string" ? o.supplierId : null,
     supplierName,
     supplierContact,
     totalAmount,

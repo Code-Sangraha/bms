@@ -123,6 +123,7 @@ export default function LivestockCategoryV2Page() {
         isOpen={isCreateModalOpen}
         title={t("Add Livestock Category")}
         subtitle={t("Create a new livestock category")}
+        modalClassName="livestockCategoryModal"
         onClose={() => {
           setIsCreateModalOpen(false);
           setError(null);
